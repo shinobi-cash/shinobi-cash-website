@@ -1,31 +1,43 @@
-# shadcn/ui monorepo template
+# Shinobi Cash Website
 
-This template is for creating a monorepo with shadcn/ui.
+Official website for Shinobi Cash - A privacy-focused cross-chain withdrawal application built on Privacy Pools that enables anonymous transfers using zero-knowledge proofs and Open Intent Framework.
 
-## Usage
-
-```bash
-pnpm dlx shadcn@latest init
-```
-
-## Adding components
-
-To add components to your app, run the following command at the root of your `web` app:
+## Quick Start
 
 ```bash
-pnpm dlx shadcn@latest add button -c apps/web
+# Install dependencies
+pnpm install
+
+# Start development server
+pnpm dev
+
+# Build for production
+pnpm build
 ```
 
-This will place the ui components in the `packages/ui/src/components` directory.
+## Monorepo Structure
 
-## Tailwind
+- `apps/web` - Main website application
+- `packages/ui` - Shared UI components
+- `packages/typescript-config` - Shared TypeScript configuration
+- `packages/eslint-config` - Shared ESLint configuration
 
-Your `tailwind.config.ts` and `globals.css` are already set up to use the components from the `ui` package.
+## Development
 
-## Using components
+This is a Turborepo monorepo using pnpm workspaces.
 
-To use the components in your app, import them from the `ui` package.
+### Adding UI Components
+
+```bash
+pnpm dlx shadcn@latest add <component-name> -c apps/web
+```
+
+### Using Components
 
 ```tsx
 import { Button } from "@workspace/ui/components/button"
 ```
+
+## License
+
+MIT
