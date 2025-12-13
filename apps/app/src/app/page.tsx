@@ -50,7 +50,7 @@ export default function Home() {
             Shinobi Cash
           </h1>
           <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl px-4">
-            Private cross-chain transactions powered by zero-knowledge proofs
+            One click, borderless and complaint privacy
           </p>
           <ConnectButton />
         </div>
