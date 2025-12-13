@@ -11,6 +11,7 @@
   "dependencies": {
     "@reown/appkit": "1.8.14",
     "@reown/appkit-adapter-wagmi": "1.8.14",
+    "@shinobi-cash/constants": "file:../../../shinobi-cash-monorepo/packages/constants",
     "@tanstack/react-query": "^5.59.20",
     "@workspace/ui": "workspace:*",
     "next": "15.3.8",
