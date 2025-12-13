@@ -13,7 +13,7 @@ const queryClient = new QueryClient()
 // Set up metadata
 const metadata = {
   name: 'Shinobi Cash',
-  description: 'Private cross-chain transactions powered by zero-knowledge proofs',
+  description: 'One click, borderless and complaint privacy',
   url: 'https://shinobi.cash',
   icons: ['https://shinobi.cash/icon.svg']
 }
