@@ -19,6 +19,10 @@ export const metadata: Metadata = {
   title: "Shinobi Cash - Private Cross-Chain Transactions",
   description:
     "Private, cross-chain transactions powered by zero-knowledge proofs. Deposit from any chain, withdraw to any chain with complete privacy.",
+  icons: {
+    icon: "/icon.svg",
+    apple: "/icon.svg",
+  },
 }
 
 export default function RootLayout({
