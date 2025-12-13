@@ -2,13 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { useTheme } from "next-themes";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Github } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@workspace/ui/components/button";
 
 const NAV_LINKS = [
-  { label: "Docs", href: "#docs" },
+  { label: "Docs", href: "https://docs.shinobi.cash" },
   { label: "Contact", href: "#contact" },
 ] as const;
 
@@ -92,17 +92,31 @@ export default function Navbar() {
               <a
                 key={link.href}
                 href={link.href}
+                target={link.href.startsWith("http") ? "_blank" : undefined}
+                rel={link.href.startsWith("http") ? "noopener noreferrer" : undefined}
                 className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors"
               >
                 {link.label}
               </a>
             ))}
+            <a
+              href="https://github.com/shinobi-cash"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="GitHub"
+            >
+              <Github className="h-5 w-5" />
+            </a>
             <Button
+              asChild
               variant="outline"
               size="lg"
               className="border-2 border-orange-600 dark:border-orange-500 text-foreground hover:bg-orange-600/10 hover:border-orange-500 dark:hover:border-orange-400 text-base px-6 py-5"
             >
-              Launch App
+              <a href="https://app.shinobi.cash" target="_blank" rel="noopener noreferrer">
+                Launch App
+              </a>
             </Button>
           </div>
 
@@ -131,19 +145,33 @@ export default function Navbar() {
               <a
                 key={link.href}
                 href={link.href}
+                target={link.href.startsWith("http") ? "_blank" : undefined}
+                rel={link.href.startsWith("http") ? "noopener noreferrer" : undefined}
                 onClick={handleLinkClick}
                 className="px-4 py-3 rounded-lg text-base font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
               >
                 {link.label}
               </a>
             ))}
+            <a
+              href="https://github.com/shinobi-cash"
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={handleLinkClick}
+              className="px-4 py-3 rounded-lg text-base font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors flex items-center gap-2"
+            >
+              <Github className="h-5 w-5" />
+              GitHub
+            </a>
             <div className="pt-4">
               <Button
+                asChild
                 variant="outline"
                 className="w-full border-2 border-orange-600 dark:border-orange-500 text-foreground hover:bg-orange-600/10 hover:border-orange-500 dark:hover:border-orange-400"
-                onClick={handleLinkClick}
               >
-                Launch App
+                <a href="https://app.shinobi.cash" target="_blank" rel="noopener noreferrer" onClick={handleLinkClick}>
+                  Launch App
+                </a>
               </Button>
             </div>
           </div>
