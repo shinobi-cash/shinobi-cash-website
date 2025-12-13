@@ -3,9 +3,16 @@
 import { wagmiAdapter, projectId, networks } from '@/config'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createAppKit } from '@reown/appkit/react'
-import { ThemeProvider } from 'next-themes'
-import React, { type ReactNode } from 'react'
+import { ThemeProvider } from '@/contexts/ThemeContext'
+import { AuthProvider } from '@/contexts/AuthContext'
+import { NavigationProvider } from '@/contexts/NavigationContext'
+import { TransactionTrackingProvider } from '@/hooks/transactions/useTransactionTracking'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
+import React, { type ReactNode, useEffect } from 'react'
 import { cookieToInitialState, WagmiProvider, type Config } from 'wagmi'
+import { Toaster } from '@/components/ui/sonner'
+import { INDEXER_CONFIG } from '@/config/constants'
+import { IndexerClient, setShinobiClient } from '@shinobi-cash/data'
 
 // Set up queryClient
 const queryClient = new QueryClient()
@@ -36,18 +43,40 @@ export const modal = createAppKit({
 function ContextProvider({ children, cookies }: { children: ReactNode; cookies: string | null }) {
   const initialState = cookieToInitialState(wagmiAdapter.wagmiConfig as Config, cookies)
 
+  // Initialize indexer client on client side
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const indexerClient = new IndexerClient({
+        endpoint: INDEXER_CONFIG.ENDPOINT,
+        headers: {
+          "Content-Type": "application/json",
+          "User-Agent": "shinobi-app/1.0.0",
+          ...(INDEXER_CONFIG.TOKEN && { Authorization: `Bearer ${INDEXER_CONFIG.TOKEN}` }),
+        },
+        timeout: 30000,
+      })
+
+      setShinobiClient(indexerClient)
+    }
+  }, [])
+
   return (
-    <ThemeProvider
-      attribute="class"
-      defaultTheme="dark"
-      forcedTheme="dark"
-      enableSystem={false}
-      disableTransitionOnChange
-    >
-      <WagmiProvider config={wagmiAdapter.wagmiConfig as Config} initialState={initialState}>
-        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-      </WagmiProvider>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider defaultTheme="dark">
+        <WagmiProvider config={wagmiAdapter.wagmiConfig as Config} initialState={initialState}>
+          <QueryClientProvider client={queryClient}>
+            <NavigationProvider>
+              <AuthProvider>
+                <TransactionTrackingProvider>
+                  {children}
+                  <Toaster />
+                </TransactionTrackingProvider>
+              </AuthProvider>
+            </NavigationProvider>
+          </QueryClientProvider>
+        </WagmiProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   )
 }
 
