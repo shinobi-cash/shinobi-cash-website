@@ -32,6 +32,9 @@ importers:
       '@reown/appkit-adapter-wagmi':
         specifier: 1.8.14
         version: 1.8.14(22a9ee2ede48cb4004b742d42c545e6f)
+      '@shinobi-cash/constants':
+        specifier: file:../../../shinobi-cash-monorepo/packages/constants
+        version: file:../shinobi-cash-monorepo/packages/constants
       '@tanstack/react-query':
         specifier: ^5.59.20
         version: 5.90.12(react@19.2.1)
@@ -913,6 +916,9 @@ packages:
 
   '@scure/bip39@1.6.0':
     resolution: {integrity: sha512-+lF0BbLiJNwVlev4eKelw1WWLaiKXw7sSl8T6FvBlWkdX+94aGJ4o8XjUdlyhTCjd8c+B3KT3JfS8P0bLRNU6A==}
+
+  '@shinobi-cash/constants@file:../shinobi-cash-monorepo/packages/constants':
+    resolution: {directory: ../shinobi-cash-monorepo/packages/constants, type: directory}
 
   '@socket.io/component-emitter@3.1.2':
     resolution: {integrity: sha512-9BCxFwvbGg/RsZK9tjXd8s4UcwR0MWeFQ1XEKIQVVvAGJyINdrqKMcTRyLoK8Rse1GjzLV9cwjWV1olXRWEXVA==}
@@ -6038,6 +6044,8 @@ snapshots:
     dependencies:
       '@noble/hashes': 1.8.0
       '@scure/base': 1.2.6
+
+  '@shinobi-cash/constants@file:../shinobi-cash-monorepo/packages/constants': {}
 
   '@socket.io/component-emitter@3.1.2': {}
 
