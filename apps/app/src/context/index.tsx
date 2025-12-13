@@ -8,6 +8,7 @@ import { AuthProvider } from '@/contexts/AuthContext'
 import { NavigationProvider } from '@/contexts/NavigationContext'
 import { TransactionTrackingProvider } from '@/hooks/transactions/useTransactionTracking'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { ParticleBackground } from '@/components/ParticleBackground'
 import React, { type ReactNode, useEffect } from 'react'
 import { cookieToInitialState, WagmiProvider, type Config } from 'wagmi'
 import { Toaster } from '@/components/ui/sonner'
@@ -68,6 +69,7 @@ function ContextProvider({ children, cookies }: { children: ReactNode; cookies: 
             <NavigationProvider>
               <AuthProvider>
                 <TransactionTrackingProvider>
+                  <ParticleBackground />
                   {children}
                   <Toaster />
                 </TransactionTrackingProvider>
