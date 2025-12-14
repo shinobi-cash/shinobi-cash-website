@@ -11,30 +11,21 @@ export function useNotesData() {
   const { onTransactionIndexed } = useTransactionTracking();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Guard clause: Early return if auth keys are not present.
-  if (!publicKey || !accountKey) {
-    return {
-      noteChains: [],
-      unspentNotesCount: 0,
-      totalNotesCount: 0,
-      loading: true,
-      error: null,
-      progress: null,
-      isRefreshing: false,
-      noteDiscovery: null,
-      handleRefresh: () => Promise.resolve(),
-    };
-  }
-
   const poolAddress = SHINOBI_CASH_ETH_POOL.address;
 
+  // Always call useNotes to maintain hook order, but skip if not authenticated
   const {
     data: noteDiscovery,
     loading,
     error,
     progress,
     refresh,
-  } = useNotes(publicKey, poolAddress, accountKey, { autoScan: true });
+  } = useNotes(
+    publicKey || "",
+    poolAddress,
+    accountKey || BigInt(0),
+    { autoScan: !!publicKey && !!accountKey }
+  );
 
   useEffect(() => {
     const cleanup = onTransactionIndexed(() => {
@@ -60,6 +51,7 @@ export function useNotesData() {
   }, [noteChains]);
 
   const handleRefresh = async () => {
+    if (!publicKey || !accountKey) return;
     setIsRefreshing(true);
     try {
       await refresh();
@@ -67,6 +59,21 @@ export function useNotesData() {
       setIsRefreshing(false);
     }
   };
+
+  // Return empty data if not authenticated (but all hooks were called)
+  if (!publicKey || !accountKey) {
+    return {
+      noteChains: [],
+      unspentNotesCount: 0,
+      totalNotesCount: 0,
+      loading: false,
+      error: null,
+      progress: null,
+      isRefreshing: false,
+      noteDiscovery: null,
+      handleRefresh,
+    };
+  }
 
   return {
     noteChains,
