@@ -2,11 +2,14 @@
   "name": "shinobi-cash-app",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "lint:fix": "next lint --fix",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@farcaster/miniapp-sdk": "^0.1.8",
@@ -31,13 +34,13 @@
     "date-fns": "^4.1.0",
     "ethers": "^6.13.4",
     "lucide-react": "^0.539.0",
-    "next": "15.3.8",
-    "next-themes": "^0.4.4",
+    "next": "15.4.10",
+    "next-themes": "^0.4.6",
     "permissionless": "^0.2.53",
     "poseidon-lite": "^0.3.0",
-    "react": "19.2.1",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
     "react-confetti": "^6.4.0",
-    "react-dom": "19.2.1",
     "snarkjs": "^0.7.5",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.3.1",
@@ -46,13 +49,13 @@
     "wagmi": "^2.12.31"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.1.7",
-    "@types/node": "^22",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "15.1.6",
-    "tailwindcss": "^4.1.7",
-    "typescript": "^5"
+    "@tailwindcss/postcss": "^4.1.11",
+    "@types/node": "^20.19.9",
+    "@types/react": "^19.1.9",
+    "@types/react-dom": "^19.1.7",
+    "@workspace/eslint-config": "workspace:^",
+    "@workspace/typescript-config": "workspace:*",
+    "eslint": "^9.32.0",
+    "typescript": "^5.9.2"
   }
 }
