@@ -4,6 +4,7 @@ import { AccountLoginForm } from "./AccountLoginForm";
 import AccountSetupForm from "./AccountSetupForm";
 import { BackupMnemonicSection } from "./BackupMnemonicSection";
 import { KeyGenerationSection } from "./KeyGenerationSection";
+import { WalletSignatureKeyGeneration } from "./WalletSignatureKeyGeneration";
 import { LoginWithBackupPhrase } from "./LoginWithBackupPhrase";
 import { SyncingNotesSection } from "./SyncingNotesSection";
 
@@ -74,7 +75,7 @@ export function AuthStepContent({
 
     case "create-keys":
       return (
-        <KeyGenerationSection
+        <WalletSignatureKeyGeneration
           onKeyGenerationComplete={onKeyGenerationComplete}
           registerFooterActions={registerFooterActions}
         />

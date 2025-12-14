@@ -64,7 +64,8 @@ export function useAuthSteps(options: UseAuthStepsOptions = {}) {
         if (loginKey) {
           setCurrentStep("login-backup");
         } else {
-          setCurrentStep("create-backup");
+          // For wallet signature auth, go back to key generation (skip backup)
+          setCurrentStep("create-keys");
         }
         break;
     }
@@ -80,7 +81,8 @@ export function useAuthSteps(options: UseAuthStepsOptions = {}) {
 
   const handleKeyGenerationComplete = useCallback((keys: KeyGenerationResult) => {
     setGeneratedKeys(keys);
-    setCurrentStep("create-backup");
+    // Skip backup step for wallet signature-based auth (keys are recoverable by re-signing)
+    setCurrentStep("setup-convenient");
   }, []);
 
   const handleBackupComplete = useCallback(() => {
