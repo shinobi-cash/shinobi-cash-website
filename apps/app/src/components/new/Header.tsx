@@ -3,14 +3,22 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Settings, BarChart3 } from "lucide-react";
-import { useAccount, useChainId } from "wagmi";
+import { useAccount, useChainId, useSwitchChain } from "wagmi";
 import { modal } from "@/context";
 import { Button } from "@/components/ui/button";
 import { SHINOBI_CASH_SUPPORTED_CHAINS } from "@shinobi-cash/constants";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export function Header() {
   const { isConnected, address } = useAccount();
   const chainId = useChainId();
+  const { switchChain } = useSwitchChain();
 
   const handleConnectWallet = () => {
     modal.open();
@@ -22,6 +30,28 @@ export function Header() {
 
   const getCurrentChain = () => {
     return SHINOBI_CASH_SUPPORTED_CHAINS.find((chain) => chain.id === chainId);
+  };
+
+  const getChainIcon = (id: number) => {
+    const chainIconMap: Record<number, string> = {
+      // Mainnets
+      1: "/chains/eth-diamond-black-white.svg",
+      8453: "/chains/Base_square_blue.svg",
+      10: "/chains/OPMainnet_square.svg",
+      42161: "/chains/AF_logomark.svg",
+      // Testnets
+      421614: "/chains/AF_logomark.svg",
+      84532: "/chains/Base_square_blue.svg",
+      11155111: "/chains/eth-diamond-black-white.svg",
+      11155420: "/chains/OPMainnet_square.svg",
+    };
+    return chainIconMap[id] || "/chains/eth-diamond-black-white.svg";
+  };
+
+  const handleChainSwitch = (newChainId: string) => {
+    if (switchChain) {
+      switchChain({ chainId: Number(newChainId) });
+    }
   };
 
   const currentChain = getCurrentChain();
@@ -69,25 +99,44 @@ export function Header() {
 
           {/* Actions - Right */}
           <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
-            {/* Desktop: Chain Display */}
+            {/* Desktop: Chain Selector */}
             {isConnected && currentChain && (
-              <Button
-                onClick={handleConnectWallet}
-                variant="outline"
-                size="default"
-                className="hidden md:flex items-center gap-2 text-xs sm:text-sm lg:text-base font-medium h-9 sm:h-10 lg:h-11"
-              >
-                {currentChain.iconUrl && (
-                  <Image
-                    src={currentChain.iconUrl}
-                    alt={currentChain.name}
-                    width={20}
-                    height={20}
-                    className="w-4 h-4 sm:w-5 sm:h-5"
-                  />
-                )}
-                <span>{currentChain.name}</span>
-              </Button>
+              <Select value={chainId.toString()} onValueChange={handleChainSwitch}>
+                <SelectTrigger className="hidden md:flex items-center gap-2 h-9 sm:h-10 lg:h-11 w-auto min-w-[140px] border-gray-700 bg-gray-900/50">
+                  <SelectValue>
+                    <div className="flex items-center gap-2">
+                      <Image
+                        src={getChainIcon(chainId)}
+                        alt={currentChain.name}
+                        width={20}
+                        height={20}
+                        className="w-4 h-4 sm:w-5 sm:h-5"
+                      />
+                      <span className="text-xs sm:text-sm lg:text-base font-medium">{currentChain.name}</span>
+                    </div>
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent className="bg-gray-900 border-gray-700">
+                  {SHINOBI_CASH_SUPPORTED_CHAINS.map((chain) => (
+                    <SelectItem
+                      key={chain.id}
+                      value={chain.id.toString()}
+                      className="flex items-center gap-2 cursor-pointer hover:bg-gray-800 focus:bg-gray-800"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Image
+                          src={getChainIcon(chain.id)}
+                          alt={chain.name}
+                          width={20}
+                          height={20}
+                          className="w-5 h-5"
+                        />
+                        <span className="text-sm font-medium">{chain.name}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             )}
 
             {/* Desktop: Connect Wallet Button */}
