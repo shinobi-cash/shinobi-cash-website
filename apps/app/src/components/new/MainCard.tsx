@@ -14,12 +14,6 @@ import { BackButton } from "../ui/back-button";
 import { formatEther } from "viem";
 import { AuthModal } from "./AuthModal";
 
-const ETH_ASSET = {
-  symbol: "ETH",
-  name: "Ethereum",
-  icon: "/ethereum.svg",
-};
-
 export function MainCard() {
   const { isAuthenticated, publicKey, accountKey } = useAuth();
   const [authDrawerOpen, setAuthDrawerOpen] = useState(false);
@@ -118,31 +112,26 @@ export function MainCard() {
             </div>
           </div>
         ) : depositState.isShowing ? (
-          <div className="flex flex-col h-full gap-2 p-4">
-            <div className="flex items-center gap-3 mb-2">
+          <div className="flex flex-col p-4">
+            <div className="flex items-center gap-3 mb-4">
               <BackButton onClick={exitDeposit} />
-              <h2 className="text-lg font-semibold text-white">Deposit ETH</h2>
+              <h2 className="text-lg font-semibold text-white">Deposit</h2>
             </div>
-            <div className="flex-1 overflow-y-auto">
-              <DepositForm
-                asset={{ symbol: "ETH", name: "Ethereum", icon: "/ethereum.svg" }}
-                onTransactionSuccess={exitDeposit}
-              />
-            </div>
+            <DepositForm
+              asset={{ symbol: "ETH", name: "Ethereum", icon: "/ethereum.svg" }}
+              onTransactionSuccess={exitDeposit}
+            />
           </div>
         ) : withdrawalState.isShowing && withdrawalState.note ? (
-          <div className="flex flex-col h-full gap-2 p-4">
-            <div className="flex items-center gap-3 mb-2">
+          <div className="flex flex-col p-4">
+            <div className="flex items-center gap-3 mb-4">
               <BackButton onClick={exitWithdrawal} />
-              <h2 className="text-lg font-semibold text-white">Withdraw ETH</h2>
+              <h2 className="text-lg font-semibold text-white">Withdraw</h2>
             </div>
-            <div className="flex-1 overflow-y-auto">
-              <WithdrawalForm
-                asset={{ symbol: "ETH", name: "Ethereum", icon: "/ethereum.svg" }}
-                preSelectedNote={withdrawalState.note}
-                onTransactionSuccess={exitWithdrawal}
-              />
-            </div>
+            <WithdrawalForm
+              preSelectedNote={withdrawalState.note}
+              onTransactionSuccess={exitWithdrawal}
+            />
           </div>
         ) : (
           <>

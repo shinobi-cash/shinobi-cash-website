@@ -42,45 +42,36 @@ export const NoteSelector = ({
         }
         className="sr-only"
       />
-      <Button
-        variant="outline"
-        onClick={() => !preSelectedNote && setIsNoteDropdownOpen(!isNoteDropdownOpen)}
-        className={`w-full h-16 p-4 justify-between text-left rounded-xl has-[>svg]:px-4 ${
-          preSelectedNote ? "cursor-default" : ""
-        }`}
+      <button
+        onClick={() => setIsNoteDropdownOpen(!isNoteDropdownOpen)}
+        disabled={isLoadingNotes || availableNotes.length === 0}
+        className="inline-flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded-full transition-colors disabled:opacity-50"
         aria-labelledby="from-label"
-        aria-haspopup={preSelectedNote ? undefined : "menu"}
-        aria-expanded={preSelectedNote ? undefined : isNoteDropdownOpen}
-        aria-controls={!preSelectedNote && isNoteDropdownOpen ? "note-dropdown" : undefined}
+        aria-haspopup="menu"
+        aria-expanded={isNoteDropdownOpen}
+        aria-controls={isNoteDropdownOpen ? "note-dropdown" : undefined}
       >
         {isLoadingNotes ? (
-          <div className="flex items-center gap-2">
-            <Loader2 className="w-4 h-4 animate-spin text-app-secondary" />
-            <span className="text-app-secondary">Loading notes...</span>
-          </div>
+          <>
+            <Loader2 className="w-4 h-4 animate-spin text-white" />
+            <span className="text-sm font-semibold text-white">Loading...</span>
+          </>
         ) : availableNotes.length === 0 ? (
-          <span className="text-app-secondary">No notes available</span>
+          <span className="text-sm font-semibold text-white">No notes</span>
         ) : selectedNote ? (
-          <div className="flex-1 min-w-0">
-            <div className="font-semibold text-app-primary text-sm">{getNoteLabel(selectedNote)}</div>
-            <div className="text-xs text-app-secondary">
-              {formatEthAmount(selectedNote.amount, { maxDecimals: 6 })} {asset.symbol}
-            </div>
-          </div>
+          <>
+            <span className="text-sm font-semibold text-white">{getNoteLabel(selectedNote)}</span>
+            <ChevronDown className="w-4 h-4 text-white/70" />
+          </>
         ) : (
-          <span className="text-app-secondary">Choose a note...</span>
+          <>
+            <span className="text-sm font-semibold text-white">Select note</span>
+            <ChevronDown className="w-4 h-4 text-white/70" />
+          </>
         )}
-        {!isLoadingNotes &&
-          availableNotes.length > 0 &&
-          !preSelectedNote &&
-          (isNoteDropdownOpen ? (
-            <ChevronUp className="w-4 h-4 text-app-secondary ml-2" />
-          ) : (
-            <ChevronDown className="w-4 h-4 text-app-secondary ml-2" />
-          ))}
-      </Button>
+      </button>
 
-      {!preSelectedNote && isNoteDropdownOpen && availableNotes.length > 1 && (
+      {isNoteDropdownOpen && availableNotes.length > 1 && (
         <div
           id="note-dropdown"
           role="menu"

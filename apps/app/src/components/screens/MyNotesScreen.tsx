@@ -59,12 +59,11 @@ export const MyNotesScreen = () => {
       <div className="flex flex-col h-full gap-2 p-2">
         <div className="flex items-center gap-3">
           <BackButton onClick={exitWithdrawal} />
-          <h1 className="text-lg font-semibold text-app-primary tracking-tight">Withdraw ETH</h1>
+          <h1 className="text-lg font-semibold text-app-primary tracking-tight">Withdraw</h1>
         </div>
 
         <div className="flex-1 flex flex-col min-h-0">
           <WithdrawalForm
-            asset={{ symbol: "ETH", name: "Ethereum", icon: "/ethereum.svg" }}
             preSelectedNote={withdrawalState.note}
             onTransactionSuccess={exitWithdrawal}
           />
