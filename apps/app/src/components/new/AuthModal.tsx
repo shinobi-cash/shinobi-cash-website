@@ -42,10 +42,6 @@ export function AuthModal({ open, onOpenChange, onAuthComplete }: AuthModalProps
   // Auto-close when authenticated
   useEffect(() => {
     if (isAuthenticated && open && authSteps.currentStep !== "syncing-notes") {
-      // Let syncing complete before closing
-      if (authSteps.currentStep === "syncing-notes") {
-        return;
-      }
       setTimeout(() => {
         onOpenChange(false);
         onAuthComplete?.();
