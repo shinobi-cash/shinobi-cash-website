@@ -4,12 +4,17 @@
  */
 
 export function isFarcasterEnvironment(): boolean {
+  // Only run in browser
+  if (typeof window === "undefined") {
+    return false;
+  }
+
   // Check if running in iframe (Farcaster mini apps run in iframes)
   const inIframe = window !== window.parent;
 
   // Check for Farcaster SDK presence
   const hasFarcasterSDK =
-    (typeof window !== "undefined" && window.location.hostname.includes("farcaster")) ||
+    window.location.hostname.includes("farcaster") ||
     window.location.hostname.includes("warpcast");
 
   // Check user agent for Farcaster-specific indicators
@@ -20,6 +25,11 @@ export function isFarcasterEnvironment(): boolean {
 }
 
 export function isPasskeySupported(): boolean {
+  // Only run in browser
+  if (typeof window === "undefined") {
+    return false;
+  }
+
   // Check basic WebAuthn support
   if (!window.PublicKeyCredential) {
     return false;
@@ -34,6 +44,11 @@ export function isPasskeySupported(): boolean {
 }
 
 export function getEnvironmentType(): "farcaster" | "standalone" | "iframe" | "web" {
+  // Only run in browser
+  if (typeof window === "undefined") {
+    return "web";
+  }
+
   if (isFarcasterEnvironment()) {
     return "farcaster";
   }
