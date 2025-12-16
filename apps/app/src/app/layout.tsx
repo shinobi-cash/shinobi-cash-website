@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Shinobi Cash - Private Cross-Chain Transactions",
-  description: "Private, cross-chain transactions powered by zero-knowledge proofs. Deposit from any chain, withdraw to any chain with complete privacy.",
+  title: 'Shinobi Cash',
+  description: 'One click, borderless and complaint privacy',
   icons: {
     icon: "/icon.svg",
     apple: "/icon.svg",

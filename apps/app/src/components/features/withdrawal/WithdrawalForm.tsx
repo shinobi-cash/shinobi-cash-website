@@ -223,9 +223,10 @@ export function WithdrawalForm({ preSelectedNote, onTransactionSuccess }: Withdr
         {/* Chain + Asset Selector */}
         {selectedNote && (
           <>
-            <button
+            <Button
               onClick={() => setIsDestinationSelectionOpen(true)}
               className="flex items-center gap-2 mb-4"
+              variant={'ghost'}
               disabled={isPreparing || isExecuting}
             >
               {/* Chain icon */}
@@ -248,7 +249,7 @@ export function WithdrawalForm({ preSelectedNote, onTransactionSuccess }: Withdr
               </div>
               <span className="text-base font-medium text-white">{asset.symbol}</span>
               <ChevronDown className="w-4 h-4 text-gray-400" />
-            </button>
+            </Button>
 
             {/* Amount Input */}
             <input
@@ -303,8 +304,9 @@ export function WithdrawalForm({ preSelectedNote, onTransactionSuccess }: Withdr
           {/* Label with Recipient Selector */}
           <div className="flex items-center justify-between mb-3">
             <label className="text-sm text-gray-400">Receive</label>
-            <button
+            <Button
               onClick={() => setIsDestinationSelectionOpen(true)}
+              variant={'ghost'}
               className="text-sm text-purple-400 hover:text-purple-300 transition-colors flex items-center gap-1"
               disabled={isPreparing || isExecuting}
             >
@@ -319,11 +321,12 @@ export function WithdrawalForm({ preSelectedNote, onTransactionSuccess }: Withdr
                   <ChevronDown className="w-3 h-3" />
                 </>
               )}
-            </button>
+            </Button>
           </div>
 
           {/* Chain + Asset Selector */}
-          <button
+          <Button
+            variant={'ghost'}
             onClick={() => setIsDestinationSelectionOpen(true)}
             className="flex items-center gap-2 mb-4"
             disabled={isPreparing || isExecuting}
@@ -348,7 +351,7 @@ export function WithdrawalForm({ preSelectedNote, onTransactionSuccess }: Withdr
             </div>
             <span className="text-base font-medium text-white">{asset.symbol}</span>
             <ChevronDown className="w-4 h-4 text-gray-400" />
-          </button>
+          </Button>
 
           {/* Receive Amount */}
           <div className="text-5xl font-semibold text-white mb-3">

@@ -12,9 +12,9 @@ export const ParticleBackground = () => {
       if (width < 640) {
         setParticleCount(50);
       } else if (width < 1024) {
-        setParticleCount(100);
+        setParticleCount(200);
       } else {
-        setParticleCount(150);
+        setParticleCount(350);
       }
     };
 

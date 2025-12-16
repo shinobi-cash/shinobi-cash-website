@@ -1,41 +1,31 @@
 "use client";
 
-import { useEffect } from "react";
-import { useAuth } from "@/contexts/AuthContext";
-import { useLayout } from "@/contexts/LayoutContext";
-import { SplashScreen } from "@/components/SplashScreen";
-import { PasswordAuthDrawer } from "@/components/features/auth/PasswordAuthDrawer";
-import { MainScreen } from "@/components/screens/MainScreen";
-import { NewLayout } from "@/components/new/NewLayout";
-import { sdk } from "@farcaster/miniapp-sdk";
+import { AnnouncementBar } from "@/components/new/AnnouncementBar";
+import { BottomNav } from "@/components/new/BottomNav";
+import { Footer } from "@/components/new/Footer";
+import { Header } from "@/components/new/Header";
+import { MainCard } from "@/components/new/MainCard";
+
 
 export default function Home() {
-  // const { isRestoringSession, quickAuthState } = useAuth();
-  // const { version } = useLayout();
+  return (
+    <div className="h-screen md:justify-between overflow-y-scroll bg-linear-to-br from-gray-900 via-gray-900 to-black flex flex-col">
+      <div className="p-4">
+        <Header />
+      </div>
+     
+     <div className="flex items-center w-full md:w-xl md:h-1/2 p-4 mx-auto bg-gray-900/80 backdrop-blur-md mb-8 ">
+          <MainCard />
+      </div>
+      
 
-  // // Call ready() immediately to hide Farcaster native splash screen
-  // useEffect(() => {
-  //   sdk.actions.ready().catch(console.error);
-  // }, []);
+      <div className="hidden md:block shrink-0">
+        <AnnouncementBar />
+        <Footer />
+      </div>
 
-  // // Show custom splash screen during session restoration
-  // if (isRestoringSession) {
-  //   return (
-  //     <>
-  //       <SplashScreen subtitle="Restoring your session..." />
-  //       {quickAuthState?.show && <PasswordAuthDrawer />}
-  //     </>
-  //   );
-  // }
+      <BottomNav />
+    </div>
 
-  // Show new or old layout based on toggle
-    return <NewLayout />;
-
-  // // Show old main app
-  // return (
-  //   <>
-  //     <MainScreen />
-  //     <PasswordAuthDrawer />
-  //   </>
-  // );
+  );
 }

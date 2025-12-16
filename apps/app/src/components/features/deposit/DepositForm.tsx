@@ -194,7 +194,7 @@ export function DepositForm({ asset, onTransactionSuccess }: DepositFormProps) {
           </span>
           <div className="flex items-center gap-2">
             <span className="text-gray-400">
-              {Number.parseFloat(formattedBalance).toFixed(4)} {asset.symbol} available
+              {Number.parseFloat(formattedBalance).toFixed(4)} {asset.symbol}
             </span>
             <button
               onClick={() => handleAmountChange(formattedBalance)}
