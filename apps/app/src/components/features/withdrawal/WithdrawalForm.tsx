@@ -21,6 +21,7 @@ import { WithdrawalFeeBreakdown } from "@/components/shared/WithdrawalFeeBreakdo
 
 interface WithdrawalFormProps {
   onTransactionSuccess?: () => void;
+  onBack?: () => void;
 }
 
 const ETH_ASSET = {
@@ -29,7 +30,7 @@ const ETH_ASSET = {
   icon: "/ethereum.svg",
 };
 
-export function WithdrawalForm({ onTransactionSuccess }: WithdrawalFormProps) {
+export function WithdrawalForm({ onTransactionSuccess, onBack }: WithdrawalFormProps) {
   const asset = ETH_ASSET;
   const { publicKey, accountKey } = useAuth();
   const poolAddress = SHINOBI_CASH_ETH_POOL.address;
@@ -157,8 +158,17 @@ export function WithdrawalForm({ onTransactionSuccess }: WithdrawalFormProps) {
 
   // Show withdrawal form
   return (
-    <div className="flex flex-col px-4 sm:px-6 py-6">
-      {/* You Pay Section - From Note (Pool Chain) */}
+    <div className="flex flex-col w-full h-full overflow-x-hidden">
+      {/* Header with Back Button */}
+      {onBack && (
+        <div className="flex items-center gap-3 px-4 py-4 border-b border-gray-800">
+          <BackButton onClick={onBack} />
+          <h2 className="text-lg font-semibold text-white">Withdraw</h2>
+        </div>
+      )}
+
+      <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6">
+        {/* You Pay Section - From Note (Pool Chain) */}
       <TokenAmountInput
         label="You Pay"
         labelRight={
@@ -311,6 +321,7 @@ export function WithdrawalForm({ onTransactionSuccess }: WithdrawalFormProps) {
           onShowPreview={handleShowPreview}
         />
       )}
+      </div>
     </div>
   );
 }

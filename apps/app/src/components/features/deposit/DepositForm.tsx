@@ -17,13 +17,15 @@ import { SectionDivider } from "@/components/shared/SectionDivider";
 import { FeeBreakdown } from "@/components/shared/FeeBreakdown";
 import { TokenChainSelector } from "@/components/shared/TokenChainSelector";
 import { AssetChainSelectorScreen } from "@/components/shared/AssetChainSelectorScreen";
+import { BackButton } from "@/components/ui/back-button";
 
 interface DepositFormProps {
   asset: { symbol: string; name: string; icon: string };
   onTransactionSuccess?: () => void;
+  onBack?: () => void;
 }
 
-export function DepositForm({ asset, onTransactionSuccess }: DepositFormProps) {
+export function DepositForm({ asset, onTransactionSuccess, onBack }: DepositFormProps) {
   const { address } = useAccount();
   const { data: balance } = useBalance({ address });
   const chainId = useChainId();
@@ -156,8 +158,17 @@ export function DepositForm({ asset, onTransactionSuccess }: DepositFormProps) {
   }
 
   return (
-    <div className="flex flex-col px-4 sm:px-6 py-6 w-full overflow-x-hidden">
-      {/* Unsupported Network Warning */}
+    <div className="flex flex-col w-full h-full overflow-x-hidden">
+      {/* Header with Back Button */}
+      {onBack && (
+        <div className="flex items-center gap-3 px-4 py-4 border-b border-gray-800">
+          <BackButton onClick={onBack} />
+          <h2 className="text-lg font-semibold text-white">Deposit</h2>
+        </div>
+      )}
+
+      <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6">
+        {/* Unsupported Network Warning */}
       {!isOnSupportedChain && (
         <div className="mb-6">
           <NetworkWarning
@@ -237,6 +248,7 @@ export function DepositForm({ asset, onTransactionSuccess }: DepositFormProps) {
         >
           {getButtonLabel()}
         </Button>
+      </div>
       </div>
     </div>
   );

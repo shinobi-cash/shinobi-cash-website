@@ -7,17 +7,18 @@ import { useNotesData } from "@/hooks/notes/useNotesData";
 import { NotesSection } from "../features/notes/NotesSection";
 import { useModalWithSelection } from "@/hooks/ui/useModalState";
 import type { NoteChain } from "@/lib/storage/types";
-import { NoteChainDrawer } from "../features/notes/NoteChainDrawer";
+import { NoteChainScreen } from "../features/notes/NoteChainScreen";
 import { WithdrawalForm } from "../features/withdrawal/WithdrawalForm";
 import { DepositForm } from "../features/deposit/DepositForm";
 import { formatEther } from "viem";
 import { AuthModal } from "./AuthModal";
 import { Button } from "../ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workspace/ui/components/tabs"
 
 export function MainCard() {
   const { isAuthenticated, publicKey, accountKey } = useAuth();
   const [authDrawerOpen, setAuthDrawerOpen] = useState(false);
+  const [isDepositOpen, setIsDepositOpen] = useState(false);
+  const [isWithdrawalOpen, setIsWithdrawalOpen] = useState(false);
 
   // Notes data
   const noteChainModal = useModalWithSelection<NoteChain>(false);
@@ -46,16 +47,19 @@ export function MainCard() {
   const startWithdrawal = (noteChain: NoteChain) => {
     const lastNote = noteChain[noteChain.length - 1];
     if (lastNote.status === "unspent" && lastNote.isActivated) {
-      // Close the modal - user will manually select note in withdrawal form
+      // Close the note details and open withdrawal screen
       noteChainModal.setOpen(false);
+      setIsWithdrawalOpen(true);
     }
   };
 
   const exitWithdrawal = () => {
+    setIsWithdrawalOpen(false);
     handleRefresh();
   };
 
   const exitDeposit = () => {
+    setIsDepositOpen(false);
     handleRefresh();
   };
 
@@ -88,73 +92,80 @@ export function MainCard() {
             </p>
           </div>
         </div>
-      )  : (
-        <div className="w-full h-full"> 
-          <Tabs defaultValue="notes">
-            <TabsList className="w-full grid grid-cols-3 gap-1 bg-gray-800/50 p-1 rounded-xl border border-gray-700">
-              <TabsTrigger value="notes" className="rounded-lg data-[state=active]:bg-orange-600 data-[state=active]:text-white text-gray-400 font-medium transition-all">Notes</TabsTrigger>
-              <TabsTrigger value="deposit" className="rounded-lg data-[state=active]:bg-orange-600 data-[state=active]:text-white text-gray-400 font-medium transition-all">Deposit</TabsTrigger>
-              <TabsTrigger value="withdraw" className="rounded-lg data-[state=active]:bg-orange-600 data-[state=active]:text-white text-gray-400 font-medium transition-all">Withdraw</TabsTrigger>
-            </TabsList>
-            <TabsContent value="notes">
-              <div className="w-full h-full">
-               {/* Balance and Action Buttons Section */}
-                <div className="flex justify-between gap-4 p-4 sm:p-6 border-b border-gray-800">
-                  {/* Balance - Left */}
-                  <div className="flex flex-col">
-                    <div className="text-3xl sm:text-4xl font-bold text-white mb-1">
-                      {Number(formattedBalance).toFixed(4)} ETH
-                    </div>
-                    <div className="text-gray-400 text-base">≈ ${balanceInUSD} USD</div>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="icon" aria-label="activity"
-                    onClick={() => {
-                        // TODO: Show activity
-                        console.log("Activity clicked");
-                      }}
-                    >
-                      <ActivityIcon className="w-4 h-4 text-white" />
-                    </Button>
-
-                    <Button variant="outline" size="icon" aria-label="activity"
-                      onClick={handleRefresh}
-                      disabled={isRefreshing}
-                    >
-                      <RefreshCw className={`w-4 h-4 text-white ${isRefreshing ? "animate-spin" : ""}`} />
-                    </Button>
-
-                  </div>
+      ) : isDepositOpen ? (
+        <DepositForm
+          asset={{ symbol: "ETH", name: "Ethereum", icon: "/ethereum.svg" }}
+          onTransactionSuccess={exitDeposit}
+          onBack={() => setIsDepositOpen(false)}
+        />
+      ) : isWithdrawalOpen ? (
+        <WithdrawalForm
+          onTransactionSuccess={exitWithdrawal}
+          onBack={() => setIsWithdrawalOpen(false)}
+        />
+      ) : noteChainModal.isOpen ? (
+        <NoteChainScreen
+          noteChain={noteChainModal.selectedItem}
+          onBack={() => noteChainModal.setOpen(false)}
+          onWithdrawClick={startWithdrawal}
+        />
+      ) : (
+        <div className="w-full h-full">
+          {/* Balance and Action Buttons Section */}
+          <div className="flex flex-col gap-4 p-4 sm:p-6">
+            {/* Balance */}
+            <div className="flex justify-between items-start">
+              <div className="flex flex-col">
+                <div className="text-3xl sm:text-4xl font-bold text-white mb-1">
+                  {Number(formattedBalance).toFixed(4)} ETH
                 </div>
-              <NotesSection
-                noteChains={noteChains}
-                loading={notesLoading}
-                error={!!notesError}
-                onNoteChainClick={noteChainModal.openWith}
-              />
+                <div className="text-gray-400 text-base">≈ ${balanceInUSD} USD</div>
               </div>
-            </TabsContent>
 
-            <TabsContent value="deposit">
-              <DepositForm
-                asset={{ symbol: "ETH", name: "Ethereum", icon: "/ethereum.svg" }}
-                onTransactionSuccess={exitDeposit}
-              />
-            </TabsContent>
+              <div className="flex gap-2">
+                <Button variant="outline" size="icon" aria-label="activity"
+                  onClick={() => {
+                    // TODO: Show activity
+                    console.log("Activity clicked");
+                  }}
+                >
+                  <ActivityIcon className="w-4 h-4 text-white" />
+                </Button>
 
-            <TabsContent value="withdraw">
-              <WithdrawalForm
-                onTransactionSuccess={exitWithdrawal}
-              />
-            </TabsContent>
-          </Tabs>
+                <Button variant="outline" size="icon" aria-label="refresh"
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                >
+                  <RefreshCw className={`w-4 h-4 text-white ${isRefreshing ? "animate-spin" : ""}`} />
+                </Button>
+              </div>
+            </div>
 
-          <NoteChainDrawer
-            noteChain={noteChainModal.selectedItem}
-            open={noteChainModal.isOpen}
-            onOpenChange={noteChainModal.setOpen}
-            onWithdrawClick={startWithdrawal}
+            {/* Deposit and Withdraw Buttons */}
+            <div className="flex gap-3">
+              <Button
+                onClick={() => setIsDepositOpen(true)}
+                className="flex-1 h-12 text-base font-semibold rounded-xl bg-orange-600 hover:bg-orange-700"
+                size="lg"
+              >
+                Deposit
+              </Button>
+              <Button
+                onClick={() => setIsWithdrawalOpen(true)}
+                className="flex-1 h-12 text-base font-semibold rounded-xl bg-purple-600 hover:bg-purple-700"
+                size="lg"
+              >
+                Withdraw
+              </Button>
+            </div>
+          </div>
+
+          {/* Notes Section */}
+          <NotesSection
+            noteChains={noteChains}
+            loading={notesLoading}
+            error={!!notesError}
+            onNoteChainClick={noteChainModal.openWith}
           />
         </div>
       )}
