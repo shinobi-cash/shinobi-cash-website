@@ -199,6 +199,7 @@ const TimelineView = memo(
     );
   },
 );
+TimelineView.displayName = "TimelineView";
 
 // Sub-component for Preview View
 const PreviewView = memo(
@@ -386,3 +387,4 @@ const PreviewView = memo(
     );
   },
 );
+PreviewView.displayName = "PreviewView";

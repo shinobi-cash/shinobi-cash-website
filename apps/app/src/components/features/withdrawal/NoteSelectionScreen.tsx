@@ -53,13 +53,14 @@ export function NoteSelectionScreen({
           </div>
         ) : (
           <div className="divide-y divide-gray-800">
-            {availableNotes.map((note, index) => {
-              const isSelected = selectedNote?.commitment === note.commitment;
+            {availableNotes.map((note) => {
+              const isSelected = selectedNote?.label === note.label;
               const amount = formatEthAmount(note.amount);
+              const noteId = `${note.depositIndex}-${note.changeIndex}`;
 
               return (
                 <button
-                  key={note.commitment || `note-${index}`}
+                  key={noteId}
                   onClick={() => {
                     onSelectNote(note);
                     onBack();
@@ -96,7 +97,7 @@ export function NoteSelectionScreen({
                       )}
                     </div>
                     <div className="text-xs text-gray-400 truncate">
-                      {note.commitment ? `${note.commitment.slice(0, 10)}...${note.commitment.slice(-8)}` : 'No commitment'}
+                      Note #{note.depositIndex}.{note.changeIndex}
                     </div>
                   </div>
                 </button>
