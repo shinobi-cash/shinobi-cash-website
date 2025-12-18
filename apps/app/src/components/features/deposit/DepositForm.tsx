@@ -3,7 +3,7 @@ import { useDepositCommitment } from "@/hooks/deposit/useDepositCommitment";
 import { useDepositFormState } from "@/hooks/deposit/useDepositFormState";
 import { useTransactionTracking } from "@/hooks/transactions/useTransactionTracking";
 import { showToast } from "@/lib/toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, Copy, Check } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useAccount, useBalance, useChainId } from "wagmi";
 import { useDepositTransaction } from "@/hooks/deposit/useDepositTransaction";
@@ -12,12 +12,14 @@ import { NetworkWarning } from "./NetworkWarning";
 import { POOL_CHAIN, SHINOBI_CASH_SUPPORTED_CHAINS } from "@shinobi-cash/constants";
 import { formatEther } from "viem";
 import { TokenAmountInput } from "@/components/shared/TokenAmountInput";
+import { InputLabel } from "@/components/shared/InputLabel";
 import { TokenBalance } from "@/components/shared/TokenBalance";
 import { SectionDivider } from "@/components/shared/SectionDivider";
 import { FeeBreakdown } from "@/components/shared/FeeBreakdown";
 import { TokenChainSelector } from "@/components/shared/TokenChainSelector";
 import { AssetChainSelectorScreen } from "@/components/shared/AssetChainSelectorScreen";
 import { BackButton } from "@/components/ui/back-button";
+import { CircleQuestionMarkIcon } from 'lucide-react'
 
 interface DepositFormProps {
   asset: { symbol: string; name: string; icon: string };
@@ -26,14 +28,31 @@ interface DepositFormProps {
 }
 
 export function DepositForm({ asset, onTransactionSuccess, onBack }: DepositFormProps) {
-  const { address } = useAccount();
+  const { isConnected, address } = useAccount();
   const { data: balance } = useBalance({ address });
   const chainId = useChainId();
   const { trackTransaction } = useTransactionTracking();
   const { publicKey, accountKey } = useAuth();
   const [isAssetSelectorOpen, setIsAssetSelectorOpen] = useState(false);
-
+  const [copiedAddress, setCopiedAddress] = useState(false);
+  
   const availableBalance = balance?.value ?? BigInt(0);
+
+  // Copy address handler
+  const handleCopyAddress = async () => {
+    if (!address) return;
+    try {
+      await navigator.clipboard.writeText(address);
+      setCopiedAddress(true);
+      setTimeout(() => setCopiedAddress(false), 2000);
+    } catch (error) {
+      console.warn("Copy failed:", error);
+    }
+  };
+
+  const handleConnectWallet = () => {
+      modal.open();
+    };
 
   // Use custom hook for form state management
   const { amount, amountError, handleAmountChange, resetForm } = useDepositFormState({
@@ -105,6 +124,7 @@ export function DepositForm({ asset, onTransactionSuccess, onBack }: DepositForm
         </div>
       );
     }
+    if (!isConnected || !address) return "Connect Wallet";
     if (isGeneratingNote || !hasNoteData) return "Preparing...";
     if (!isOnSupportedChain) return "Unsupported Network";
     if (!hasBalance) return "Insufficient Balance";
@@ -180,8 +200,34 @@ export function DepositForm({ asset, onTransactionSuccess, onBack }: DepositForm
       )}
 
       {/* You Pay Section */}
-      <TokenAmountInput
+      <InputLabel
         label="You Pay"
+        labelRight={
+          address ? (
+            <Button
+              onClick={handleCopyAddress}
+              variant="ghost"
+              className="text-sm text-purple-400 hover:text-purple-300 transition-colors flex items-center gap-1.5 h-auto p-0"
+            >
+              {address.slice(0, 6)}...{address.slice(-4)}
+              {copiedAddress ? (
+                <Check className="w-3 h-3 text-green-500" />
+              ) : (
+                <Copy className="w-3 h-3" />
+              )}
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              onClick={handleConnectWallet}
+              className="text-sm text-purple-400 hover:text-purple-300 transition-colors h-auto p-0"
+            >
+              Connect Wallet
+            </Button>
+          )
+        }
+      />
+      <TokenAmountInput
         amount={amount}
         onAmountChange={handleAmountChange}
         disabled={isTransacting || !isOnSupportedChain}
@@ -214,9 +260,9 @@ export function DepositForm({ asset, onTransactionSuccess, onBack }: DepositForm
       <SectionDivider />
 
       {/* You Receive Section */}
+      <InputLabel label="You Receive (Deposit Note)" labelRight={<DepositNoteInfo />} />
       <TokenAmountInput
-        label="You Receive (Deposit Note)"
-        amount={depositNoteAmount > 0 ? depositNoteAmount.toFixed(4) : "0.0000"}
+        amount={depositNoteAmount > 0 ? depositNoteAmount.toFixed(4) : "0"}
         onAmountChange={() => {}} // Read-only
         readOnly={true}
         rightElement={
@@ -252,4 +298,25 @@ export function DepositForm({ asset, onTransactionSuccess, onBack }: DepositForm
       </div>
     </div>
   );
+}
+
+
+
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { modal } from "@/context";
+function DepositNoteInfo() {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <CircleQuestionMarkIcon className="w-5 h-5" />
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>Value after deducting Vetting Fee (0.01%) </p>
+      </TooltipContent>
+    </Tooltip>
+  )
 }

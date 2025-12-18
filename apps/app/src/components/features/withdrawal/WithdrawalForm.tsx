@@ -12,6 +12,7 @@ import { WithdrawalTimelineScreen } from "./WithdrawalTimelineScreen";
 import { POOL_CHAIN, SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
 import { BackButton } from "../../ui/back-button";
 import { TokenAmountInput } from "@/components/shared/TokenAmountInput";
+import { InputLabel } from "@/components/shared/InputLabel";
 import { TokenBalance } from "@/components/shared/TokenBalance";
 import { SectionDivider } from "@/components/shared/SectionDivider";
 import { TokenChainSelector } from "@/components/shared/TokenChainSelector";
@@ -192,7 +193,7 @@ export function WithdrawalForm({ onTransactionSuccess, onBack }: WithdrawalFormP
 
       <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6">
         {/* You Pay Section - From Note (Pool Chain) */}
-      <TokenAmountInput
+      <InputLabel
         label="You Pay"
         labelRight={
           <Button
@@ -214,6 +215,8 @@ export function WithdrawalForm({ onTransactionSuccess, onBack }: WithdrawalFormP
             )}
           </Button>
         }
+      />
+      <TokenAmountInput
         amount={form.withdrawAmount}
         onAmountChange={handleAmountChange}
         disabled={isPreparing || isExecuting || !selectedNote}
@@ -247,7 +250,7 @@ export function WithdrawalForm({ onTransactionSuccess, onBack }: WithdrawalFormP
 
       {/* Destination Section - Receive */}
       {/* You Receive Section - To Destination Chain */}
-      <TokenAmountInput
+      <InputLabel
         label="You Receive"
         labelRight={
           <Button
@@ -269,7 +272,9 @@ export function WithdrawalForm({ onTransactionSuccess, onBack }: WithdrawalFormP
             )}
           </Button>
         }
-        amount={youReceive > 0 ? youReceive.toFixed(4) : form.withdrawAmount || "0.0000"}
+      />
+      <TokenAmountInput
+        amount={youReceive > 0 ? youReceive.toFixed(4) : form.withdrawAmount || "0"}
         onAmountChange={() => {}} // Read-only
         disabled={isPreparing || isExecuting}
         readOnly={true}
