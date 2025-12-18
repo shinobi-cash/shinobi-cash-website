@@ -8,7 +8,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNoteSelection, useWithdrawalFormState } from "../../../hooks/withdrawal/useWithdrawalFormHooks";
 import { Button } from "../../ui/button";
 import { NoteSelectionScreen } from "./NoteSelectionScreen";
-import { WithdrawalTimelineDrawer } from "./WithdrawalTimelineDrawer";
+import { WithdrawalTimelineScreen } from "./WithdrawalTimelineScreen";
 import { POOL_CHAIN, SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
 import { BackButton } from "../../ui/back-button";
 import { TokenAmountInput } from "@/components/shared/TokenAmountInput";
@@ -105,6 +105,29 @@ export function WithdrawalForm({ onTransactionSuccess, onBack }: WithdrawalFormP
   }, [selectedNote, isValidAmount, isValidAddress, handlePreviewWithdrawal, form.withdrawAmount, form.toAddress]);
 
   const noteBalance = selectedNote ? formatEthAmount(selectedNote.amount) : "0";
+
+  // Show withdrawal timeline screen
+  if (showTimeline && selectedNote) {
+    return (
+      <WithdrawalTimelineScreen
+        onBack={closeTimeline}
+        onConfirm={handleExecuteTransaction}
+        note={selectedNote}
+        withdrawAmount={form.withdrawAmount}
+        recipientAddress={form.toAddress}
+        destinationChainId={form.destinationChainId}
+        executionFee={executionFee}
+        solverFee={solverFee}
+        youReceive={youReceive}
+        remainingBalance={remainingBalance}
+        isProcessing={isExecuting}
+        isCrossChain={isCrossChain}
+        steps={steps}
+        showPreview={showPreviewMode}
+        onShowPreview={handleShowPreview}
+      />
+    );
+  }
 
   // Show note selection screen
   if (isNoteSelectionOpen) {
@@ -298,29 +321,6 @@ export function WithdrawalForm({ onTransactionSuccess, onBack }: WithdrawalFormP
           )}
         </Button>
       </div>
-
-      {/* Withdrawal Timeline Drawer */}
-      {showTimeline && selectedNote && (
-        <WithdrawalTimelineDrawer
-          isOpen={showTimeline}
-          onClose={closeTimeline}
-          onConfirm={handleExecuteTransaction}
-          note={selectedNote}
-          withdrawAmount={form.withdrawAmount}
-          recipientAddress={form.toAddress}
-          destinationChainId={form.destinationChainId}
-          executionFee={executionFee}
-          solverFee={solverFee}
-          youReceive={youReceive}
-          remainingBalance={remainingBalance}
-          isProcessing={isExecuting}
-          isCrossChain={isCrossChain}
-          steps={steps}
-          currentStep={steps.findIndex((s) => s.status === "processing")}
-          showPreview={showPreviewMode}
-          onShowPreview={handleShowPreview}
-        />
-      )}
       </div>
     </div>
   );

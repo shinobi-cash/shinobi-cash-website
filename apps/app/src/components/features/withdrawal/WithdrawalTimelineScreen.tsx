@@ -1,4 +1,7 @@
-// File: src/components/features/withdrawal/WithdrawalTimelineDrawer.tsx
+/**
+ * Withdrawal Timeline Screen Component
+ * Full-screen view for withdrawal progress and preview
+ */
 
 import type { Note } from "@/lib/storage/types";
 import { formatEthAmount, formatHash } from "@/utils/formatters";
@@ -6,7 +9,7 @@ import { Check, Copy, Info, Loader2, ArrowRight } from "lucide-react";
 import { POOL_CHAIN, SHINOBI_CASH_SUPPORTED_CHAINS } from "@shinobi-cash/constants";
 import { memo, useCallback, useState } from "react";
 import { Button } from "../../ui/button";
-import { ResponsiveModal } from "../../ui/responsive-modal";
+import { BackButton } from "../../ui/back-button";
 
 export interface WithdrawalStep {
   id: string;
@@ -17,31 +20,8 @@ export interface WithdrawalStep {
   error?: string;
 }
 
-export const WITHDRAWAL_STEPS: WithdrawalStep[] = [
-  {
-    id: "validation",
-    title: "Validating Request",
-    description: "Checking note status, amounts, and recipient address...",
-    status: "pending",
-  },
-  {
-    id: "proof-generation",
-    title: "Generating Privacy Proof",
-    description: "Creating zero-knowledge proof to preserve anonymity...",
-    status: "pending",
-  },
-  {
-    id: "transaction-prep",
-    title: "Preparing Transaction",
-    description: "Building withdrawal transaction with smart account...",
-    status: "pending",
-  },
-  { id: "ready", title: "Ready for Preview", description: "Withdrawal prepared successfully!", status: "pending" },
-];
-
-interface WithdrawalTimelineDrawerProps {
-  isOpen: boolean;
-  onClose: () => void;
+interface WithdrawalTimelineScreenProps {
+  onBack: () => void;
   onConfirm: () => void;
   note: Note;
   withdrawAmount: string;
@@ -54,16 +34,14 @@ interface WithdrawalTimelineDrawerProps {
   isProcessing: boolean;
   isCrossChain: boolean;
   steps: WithdrawalStep[];
-  currentStep: number; // Corrected prop
   showPreview: boolean;
   onShowPreview: () => void;
 }
 
-type DrawerMode = "timeline" | "preview";
+type ScreenMode = "timeline" | "preview";
 
-export const WithdrawalTimelineDrawer = ({
-  isOpen,
-  onClose,
+export const WithdrawalTimelineScreen = ({
+  onBack,
   onConfirm,
   note,
   withdrawAmount,
@@ -78,45 +56,49 @@ export const WithdrawalTimelineDrawer = ({
   steps,
   showPreview,
   onShowPreview,
-}: WithdrawalTimelineDrawerProps) => {
-  const drawerMode: DrawerMode = showPreview ? "preview" : "timeline";
+}: WithdrawalTimelineScreenProps) => {
+  const screenMode: ScreenMode = showPreview ? "preview" : "timeline";
 
   const getTitle = () => {
-    return drawerMode === "preview" ? "Transaction Preview" : "Withdrawal Progress";
-  };
-
-  const getDescription = () => {
-    return drawerMode === "preview"
-      ? "Review your withdrawal details before confirming"
-      : "Preparing your privacy-preserving withdrawal";
+    return screenMode === "preview" ? "Transaction Preview" : "Withdrawal Progress";
   };
 
   return (
-    <ResponsiveModal
-      open={isOpen}
-      onOpenChange={onClose}
-      title={getTitle()}
-      description={getDescription()}
-      className="bg-app-background border-app"
-    >
-      {drawerMode === "timeline" ? (
-        <TimelineView steps={steps} onClose={onClose} onShowPreview={onShowPreview} />
-      ) : (
-        <PreviewView
-          note={note}
-          withdrawAmount={withdrawAmount}
-          recipientAddress={recipientAddress}
-          destinationChainId={destinationChainId}
-          executionFee={executionFee}
-          solverFee={solverFee}
-          youReceive={youReceive}
-          remainingBalance={remainingBalance}
-          isProcessing={isProcessing}
-          isCrossChain={isCrossChain}
-          onConfirm={onConfirm}
-        />
-      )}
-    </ResponsiveModal>
+    <div className="flex flex-col h-full bg-gray-900">
+      {/* Header */}
+      <div className="flex items-center gap-3 px-4 py-4 border-b border-gray-800">
+        <BackButton onClick={onBack} />
+        <div>
+          <h2 className="text-lg font-semibold text-white">{getTitle()}</h2>
+          <p className="text-xs text-gray-400">
+            {screenMode === "preview"
+              ? "Review your withdrawal details before confirming"
+              : "Preparing your privacy-preserving withdrawal"}
+          </p>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto px-4 py-6">
+        {screenMode === "timeline" ? (
+          <TimelineView steps={steps} onClose={onBack} onShowPreview={onShowPreview} />
+        ) : (
+          <PreviewView
+            note={note}
+            withdrawAmount={withdrawAmount}
+            recipientAddress={recipientAddress}
+            destinationChainId={destinationChainId}
+            executionFee={executionFee}
+            solverFee={solverFee}
+            youReceive={youReceive}
+            remainingBalance={remainingBalance}
+            isProcessing={isProcessing}
+            isCrossChain={isCrossChain}
+            onConfirm={onConfirm}
+          />
+        )}
+      </div>
+    </div>
   );
 };
 
@@ -169,8 +151,8 @@ const TimelineView = memo(
     return (
       <div className="space-y-6">
         <div className="text-center">
-          <h3 className="text-lg font-semibold text-app-primary mb-2">Preparing Withdrawal</h3>
-          <p className="text-sm text-app-secondary">Creating a privacy-preserving withdrawal transaction</p>
+          <h3 className="text-lg font-semibold text-white mb-2">Preparing Withdrawal</h3>
+          <p className="text-sm text-gray-400">Creating a privacy-preserving withdrawal transaction</p>
         </div>
         <ul className="-mb-8">
           {steps.map((step, index) => {
@@ -179,16 +161,16 @@ const TimelineView = memo(
               <li key={step.id}>
                 <div className="relative pb-6">
                   {!isLast && (
-                    <span className="absolute left-2 top-2 -ml-px h-full w-0.5 border border-app" aria-hidden="true" />
+                    <span className="absolute left-2 top-2 -ml-px h-full w-0.5 border border-gray-700" aria-hidden="true" />
                   )}
                   <div className="relative flex items-start space-x-3">
                     <span className={getStatusDot(step)}>{getStepIcon(step)}</span>
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium text-app-primary">{step.title}</span>
+                        <span className="text-sm font-medium text-white">{step.title}</span>
                         {getProcessingIndicator(step)}
                       </div>
-                      <p className="text-xs text-app-secondary mt-1">{step.error || step.description}</p>
+                      <p className="text-xs text-gray-400 mt-1">{step.error || step.description}</p>
                     </div>
                   </div>
                 </div>
@@ -198,8 +180,8 @@ const TimelineView = memo(
         </ul>
         <div className="mt-6">
           {hasError && (
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-3 mb-4">
-              <p className="text-sm text-red-700 dark:text-red-300 text-center">
+            <div className="bg-red-900/20 border border-red-800 rounded-xl p-3 mb-4">
+              <p className="text-sm text-red-300 text-center">
                 Withdrawal preparation failed. Please try again.
               </p>
             </div>
@@ -208,7 +190,7 @@ const TimelineView = memo(
             <Button variant="outline" onClick={onClose} className="flex-1" size="lg">
               Cancel
             </Button>
-            <Button onClick={onShowPreview} disabled={!allStepsCompleted} className="flex-1" size="lg">
+            <Button onClick={onShowPreview} disabled={!allStepsCompleted} className="flex-1 bg-orange-600 hover:bg-orange-700" size="lg">
               Preview Withdrawal
             </Button>
           </div>
@@ -261,35 +243,33 @@ const PreviewView = memo(
     return (
       <div className="space-y-4">
         {/* Amount Section */}
-        <div className="bg-app-surface rounded-xl p-2 border border-app shadow-sm">
+        <div className="bg-gray-800 rounded-xl p-4 border border-gray-700 shadow-sm">
           <div className="text-center">
-            <p className="text-sm font-medium text-app-secondary mb-1">You will receive</p>
-            <p className="text-2xl font-bold text-app-primary tabular-nums">
+            <p className="text-sm font-medium text-gray-400 mb-1">You will receive</p>
+            <p className="text-2xl font-bold text-white tabular-nums">
               {formatEthAmount(youReceive, { decimals: 7 })} ETH
             </p>
           </div>
         </div>
 
-        {/* Cross-Chain Flow - Show for cross-chain withdrawals */}
+        {/* Cross-Chain Flow */}
         {isCrossChain && destinationChainId && (
-          <div className="bg-app-surface rounded-xl border border-app shadow-sm overflow-hidden">
-            <div className="px-2 py-2 border-b border-app bg-app-surface">
-              <h3 className="text-sm font-semibold text-app-primary">Cross-Chain Flow</h3>
+          <div className="bg-gray-800 rounded-xl border border-gray-700 shadow-sm overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-700">
+              <h3 className="text-sm font-semibold text-white">Cross-Chain Flow</h3>
             </div>
-
-            <div className="px-2 py-2">
-              {/* Visual Flow */}
+            <div className="px-4 py-3">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex flex-col items-center flex-1">
-                  <span className="text-xs font-medium text-app-secondary mb-1">Origin</span>
-                  <span className="text-xs font-semibold text-app-primary text-center">
+                  <span className="text-xs font-medium text-gray-400 mb-1">Origin</span>
+                  <span className="text-xs font-semibold text-white text-center">
                     {POOL_CHAIN.name}
                   </span>
                 </div>
-                <ArrowRight className="h-4 w-4 text-app-tertiary flex-shrink-0" />
+                <ArrowRight className="h-4 w-4 text-gray-500 flex-shrink-0" />
                 <div className="flex flex-col items-center flex-1">
-                  <span className="text-xs font-medium text-app-secondary mb-1">Destination</span>
-                  <span className="text-xs font-semibold text-app-primary text-center">
+                  <span className="text-xs font-medium text-gray-400 mb-1">Destination</span>
+                  <span className="text-xs font-semibold text-white text-center">
                     {SHINOBI_CASH_SUPPORTED_CHAINS.find(c => c.id === destinationChainId)?.name ?? `Chain ${destinationChainId}`}
                   </span>
                 </div>
@@ -299,98 +279,98 @@ const PreviewView = memo(
         )}
 
         {/* Fee Breakdown */}
-        <div className="bg-app-surface rounded-xl border border-app shadow-sm overflow-hidden">
-          <div className="px-2 py-2 border-b border-app">
-            <h3 className="text-sm font-semibold text-app-primary">Fee Breakdown</h3>
+        <div className="bg-gray-800 rounded-xl border border-gray-700 shadow-sm overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-700">
+            <h3 className="text-sm font-semibold text-white">Fee Breakdown</h3>
           </div>
-          <div className="divide-y divide-app-border">
-            <div className="px-2 py-2 flex items-center justify-between">
-              <span className="text-xs font-medium text-app-secondary">Note Balance</span>
-              <span className="text-xs font-mono text-app-primary tabular-nums">
+          <div className="divide-y divide-gray-700">
+            <div className="px-4 py-3 flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-400">Note Balance</span>
+              <span className="text-sm font-mono text-white tabular-nums">
                 {formatEthAmount(note.amount, { decimals: 7 })} ETH
               </span>
             </div>
-            <div className="px-2 py-2 flex items-center justify-between">
-              <span className="text-xs font-medium text-app-secondary">Withdrawal Amount</span>
-              <span className="text-xs font-mono text-red-500 tabular-nums">
+            <div className="px-4 py-3 flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-400">Withdrawal Amount</span>
+              <span className="text-sm font-mono text-red-400 tabular-nums">
                 -{formatEthAmount(withdrawAmountNum, { decimals: 7 })} ETH
               </span>
             </div>
-            <div className="px-2 py-2 flex items-center justify-between">
+            <div className="px-4 py-3 flex items-center justify-between">
               <div className="flex items-center gap-1">
-                <span className="text-xs font-medium text-app-secondary">
+                <span className="text-sm font-medium text-gray-400">
                   {isCrossChain ? "Relay Fee (Max)" : "Execution Fee (Max)"}
                 </span>
                 <div className="group relative">
-                  <Info className="h-3 w-3 text-app-tertiary hover:text-app-secondary cursor-help" />
+                  <Info className="h-3 w-3 text-gray-500 hover:text-gray-400 cursor-help" />
                   <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
                     {isCrossChain
                       ? "Fee paid to relayer for transaction execution. Unused portion refunded."
                       : "Maximum fee taken from withdrawal. Unused portion refunded to recipient."}
-                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900" />
                   </div>
                 </div>
               </div>
-              <span className="text-xs font-mono text-red-500 tabular-nums">
+              <span className="text-sm font-mono text-red-400 tabular-nums">
                 -{formatEthAmount(executionFee, { decimals: 7 })} ETH
               </span>
             </div>
             {isCrossChain && solverFee > 0 && (
-              <div className="px-2 py-2 flex items-center justify-between">
+              <div className="px-4 py-3 flex items-center justify-between">
                 <div className="flex items-center gap-1">
-                  <span className="text-xs font-medium text-app-secondary">Solver Fee</span>
+                  <span className="text-sm font-medium text-gray-400">Solver Fee</span>
                   <div className="group relative">
-                    <Info className="h-3 w-3 text-app-tertiary hover:text-app-secondary cursor-help" />
+                    <Info className="h-3 w-3 text-gray-500 hover:text-gray-400 cursor-help" />
                     <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
                       Fee paid to solver for cross-chain intent fulfillment.
-                      <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900" />
                     </div>
                   </div>
                 </div>
-                <span className="text-xs font-mono text-red-500 tabular-nums">
+                <span className="text-sm font-mono text-red-400 tabular-nums">
                   -{formatEthAmount(solverFee, { decimals: 7 })} ETH
                 </span>
               </div>
             )}
             {remainingBalance > 0 && (
-              <div className="px-2 py-2 flex items-center justify-between">
-                <span className="text-xs font-medium text-app-secondary">Remaining in Note</span>
-                <span className="text-xs font-mono text-app-primary tabular-nums">
+              <div className="px-4 py-3 flex items-center justify-between">
+                <span className="text-sm font-medium text-gray-400">Remaining in Note</span>
+                <span className="text-sm font-mono text-white tabular-nums">
                   {formatEthAmount(remainingBalance, { decimals: 7 })} ETH
                 </span>
               </div>
             )}
           </div>
         </div>
-        <div className="bg-app-surface rounded-xl border border-app shadow-sm overflow-hidden">
-          <div className="px-2 py-2 border-b border-app">
-            <h3 className="text-sm font-semibold text-app-primary">Recipient Details</h3>
+
+        {/* Recipient Details */}
+        <div className="bg-gray-800 rounded-xl border border-gray-700 shadow-sm overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-700">
+            <h3 className="text-sm font-semibold text-white">Recipient Details</h3>
           </div>
-          <div className="divide-y divide-app-border">
-            <div className="px-2 py-2 flex items-center justify-between">
-              <span className="text-xs font-medium text-app-secondary">To Address</span>
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs font-mono text-app-primary">{formatHash(recipientAddress)}</span>
-                <button
-                  type="button"
-                  onClick={() => copyToClipboard(recipientAddress, "Recipient Address")}
-                  className="p-1 rounded-md hover:bg-app-surface-hover transition-colors duration-200"
-                  title={copiedField === "Recipient Address" ? "Copied!" : "Copy recipient address"}
-                >
-                  {copiedField === "Recipient Address" ? (
-                    <Check className="h-3.5 w-3.5 text-green-500" />
-                  ) : (
-                    <Copy className="h-3.5 w-3.5 text-app-tertiary" />
-                  )}
-                </button>
-              </div>
+          <div className="px-4 py-3 flex items-center justify-between">
+            <span className="text-sm font-medium text-gray-400">To Address</span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm font-mono text-white">{formatHash(recipientAddress)}</span>
+              <button
+                type="button"
+                onClick={() => copyToClipboard(recipientAddress, "Recipient Address")}
+                className="p-1 rounded-md hover:bg-gray-700 transition-colors duration-200"
+                title={copiedField === "Recipient Address" ? "Copied!" : "Copy recipient address"}
+              >
+                {copiedField === "Recipient Address" ? (
+                  <Check className="h-3.5 w-3.5 text-green-500" />
+                ) : (
+                  <Copy className="h-3.5 w-3.5 text-gray-400" />
+                )}
+              </button>
             </div>
           </div>
         </div>
+
+        {/* Confirm Button */}
         <Button
           onClick={onConfirm}
           disabled={isProcessing}
-          className="w-full h-11 rounded-xl text-sm font-medium"
+          className="w-full h-12 rounded-xl text-base font-semibold bg-orange-600 hover:bg-orange-700"
           size="lg"
         >
           {isProcessing ? (

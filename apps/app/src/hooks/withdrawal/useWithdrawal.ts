@@ -1,6 +1,6 @@
 // File: src/hooks/transactions/useWithdrawalFlow.ts
 
-import type { WithdrawalStep } from "@/components/features/withdrawal/WithdrawalTimelineDrawer";
+import type { WithdrawalStep } from "@/components/features/withdrawal/WithdrawalTimelineScreen";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTransactionTracking } from "@/hooks/transactions/useTransactionTracking";
 import type { Note } from "@/lib/storage/types";
