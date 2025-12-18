@@ -8,7 +8,7 @@ import { type Asset, useNavigation } from "@/contexts/NavigationContext";
 import { FileText, Plus } from "lucide-react";
 import { useState } from "react";
 import { Button } from "../../ui/button";
-import { ActionAuthDrawer } from "../auth/ActionAuthDrawer";
+import { ActionAuthScreen } from "../auth/ActionAuthScreen";
 
 interface PoolAction {
   id: "deposit" | "my-notes";
@@ -29,19 +29,25 @@ interface PoolActionsProps {
 
 export function PoolActions({ asset, disabled = false }: PoolActionsProps) {
   const { currentScreen } = useNavigation();
-  const [authDrawerOpen, setAuthDrawerOpen] = useState(false);
+  const [authScreenOpen, setAuthScreenOpen] = useState(false);
   const [selectedAction, setSelectedAction] = useState<"deposit" | "my-notes">("deposit");
 
   const handleActionClick = (action: PoolAction) => {
-    // Avoid leaving focus on the trigger button when opening a modal
-    // This prevents "Blocked aria-hidden... descendant retained focus" warnings
-    const active = document.activeElement as HTMLElement | null;
-    if (active && typeof active.blur === "function") active.blur();
-
-    // Always show unified auth drawer - it will handle requirements and navigation
+    // Always show unified auth screen - it will handle requirements and navigation
     setSelectedAction(action.id);
-    setAuthDrawerOpen(true);
+    setAuthScreenOpen(true);
   };
+
+  if (authScreenOpen) {
+    return (
+      <ActionAuthScreen
+        action={selectedAction}
+        asset={asset}
+        onComplete={() => setAuthScreenOpen(false)}
+        onBack={() => setAuthScreenOpen(false)}
+      />
+    );
+  }
 
   return (
     <div className="overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
@@ -53,9 +59,6 @@ export function PoolActions({ asset, disabled = false }: PoolActionsProps) {
             <Button
               key={action.id}
               onClick={() => handleActionClick(action)}
-              // Prevent the button from becoming focused on mouse down
-              // so background focus isn't retained when the modal opens
-              onMouseDown={(e) => e.preventDefault()}
               disabled={disabled}
               variant={isActive ? "default" : "outline"}
               size="lg"
@@ -67,9 +70,6 @@ export function PoolActions({ asset, disabled = false }: PoolActionsProps) {
           );
         })}
       </div>
-
-      {/* Action Auth Drawer */}
-      <ActionAuthDrawer open={authDrawerOpen} onOpenChange={setAuthDrawerOpen} action={selectedAction} asset={asset} />
     </div>
   );
 }

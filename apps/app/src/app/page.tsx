@@ -14,7 +14,7 @@ export default function Home() {
         <Header />
       </div>
      
-     <div className="flex items-center w-full md:w-xl md:h-1/2 p-4 mx-auto bg-gray-900/80 backdrop-blur-md mb-8 ">
+     <div className="flex items-center w-full md:w-xl md:max-h-1/2 px-4 mx-auto bg-gray-900/80 backdrop-blur-md mb-8 ">
           <MainCard />
       </div>
       
@@ -24,7 +24,7 @@ export default function Home() {
         <Footer />
       </div>
 
-      <BottomNav />
+      {/* <BottomNav /> */}
     </div>
 
   );

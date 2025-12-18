@@ -1,53 +1,43 @@
 /**
- * Simple Auth Modal for New Layout
- * Handles authentication without NavigationContext dependency
+ * Auth Screen Component
+ * Full-screen authentication flow without NavigationContext dependency
  */
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useAuthSteps } from "@/hooks/auth/useAuthSteps";
 import { isPasskeySupported } from "@/utils/environment";
 import { useCallback, useEffect, useState } from "react";
-import { ResponsiveModal } from "../ui/responsive-modal";
 import { AuthStepContent } from "../features/auth/AuthStepContent";
 import { Button } from "../ui/button";
+import { BackButton } from "../ui/back-button";
 
-interface AuthModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+interface AuthScreenProps {
   onAuthComplete?: () => void;
+  onBack?: () => void;
 }
 
-export function AuthModal({ open, onOpenChange, onAuthComplete }: AuthModalProps) {
+export function AuthScreen({ onAuthComplete, onBack }: AuthScreenProps) {
   const shouldShowPasskey = isPasskeySupported();
   const { isAuthenticated } = useAuth();
 
   // Memoize the callback to prevent infinite loops
   const handleAuthComplete = useCallback(() => {
-    onOpenChange(false);
     onAuthComplete?.();
-  }, [onOpenChange, onAuthComplete]);
+  }, [onAuthComplete]);
 
   // Use shared auth steps logic
   const authSteps = useAuthSteps({
     onAuthComplete: handleAuthComplete,
   });
 
-  // Reset state when modal closes
-  useEffect(() => {
-    if (!open) {
-      authSteps.resetState();
-    }
-  }, [open, authSteps.resetState]); // Only depend on the function, not the whole object
-
   // Auto-close when authenticated
   useEffect(() => {
-    if (isAuthenticated && open && authSteps.currentStep !== "syncing-notes") {
+    if (isAuthenticated && authSteps.currentStep !== "syncing-notes") {
       setTimeout(() => {
-        onOpenChange(false);
         onAuthComplete?.();
       }, 500);
     }
-  }, [isAuthenticated, open, authSteps.currentStep, onOpenChange, onAuthComplete]);
+  }, [isAuthenticated, authSteps.currentStep, onAuthComplete]);
 
   const getTitle = () => {
     switch (authSteps.currentStep) {
@@ -77,7 +67,7 @@ export function AuthModal({ open, onOpenChange, onAuthComplete }: AuthModalProps
       case "choose":
         return "Sign in to continue. Your identity is created and stored on this device; we never send your keys to a server.";
       case "login-method":
-        return "Choose how to sign in. Credentials are stored locally and encrypted.";
+        return "Choose how to log in. Credentials are encrypted and stored locally.";
       case "login-convenient":
         return "Use your credentials to continue. They never leave your device.";
       case "login-backup":
@@ -146,31 +136,61 @@ export function AuthModal({ open, onOpenChange, onAuthComplete }: AuthModalProps
   ]);
 
   const canGoBack = authSteps.canGoBack();
+  const isFirstStep = authSteps.currentStep === "choose";
 
-  const shouldShowFooter = () => !!footerPrimary || !!footerSecondary || canGoBack;
+  const handleBack = () => {
+    if (canGoBack) {
+      authSteps.handleBack();
+    } else if (onBack && !isFirstStep) {
+      onBack();
+    }
+  };
+
+  const shouldShowFooter = () => !!footerPrimary || !!footerSecondary || (canGoBack && !isFirstStep);
 
   return (
-    <ResponsiveModal
-      open={open}
-      onOpenChange={onOpenChange}
-      title={getTitle()}
-      description={getDescription()}
-      showBackButton={false}
-      onBack={undefined}
-      showFooter={shouldShowFooter()}
-      footerContent={
-        (footerPrimary || footerSecondary || canGoBack) && (
+    <div className="flex flex-col bg-gray-900">
+      {/* Header */}
+      <div className="flex items-center gap-3 px-4 py-4 border-b border-gray-800">
+        {canGoBack && !isFirstStep && <BackButton onClick={handleBack} />}
+        <div>
+          <h2 className="text-lg font-semibold text-white">{getTitle()}</h2>
+          <p className="text-xs text-gray-400">{getDescription()}</p>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto px-4 py-6">
+        <AuthStepContent
+          currentStep={authSteps.currentStep}
+          generatedKeys={authSteps.generatedKeys}
+          loginKey={authSteps.loginKey}
+          onLoginChoice={authSteps.handleLoginChoice}
+          onCreateChoice={authSteps.handleCreateChoice}
+          onLoginMethodChoice={authSteps.handleLoginMethodChoice}
+          onKeyGenerationComplete={authSteps.handleKeyGenerationComplete}
+          onBackupComplete={authSteps.handleBackupComplete}
+          onRecoveryComplete={authSteps.handleRecoveryComplete}
+          onAccountSetupComplete={authSteps.handleAccountSetupComplete}
+          onSyncingComplete={authSteps.handleSyncingComplete}
+          registerFooterActions={registerFooterActions}
+        />
+      </div>
+
+      {/* Footer */}
+      {shouldShowFooter() && (
+        <div className="px-4 py-4 border-t border-gray-800">
           <div className="grid grid-cols-2 gap-3 w-full">
-            {(footerSecondary || canGoBack) && (
+            {(footerSecondary || (canGoBack && footerPrimary)) && (
               <Button
-                variant={canGoBack && !footerSecondary ? "outline" : (footerSecondary?.variant ?? "outline")}
-                onClick={canGoBack && !footerSecondary ? authSteps.handleBack : footerSecondary?.onClick}
+                variant={footerSecondary?.variant ?? "outline"}
+                onClick={footerSecondary?.onClick ?? handleBack}
                 disabled={footerSecondary?.disabled}
                 className="col-span-1 w-full min-h-12 py-3 text-base font-medium rounded-2xl"
                 size="lg"
               >
                 <span className="w-full text-center leading-tight">
-                  {canGoBack && !footerSecondary ? "Back" : footerSecondary?.label}
+                  {footerSecondary?.label ?? "Back"}
                 </span>
               </Button>
             )}
@@ -179,30 +199,15 @@ export function AuthModal({ open, onOpenChange, onAuthComplete }: AuthModalProps
                 variant={footerPrimary.variant ?? "default"}
                 onClick={footerPrimary.onClick}
                 disabled={footerPrimary.disabled}
-                className={`${footerSecondary || canGoBack ? "col-span-1" : "col-span-2"} w-full min-h-12 py-3 text-base font-medium rounded-2xl`}
+                className={`${footerSecondary || (canGoBack && footerPrimary) ? "col-span-1" : "col-span-2"} w-full min-h-12 py-3 text-base font-medium rounded-2xl`}
                 size="lg"
               >
                 <span className="w-full text-center leading-tight">{footerPrimary.label}</span>
               </Button>
             )}
           </div>
-        )
-      }
-    >
-      <AuthStepContent
-        currentStep={authSteps.currentStep}
-        generatedKeys={authSteps.generatedKeys}
-        loginKey={authSteps.loginKey}
-        onLoginChoice={authSteps.handleLoginChoice}
-        onCreateChoice={authSteps.handleCreateChoice}
-        onLoginMethodChoice={authSteps.handleLoginMethodChoice}
-        onKeyGenerationComplete={authSteps.handleKeyGenerationComplete}
-        onBackupComplete={authSteps.handleBackupComplete}
-        onRecoveryComplete={authSteps.handleRecoveryComplete}
-        onAccountSetupComplete={authSteps.handleAccountSetupComplete}
-        onSyncingComplete={authSteps.handleSyncingComplete}
-        registerFooterActions={registerFooterActions}
-      />
-    </ResponsiveModal>
+        </div>
+      )}
+    </div>
   );
 }

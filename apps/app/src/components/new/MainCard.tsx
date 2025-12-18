@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { FileText, Activity as ActivityIcon, RefreshCw } from "lucide-react";
+import { Activity as ActivityIcon, RefreshCw } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNotesData } from "@/hooks/notes/useNotesData";
 import { NotesSection } from "../features/notes/NotesSection";
@@ -11,12 +11,11 @@ import { NoteChainScreen } from "../features/notes/NoteChainScreen";
 import { WithdrawalForm } from "../features/withdrawal/WithdrawalForm";
 import { DepositForm } from "../features/deposit/DepositForm";
 import { formatEther } from "viem";
-import { AuthModal } from "./AuthModal";
+import { AuthScreen } from "./AuthScreen";
 import { Button } from "../ui/button";
 
 export function MainCard() {
   const { isAuthenticated, publicKey, accountKey } = useAuth();
-  const [authDrawerOpen, setAuthDrawerOpen] = useState(false);
   const [isDepositOpen, setIsDepositOpen] = useState(false);
   const [isWithdrawalOpen, setIsWithdrawalOpen] = useState(false);
 
@@ -24,7 +23,6 @@ export function MainCard() {
   const noteChainModal = useModalWithSelection<NoteChain>(false);
   const {
     noteChains,
-    unspentNotesCount,
     loading: notesLoading,
     error: notesError,
     isRefreshing,
@@ -70,28 +68,7 @@ export function MainCard() {
   return (
     <div className="overflow-scroll w-full h-full">
       {!isAuthenticated || !publicKey || !accountKey ? (
-        <div className="h-full flex items-center justify-center p-8">
-          <div className="text-center max-w-md">
-            <div className="w-20 h-20 bg-orange-600/20 rounded-full flex items-center justify-center mx-auto mb-6">
-              <FileText className="w-10 h-10 text-orange-600" />
-            </div>
-            <h3 className="text-2xl font-bold text-white mb-3">Welcome to Shinobi Cash</h3>
-            <p className="text-gray-400 text-base mb-8">
-              Create an account or sign in to access your private wallet and manage your notes securely.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <button
-                onClick={() => setAuthDrawerOpen(true)}
-                className="px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-medium transition-colors"
-              >
-                Get Started
-              </button>
-            </div>
-            <p className="text-xs text-gray-500 mt-4">
-              Already have an account? Click "Get Started" to sign in.
-            </p>
-          </div>
-        </div>
+        <AuthScreen />
       ) : isDepositOpen ? (
         <DepositForm
           asset={{ symbol: "ETH", name: "Ethereum", icon: "/ethereum.svg" }}
@@ -144,15 +121,17 @@ export function MainCard() {
             {/* Deposit and Withdraw Buttons */}
             <div className="flex gap-3">
               <Button
+                variant={'default'}
                 onClick={() => setIsDepositOpen(true)}
-                className="flex-1 h-12 text-base font-semibold rounded-xl bg-orange-600 hover:bg-orange-700"
+                className="flex-1 h-12 text-base font-semibold rounded-xl"
                 size="lg"
               >
                 Deposit
               </Button>
               <Button
+                variant={'default'}
                 onClick={() => setIsWithdrawalOpen(true)}
-                className="flex-1 h-12 text-base font-semibold rounded-xl bg-purple-600 hover:bg-purple-700"
+                className="flex-1 h-12 text-base font-semibold rounded-xl"
                 size="lg"
               >
                 Withdraw
@@ -169,9 +148,6 @@ export function MainCard() {
           />
         </div>
       )}
-
-      {/* Auth modal for creating account / signing in */}
-      <AuthModal open={authDrawerOpen} onOpenChange={setAuthDrawerOpen} />
     </div>
   );
 }

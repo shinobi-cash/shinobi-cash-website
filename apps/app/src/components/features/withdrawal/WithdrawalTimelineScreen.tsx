@@ -190,7 +190,7 @@ const TimelineView = memo(
             <Button variant="outline" onClick={onClose} className="flex-1" size="lg">
               Cancel
             </Button>
-            <Button onClick={onShowPreview} disabled={!allStepsCompleted} className="flex-1 bg-orange-600 hover:bg-orange-700" size="lg">
+            <Button onClick={onShowPreview} disabled={!allStepsCompleted} className="flex-1" size="lg">
               Preview Withdrawal
             </Button>
           </div>
@@ -371,7 +371,7 @@ const PreviewView = memo(
         <Button
           onClick={onConfirm}
           disabled={isProcessing}
-          className="w-full h-12 rounded-xl text-base font-semibold bg-orange-600 hover:bg-orange-700"
+          className="w-full h-12 rounded-xl text-base font-semibold"
           size="lg"
         >
           {isProcessing ? (

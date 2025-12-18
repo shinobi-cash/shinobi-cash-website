@@ -138,7 +138,7 @@ export function NoteChainScreen({ noteChain, onBack, onWithdrawClick }: NoteChai
             </Button>
             <Button
               onClick={() => onWithdrawClick(noteChain)}
-              className="flex-1 h-12 text-base font-medium rounded-xl bg-orange-600 hover:bg-orange-700"
+              className="flex-1 h-12 text-base font-medium rounded-xl"
               size="lg"
             >
               Withdraw

@@ -304,7 +304,7 @@ export function WithdrawalForm({ onTransactionSuccess, onBack }: WithdrawalFormP
         <Button
           onClick={handleSubmit}
           disabled={!selectedNote || !isValidAmount || !isValidAddress || isPreparing || isExecuting}
-          className="w-full h-12 sm:h-14 rounded-xl text-base sm:text-lg font-semibold bg-orange-600 hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full h-12 sm:h-14 rounded-xl text-base sm:text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
           size="lg"
         >
           {isPreparing ? (

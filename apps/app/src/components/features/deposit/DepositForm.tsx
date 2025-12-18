@@ -289,7 +289,7 @@ export function DepositForm({ asset, onTransactionSuccess, onBack }: DepositForm
         <Button
           disabled={!canMakeDeposit}
           onClick={handleDeposit}
-          className="w-full h-12 sm:h-14 rounded-xl text-base sm:text-lg font-semibold bg-orange-600 hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full h-12 sm:h-14 rounded-xl text-base sm:text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
           size="lg"
         >
           {getButtonLabel()}

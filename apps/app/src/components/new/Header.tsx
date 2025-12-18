@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Settings, BarChart3 } from "lucide-react";
+import { Settings, BarChart3, Menu } from "lucide-react";
 import { useAccount, useChainId, useSwitchChain } from "wagmi";
 import { modal } from "@/context";
 import { Button } from "@/components/ui/button";
@@ -64,11 +64,11 @@ export function Header() {
           <Link href="/" className="flex items-center gap-3">
             {/* Mobile icon */}
             <Image
-              src="/Shinobi.Cash-icon.svg"
+              src="/Shinobi.Cash-white-text.png"
               alt="Shinobi Cash"
-              width={32}
+              width={128}
               height={32}
-              className="block md:hidden h-8 w-8"
+              className="block md:hidden h-8 w-auto"
               priority
             />
 
@@ -152,7 +152,7 @@ export function Header() {
               onClick={handleConnectWallet}
               variant="default"
               size="default"
-              className="hidden md:flex text-xs sm:text-sm lg:text-base font-medium bg-orange-600 hover:bg-orange-700 h-9 sm:h-10 lg:h-11"
+              className="hidden md:flex text-xs sm:text-sm lg:text-base font-medium  h-9 sm:h-10 lg:h-11"
             >
               Connect Wallet
             </Button>
@@ -171,9 +171,7 @@ export function Header() {
             className="md:hidden p-2 rounded-lg hover:bg-gray-800 transition-colors"
             aria-label="Menu"
           >
-            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
+            <Menu className="w-5 h-5 text-gray-400" />
           </button>
         </div>
     </header>
