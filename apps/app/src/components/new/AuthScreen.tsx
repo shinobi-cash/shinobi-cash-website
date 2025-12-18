@@ -1,6 +1,5 @@
 /**
  * Auth Screen Component
- * Full-screen authentication flow without NavigationContext dependency
  */
 
 import { useAuth } from "@/contexts/AuthContext";

@@ -6,7 +6,6 @@
  * using memoization to prevent unnecessary re-renders.
  */
 
-import { useNavigation } from "@/contexts/NavigationContext";
 import { storageManager, KDF } from "@/lib/storage";
 import { getAccountKey, type KeyGenerationResult, restoreFromMnemonic } from "@shinobi-cash/core";
 import { type ReactNode, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
@@ -40,8 +39,6 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { setCurrentScreen } = useNavigation();
-
   // Single source of truth: only store the mnemonic
   const [mnemonic, setMnemonic] = useState<string[] | null>(null);
   const [isRestoringSession, setIsRestoringSession] = useState(true);
@@ -83,13 +80,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isAuthenticated = useMemo(() => {
     return !!mnemonic;
   }, [mnemonic]);
-
-  // Redirect to home when authentication is lost
-  useEffect(() => {
-    if (!isRestoringSession && !isAuthenticated) {
-      setCurrentScreen("home");
-    }
-  }, [isAuthenticated, isRestoringSession, setCurrentScreen]);
 
   // Session restoration effect
   useEffect(() => {
