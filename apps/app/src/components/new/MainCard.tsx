@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNotesData } from "@/hooks/notes/useNotesData";
 import { NotesSection } from "../features/notes/NotesSection";
 import { useModalWithSelection } from "@/hooks/ui/useModalState";
-import type { Note, NoteChain } from "@/lib/storage/types";
+import type { NoteChain } from "@/lib/storage/types";
 import { NoteChainDrawer } from "../features/notes/NoteChainDrawer";
 import { WithdrawalForm } from "../features/withdrawal/WithdrawalForm";
 import { DepositForm } from "../features/deposit/DepositForm";
@@ -30,14 +30,6 @@ export function MainCard() {
     handleRefresh,
   } = useNotesData();
 
-  const [withdrawalState, setWithdrawalState] = useState<{
-    isShowing: boolean;
-    note: Note | null;
-  }>({
-    isShowing: false,
-    note: null,
-  });
-
   // Calculate total balance from unspent notes
   const totalBalance = useMemo(() => {
     if (!noteChains || noteChains.length === 0) return BigInt(0);
@@ -54,16 +46,14 @@ export function MainCard() {
   const startWithdrawal = (noteChain: NoteChain) => {
     const lastNote = noteChain[noteChain.length - 1];
     if (lastNote.status === "unspent" && lastNote.isActivated) {
-      setWithdrawalState({ isShowing: true, note: lastNote });
+      // Close the modal - user will manually select note in withdrawal form
       noteChainModal.setOpen(false);
     }
   };
 
   const exitWithdrawal = () => {
-    setWithdrawalState({ isShowing: false, note: null });
     handleRefresh();
   };
-
 
   const exitDeposit = () => {
     handleRefresh();
@@ -155,7 +145,6 @@ export function MainCard() {
 
             <TabsContent value="withdraw">
               <WithdrawalForm
-                preSelectedNote={withdrawalState.note}
                 onTransactionSuccess={exitWithdrawal}
               />
             </TabsContent>

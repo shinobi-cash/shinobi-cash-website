@@ -161,10 +161,9 @@ export const useNoteSelection = (publicKey: string, poolAddress: string, preSele
   useEffect(() => {
     if (preSelectedNote && preSelectedNote.status === "unspent" && preSelectedNote.isActivated) {
       setSelectedNote(preSelectedNote);
-    } else if (availableNotes.length > 0 && !selectedNote) {
-      setSelectedNote(availableNotes[0]);
     }
-  }, [availableNotes, selectedNote, preSelectedNote]);
+    // No auto-selection - user must explicitly select a note
+  }, [preSelectedNote]);
 
   return {
     availableNotes,
