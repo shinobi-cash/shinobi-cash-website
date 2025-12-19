@@ -1,51 +1,67 @@
 /**
  * Account Login Form
- * Single component for login via passkey (if supported) or password otherwise.
+ * Login via passkey for existing accounts or wallet signature
  */
 import { useAuth } from "@/contexts/AuthContext";
 import { AuthError, AuthErrorCode } from "@/lib/errors/AuthError";
 import { showToast } from "@/lib/toast";
-import { isPasskeySupported } from "@/utils/environment";
-import type React from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fingerprint, Wallet, WalletIcon } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { useAccount, useSignTypedData } from "wagmi";
 import { Input } from "../../ui/input";
-import { PasswordField } from "../../ui/password-field";
-import { performPasskeyLogin, performPasswordLogin } from "./helpers/authFlows";
+import { performPasskeyLogin, performWalletLogin } from "./helpers/authFlows";
+import { getEIP712Message } from "@/utils/eip712";
+import { generateKeysFromRandomSeed, type KeyGenerationResult } from "@shinobi-cash/core";
+import { modal } from "@/context";
 
 interface AccountLoginFormProps {
   onSuccess: () => void;
+  onCreateAccount?: () => void;
+  onKeyGenerationComplete?: (data: {
+    keys: KeyGenerationResult;
+    encryptionKey: Uint8Array;
+    walletAddress: string;
+  }) => void;
+  hasPasskeyAccounts: boolean;
   registerFooterActions?: (
     primary: {
       label: string;
       onClick: () => void;
       variant?: "default" | "outline" | "ghost";
       disabled?: boolean;
+      icon?: React.ReactNode;
     } | null,
     secondary?: {
       label: string;
       onClick: () => void;
       variant?: "default" | "outline" | "ghost";
       disabled?: boolean;
+      icon?: React.ReactNode;
     } | null,
   ) => void;
 }
 
-export function AccountLoginForm({ onSuccess, registerFooterActions }: AccountLoginFormProps) {
-  const { setKeys } = useAuth();
-  const passkey = useMemo(() => isPasskeySupported(), []);
+type LoginMethod = "passkey" | "wallet" | null;
 
+export function AccountLoginForm({ onSuccess, onCreateAccount, onKeyGenerationComplete, hasPasskeyAccounts, registerFooterActions }: AccountLoginFormProps) {
+  const { setKeys } = useAuth();
+  const { address, chainId } = useAccount();
+  const { signTypedDataAsync } = useSignTypedData();
+  const [loginMethod, setLoginMethod] = useState<LoginMethod>(null);
   const [accountName, setAccountName] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // password-only state
-  const [password, setPassword] = useState("");
-
   useEffect(() => {
-    const id = passkey ? "username-login" : "username-password-login";
-    const input = document.getElementById(id) as HTMLInputElement | null;
-    input?.focus();
-  }, [passkey]);
+    if (loginMethod === "passkey") {
+      const input = document.getElementById("username-login") as HTMLInputElement | null;
+      input?.focus();
+    }
+  }, [loginMethod]);
+
+  const handleConnectWallet = useCallback(() => {
+    modal.open();
+  }, []);
 
   const doPasskeyLogin = useCallback(async () => {
     if (!accountName.trim()) {
@@ -65,7 +81,7 @@ export function AccountLoginForm({ onSuccess, registerFooterActions }: AccountLo
       if (err instanceof AuthError) {
         switch (err.code) {
           case AuthErrorCode.PASSKEY_PRF_UNSUPPORTED:
-            msg = "Your device doesn’t support required passkey features. Use password instead.";
+            msg = "Your device doesn't support required passkey features.";
             break;
           case AuthErrorCode.PASSKEY_NOT_FOUND:
             msg = err.message;
@@ -83,46 +99,183 @@ export function AccountLoginForm({ onSuccess, registerFooterActions }: AccountLo
     }
   }, [accountName, onSuccess, setKeys]);
 
-  const onPasswordSubmit: React.FormEventHandler = async (e) => {
-    e.preventDefault();
-    await doPasswordLogin();
-  };
+  const doWalletLogin = useCallback(async () => {
+    if (!address) {
+      setError("Please connect your wallet first");
+      return;
+    }
 
-  const doPasswordLogin = useCallback(async () => {
-    if (!password.trim() || !accountName.trim()) {
-      setError("Please enter both account name and password");
-      return;
-    }
-    if (!password.trim() || !accountName.trim()) {
-      setError("Please enter both account name and password");
-      return;
-    }
     setIsProcessing(true);
     setError(null);
+
     try {
-      const result = await performPasswordLogin(accountName, password);
-      setKeys(result);
-      showToast.auth.success("Login");
-      onSuccess();
+      // Request wallet signature
+      const typedData = getEIP712Message(address, chainId);
+      const signature = await signTypedDataAsync(typedData);
+
+      // Try to login with wallet
+      const result = await performWalletLogin(signature, address);
+
+      if (result === null) {
+        // Account doesn't exist - generate keys and proceed to setup
+        if (onKeyGenerationComplete) {
+          // Split signature to generate keys and encryption key
+          const signatureHex = signature.slice(2); // Remove '0x' prefix
+          const keyGenSeed = signatureHex.slice(0, 64); // First 32 bytes
+          const encryptionSeed = signatureHex.slice(64, 128); // Next 32 bytes
+
+          const keys = generateKeysFromRandomSeed(keyGenSeed);
+          const encryptionKey = new Uint8Array(
+            encryptionSeed.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16))
+          );
+
+          // Navigate to setup step with generated keys
+          onKeyGenerationComplete({
+            keys,
+            encryptionKey,
+            walletAddress: address,
+          });
+        } else if (onCreateAccount) {
+          // Fallback to old flow
+          onCreateAccount();
+        } else {
+          setError("Account creation not available");
+        }
+      } else {
+        // Account exists - complete login
+        setKeys(result);
+        showToast.auth.success("Wallet login");
+        onSuccess();
+      }
     } catch (err) {
-      console.error("Password login failed:", err);
-      const msg = err instanceof AuthError ? err.message : err instanceof Error ? err.message : "Authentication failed";
+      console.error("Wallet login failed:", err);
+      const msg = err instanceof Error ? err.message : "Wallet authentication failed";
       setError(msg);
     } finally {
       setIsProcessing(false);
     }
-  }, [accountName, password, onSuccess, setKeys]);
+  }, [address, chainId, signTypedDataAsync, onKeyGenerationComplete, onCreateAccount, onSuccess, setKeys]);
 
   // Register footer actions
   useEffect(() => {
     if (!registerFooterActions) return;
-    const canSubmit = !isProcessing && !!accountName.trim() && (passkey ? true : !!password.trim());
-    const onClick = passkey ? doPasskeyLogin : doPasswordLogin;
-    registerFooterActions({ label: "Sign in", onClick, disabled: !canSubmit });
-    return () => registerFooterActions(null);
-  }, [registerFooterActions, passkey, isProcessing, accountName, password, doPasskeyLogin, doPasswordLogin]);
 
-  if (passkey) {
+    // Initial choice screen
+    if (loginMethod === null) {
+      if (hasPasskeyAccounts) {
+        // Show both options
+        registerFooterActions(
+          {
+            label: "Sign in with Passkey",
+            onClick: () => setLoginMethod("passkey"),
+            icon: <Fingerprint className="h-5 w-5" />
+          },
+          {
+            label: "Sign in with Wallet",
+            onClick: () => setLoginMethod("wallet"),
+            variant: "ghost",
+            icon: <Wallet className="h-5 w-5" />
+          }
+        );
+      } else {
+        // Only wallet option for new users
+        registerFooterActions(
+          {
+            label: "Sign in with Wallet",
+            onClick: () => setLoginMethod("wallet"),
+            icon: <Wallet className="h-5 w-5" />
+          },
+          null
+        );
+      }
+      return () => registerFooterActions(null);
+    }
+
+    // Passkey login flow
+    if (loginMethod === "passkey") {
+      const canSubmit = !isProcessing && !!accountName.trim();
+      registerFooterActions(
+        {
+          label: "Sign in",
+          onClick: doPasskeyLogin,
+          disabled: !canSubmit,
+          icon: <Fingerprint className="h-5 w-5" />
+        },
+        {
+          label: "Back",
+          onClick: () => {
+            setLoginMethod(null);
+            setAccountName("");
+            setError(null);
+          },
+          variant: "ghost"
+        }
+      );
+      return () => registerFooterActions(null);
+    }
+
+    // Wallet login flow
+    if (loginMethod === "wallet") {
+      const isConnected = !!address;
+      if (!isConnected) {
+        // Show connect wallet button
+        registerFooterActions(
+          {
+            label: "Connect Wallet",
+            onClick: handleConnectWallet,
+            icon: <WalletIcon className="h-5 w-5" />
+          },
+          {
+            label: "Back",
+            onClick: () => setLoginMethod(null),
+            variant: "ghost"
+          }
+        );
+      } else {
+        // Show sign message button
+        registerFooterActions(
+          {
+            label: "Sign Message",
+            onClick: doWalletLogin,
+            disabled: isProcessing,
+            icon: <Wallet className="h-5 w-5" />
+          },
+          {
+            label: "Back",
+            onClick: () => setLoginMethod(null),
+            variant: "ghost"
+          }
+        );
+      }
+      return () => registerFooterActions(null);
+    }
+
+    return () => registerFooterActions(null);
+  }, [registerFooterActions, loginMethod, isProcessing, accountName, address, hasPasskeyAccounts, doPasskeyLogin, doWalletLogin, handleConnectWallet]);
+
+  // Initial choice screen
+  if (loginMethod === null) {
+    return (
+      <div className="space-y-4">
+        <div className="text-center space-y-3">
+          <div className="w-16 h-16 bg-blue-600/20 rounded-full flex items-center justify-center mx-auto">
+            <Fingerprint className="w-8 h-8 text-blue-600" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-app-primary mb-2">Choose Sign-In Method</h3>
+            <p className="text-sm text-app-secondary">
+              {hasPasskeyAccounts
+                ? "Sign in using your saved passkey or wallet signature"
+                : "Sign in with your wallet to access or create your account"}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Passkey login screen
+  if (loginMethod === "passkey") {
     return (
       <div className="space-y-2">
         <Input
@@ -148,35 +301,55 @@ export function AccountLoginForm({ onSuccess, registerFooterActions }: AccountLo
     );
   }
 
-  return (
-    <form onSubmit={onPasswordSubmit} className="space-y-2">
-      <Input
-        id="username-password-login"
-        type="text"
-        value={accountName}
-        onChange={(e) => {
-          setAccountName(e.target.value);
-          if (error) setError(null);
-        }}
-        placeholder="Account Name"
-        autoComplete="username"
-        className="mt-3 mb-2"
-        disabled={isProcessing}
-      />
-      <PasswordField
-        id="login-password"
-        value={password}
-        onChange={(val) => {
-          setPassword(val);
-          if (error) setError(null);
-        }}
-        placeholder="Enter your password"
-        required
-        disabled={isProcessing}
-        autoComplete="current-password"
-        errorText={error ?? undefined}
-      />
-      {error && <p className="text-red-600 text-xs">{error}</p>}
-    </form>
-  );
+  // Wallet login screen
+  if (loginMethod === "wallet") {
+    if (!address) {
+      // Wallet not connected
+      return (
+        <div className="space-y-4">
+          <div className="text-center space-y-3">
+            <div className="w-16 h-16 bg-blue-600/20 rounded-full flex items-center justify-center mx-auto">
+              <WalletIcon className="w-8 h-8 text-blue-600" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-app-primary mb-2">Connect Your Wallet</h3>
+              <p className="text-sm text-app-secondary">
+                Connect your wallet to sign a message and generate your account keys. This is free and won't send any
+                transactions.
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Wallet connected - ready to sign
+    return (
+      <div className="space-y-4">
+        <div className="text-center space-y-3">
+          <div className="w-16 h-16 bg-orange-600/20 rounded-full flex items-center justify-center mx-auto">
+            <WalletIcon className="w-8 h-8 text-orange-600" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-app-primary mb-2">Sign Message</h3>
+            <p className="text-sm text-app-secondary mb-4">
+              Sign a message with your wallet to access your account or create a new one. This will not trigger any
+              blockchain transaction or cost gas.
+            </p>
+            <div className="bg-app-card px-3 py-2 rounded-lg">
+              <p className="text-xs text-app-tertiary mb-1">Connected Wallet</p>
+              <p className="text-sm font-mono text-app-primary truncate">{address}</p>
+            </div>
+          </div>
+        </div>
+        {error && (
+          <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-lg p-3">
+            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return null;
 }
