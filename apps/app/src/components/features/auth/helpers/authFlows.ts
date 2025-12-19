@@ -3,6 +3,7 @@ import { storageManager, KDF } from "@/lib/storage";
 import type { KeyGenerationResult } from "@shinobi-cash/core";
 import { restoreFromMnemonic } from "@shinobi-cash/core";
 import { createHash } from "@/utils/crypto";
+import { generateKeysFromRandomSeed } from "@shinobi-cash/core";
 
 export async function performPasskeyLogin(accountName: string) {
   const trimmed = accountName.trim();
@@ -30,20 +31,6 @@ export async function performPasskeyLogin(accountName: string) {
   return { publicKey, privateKey, address, mnemonic: accountData.mnemonic } as KeyGenerationResult;
 }
 
-export async function performPasswordLogin(accountName: string, password: string) {
-  const trimmed = accountName.trim();
-  const { symmetricKey } = await KDF.deriveKeyFromPassword(password, trimmed);
-  await storageManager.initializeAccountSession(trimmed, symmetricKey);
-
-  const accountData = await storageManager.getAccountData();
-  if (!accountData) {
-    throw new AuthError(AuthErrorCode.INVALID_CREDENTIALS, "Account not found or incorrect password");
-  }
-
-  const { publicKey, privateKey, address } = restoreFromMnemonic(accountData.mnemonic);
-  await KDF.storeSessionInfo(trimmed, "password");
-  return { publicKey, privateKey, address, mnemonic: accountData.mnemonic } as KeyGenerationResult;
-}
 
 export async function performPasskeySetup(accountName: string, generatedKeys: KeyGenerationResult) {
   const trimmed = accountName.trim();
@@ -71,6 +58,7 @@ export async function performPasskeySetup(accountName: string, generatedKeys: Ke
   await storageManager.storeAccountData({
     accountName: trimmed,
     mnemonic: generatedKeys.mnemonic,
+    publicKey: generatedKeys.publicKey,
     createdAt: Date.now(),
   });
 
@@ -84,20 +72,57 @@ export async function performPasskeySetup(accountName: string, generatedKeys: Ke
   await KDF.storeSessionInfo(trimmed, "passkey", { credentialId });
 }
 
-export async function performPasswordSetup(accountName: string, generatedKeys: KeyGenerationResult, password: string) {
-  const trimmed = accountName.trim();
-  const { symmetricKey } = await KDF.deriveKeyFromPassword(password, trimmed);
-  await storageManager.initializeAccountSession(trimmed, symmetricKey);
+/**
+ * Perform wallet-based login for existing wallet-only accounts
+ * Returns keys if account exists, null if account doesn't exist (new user)
+ */
+export async function performWalletLogin(
+  signature: string,
+  walletAddress: string
+): Promise<KeyGenerationResult | null> {
+  // Split signature into key generation seed and encryption key
+  const signatureHex = signature.slice(2); // Remove '0x' prefix
+  const keyGenSeed = signatureHex.slice(0, 64); // First 32 bytes for key generation
+  const encryptionSeed = signatureHex.slice(64, 128); // Next 32 bytes for encryption
 
-  try {
-    await storageManager.storeAccountData({
-      accountName: trimmed,
-      mnemonic: generatedKeys.mnemonic,
-      createdAt: Date.now(),
-    });
-  } catch (err) {
-    throw new AuthError(AuthErrorCode.DB_ERROR, "Failed to store account data", { cause: err });
+  // Convert encryption seed to Uint8Array
+  const encryptionKey = new Uint8Array(
+    encryptionSeed.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16))
+  );
+
+  // Use wallet address as account ID
+  const accountId = walletAddress.toLowerCase();
+
+  // Check if account exists
+  const accountExists = await storageManager.accountExists(accountId);
+
+  if (!accountExists) {
+    // New account - return null to indicate account creation flow
+    return null;
   }
 
-  await KDF.storeSessionInfo(trimmed, "password");
+  // Existing account - initialize session and load data
+  try {
+    await storageManager.initializeWalletAccountSession(accountId, encryptionKey);
+
+    const accountData = await storageManager.getAccountData();
+    if (!accountData) {
+      // Account exists but data not found - treat as new account
+      console.warn("Account exists but data not found, treating as new account");
+      return null;
+    }
+
+    // Restore keys from stored mnemonic
+    const { publicKey, privateKey, address } = restoreFromMnemonic(accountData.mnemonic);
+
+    // Store session info (wallet-based auth)
+    await KDF.storeSessionInfo(accountId, "passkey"); // Using "passkey" as auth method for now
+
+    return { publicKey, privateKey, address, mnemonic: accountData.mnemonic } as KeyGenerationResult;
+  } catch (error) {
+    // Failed to decrypt or load account data - treat as new account
+    console.warn("Failed to load account data, treating as new account:", error);
+    return null;
+  }
 }
+
