@@ -14,14 +14,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { AccountMenu } from "@/components/features/auth/AccountMenu";
+import { AddPasskeyModal } from "@/components/features/auth/AddPasskeyModal";
+import { useState } from "react";
 
 export function Header() {
   const { isConnected, address } = useAccount();
   const chainId = useChainId();
   const { switchChain } = useSwitchChain();
+  const [showAddPasskeyModal, setShowAddPasskeyModal] = useState(false);
 
   const handleConnectWallet = () => {
     modal.open();
+  };
+
+  const handleAddPasskey = () => {
+    setShowAddPasskeyModal(true);
   };
 
   const shortenAddress = (addr: string) => {
@@ -57,7 +65,9 @@ export function Header() {
   const currentChain = getCurrentChain();
 
   return (
-    <header className="flex items-center justify-between mx-auto border border-gray-800 rounded-xl sm:rounded-2xl bg-black/50 backdrop-blur-sm py-3 px-4 sm:px-6 lg:px-8">
+    <>
+      <AddPasskeyModal open={showAddPasskeyModal} onOpenChange={setShowAddPasskeyModal} />
+      <header className="flex items-center justify-between mx-auto border border-gray-800 rounded-xl sm:rounded-2xl bg-black/50 backdrop-blur-sm py-3 px-4 sm:px-6 lg:px-8">
         {/* Logo and Navigation */}
         <div className="flex gap-6">
           {/* Logo */}
@@ -158,13 +168,15 @@ export function Header() {
             </Button>
           )}
 
-          {/* Settings Icon */}
-          <button
-            className="p-2 rounded-lg hover:bg-gray-800 transition-colors"
-            aria-label="Settings"
-          >
-            <Settings className="w-5 h-5 text-gray-400 hover:text-white" />
-          </button>
+          {/* Account Menu */}
+          <AccountMenu onAddPasskey={handleAddPasskey}>
+            <button
+              className="p-2 rounded-lg hover:bg-gray-800 transition-colors"
+              aria-label="Account Menu"
+            >
+              <Settings className="w-5 h-5 text-gray-400 hover:text-white" />
+            </button>
+          </AccountMenu>
 
           {/* Mobile: Menu Icon */}
           <button
@@ -174,6 +186,7 @@ export function Header() {
             <Menu className="w-5 h-5 text-gray-400" />
           </button>
         </div>
-    </header>
+      </header>
+    </>
   );
 }
