@@ -1,7 +1,7 @@
 "use client";
 
 import { AnnouncementBar } from "@/components/new/AnnouncementBar";
-import { BottomNav } from "@/components/new/BottomNav";
+// import { BottomNav } from "@/components/new/BottomNav";
 import { Footer } from "@/components/new/Footer";
 import { Header } from "@/components/new/Header";
 import { MainCard } from "@/components/new/MainCard";
