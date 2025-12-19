@@ -52,6 +52,53 @@ class StorageManager {
   }
 
   /**
+   * Initialize wallet-based account session with signature-derived encryption key
+   * Used when user skips passkey setup and relies on wallet signature for encryption
+   */
+  async initializeWalletAccountSession(accountId: string, encryptionKey: Uint8Array): Promise<void> {
+    // Convert Uint8Array to CryptoKey for encryption
+    // Ensure the buffer is an ArrayBuffer for crypto.subtle
+    const keyBuffer = encryptionKey.buffer.slice(
+      encryptionKey.byteOffset,
+      encryptionKey.byteOffset + encryptionKey.byteLength
+    ) as ArrayBuffer;
+
+    const cryptoKey = await crypto.subtle.importKey(
+      "raw",
+      keyBuffer,
+      { name: "AES-GCM" },
+      false,
+      ["encrypt", "decrypt"]
+    );
+
+    // Use standard session initialization
+    await this.initializeAccountSession(accountId, cryptoKey);
+  }
+
+  /**
+   * Save wallet-based account data
+   * Account is identified by wallet address instead of passkey credential name
+   */
+  async saveWalletAccountData(data: {
+    accountId: string;
+    walletAddress: string;
+    mnemonic: string[];
+    publicKey: string;
+  }): Promise<void> {
+    const accountData: CachedAccountData = {
+      accountName: data.accountId, // Use wallet address as account name
+      mnemonic: data.mnemonic,
+      publicKey: data.publicKey,
+      createdAt: Date.now(),
+      // Wallet-based accounts don't have passkey credentials
+      isWalletBased: true,
+      walletAddress: data.walletAddress,
+    };
+
+    await this.storeAccountData(accountData);
+  }
+
+  /**
    * Clear session data from memory
    * Exact implementation from noteCache.clearSession
    */

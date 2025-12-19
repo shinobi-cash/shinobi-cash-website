@@ -37,7 +37,10 @@ export interface CachedNoteData {
 export interface CachedAccountData {
   accountName: string;
   mnemonic: string[];
+  publicKey: string;
   createdAt: number;
+  isWalletBased?: boolean; // true for wallet-only accounts (no passkey)
+  walletAddress?: string; // Wallet address for wallet-based accounts
 }
 
 export interface NamedPasskeyData {
