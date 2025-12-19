@@ -10,7 +10,7 @@ import { storageManager } from "@/lib/storage";
 import { showToast } from "@/lib/toast";
 import { AlertCircle, Fingerprint } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { Button } from "../../ui/button";
+import { Button } from "@workspace/ui/components/button";
 import {
   Dialog,
   DialogContent,
@@ -18,8 +18,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "../../ui/dialog";
-import { Input } from "../../ui/input";
+} from "@workspace/ui/components/dialog";
+import { Input } from "@workspace/ui/components/input";
 import { performPasskeySetup } from "./helpers/authFlows";
 
 interface AddPasskeyModalProps {

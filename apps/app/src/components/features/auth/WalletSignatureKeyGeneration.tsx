@@ -9,7 +9,7 @@ import { modal } from "@/context";
 import { AlertCircle, Loader2, WalletIcon, CheckCircle } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useAccount, useSignTypedData } from "wagmi";
-import { Button } from "../../ui/button";
+import { Button } from "@workspace/ui/components/button";
 import { getEIP712Message } from "@/utils/eip712";
 
 interface WalletSignatureKeyGenerationProps {

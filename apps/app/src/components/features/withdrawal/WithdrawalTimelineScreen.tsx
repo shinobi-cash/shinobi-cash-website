@@ -8,7 +8,7 @@ import { formatEthAmount, formatHash } from "@/utils/formatters";
 import { Check, Copy, Info, Loader2, ArrowRight } from "lucide-react";
 import { POOL_CHAIN, SHINOBI_CASH_SUPPORTED_CHAINS } from "@shinobi-cash/constants";
 import { memo, useCallback, useState } from "react";
-import { Button } from "../../ui/button";
+import { Button } from "@workspace/ui/components/button";
 import { BackButton } from "../../ui/back-button";
 
 export interface WithdrawalStep {

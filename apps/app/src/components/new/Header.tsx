@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Settings, BarChart3, Menu } from "lucide-react";
 import { useAccount, useChainId, useSwitchChain } from "wagmi";
 import { modal } from "@/context";
-import { Button } from "@/components/ui/button";
+import { Button } from "@workspace/ui/components/button";
 import { SHINOBI_CASH_SUPPORTED_CHAINS } from "@shinobi-cash/constants";
 import {
   Select,
@@ -13,7 +13,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@workspace/ui/components/select";
 import { AccountMenu } from "@/components/features/auth/AccountMenu";
 import { AddPasskeyModal } from "@/components/features/auth/AddPasskeyModal";
 import { useState } from "react";

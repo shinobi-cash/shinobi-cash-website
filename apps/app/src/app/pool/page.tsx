@@ -8,7 +8,7 @@ import { PoolStatsCard } from "@/components/features/pool/PoolStatsCard";
 import { PoolAssetSelector } from "@/components/features/pool/PoolAssetSelector";
 import { ActivityRow } from "@/components/features/pool/ActivityRow";
 import { ActivityDetailDrawer } from "@/components/features/pool/ActivityDetailDrawer";
-import { Button } from "@/components/ui/button";
+import { Button } from "@workspace/ui/components/button";
 import type { Activity } from "@shinobi-cash/data";
 import { fetchPoolStats } from "@/services/data/indexerService";
 import { showToast } from "@/lib/toast";

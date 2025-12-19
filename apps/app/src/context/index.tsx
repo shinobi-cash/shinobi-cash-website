@@ -7,12 +7,12 @@ import { ThemeProvider } from '@/contexts/ThemeContext'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { TransactionTrackingProvider } from '@/hooks/transactions/useTransactionTracking'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
-import { ParticleBackground } from '@/components/ParticleBackground'
 import React, { type ReactNode, useEffect } from 'react'
 import { cookieToInitialState, WagmiProvider, type Config } from 'wagmi'
-import { Toaster } from '@/components/ui/sonner'
+import { Toaster } from '@workspace/ui/components/sonner'
 import { INDEXER_CONFIG } from '@/config/constants'
 import { IndexerClient, setShinobiClient } from '@shinobi-cash/data'
+import { Particles } from '@workspace/ui/components/particles'
 
 // Set up queryClient
 const queryClient = new QueryClient()
@@ -67,7 +67,13 @@ function ContextProvider({ children, cookies }: { children: ReactNode; cookies: 
           <QueryClientProvider client={queryClient}>
             <AuthProvider>
               <TransactionTrackingProvider>
-                <ParticleBackground />
+                <Particles
+                  className="fixed inset-0 pointer-events-none"
+                  quantity={100}
+                  ease={80}
+                  color="#f97316"
+                  refresh={true}
+                />
                 {children}
                 <Toaster />
               </TransactionTrackingProvider>

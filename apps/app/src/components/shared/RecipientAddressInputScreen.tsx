@@ -5,7 +5,7 @@
 
 import { BackButton } from "../ui/back-button";
 import { RecipientAddressInput } from "./RecipientAddressInput";
-import { Button } from "../ui/button";
+import { Button } from "@workspace/ui/components/button";
 
 interface RecipientAddressInputScreenProps {
   value: string;

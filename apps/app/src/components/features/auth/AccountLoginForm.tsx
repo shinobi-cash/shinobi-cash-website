@@ -8,7 +8,7 @@ import { showToast } from "@/lib/toast";
 import { Fingerprint, Wallet, WalletIcon } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useAccount, useSignTypedData } from "wagmi";
-import { Input } from "../../ui/input";
+import { Input } from "@workspace/ui/components/input";
 import { performPasskeyLogin, performWalletLogin } from "./helpers/authFlows";
 import { getEIP712Message } from "@/utils/eip712";
 import { generateKeysFromRandomSeed, type KeyGenerationResult } from "@shinobi-cash/core";

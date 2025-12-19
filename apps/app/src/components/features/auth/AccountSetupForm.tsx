@@ -13,7 +13,7 @@ import type { KeyGenerationResult } from "@shinobi-cash/core";
 import { AlertCircle, Fingerprint } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Input } from "../../ui/input";
+import { Input } from "@workspace/ui/components/input";
 import { performPasskeySetup } from "./helpers/authFlows";
 
 interface AccountSetupFormProps {

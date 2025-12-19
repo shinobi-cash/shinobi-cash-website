@@ -6,7 +6,7 @@ import { formatEthAmount } from "@/utils/formatters";
 import { Loader2, ChevronDown } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNoteSelection, useWithdrawalFormState } from "../../../hooks/withdrawal/useWithdrawalFormHooks";
-import { Button } from "../../ui/button";
+import { Button } from "@workspace/ui/components/button";
 import { NoteSelectionScreen } from "./NoteSelectionScreen";
 import { WithdrawalTimelineScreen } from "./WithdrawalTimelineScreen";
 import { POOL_CHAIN, SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";

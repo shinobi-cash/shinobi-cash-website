@@ -4,7 +4,7 @@
  * Refactored to follow Single Responsibility Principle
  */
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@workspace/ui/components/button";
 import type { Activity } from "@shinobi-cash/data";
 import { ResponsiveModal } from "../../ui/responsive-modal";
 import { SectionCard, DetailRow, CopyableField, ExternalLink } from "@/components/shared";

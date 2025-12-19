@@ -3,7 +3,7 @@
  * Catches JavaScript errors anywhere in the child component tree
  */
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@workspace/ui/components/button";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import { Component, type ErrorInfo, type ReactNode } from "react";
 

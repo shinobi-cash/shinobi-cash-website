@@ -9,7 +9,7 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-} from "@/components/ui/select";
+} from "@workspace/ui/components/select";
 
 export function BottomNav() {
   const { isConnected, address } = useAccount();

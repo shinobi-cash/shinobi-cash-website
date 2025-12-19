@@ -7,7 +7,7 @@ import { useAuthSteps } from "@/hooks/auth/useAuthSteps";
 import { isPasskeySupported } from "@/utils/environment";
 import { useCallback, useEffect, useState } from "react";
 import { AuthStepContent } from "../features/auth/AuthStepContent";
-import { Button } from "../ui/button";
+import { Button } from "@workspace/ui/components/button";
 import { BackButton } from "../ui/back-button";
 
 interface AuthScreenProps {

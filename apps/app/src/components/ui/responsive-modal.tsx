@@ -1,9 +1,9 @@
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { ChevronLeft, X } from "lucide-react";
 import type * as React from "react";
-import { Button } from "./button";
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./dialog";
-import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from "./drawer";
+import { Button } from "@workspace/ui/components/button";
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@workspace/ui/components/dialog";
+import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from "@workspace/ui/components/drawer";
 
 interface ResponsiveModalProps {
   open: boolean;

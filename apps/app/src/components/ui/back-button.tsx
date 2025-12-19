@@ -1,5 +1,5 @@
 import { ChevronLeft } from "lucide-react";
-import { Button } from "./button";
+import { Button } from "@workspace/ui/components/button";
 
 interface BackButtonProps {
   onClick: () => void;

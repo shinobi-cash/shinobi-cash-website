@@ -12,7 +12,7 @@ import { WithdrawalForm } from "../features/withdrawal/WithdrawalForm";
 import { DepositForm } from "../features/deposit/DepositForm";
 import { formatEther } from "viem";
 import { AuthScreen } from "./AuthScreen";
-import { Button } from "../ui/button";
+import { Button } from "@workspace/ui/components/button";
 
 export function MainCard() {
   const { isAuthenticated, publicKey, accountKey } = useAuth();

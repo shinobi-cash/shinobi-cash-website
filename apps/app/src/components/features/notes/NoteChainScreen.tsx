@@ -7,7 +7,7 @@ import { getTxExplorerUrl } from "@/config/chains";
 import type { NoteChain } from "@/lib/storage/types";
 import { formatEthAmount, formatTimestamp } from "@/utils/formatters";
 import { ExternalLink, Info } from "lucide-react";
-import { Button } from "../../ui/button";
+import { Button } from "@workspace/ui/components/button";
 import { BackButton } from "../../ui/back-button";
 
 interface NoteChainScreenProps {

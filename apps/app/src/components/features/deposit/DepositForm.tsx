@@ -7,7 +7,7 @@ import { Loader2, Copy, Check } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useAccount, useBalance, useChainId } from "wagmi";
 import { useDepositTransaction } from "@/hooks/deposit/useDepositTransaction";
-import { Button } from "@/components/ui/button";
+import { Button } from "@workspace/ui/components/button";
 import { NetworkWarning } from "./NetworkWarning";
 import { POOL_CHAIN, SHINOBI_CASH_SUPPORTED_CHAINS } from "@shinobi-cash/constants";
 import { formatEther } from "viem";
@@ -24,7 +24,7 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@/components/ui/tooltip"
+} from "@workspace/ui/components/tooltip"
 import { modal } from "@/context";
 function DepositNoteInfo() {
   return (
