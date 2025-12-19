@@ -39,21 +39,15 @@ export function AuthScreen({ onAuthComplete, onBack }: AuthScreenProps) {
   }, [isAuthenticated, authSteps.currentStep, onAuthComplete]);
 
   const getTitle = () => {
+    if (!authSteps.currentStep) return "Loading...";
+
     switch (authSteps.currentStep) {
-      case "choose":
-        return "Get Started";
-      case "login-method":
-        return "Sign in";
       case "login-convenient":
         return "Sign in";
-      case "login-backup":
-        return "Recover with phrase";
       case "create-keys":
         return "Creating your secure identity";
-      case "create-backup":
-        return "Save your recovery phrase";
       case "setup-convenient":
-        return shouldShowPasskey ? "Set up quick sign‑in" : "Create a password";
+        return "Set up quick sign‑in with passkey";
       case "syncing-notes":
         return "Syncing notes";
       default:
@@ -62,23 +56,15 @@ export function AuthScreen({ onAuthComplete, onBack }: AuthScreenProps) {
   };
 
   const getDescription = () => {
+    if (!authSteps.currentStep) return "Checking for existing local accounts...";
+
     switch (authSteps.currentStep) {
-      case "choose":
-        return "Sign in to continue. Your identity is created and stored on this device; we never send your keys to a server.";
-      case "login-method":
-        return "Choose how to log in. Credentials are encrypted and stored locally.";
       case "login-convenient":
         return "Use your credentials to continue. They never leave your device.";
-      case "login-backup":
-        return "Enter your 12‑word recovery phrase to restore your local keys.";
       case "create-keys":
         return "Sign a message with your wallet to generate your account keys. This is free and won't send any transactions.";
-      case "create-backup":
-        return "Write these 12 words down. They can restore your encrypted keys on any device.";
       case "setup-convenient":
-        return shouldShowPasskey
-          ? "Enable passkey stored in your device's secure enclave."
-          : "Create a password to encrypt your local account data.";
+        return "Enable passkey for quick sign-in, or skip to use wallet signature each time.";
       case "syncing-notes":
         return "Securely discovering your deposits using your local keys.";
       default:
@@ -92,6 +78,7 @@ export function AuthScreen({ onAuthComplete, onBack }: AuthScreenProps) {
     onClick: () => void;
     variant?: "default" | "outline" | "ghost";
     disabled?: boolean;
+    icon?: React.ReactNode;
   };
 
   const [footerPrimary, setFooterPrimary] = useState<FooterAction | null>(null);
@@ -111,31 +98,8 @@ export function AuthScreen({ onAuthComplete, onBack }: AuthScreenProps) {
     setFooterSecondary(secondary ?? null);
   }, []);
 
-  // Default footer actions for choose and login-method steps
-  useEffect(() => {
-    if (authSteps.currentStep === "choose") {
-      registerFooterActions(
-        { label: "Log in", onClick: authSteps.handleLoginChoice, variant: "default" },
-        { label: "Create account", onClick: authSteps.handleCreateChoice, variant: "outline" },
-      );
-    } else if (authSteps.currentStep === "login-method") {
-      const primaryLabel = shouldShowPasskey ? "Use passkey" : "Use password";
-      registerFooterActions(
-        { label: primaryLabel, onClick: () => authSteps.handleLoginMethodChoice("convenient"), variant: "default" },
-        { label: "Use recovery phrase", onClick: () => authSteps.handleLoginMethodChoice("backup"), variant: "outline" },
-      );
-    }
-  }, [
-    authSteps.currentStep,
-    shouldShowPasskey,
-    registerFooterActions,
-    authSteps.handleLoginChoice,
-    authSteps.handleCreateChoice,
-    authSteps.handleLoginMethodChoice,
-  ]);
-
   const canGoBack = authSteps.canGoBack();
-  const isFirstStep = authSteps.currentStep === "choose";
+  const isFirstStep = authSteps.currentStep === "login-convenient" || authSteps.currentStep === "create-keys";
 
   const handleBack = () => {
     if (canGoBack) {
@@ -160,20 +124,23 @@ export function AuthScreen({ onAuthComplete, onBack }: AuthScreenProps) {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-4 py-6">
-        <AuthStepContent
-          currentStep={authSteps.currentStep}
-          generatedKeys={authSteps.generatedKeys}
-          loginKey={authSteps.loginKey}
-          onLoginChoice={authSteps.handleLoginChoice}
-          onCreateChoice={authSteps.handleCreateChoice}
-          onLoginMethodChoice={authSteps.handleLoginMethodChoice}
-          onKeyGenerationComplete={authSteps.handleKeyGenerationComplete}
-          onBackupComplete={authSteps.handleBackupComplete}
-          onRecoveryComplete={authSteps.handleRecoveryComplete}
-          onAccountSetupComplete={authSteps.handleAccountSetupComplete}
-          onSyncingComplete={authSteps.handleSyncingComplete}
-          registerFooterActions={registerFooterActions}
-        />
+        {authSteps.currentStep && (
+          <AuthStepContent
+            currentStep={authSteps.currentStep}
+            generatedKeys={authSteps.generatedKeys}
+            encryptionKey={authSteps.encryptionKey}
+            walletAddress={authSteps.walletAddress}
+            hasExistingAccounts={authSteps.hasExistingAccounts ?? false}
+            hasPasskeyAccounts={authSteps.hasPasskeyAccounts}
+            onLoginChoice={authSteps.handleLoginChoice}
+            onCreateChoice={authSteps.handleCreateChoice}
+            onKeyGenerationComplete={authSteps.handleKeyGenerationComplete}
+            onAccountSetupComplete={authSteps.handleAccountSetupComplete}
+            onSkipSetup={authSteps.handleSkipSetup}
+            onSyncingComplete={authSteps.handleSyncingComplete}
+            registerFooterActions={registerFooterActions}
+          />
+        )}
       </div>
 
       {/* Footer */}
@@ -188,7 +155,8 @@ export function AuthScreen({ onAuthComplete, onBack }: AuthScreenProps) {
                 className="col-span-1 w-full min-h-12 py-3 text-base font-medium rounded-2xl"
                 size="lg"
               >
-                <span className="w-full text-center leading-tight">
+                <span className="w-full text-center leading-tight flex items-center justify-center gap-2">
+                  {footerSecondary?.icon}
                   {footerSecondary?.label ?? "Back"}
                 </span>
               </Button>
@@ -201,7 +169,10 @@ export function AuthScreen({ onAuthComplete, onBack }: AuthScreenProps) {
                 className={`${footerSecondary || (canGoBack && footerPrimary) ? "col-span-1" : "col-span-2"} w-full min-h-12 py-3 text-base font-medium rounded-2xl`}
                 size="lg"
               >
-                <span className="w-full text-center leading-tight">{footerPrimary.label}</span>
+                <span className="w-full text-center leading-tight flex items-center justify-center gap-2">
+                  {footerPrimary.icon}
+                  {footerPrimary.label}
+                </span>
               </Button>
             )}
           </div>

@@ -1,13 +1,11 @@
 import type { KeyGenerationResult } from "@shinobi-cash/core";
 import { useState, useCallback, useRef, useEffect } from "react";
+import { storageManager } from "@/lib/storage";
+import { isPasskeySupported } from "@/utils/environment";
 
 export type AuthStep =
-  | "choose"
-  | "login-method"
   | "login-convenient"
-  | "login-backup"
   | "create-keys"
-  | "create-backup"
   | "setup-convenient"
   | "syncing-notes";
 
@@ -20,9 +18,13 @@ interface UseAuthStepsOptions {
 }
 
 export function useAuthSteps(options: UseAuthStepsOptions = {}) {
-  const [currentStep, setCurrentStep] = useState<AuthStep>("choose");
+  const [hasExistingAccounts, setHasExistingAccounts] = useState<boolean | null>(null);
+  const [hasPasskeyAccounts, setHasPasskeyAccounts] = useState<boolean>(false);
+  const [passkeySupported, setPasskeySupported] = useState<boolean>(false);
+  const [currentStep, setCurrentStep] = useState<AuthStep | null>(null);
   const [generatedKeys, setGeneratedKeys] = useState<KeyGenerationResult | null>(null);
-  const [loginKey, setLoginKey] = useState<KeyGenerationResult | null>(null);
+  const [encryptionKey, setEncryptionKey] = useState<Uint8Array | null>(null);
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
 
   // Use ref for callback to avoid including it in dependencies
   const onAuthCompleteRef = useRef(options.onAuthComplete);
@@ -30,74 +32,113 @@ export function useAuthSteps(options: UseAuthStepsOptions = {}) {
     onAuthCompleteRef.current = options.onAuthComplete;
   }, [options.onAuthComplete]);
 
-  const resetState = useCallback(() => {
-    setCurrentStep("choose");
-    setGeneratedKeys(null);
-    setLoginKey(null);
+  // Check for existing accounts on mount
+  useEffect(() => {
+    const checkExistingAccounts = async () => {
+      try {
+        // Check if passkey is supported
+        const supported = isPasskeySupported();
+        setPasskeySupported(supported);
+
+        const accounts = await storageManager.listAccountNames();
+        const hasAccounts = accounts.length > 0;
+        setHasExistingAccounts(hasAccounts);
+
+        // Check if there are any passkey-based accounts (not wallet-only)
+        let hasPasskeys = false;
+        if (supported && hasAccounts) {
+          // Check if any accounts have passkey data
+          for (const accountName of accounts) {
+            const passkeyExists = await storageManager.passkeyExists(accountName);
+            if (passkeyExists) {
+              hasPasskeys = true;
+              break;
+            }
+          }
+        }
+        setHasPasskeyAccounts(hasPasskeys);
+
+        setCurrentStep(hasAccounts ? "login-convenient" : "create-keys");
+      } catch (error) {
+        console.error("Failed to check existing accounts:", error);
+        // Default to create flow if check fails
+        setHasExistingAccounts(false);
+        setHasPasskeyAccounts(false);
+        setCurrentStep("create-keys");
+      }
+    };
+    checkExistingAccounts();
   }, []);
 
+  const resetState = useCallback(() => {
+    setCurrentStep(hasExistingAccounts ? "login-convenient" : "create-keys");
+    setGeneratedKeys(null);
+    setEncryptionKey(null);
+    setWalletAddress(null);
+  }, [hasExistingAccounts]);
+
   const canGoBack = useCallback(() => {
-    return [
-      "login-method",
-      "login-convenient",
-      "login-backup",
-      "create-keys",
-      "create-backup",
-      "setup-convenient",
-    ].includes(currentStep);
+    return currentStep === "setup-convenient";
   }, [currentStep]);
 
   const handleBack = useCallback(() => {
-    switch (currentStep) {
-      case "login-method":
-      case "create-keys":
-        setCurrentStep("choose");
-        break;
-      case "login-convenient":
-      case "login-backup":
-        setCurrentStep("login-method");
-        break;
-      case "create-backup":
-        setCurrentStep("create-keys");
-        break;
-      case "setup-convenient":
-        if (loginKey) {
-          setCurrentStep("login-backup");
-        } else {
-          // For wallet signature auth, go back to key generation (skip backup)
-          setCurrentStep("create-keys");
-        }
-        break;
+    if (currentStep === "setup-convenient") {
+      setCurrentStep("create-keys");
     }
-  }, [currentStep, loginKey]);
+  }, [currentStep]);
 
   // Step handlers
-  const handleLoginChoice = useCallback(() => setCurrentStep("login-method"), []);
+  const handleLoginChoice = useCallback(() => setCurrentStep("login-convenient"), []);
   const handleCreateChoice = useCallback(() => setCurrentStep("create-keys"), []);
 
-  const handleLoginMethodChoice = useCallback((method: "convenient" | "backup") => {
-    setCurrentStep(method === "convenient" ? "login-convenient" : "login-backup");
-  }, []);
+  const handleKeyGenerationComplete = useCallback(async (data: {
+    keys: KeyGenerationResult;
+    encryptionKey: Uint8Array;
+    walletAddress: string;
+  }) => {
+    setGeneratedKeys(data.keys);
+    setEncryptionKey(data.encryptionKey);
+    setWalletAddress(data.walletAddress);
 
-  const handleKeyGenerationComplete = useCallback((keys: KeyGenerationResult) => {
-    setGeneratedKeys(keys);
-    // Skip backup step for wallet signature-based auth (keys are recoverable by re-signing)
-    setCurrentStep("setup-convenient");
-  }, []);
+    // Skip passkey setup if device doesn't support it - save directly to wallet-based storage
+    if (!passkeySupported) {
+      try {
+        const accountId = data.walletAddress.toLowerCase();
 
-  const handleBackupComplete = useCallback(() => {
-    setCurrentStep("setup-convenient");
-  }, []);
+        // Initialize storage with signature-derived encryption key
+        await storageManager.initializeWalletAccountSession(accountId, data.encryptionKey);
 
-  const handleRecoveryComplete = useCallback((keys: KeyGenerationResult) => {
-    setLoginKey(keys);
-    setCurrentStep("setup-convenient");
-  }, []);
+        // Store account data encrypted with signature-derived key
+        await storageManager.saveWalletAccountData({
+          accountId,
+          walletAddress: data.walletAddress,
+          mnemonic: data.keys.mnemonic,
+          publicKey: data.keys.publicKey,
+        });
+
+        // Go to syncing step
+        setCurrentStep("syncing-notes");
+      } catch (error) {
+        console.error("Failed to save wallet account:", error);
+        // Fall back to setup step on error
+        setCurrentStep("setup-convenient");
+      }
+    } else {
+      setCurrentStep("setup-convenient");
+    }
+  }, [passkeySupported]);
 
   const handleAccountSetupComplete = useCallback(() => {
     // Always go to syncing step for consistent UX and "Welcome to Shinobi!" experience
     setCurrentStep("syncing-notes");
   }, []);
+
+  const handleSkipSetup = useCallback(() => {
+    // Skip syncing for temporary sessions (no persisted credentials)
+    // Just complete the auth flow immediately
+    resetState();
+    onAuthCompleteRef.current?.();
+  }, [resetState]);
 
   const handleSyncingComplete = useCallback(() => {
     resetState();
@@ -107,17 +148,19 @@ export function useAuthSteps(options: UseAuthStepsOptions = {}) {
   return {
     currentStep,
     generatedKeys,
-    loginKey,
+    encryptionKey,
+    walletAddress,
+    hasExistingAccounts,
+    hasPasskeyAccounts,
+    passkeySupported,
     resetState,
     canGoBack,
     handleBack,
     handleLoginChoice,
     handleCreateChoice,
-    handleLoginMethodChoice,
     handleKeyGenerationComplete,
-    handleBackupComplete,
-    handleRecoveryComplete,
     handleAccountSetupComplete,
+    handleSkipSetup,
     handleSyncingComplete,
     actionContext: options.actionContext,
   };

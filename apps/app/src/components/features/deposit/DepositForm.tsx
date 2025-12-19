@@ -20,7 +20,24 @@ import { TokenChainSelector } from "@/components/shared/TokenChainSelector";
 import { AssetChainSelectorScreen } from "@/components/shared/AssetChainSelectorScreen";
 import { BackButton } from "@/components/ui/back-button";
 import { CircleQuestionMarkIcon } from 'lucide-react'
-
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { modal } from "@/context";
+function DepositNoteInfo() {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <CircleQuestionMarkIcon className="w-5 h-5" />
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>Value after deducting Vetting Fee (0.01%) </p>
+      </TooltipContent>
+    </Tooltip>
+  )
+}
 interface DepositFormProps {
   asset: { symbol: string; name: string; icon: string };
   onTransactionSuccess?: () => void;
@@ -298,25 +315,4 @@ export function DepositForm({ asset, onTransactionSuccess, onBack }: DepositForm
       </div>
     </div>
   );
-}
-
-
-
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
-import { modal } from "@/context";
-function DepositNoteInfo() {
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <CircleQuestionMarkIcon className="w-5 h-5" />
-      </TooltipTrigger>
-      <TooltipContent>
-        <p>Value after deducting Vetting Fee (0.01%) </p>
-      </TooltipContent>
-    </Tooltip>
-  )
 }
