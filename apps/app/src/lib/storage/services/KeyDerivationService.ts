@@ -142,8 +142,10 @@ export class KeyDerivationService {
   async createPasskeyCredential(accountName: string, userHandle: string): Promise<{ credentialId: string }> {
     const challenge = crypto.getRandomValues(new Uint8Array(32));
     const userId = new TextEncoder().encode(userHandle);
-    const env = process.env;
-    const rpId = env?.NEXT_PUBLIC_RP_ID ?? window.location.hostname;
+    // Safe access to environment variables in browser context
+    const rpId = typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_RP_ID
+      ? process.env.NEXT_PUBLIC_RP_ID
+      : window.location.hostname;
 
     const credential = (await navigator.credentials.create({
       publicKey: {
