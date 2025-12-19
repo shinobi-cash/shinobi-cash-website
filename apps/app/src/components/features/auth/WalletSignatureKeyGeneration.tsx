@@ -10,44 +10,38 @@ import { AlertCircle, Loader2, WalletIcon, CheckCircle } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useAccount, useSignTypedData } from "wagmi";
 import { Button } from "../../ui/button";
+import { getEIP712Message } from "@/utils/eip712";
 
 interface WalletSignatureKeyGenerationProps {
-  onKeyGenerationComplete: (keys: KeyGenerationResult) => void;
+  onKeyGenerationComplete: (data: {
+    keys: KeyGenerationResult;
+    encryptionKey: Uint8Array;
+    walletAddress: string;
+  }) => void;
+  onLoginChoice?: () => void;
   registerFooterActions?: (
     primary: {
       label: string;
       onClick: () => void;
       variant?: "default" | "outline" | "ghost";
       disabled?: boolean;
+      icon?: React.ReactNode;
     } | null,
     secondary?: {
       label: string;
       onClick: () => void;
       variant?: "default" | "outline" | "ghost";
       disabled?: boolean;
+      icon?: React.ReactNode;
     } | null,
   ) => void;
 }
 
 type GenerationStep = "connect" | "sign" | "deriving" | "complete" | "error";
 
-// EIP-712 domain and message structure
-const DOMAIN = {
-  name: "Shinobi Cash",
-  version: "1",
-  chainId: 1, // Will be overridden with actual chain
-} as const;
-
-const TYPES = {
-  ShinobiAuth: [
-    { name: "message", type: "string" },
-    { name: "timestamp", type: "uint256" },
-    { name: "action", type: "string" },
-  ],
-} as const;
-
 export function WalletSignatureKeyGeneration({
   onKeyGenerationComplete,
+  onLoginChoice,
   registerFooterActions,
 }: WalletSignatureKeyGenerationProps) {
   const [currentStep, setCurrentStep] = useState<GenerationStep>("connect");
@@ -80,41 +74,41 @@ export function WalletSignatureKeyGeneration({
       setCurrentStep("deriving");
       setError(null);
 
-      // Create timestamp for uniqueness
-      const timestamp = BigInt(Math.floor(Date.now() / 1000));
-
-      // Prepare EIP-712 message
-      const message = {
-        message: "Sign this message to create your Shinobi Cash account. This signature will be used to deterministically generate your private keys. This will not trigger any blockchain transaction or cost gas.",
-        timestamp,
-        action: "create-account",
-      };
-
-      const domain = {
-        ...DOMAIN,
-        chainId,
-      };
+      // Get EIP-712 typed data
+      const typedData = getEIP712Message(address, chainId);
 
       // Request signature
-      const signature = await signTypedDataAsync({
-        domain,
-        types: TYPES,
-        primaryType: "ShinobiAuth",
-        message,
-      });
+      const signature = await signTypedDataAsync(typedData);
 
-      // Use signature as deterministic seed for key generation
-      // Remove '0x' prefix and use as hex seed
-      const seed = signature.slice(2);
+      // Split signature into two parts:
+      // - First 64 chars (32 bytes) for key generation
+      // - Last 64 chars (32 bytes) for encryption key
+      const signatureHex = signature.slice(2); // Remove '0x' prefix
 
-      // Generate keys from signature seed
-      const keys = generateKeysFromRandomSeed(seed);
+      if (signatureHex.length < 128) {
+        throw new Error("Signature too short for splitting");
+      }
+
+      const keyGenSeed = signatureHex.slice(0, 64); // First 32 bytes
+      const encryptionSeed = signatureHex.slice(64, 128); // Next 32 bytes
+
+      // Generate keys from first half of signature
+      const keys = generateKeysFromRandomSeed(keyGenSeed);
+
+      // Convert second half to Uint8Array for encryption
+      const encryptionKey = new Uint8Array(
+        encryptionSeed.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16))
+      );
 
       setCurrentStep("complete");
 
       // Small delay for better UX
       setTimeout(() => {
-        onKeyGenerationComplete(keys);
+        onKeyGenerationComplete({
+          keys,
+          encryptionKey,
+          walletAddress: address,
+        });
       }, 500);
     } catch (err) {
       console.error("Signature failed:", err);
@@ -135,6 +129,12 @@ export function WalletSignatureKeyGeneration({
   useEffect(() => {
     if (!registerFooterActions) return;
 
+    const secondaryAction = onLoginChoice ? {
+      label: "Sign in instead",
+      onClick: onLoginChoice,
+      variant: "ghost" as const,
+    } : null;
+
     if (currentStep === "connect") {
       registerFooterActions(
         {
@@ -142,7 +142,7 @@ export function WalletSignatureKeyGeneration({
           onClick: handleConnectWallet,
           variant: "default",
         },
-        null,
+        secondaryAction,
       );
     } else if (currentStep === "sign") {
       registerFooterActions(
@@ -152,12 +152,12 @@ export function WalletSignatureKeyGeneration({
           variant: "default",
           disabled: isSigning,
         },
-        null,
+        secondaryAction,
       );
     } else {
       registerFooterActions(null, null);
     }
-  }, [currentStep, registerFooterActions, handleConnectWallet, handleSignMessage, isSigning]);
+  }, [currentStep, registerFooterActions, handleConnectWallet, handleSignMessage, isSigning, onLoginChoice]);
 
   // Render based on current step
   if (currentStep === "connect") {
