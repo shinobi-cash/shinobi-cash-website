@@ -7,6 +7,7 @@ import { Loader2, Copy, Check } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useAccount, useBalance, useChainId } from "wagmi";
 import { useDepositTransaction } from "@/hooks/deposit/useDepositTransaction";
+import { useDepositGasEstimate } from "@/hooks/deposit/useDepositGasEstimate";
 import { Button } from "@workspace/ui/components/button";
 import { NetworkWarning } from "./NetworkWarning";
 import { POOL_CHAIN, SHINOBI_CASH_SUPPORTED_CHAINS } from "@shinobi-cash/constants";
@@ -33,7 +34,7 @@ function DepositNoteInfo() {
         <CircleQuestionMarkIcon className="w-5 h-5" />
       </TooltipTrigger>
       <TooltipContent>
-        <p>Value after deducting Vetting Fee (0.01%) </p>
+        <p>Amount you will receive in your deposit note</p>
       </TooltipContent>
     </Tooltip>
   )
@@ -80,6 +81,7 @@ export function DepositForm({ asset, onTransactionSuccess, onBack }: DepositForm
   const isOnSupportedChain = SHINOBI_CASH_SUPPORTED_CHAINS.some(chain => chain.id === chainId);
   const { noteData, isGeneratingNote, error: noteError, regenerateNote } = useDepositCommitment(publicKey, accountKey);
   const { deposit, reset, clearError, isLoading, isSuccess, error, transactionHash } = useDepositTransaction();
+  const { gasCostEth, isLoading: isEstimatingGas } = useDepositGasEstimate(amount, noteData);
 
   // ---- Error + Success Tracking ----
   const shownErrorsRef = useRef(new Set<string>());
@@ -151,14 +153,8 @@ export function DepositForm({ asset, onTransactionSuccess, onBack }: DepositForm
 
   const formattedBalance = balance?.value ? formatEther(balance.value) : "0";
 
-  // Calculate deposit note amount (after fees)
+  // Deposit note amount (no fees deducted from deposit)
   const depositAmount = parseFloat(amount) || 0;
-  const aspFeeBPS = 500; // 5%
-  const solverFeeBPS = chainId !== POOL_CHAIN.id ? 500 : 0; // 5% if cross-chain
-  const aspFee = (depositAmount * aspFeeBPS) / 10000;
-  const solverFee = (depositAmount * solverFeeBPS) / 10000;
-  const depositNoteAmount = depositAmount - aspFee - solverFee;
-  const isCrossChain = chainId !== POOL_CHAIN.id;
 
   // Show Asset/Chain Selector
   if (isAssetSelectorOpen) {
@@ -279,7 +275,7 @@ export function DepositForm({ asset, onTransactionSuccess, onBack }: DepositForm
       {/* You Receive Section */}
       <InputLabel label="You Receive (Deposit Note)" labelRight={<DepositNoteInfo />} />
       <TokenAmountInput
-        amount={depositNoteAmount > 0 ? depositNoteAmount.toFixed(4) : "0"}
+        amount={depositAmount > 0 ? depositAmount.toFixed(4) : "0"}
         onAmountChange={() => {}} // Read-only
         readOnly={true}
         rightElement={
@@ -293,12 +289,9 @@ export function DepositForm({ asset, onTransactionSuccess, onBack }: DepositForm
 
       {/* Fee Breakdown (Collapsible) */}
       <FeeBreakdown
-        depositAmount={depositAmount}
-        aspFee={aspFee}
-        solverFee={solverFee}
-        totalNote={depositNoteAmount}
+        gasCost={gasCostEth}
         assetSymbol={asset.symbol}
-        isCrossChain={isCrossChain}
+        isEstimating={isEstimatingGas}
       />
 
       {/* Submit Button */}
