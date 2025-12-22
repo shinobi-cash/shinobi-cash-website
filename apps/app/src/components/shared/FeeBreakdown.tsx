@@ -1,18 +1,18 @@
 /**
  * Fee Breakdown Component
- * Collapsible section showing gas cost for deposit transaction
+ * Shows network gas cost
  */
 
 interface FeeBreakdownProps {
   gasCost: string;
   assetSymbol: string;
-  isEstimating?: boolean;
+  isEstimatingGas?: boolean;
 }
 
 export function FeeBreakdown({
   gasCost,
   assetSymbol,
-  isEstimating = false,
+  isEstimatingGas = false,
 }: FeeBreakdownProps) {
   return (
     <div className="mb-2">
@@ -27,10 +27,10 @@ export function FeeBreakdown({
           <div className="flex justify-between items-center text-sm">
             <div className="flex flex-col">
               <span className="text-gray-400">Estimated Gas</span>
-              <span className="text-xs text-gray-500">Network transaction fee</span>
+              <span className="text-xs text-gray-500">Transaction fee</span>
             </div>
             <span className="text-gray-300">
-              {isEstimating ? (
+              {isEstimatingGas ? (
                 "Estimating..."
               ) : (
                 `~${Number(gasCost).toFixed(6)} ${assetSymbol}`
