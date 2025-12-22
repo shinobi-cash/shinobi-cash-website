@@ -39,14 +39,14 @@ importers:
         specifier: ^10.25.0
         version: 10.30.0(react@19.2.3)
       '@shinobi-cash/constants':
-        specifier: link:../../../shinobi-cash-monorepo/packages/constants
-        version: link:../../../shinobi-cash-monorepo/packages/constants
+        specifier: 0.0.2
+        version: 0.0.2
       '@shinobi-cash/core':
-        specifier: link:../../../shinobi-cash-monorepo/packages/core
-        version: link:../../../shinobi-cash-monorepo/packages/core
+        specifier: 0.0.2
+        version: 0.0.2(bufferutil@4.0.9)(graphql@16.12.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.2.0)
       '@shinobi-cash/data':
-        specifier: link:../../../shinobi-cash-monorepo/packages/data
-        version: link:../../../shinobi-cash-monorepo/packages/data
+        specifier: 0.0.2
+        version: 0.0.2(graphql@16.12.0)
       '@tanstack/react-query':
         specifier: ^5.59.20
         version: 5.90.12(react@19.2.3)
@@ -458,6 +458,11 @@ packages:
     resolution: {integrity: sha512-Z4aHi3ECFf5oWYWM3F1rW83GJfB9OvhBYPTmb5q+VyK3uvzvS48lwo+jwh2eOoCRWEuT/crpb9Vwp2QaS5JqgQ==}
     peerDependencies:
       viem: '>=2.0.0'
+
+  '@graphql-typed-document-node/core@3.2.0':
+    resolution: {integrity: sha512-mB9oAsNCm9aM3/SOv4YtBMqZbYj10R7dkq8byBqxGY/ncFwhf2oQzMV+LCRlWoDSEBJ3COiR1yeDvMtsoOsuFQ==}
+    peerDependencies:
+      graphql: ^0.8.0 || ^0.9.0 || ^0.10.0 || ^0.11.0 || ^0.12.0 || ^0.13.0 || ^14.0.0 || ^15.0.0 || ^16.0.0 || ^17.0.0
 
   '@humanfs/core@0.19.1':
     resolution: {integrity: sha512-5DyQ4+1JEUzejeK1JGICcideyfUbGixgS9jNgex5nqkW+cY7WZhxBigmieN5Qnw9ZosSNVC9KQKyb+GUaGyKUA==}
@@ -1357,6 +1362,15 @@ packages:
     engines: {node: '>=18'}
     peerDependencies:
       react: ^16.14.0 || 17.x || 18.x || 19.x
+
+  '@shinobi-cash/constants@0.0.2':
+    resolution: {integrity: sha512-IX3H9RiXJI4+qO4XwyhdzbX43JIj1/0pBxhVnOOlWl4XwVAwjplJiIILHouMwMM3/Ptfh0l/aYH24UxSjok4KQ==}
+
+  '@shinobi-cash/core@0.0.2':
+    resolution: {integrity: sha512-8BvTWxKO9J+IuEJKbBYkpK4plA/YnluvrrPrrwDqcJE3lZgIXmQsauZ+SwaeZWfoKXcOqVSN73yraMXOt2PNJw==}
+
+  '@shinobi-cash/data@0.0.2':
+    resolution: {integrity: sha512-ujfnlacz39ZVrZ4afNp68Lf+KuSv+s6ikL6U2Xes+tSXYAA64bNSzsMRrL0gCpFlhQvJIg/lCDnDh5m4484MaQ==}
 
   '@socket.io/component-emitter@3.1.2':
     resolution: {integrity: sha512-9BCxFwvbGg/RsZK9tjXd8s4UcwR0MWeFQ1XEKIQVVvAGJyINdrqKMcTRyLoK8Rse1GjzLV9cwjWV1olXRWEXVA==}
@@ -3075,6 +3089,15 @@ packages:
   gradient-string@2.0.2:
     resolution: {integrity: sha512-rEDCuqUQ4tbD78TpzsMtt5OIf0cBCSDWSJtUDaF6JsAh+k0v9r++NzxNEG87oDZx9ZwGhD8DaezR2L/yrw0Jdw==}
     engines: {node: '>=10'}
+
+  graphql-request@7.2.0:
+    resolution: {integrity: sha512-0GR7eQHBFYz372u9lxS16cOtEekFlZYB2qOyq8wDvzRmdRSJ0mgUVX1tzNcIzk3G+4NY+mGtSz411wZdeDF/+A==}
+    peerDependencies:
+      graphql: 14 - 16
+
+  graphql@16.12.0:
+    resolution: {integrity: sha512-DKKrynuQRne0PNpEbzuEdHlYOMksHSUI8Zc9Unei5gTsMNA2/vMpoMz/yKba50pejK56qj98qM0SjYxAKi13gQ==}
+    engines: {node: ^12.22.0 || ^14.16.0 || ^16.0.0 || >=17.0.0}
 
   h3@1.15.4:
     resolution: {integrity: sha512-z5cFQWDffyOe4vQ9xIqNfCZdV4p//vy6fBnr8Q1AWnVZ0teurKMG66rLj++TKwKPUP3u7iMUvrvKaEUiQw2QWQ==}
@@ -5351,6 +5374,10 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  '@graphql-typed-document-node/core@3.2.0(graphql@16.12.0)':
+    dependencies:
+      graphql: 16.12.0
+
   '@humanfs/core@0.19.1': {}
 
   '@humanfs/node@0.16.7':
@@ -6847,6 +6874,33 @@ snapshots:
       '@sentry/core': 10.30.0
       hoist-non-react-statics: 3.3.2
       react: 19.2.3
+
+  '@shinobi-cash/constants@0.0.2': {}
+
+  '@shinobi-cash/core@0.0.2(bufferutil@4.0.9)(graphql@16.12.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.2.0)':
+    dependencies:
+      '@shinobi-cash/constants': 0.0.2
+      '@shinobi-cash/data': 0.0.2(graphql@16.12.0)
+      '@zk-kit/lean-imt': 2.2.4(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+      bip39: 3.1.0
+      ethers: 6.16.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+      poseidon-lite: 0.3.0
+      snarkjs: 0.7.5
+      viem: 2.42.1(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.2.0)
+    transitivePeerDependencies:
+      - bufferutil
+      - graphql
+      - react-native-b4a
+      - typescript
+      - utf-8-validate
+      - zod
+
+  '@shinobi-cash/data@0.0.2(graphql@16.12.0)':
+    dependencies:
+      '@shinobi-cash/constants': 0.0.2
+      graphql-request: 7.2.0(graphql@16.12.0)
+    transitivePeerDependencies:
+      - graphql
 
   '@socket.io/component-emitter@3.1.2': {}
 
@@ -9571,6 +9625,13 @@ snapshots:
     dependencies:
       chalk: 4.1.2
       tinygradient: 1.1.5
+
+  graphql-request@7.2.0(graphql@16.12.0):
+    dependencies:
+      '@graphql-typed-document-node/core': 3.2.0(graphql@16.12.0)
+      graphql: 16.12.0
+
+  graphql@16.12.0: {}
 
   h3@1.15.4:
     dependencies:
