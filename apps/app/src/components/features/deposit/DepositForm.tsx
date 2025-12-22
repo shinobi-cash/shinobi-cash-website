@@ -34,7 +34,7 @@ function DepositNoteInfo() {
         <CircleQuestionMarkIcon className="w-5 h-5" />
       </TooltipTrigger>
       <TooltipContent>
-        <p>Amount you will receive in your deposit note</p>
+        <p>Amount after deducting 1% compliance fee</p>
       </TooltipContent>
     </Tooltip>
   )
@@ -81,7 +81,7 @@ export function DepositForm({ asset, onTransactionSuccess, onBack }: DepositForm
   const isOnSupportedChain = SHINOBI_CASH_SUPPORTED_CHAINS.some(chain => chain.id === chainId);
   const { noteData, isGeneratingNote, error: noteError, regenerateNote } = useDepositCommitment(publicKey, accountKey);
   const { deposit, reset, clearError, isLoading, isSuccess, error, transactionHash } = useDepositTransaction();
-  const { gasCostEth, isLoading: isEstimatingGas } = useDepositGasEstimate(amount, noteData);
+  const { gasCostEth, isLoading: isEstimatingGas, error: gasEstimationError } = useDepositGasEstimate(amount, noteData);
 
   // ---- Error + Success Tracking ----
   const shownErrorsRef = useRef(new Set<string>());
@@ -131,7 +131,14 @@ export function DepositForm({ asset, onTransactionSuccess, onBack }: DepositForm
   const hasNoteData = !!noteData;
   const hasBalance = availableBalance > BigInt(0);
   const canMakeDeposit =
-    !amountError && amount.trim() && isOnSupportedChain && hasNoteData && hasBalance && !isTransacting;
+    !amountError &&
+    amount.trim() &&
+    isOnSupportedChain &&
+    hasNoteData &&
+    hasBalance &&
+    !isTransacting &&
+    !gasEstimationError &&
+    !isEstimatingGas;
 
   // ---- Button Label ----
   const getButtonLabel = () => {
@@ -148,13 +155,18 @@ export function DepositForm({ asset, onTransactionSuccess, onBack }: DepositForm
     if (!isOnSupportedChain) return "Unsupported Network";
     if (!hasBalance) return "Insufficient Balance";
     if (amountError) return "Enter Amount";
+    if (gasEstimationError) return "Cannot Estimate Gas";
+    if (isEstimatingGas) return "Estimating...";
     return "Deposit";
   };
 
   const formattedBalance = balance?.value ? formatEther(balance.value) : "0";
 
-  // Deposit note amount (no fees deducted from deposit)
+  // Calculate deposit note amount (after 1% compliance fee)
   const depositAmount = parseFloat(amount) || 0;
+  const complianceFeeBPS = 100; // 1% compliance fee
+  const complianceFee = (depositAmount * complianceFeeBPS) / 10000;
+  const depositNoteAmount = depositAmount - complianceFee;
 
   // Show Asset/Chain Selector
   if (isAssetSelectorOpen) {
@@ -264,9 +276,12 @@ export function DepositForm({ asset, onTransactionSuccess, onBack }: DepositForm
         disabled={!hasBalance || isTransacting}
       />
 
-      {/* Error Message */}
+      {/* Error Messages */}
       {amountError && (
         <p className="text-red-500 text-sm mt-1">{amountError}</p>
+      )}
+      {gasEstimationError && amount && !amountError && (
+        <p className="text-red-500 text-sm mt-1">{gasEstimationError}</p>
       )}
 
       {/* Arrow Divider */}
@@ -275,7 +290,7 @@ export function DepositForm({ asset, onTransactionSuccess, onBack }: DepositForm
       {/* You Receive Section */}
       <InputLabel label="You Receive (Deposit Note)" labelRight={<DepositNoteInfo />} />
       <TokenAmountInput
-        amount={depositAmount > 0 ? depositAmount.toFixed(4) : "0"}
+        amount={depositNoteAmount > 0 ? depositNoteAmount.toFixed(4) : "0"}
         onAmountChange={() => {}} // Read-only
         readOnly={true}
         rightElement={
@@ -291,7 +306,7 @@ export function DepositForm({ asset, onTransactionSuccess, onBack }: DepositForm
       <FeeBreakdown
         gasCost={gasCostEth}
         assetSymbol={asset.symbol}
-        isEstimating={isEstimatingGas}
+        isEstimatingGas={isEstimatingGas}
       />
 
       {/* Submit Button */}
