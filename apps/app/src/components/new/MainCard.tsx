@@ -9,7 +9,7 @@ import { useModalWithSelection } from "@/hooks/ui/useModalState";
 import type { NoteChain } from "@/lib/storage/types";
 import { NoteChainScreen } from "../features/notes/NoteChainScreen";
 import { WithdrawalForm } from "../features/withdrawal/WithdrawalForm";
-import { DepositForm } from "../features/deposit/DepositForm";
+import { DepositForm } from "@/features/deposit";
 import { formatEther } from "viem";
 import { AuthScreen } from "./AuthScreen";
 import { Button } from "@workspace/ui/components/button";
