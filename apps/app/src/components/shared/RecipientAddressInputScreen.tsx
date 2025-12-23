@@ -23,28 +23,24 @@ export function RecipientAddressInputScreen({
   onConfirm,
 }: RecipientAddressInputScreenProps) {
   return (
-    <div className="flex flex-col h-full bg-gray-900">
+    <div className="flex h-full flex-col bg-gray-900">
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-4 border-b border-gray-800">
+      <div className="flex items-center gap-3 border-b border-gray-800 px-4 py-4">
         <BackButton onClick={onBack} />
         <h2 className="text-lg font-semibold text-white">Recipient Address</h2>
       </div>
 
       {/* Content */}
       <div className="flex-1 px-4 py-6">
-        <RecipientAddressInput
-          value={value}
-          onChange={onChange}
-          error={error}
-        />
+        <RecipientAddressInput value={value} onChange={onChange} error={error} />
       </div>
 
       {/* Confirm Button */}
-      <div className="px-4 py-4 border-t border-gray-800">
+      <div className="border-t border-gray-800 px-4 py-4">
         <Button
           onClick={onConfirm}
           disabled={!value || !!error}
-          className="w-full h-12 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-xl"
+          className="h-12 w-full rounded-xl bg-purple-600 font-semibold text-white hover:bg-purple-700"
         >
           Confirm
         </Button>

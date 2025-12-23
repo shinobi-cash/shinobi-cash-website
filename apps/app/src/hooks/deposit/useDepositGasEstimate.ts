@@ -1,12 +1,5 @@
-import {
-  useConfig,
-  useChainId,
-  useGasPrice
-} from "wagmi";
-import {
-  formatEther,
-  parseEther
-} from "viem";
+import { useConfig, useChainId, useGasPrice } from "wagmi";
+import { formatEther, parseEther } from "viem";
 import { useEffect, useState } from "react";
 import type { CashNoteData } from "@/lib/services/DepositService";
 import {
@@ -15,7 +8,7 @@ import {
   SHINOBI_CASH_CROSSCHAIN_CONTRACTS,
   ShinobiCrosschainDepositEntrypointAbi,
   DEPOSIT_FEES,
-  POOL_CHAIN
+  POOL_CHAIN,
 } from "@shinobi-cash/constants";
 import { estimateContractGas } from "viem/actions";
 
@@ -36,7 +29,7 @@ export function useDepositGasEstimate(
   const config = useConfig();
   const chainId = useChainId();
   const { data: gasPrice } = useGasPrice();
-  
+
   const [estimate, setEstimate] = useState({
     gasCostEth: "0",
     gasCostWei: null as bigint | null,
@@ -48,7 +41,7 @@ export function useDepositGasEstimate(
     async function getGas() {
       if (!amount || !cashNoteData || !gasPrice) return;
 
-      setEstimate(prev => ({ ...prev, isLoading: true, error: null }));
+      setEstimate((prev) => ({ ...prev, isLoading: true, error: null }));
 
       try {
         const publicClient = config.getClient({ chainId });
@@ -57,7 +50,7 @@ export function useDepositGasEstimate(
         // Type-safe crosschain contracts lookup
         const crosschainContracts = SHINOBI_CASH_CROSSCHAIN_CONTRACTS as Record<
           number,
-          typeof SHINOBI_CASH_CROSSCHAIN_CONTRACTS[keyof typeof SHINOBI_CASH_CROSSCHAIN_CONTRACTS]
+          (typeof SHINOBI_CASH_CROSSCHAIN_CONTRACTS)[keyof typeof SHINOBI_CASH_CROSSCHAIN_CONTRACTS]
         >;
 
         // Determine contract details
@@ -69,9 +62,7 @@ export function useDepositGasEstimate(
           throw new Error("Contract address not found for this chain");
         }
 
-        const abi = isSameChain
-          ? ShinobiCashEntrypointAbi
-          : ShinobiCrosschainDepositEntrypointAbi;
+        const abi = isSameChain ? ShinobiCashEntrypointAbi : ShinobiCrosschainDepositEntrypointAbi;
 
         const functionName = isSameChain ? "deposit" : "depositWithCustomFee";
         const args = isSameChain
@@ -98,13 +89,11 @@ export function useDepositGasEstimate(
           isLoading: false,
           error: null,
         });
-
       } catch (err: unknown) {
-        const errorMessage = err instanceof Error
-          ? err.message
-          : "Estimation failed - check balance";
+        const errorMessage =
+          err instanceof Error ? err.message : "Estimation failed - check balance";
 
-        setEstimate(prev => ({
+        setEstimate((prev) => ({
           ...prev,
           isLoading: false,
           error: errorMessage,

@@ -57,7 +57,7 @@ export function useModalWithSelection<T = unknown>(initialState = false) {
       setSelectedItem(item);
       modal.open();
     },
-    [modal],
+    [modal]
   );
 
   const closeAndClear = useCallback(() => {

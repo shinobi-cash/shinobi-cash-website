@@ -20,18 +20,16 @@ export function SectionCard({
   children,
   className,
   headerClassName,
-  contentClassName
+  contentClassName,
 }: SectionCardProps) {
   return (
-    <div className={cn("bg-app-surface rounded-xl border border-app shadow-sm", className)}>
+    <div className={cn("bg-app-surface border-app rounded-xl border shadow-sm", className)}>
       {title && (
-        <div className={cn("px-2 py-2 border-b border-app", headerClassName)}>
-          <h3 className="text-sm font-semibold text-app-primary">{title}</h3>
+        <div className={cn("border-app border-b px-2 py-2", headerClassName)}>
+          <h3 className="text-app-primary text-sm font-semibold">{title}</h3>
         </div>
       )}
-      <div className={contentClassName}>
-        {children}
-      </div>
+      <div className={contentClassName}>{children}</div>
     </div>
   );
 }

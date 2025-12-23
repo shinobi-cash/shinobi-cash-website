@@ -37,13 +37,19 @@ interface AccountLoginFormProps {
       variant?: "default" | "outline" | "ghost";
       disabled?: boolean;
       icon?: React.ReactNode;
-    } | null,
+    } | null
   ) => void;
 }
 
 type LoginMethod = "passkey" | "wallet" | null;
 
-export function AccountLoginForm({ onSuccess, onCreateAccount, onKeyGenerationComplete, hasPasskeyAccounts, registerFooterActions }: AccountLoginFormProps) {
+export function AccountLoginForm({
+  onSuccess,
+  onCreateAccount,
+  onKeyGenerationComplete,
+  hasPasskeyAccounts,
+  registerFooterActions,
+}: AccountLoginFormProps) {
   const { setKeys } = useAuth();
   const { address, chainId } = useAccount();
   const { signTypedDataAsync } = useSignTypedData();
@@ -154,7 +160,15 @@ export function AccountLoginForm({ onSuccess, onCreateAccount, onKeyGenerationCo
     } finally {
       setIsProcessing(false);
     }
-  }, [address, chainId, signTypedDataAsync, onKeyGenerationComplete, onCreateAccount, onSuccess, setKeys]);
+  }, [
+    address,
+    chainId,
+    signTypedDataAsync,
+    onKeyGenerationComplete,
+    onCreateAccount,
+    onSuccess,
+    setKeys,
+  ]);
 
   // Register footer actions
   useEffect(() => {
@@ -168,13 +182,13 @@ export function AccountLoginForm({ onSuccess, onCreateAccount, onKeyGenerationCo
           {
             label: "Sign in with Passkey",
             onClick: () => setLoginMethod("passkey"),
-            icon: <Fingerprint className="h-5 w-5" />
+            icon: <Fingerprint className="h-5 w-5" />,
           },
           {
             label: "Sign in with Wallet",
             onClick: () => setLoginMethod("wallet"),
             variant: "ghost",
-            icon: <Wallet className="h-5 w-5" />
+            icon: <Wallet className="h-5 w-5" />,
           }
         );
       } else {
@@ -183,7 +197,7 @@ export function AccountLoginForm({ onSuccess, onCreateAccount, onKeyGenerationCo
           {
             label: "Sign in with Wallet",
             onClick: () => setLoginMethod("wallet"),
-            icon: <Wallet className="h-5 w-5" />
+            icon: <Wallet className="h-5 w-5" />,
           },
           null
         );
@@ -199,7 +213,7 @@ export function AccountLoginForm({ onSuccess, onCreateAccount, onKeyGenerationCo
           label: "Sign in",
           onClick: doPasskeyLogin,
           disabled: !canSubmit,
-          icon: <Fingerprint className="h-5 w-5" />
+          icon: <Fingerprint className="h-5 w-5" />,
         },
         {
           label: "Back",
@@ -208,7 +222,7 @@ export function AccountLoginForm({ onSuccess, onCreateAccount, onKeyGenerationCo
             setAccountName("");
             setError(null);
           },
-          variant: "ghost"
+          variant: "ghost",
         }
       );
       return () => registerFooterActions(null);
@@ -223,12 +237,12 @@ export function AccountLoginForm({ onSuccess, onCreateAccount, onKeyGenerationCo
           {
             label: "Connect Wallet",
             onClick: handleConnectWallet,
-            icon: <WalletIcon className="h-5 w-5" />
+            icon: <WalletIcon className="h-5 w-5" />,
           },
           {
             label: "Back",
             onClick: () => setLoginMethod(null),
-            variant: "ghost"
+            variant: "ghost",
           }
         );
       } else {
@@ -238,12 +252,12 @@ export function AccountLoginForm({ onSuccess, onCreateAccount, onKeyGenerationCo
             label: "Sign Message",
             onClick: doWalletLogin,
             disabled: isProcessing,
-            icon: <Wallet className="h-5 w-5" />
+            icon: <Wallet className="h-5 w-5" />,
           },
           {
             label: "Back",
             onClick: () => setLoginMethod(null),
-            variant: "ghost"
+            variant: "ghost",
           }
         );
       }
@@ -251,19 +265,29 @@ export function AccountLoginForm({ onSuccess, onCreateAccount, onKeyGenerationCo
     }
 
     return () => registerFooterActions(null);
-  }, [registerFooterActions, loginMethod, isProcessing, accountName, address, hasPasskeyAccounts, doPasskeyLogin, doWalletLogin, handleConnectWallet]);
+  }, [
+    registerFooterActions,
+    loginMethod,
+    isProcessing,
+    accountName,
+    address,
+    hasPasskeyAccounts,
+    doPasskeyLogin,
+    doWalletLogin,
+    handleConnectWallet,
+  ]);
 
   // Initial choice screen
   if (loginMethod === null) {
     return (
       <div className="space-y-4">
-        <div className="text-center space-y-3">
-          <div className="w-16 h-16 bg-blue-600/20 rounded-full flex items-center justify-center mx-auto">
-            <Fingerprint className="w-8 h-8 text-blue-600" />
+        <div className="space-y-3 text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-600/20">
+            <Fingerprint className="h-8 w-8 text-blue-600" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-app-primary mb-2">Choose Sign-In Method</h3>
-            <p className="text-sm text-app-secondary">
+            <h3 className="text-app-primary mb-2 text-lg font-semibold">Choose Sign-In Method</h3>
+            <p className="text-app-secondary text-sm">
               {hasPasskeyAccounts
                 ? "Sign in using your saved passkey or wallet signature"
                 : "Sign in with your wallet to access or create your account"}
@@ -293,10 +317,10 @@ export function AccountLoginForm({ onSuccess, onCreateAccount, onKeyGenerationCo
           }}
           placeholder="Account Name"
           autoComplete="username webauthn"
-          className="mt-3 mb-2"
+          className="mb-2 mt-3"
           disabled={isProcessing}
         />
-        {error && <p className="text-red-600 text-xs mb-2">{error}</p>}
+        {error && <p className="mb-2 text-xs text-red-600">{error}</p>}
       </div>
     );
   }
@@ -307,15 +331,15 @@ export function AccountLoginForm({ onSuccess, onCreateAccount, onKeyGenerationCo
       // Wallet not connected
       return (
         <div className="space-y-4">
-          <div className="text-center space-y-3">
-            <div className="w-16 h-16 bg-blue-600/20 rounded-full flex items-center justify-center mx-auto">
-              <WalletIcon className="w-8 h-8 text-blue-600" />
+          <div className="space-y-3 text-center">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-600/20">
+              <WalletIcon className="h-8 w-8 text-blue-600" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-app-primary mb-2">Connect Your Wallet</h3>
-              <p className="text-sm text-app-secondary">
-                Connect your wallet to sign a message and generate your account keys. This is free and won't send any
-                transactions.
+              <h3 className="text-app-primary mb-2 text-lg font-semibold">Connect Your Wallet</h3>
+              <p className="text-app-secondary text-sm">
+                Connect your wallet to sign a message and generate your account keys. This is free
+                and won't send any transactions.
               </p>
             </div>
           </div>
@@ -326,24 +350,24 @@ export function AccountLoginForm({ onSuccess, onCreateAccount, onKeyGenerationCo
     // Wallet connected - ready to sign
     return (
       <div className="space-y-4">
-        <div className="text-center space-y-3">
-          <div className="w-16 h-16 bg-orange-600/20 rounded-full flex items-center justify-center mx-auto">
-            <WalletIcon className="w-8 h-8 text-orange-600" />
+        <div className="space-y-3 text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-orange-600/20">
+            <WalletIcon className="h-8 w-8 text-orange-600" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-app-primary mb-2">Sign Message</h3>
-            <p className="text-sm text-app-secondary mb-4">
-              Sign a message with your wallet to access your account or create a new one. This will not trigger any
-              blockchain transaction or cost gas.
+            <h3 className="text-app-primary mb-2 text-lg font-semibold">Sign Message</h3>
+            <p className="text-app-secondary mb-4 text-sm">
+              Sign a message with your wallet to access your account or create a new one. This will
+              not trigger any blockchain transaction or cost gas.
             </p>
-            <div className="bg-app-card px-3 py-2 rounded-lg">
-              <p className="text-xs text-app-tertiary mb-1">Connected Wallet</p>
-              <p className="text-sm font-mono text-app-primary truncate">{address}</p>
+            <div className="bg-app-card rounded-lg px-3 py-2">
+              <p className="text-app-tertiary mb-1 text-xs">Connected Wallet</p>
+              <p className="text-app-primary truncate font-mono text-sm">{address}</p>
             </div>
           </div>
         </div>
         {error && (
-          <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-lg p-3">
+          <div className="rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-900 dark:bg-red-950/20">
             <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
           </div>
         )}

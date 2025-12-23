@@ -67,7 +67,7 @@ export function Header() {
   return (
     <>
       <AddPasskeyModal open={showAddPasskeyModal} onOpenChange={setShowAddPasskeyModal} />
-      <header className="flex items-center justify-between mx-auto border border-gray-800 rounded-xl sm:rounded-2xl bg-black/50 backdrop-blur-sm py-3 px-4 sm:px-6 lg:px-8">
+      <header className="mx-auto flex items-center justify-between rounded-xl border border-gray-800 bg-black/50 px-4 py-3 backdrop-blur-sm sm:rounded-2xl sm:px-6 lg:px-8">
         {/* Logo and Navigation */}
         <div className="flex gap-6">
           {/* Logo */}
@@ -78,7 +78,7 @@ export function Header() {
               alt="Shinobi Cash"
               width={128}
               height={32}
-              className="block md:hidden h-8 w-auto"
+              className="block h-8 w-auto md:hidden"
               priority
             />
 
@@ -88,18 +88,18 @@ export function Header() {
               alt="Shinobi Cash"
               width={160}
               height={40}
-              className="hidden md:block h-10 lg:h-12 w-auto"
+              className="hidden h-10 w-auto md:block lg:h-12"
               priority
             />
           </Link>
 
           {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex items-center gap-1">
+          <nav className="hidden items-center gap-1 md:flex">
             <Link
               href="/pool"
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-gray-300 hover:text-white hover:bg-gray-800/50 transition-colors"
+              className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-gray-800/50 hover:text-white"
             >
-              <BarChart3 className="w-4 h-4" />
+              <BarChart3 className="h-4 w-4" />
               Pool
             </Link>
           </nav>
@@ -110,7 +110,7 @@ export function Header() {
           {/* Desktop: Chain Selector */}
           {isConnected && currentChain && (
             <Select value={chainId.toString()} onValueChange={handleChainSwitch}>
-              <SelectTrigger className="hidden md:flex items-center gap-2 h-9 sm:h-10 lg:h-11 w-auto min-w-[140px] border-gray-700 bg-gray-900/50">
+              <SelectTrigger className="hidden h-9 w-auto min-w-[140px] items-center gap-2 border-gray-700 bg-gray-900/50 sm:h-10 md:flex lg:h-11">
                 <SelectValue>
                   <div className="flex items-center gap-2">
                     <Image
@@ -118,18 +118,20 @@ export function Header() {
                       alt={currentChain.name}
                       width={20}
                       height={20}
-                      className="w-4 h-4 sm:w-5 sm:h-5"
+                      className="h-4 w-4 sm:h-5 sm:w-5"
                     />
-                    <span className="text-xs sm:text-sm lg:text-base font-medium">{currentChain.name}</span>
+                    <span className="text-xs font-medium sm:text-sm lg:text-base">
+                      {currentChain.name}
+                    </span>
                   </div>
                 </SelectValue>
               </SelectTrigger>
-              <SelectContent className="bg-gray-900 border-gray-700">
+              <SelectContent className="border-gray-700 bg-gray-900">
                 {SHINOBI_CASH_SUPPORTED_CHAINS.map((chain) => (
                   <SelectItem
                     key={chain.id}
                     value={chain.id.toString()}
-                    className="flex items-center gap-2 cursor-pointer hover:bg-gray-800 focus:bg-gray-800"
+                    className="flex cursor-pointer items-center gap-2 hover:bg-gray-800 focus:bg-gray-800"
                   >
                     <div className="flex items-center gap-2">
                       <Image
@@ -137,7 +139,7 @@ export function Header() {
                         alt={chain.name}
                         width={20}
                         height={20}
-                        className="w-5 h-5"
+                        className="h-5 w-5"
                       />
                       <span className="text-sm font-medium">{chain.name}</span>
                     </div>
@@ -153,7 +155,7 @@ export function Header() {
               onClick={handleConnectWallet}
               variant="outline"
               size="default"
-              className="hidden md:flex text-xs sm:text-sm lg:text-base font-medium h-9 sm:h-10 lg:h-11"
+              className="hidden h-9 text-xs font-medium sm:h-10 sm:text-sm md:flex lg:h-11 lg:text-base"
             >
               {address && shortenAddress(address)}
             </Button>
@@ -162,7 +164,7 @@ export function Header() {
               onClick={handleConnectWallet}
               variant="default"
               size="default"
-              className="hidden md:flex text-xs sm:text-sm lg:text-base font-medium  h-9 sm:h-10 lg:h-11"
+              className="hidden h-9 text-xs font-medium sm:h-10 sm:text-sm md:flex lg:h-11 lg:text-base"
             >
               Connect Wallet
             </Button>
@@ -171,19 +173,19 @@ export function Header() {
           {/* Account Menu */}
           <AccountMenu onAddPasskey={handleAddPasskey}>
             <button
-              className="p-2 rounded-lg hover:bg-gray-800 transition-colors"
+              className="rounded-lg p-2 transition-colors hover:bg-gray-800"
               aria-label="Account Menu"
             >
-              <Settings className="w-5 h-5 text-gray-400 hover:text-white" />
+              <Settings className="h-5 w-5 text-gray-400 hover:text-white" />
             </button>
           </AccountMenu>
 
           {/* Mobile: Menu Icon */}
           <button
-            className="md:hidden p-2 rounded-lg hover:bg-gray-800 transition-colors"
+            className="rounded-lg p-2 transition-colors hover:bg-gray-800 md:hidden"
             aria-label="Menu"
           >
-            <Menu className="w-5 h-5 text-gray-400" />
+            <Menu className="h-5 w-5 text-gray-400" />
           </button>
         </div>
       </header>

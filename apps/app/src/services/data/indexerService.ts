@@ -53,7 +53,7 @@ export async function fetchActivities(
   poolAddress?: string,
   limit = 100,
   after?: string,
-  orderDirection: "asc" | "desc" = "desc",
+  orderDirection: "asc" | "desc" = "desc"
 ) {
   try {
     const poolId = (poolAddress || SHINOBI_CASH_ETH_POOL.address).toLowerCase();
@@ -67,7 +67,7 @@ export async function fetchActivities(
       after,
     });
 
-    console.log('[fetchActivities] Response:', {
+    console.log("[fetchActivities] Response:", {
       itemCount: response.items.length,
       limit,
       hasNextPage: response.pageInfo.hasNextPage,
@@ -85,7 +85,7 @@ export async function fetchActivities(
       {
         cause: error,
         context: { poolAddress, limit, orderDirection },
-      },
+      }
     );
   }
 }
@@ -110,7 +110,7 @@ export async function fetchStateTreeLeaves(poolId: string): Promise<StateTreeLea
       {
         cause: error,
         context: { poolId },
-      },
+      }
     );
   }
 }
@@ -121,20 +121,24 @@ export async function fetchStateTreeLeaves(poolId: string): Promise<StateTreeLea
  * Fetch latest ASP root and IPFS CID from indexer
  * Uses SDK's getLatestASPRoot method
  */
-export async function fetchLatestASPRoot(): Promise<{ root: string; ipfsCID: string; timestamp: string }> {
+export async function fetchLatestASPRoot(): Promise<{
+  root: string;
+  ipfsCID: string;
+  timestamp: string;
+}> {
   try {
     const client = getShinobiClient();
 
     // Use SDK's getLatestASPRoot method
     const latestUpdate = await client.getLatestASPRoot();
 
-    console.log('[fetchLatestASPRoot] Result:', latestUpdate);
+    console.log("[fetchLatestASPRoot] Result:", latestUpdate);
 
     if (!latestUpdate?.root || !latestUpdate?.ipfsCID) {
       throw new IndexerError(
         INDEXER_ERROR_CODES.INVALID_RESPONSE,
         "No ASP root found or missing IPFS CID",
-        { context: { latestUpdate } },
+        { context: { latestUpdate } }
       );
     }
 
@@ -154,7 +158,7 @@ export async function fetchLatestASPRoot(): Promise<{ root: string; ipfsCID: str
     throw new IndexerError(
       INDEXER_ERROR_CODES.FETCH_FAILED,
       "Failed to fetch ASP root from indexer",
-      { cause: error },
+      { cause: error }
     );
   }
 }
@@ -177,18 +181,21 @@ export async function fetchApprovedLabelsFromIPFS(ipfsCID: string): Promise<stri
             status: ipfsResponse.status,
             statusText: ipfsResponse.statusText,
           },
-        },
+        }
       );
     }
 
     const approvalList = (await ipfsResponse.json()) as ASPApprovalListLegacy;
 
     // Validate the approval list structure
-    if (!approvalList.cumulativeApprovedLabels || !Array.isArray(approvalList.cumulativeApprovedLabels)) {
+    if (
+      !approvalList.cumulativeApprovedLabels ||
+      !Array.isArray(approvalList.cumulativeApprovedLabels)
+    ) {
       throw new IndexerError(
         INDEXER_ERROR_CODES.INVALID_RESPONSE,
         "Invalid approval list format from IPFS",
-        { context: { ipfsCID, approvalList } },
+        { context: { ipfsCID, approvalList } }
       );
     }
 
@@ -204,7 +211,7 @@ export async function fetchApprovedLabelsFromIPFS(ipfsCID: string): Promise<stri
     throw new NetworkError(
       NETWORK_ERROR_CODES.REQUEST_FAILED,
       "Failed to fetch approved labels from IPFS",
-      { cause: error, context: { ipfsCID } },
+      { cause: error, context: { ipfsCID } }
     );
   }
 }
@@ -235,11 +242,9 @@ export async function fetchASPData() {
 
     logError(error, { action: "fetchASPData" });
 
-    throw new IndexerError(
-      INDEXER_ERROR_CODES.FETCH_FAILED,
-      "Failed to fetch ASP data",
-      { cause: error },
-    );
+    throw new IndexerError(INDEXER_ERROR_CODES.FETCH_FAILED, "Failed to fetch ASP data", {
+      cause: error,
+    });
   }
 }
 
@@ -262,7 +267,7 @@ export async function fetchPoolStats(poolAddress?: string): Promise<{
     // Use SDK's getPoolStats method
     const pool = await client.getPoolStats(poolId);
 
-    console.log('[fetchPoolStats] Result:', pool);
+    console.log("[fetchPoolStats] Result:", pool);
 
     if (!pool) return null;
 
@@ -276,14 +281,10 @@ export async function fetchPoolStats(poolAddress?: string): Promise<{
   } catch (error) {
     logError(error, { action: "fetchPoolStats", poolAddress });
 
-    throw new IndexerError(
-      INDEXER_ERROR_CODES.FETCH_FAILED,
-      "Failed to fetch pool statistics",
-      {
-        cause: error,
-        context: { poolAddress },
-      },
-    );
+    throw new IndexerError(INDEXER_ERROR_CODES.FETCH_FAILED, "Failed to fetch pool statistics", {
+      cause: error,
+      context: { poolAddress },
+    });
   }
 }
 

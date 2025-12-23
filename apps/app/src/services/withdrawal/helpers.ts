@@ -55,7 +55,8 @@ export function validateWithdrawalRequest(request: WithdrawalRequest): void {
  */
 export function calculateWithdrawalAmounts(withdrawAmount: string, destinationChainId?: number) {
   const withdrawAmountNum = Number.parseFloat(withdrawAmount);
-  const relayFeeBPS = Number(WITHDRAWAL_FEES.DEFAULT_RELAY_FEE_BPS);
+  // const relayFeeBPS = Number(WITHDRAWAL_FEES.DEFAULT_RELAY_FEE_BPS);
+  const relayFeeBPS = Number(500);
   const solverFeeBPS = Number(WITHDRAWAL_FEES.DEFAULT_SOLVER_FEE_BPS);
 
   // Check if this is a cross-chain withdrawal
@@ -100,7 +101,17 @@ export function deriveExistingNullifierAndSecret(
   }
   // Change note
   return {
-    existingNullifier: deriveChangeNullifier(accountKey, note.poolAddress, note.depositIndex, note.changeIndex),
-    existingSecret: deriveChangeSecret(accountKey, note.poolAddress, note.depositIndex, note.changeIndex),
+    existingNullifier: deriveChangeNullifier(
+      accountKey,
+      note.poolAddress,
+      note.depositIndex,
+      note.changeIndex
+    ),
+    existingSecret: deriveChangeSecret(
+      accountKey,
+      note.poolAddress,
+      note.depositIndex,
+      note.changeIndex
+    ),
   };
 }

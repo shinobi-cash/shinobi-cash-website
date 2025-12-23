@@ -24,7 +24,7 @@ export interface EthFormattingOptions {
  */
 export function formatEthAmount(
   amount: string | number | bigint | null | undefined,
-  options: EthFormattingOptions = {},
+  options: EthFormattingOptions = {}
 ): string {
   if (!amount || amount === 0 || amount === BigInt(0)) {
     const { decimals = 0 } = options;
@@ -116,7 +116,8 @@ export function formatHash(hash: string, startChars = 6, endChars = 4): string {
  * Accepts string or bigint timestamp
  */
 export function formatTimestamp(timestamp: string | bigint): string {
-  const numericTimestamp = typeof timestamp === "bigint" ? Number(timestamp) : Number.parseInt(timestamp);
+  const numericTimestamp =
+    typeof timestamp === "bigint" ? Number(timestamp) : Number.parseInt(timestamp);
   return formatDistance(new Date(numericTimestamp * 1000), new Date(), { addSuffix: true });
 }
 
@@ -124,6 +125,9 @@ export function formatTimestamp(timestamp: string | bigint): string {
  * Format timestamp as a date (e.g., "12/25/2023")
  */
 export function formatDate(timestamp: string | number): string {
-  const date = typeof timestamp === "string" ? new Date(Number.parseInt(timestamp) * 1000) : new Date(timestamp);
+  const date =
+    typeof timestamp === "string"
+      ? new Date(Number.parseInt(timestamp) * 1000)
+      : new Date(timestamp);
   return date.toLocaleDateString();
 }

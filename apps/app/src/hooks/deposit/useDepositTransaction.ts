@@ -5,7 +5,7 @@ import {
   SHINOBI_CASH_ENTRYPOINT,
   SHINOBI_CASH_CROSSCHAIN_CONTRACTS,
   POOL_CHAIN,
-  SUPPORTED_CROSSCHAIN
+  SUPPORTED_CROSSCHAIN,
 } from "@shinobi-cash/constants";
 import type { CashNoteData } from "@/lib/services/DepositService";
 import { useCallback, useEffect, useState } from "react";
@@ -45,10 +45,13 @@ export function useDepositTransaction() {
         args: [precommitmentBigInt],
         value: amountWei,
       });
-    } else if (SUPPORTED_CROSSCHAIN.map(chain => chain.id).includes(chainId)) {
+    } else if (SUPPORTED_CROSSCHAIN.map((chain) => chain.id).includes(chainId)) {
       // Cross-chain deposit (e.g., Base Sepolia → Arbitrum Sepolia Pool via OIF)
       // Use depositWithCustomFee to explicitly set solver fee (5% default)
-      const crosschainContracts = SHINOBI_CASH_CROSSCHAIN_CONTRACTS as Record<number, typeof SHINOBI_CASH_CROSSCHAIN_CONTRACTS[keyof typeof SHINOBI_CASH_CROSSCHAIN_CONTRACTS]>;
+      const crosschainContracts = SHINOBI_CASH_CROSSCHAIN_CONTRACTS as Record<
+        number,
+        (typeof SHINOBI_CASH_CROSSCHAIN_CONTRACTS)[keyof typeof SHINOBI_CASH_CROSSCHAIN_CONTRACTS]
+      >;
       const crosschainContract = crosschainContracts[chainId];
 
       if (!crosschainContract?.DEPOSIT_ENTRYPOINT) {

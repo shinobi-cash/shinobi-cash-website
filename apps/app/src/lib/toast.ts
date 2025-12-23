@@ -46,7 +46,7 @@ export const showToast = {
       showCancellations?: boolean;
       /** Custom duration (default: 5000ms) */
       duration?: number;
-    },
+    }
   ) => {
     // Don't show toasts for user cancellations (unless explicitly requested)
     if (!options?.showCancellations && isUserCancellation(error)) {

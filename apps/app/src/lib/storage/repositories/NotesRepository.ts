@@ -16,7 +16,7 @@ import type { EncryptionService } from "../services/EncryptionService";
 export class NotesRepository {
   constructor(
     private storageAdapter: IndexedDBAdapter,
-    private encryptionService: EncryptionService,
+    private encryptionService: EncryptionService
   ) {}
 
   /**
@@ -57,13 +57,14 @@ export class NotesRepository {
     publicKey: string,
     poolAddress: string,
     notes: NoteChain[],
-    lastProcessedCursor?: string,
+    lastProcessedCursor?: string
   ): Promise<void> {
     if (!this.encryptionService.isKeyAvailable()) {
       throw new Error("Session not initialized");
     }
 
-    const lastUsedIndex = notes.length > 0 ? Math.max(...notes.map((chain) => chain[0].depositIndex)) : -1;
+    const lastUsedIndex =
+      notes.length > 0 ? Math.max(...notes.map((chain) => chain[0].depositIndex)) : -1;
     await this.storeData(publicKey, poolAddress, notes, lastUsedIndex, lastProcessedCursor);
   }
 
@@ -78,11 +79,17 @@ export class NotesRepository {
   /**
    * Update last used deposit index - exact implementation from noteCache.updateLastUsedDepositIndex
    */
-  async updateLastUsedDepositIndex(publicKey: string, poolAddress: string, depositIndex: number): Promise<void> {
+  async updateLastUsedDepositIndex(
+    publicKey: string,
+    poolAddress: string,
+    depositIndex: number
+  ): Promise<void> {
     const cached = await this.getCachedData(publicKey, poolAddress);
 
     const notes = cached ? cached.notes : [];
-    const lastUsedIndex = cached ? Math.max(cached.lastUsedDepositIndex, depositIndex) : depositIndex;
+    const lastUsedIndex = cached
+      ? Math.max(cached.lastUsedDepositIndex, depositIndex)
+      : depositIndex;
     const lastProcessedCursor = cached ? cached.lastProcessedCursor : undefined;
 
     await this.storeData(publicKey, poolAddress, notes, lastUsedIndex, lastProcessedCursor);
@@ -96,7 +103,7 @@ export class NotesRepository {
     poolAddress: string,
     notes: NoteChain[],
     lastUsedDepositIndex: number,
-    lastProcessedCursor?: string,
+    lastProcessedCursor?: string
   ): Promise<void> {
     const sensitiveData: CachedNoteData = {
       poolAddress,
@@ -127,7 +134,10 @@ export class NotesRepository {
   /**
    * Get cached data internally - exact implementation from noteCache.getCachedData
    */
-  private async getCachedData(publicKey: string, poolAddress: string): Promise<CachedNoteData | null> {
+  private async getCachedData(
+    publicKey: string,
+    poolAddress: string
+  ): Promise<CachedNoteData | null> {
     const key = await this.getKey(publicKey, poolAddress);
     const result = (await this.storageAdapter.get(key)) as StoredEncryptedData | null;
 

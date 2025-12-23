@@ -32,7 +32,7 @@ export function useNoteDiscovery(
   publicKey: string,
   poolAddress: string,
   accountKey: bigint,
-  options?: UseNoteDiscoveryOptions,
+  options?: UseNoteDiscoveryOptions
 ): UseNoteDiscoveryResult {
   const [data, setData] = useState<DiscoveryResult | null>(null);
   const [loading, setLoading] = useState(true);
@@ -43,9 +43,12 @@ export function useNoteDiscovery(
 
   const runDiscovery = useCallback(
     async (signal?: AbortSignal, onProgress?: (p: DiscoveryProgress) => void) => {
-      return discoveryService.discoverNotes(publicKey, poolAddress, accountKey, { signal, onProgress });
+      return discoveryService.discoverNotes(publicKey, poolAddress, accountKey, {
+        signal,
+        onProgress,
+      });
     },
-    [publicKey, poolAddress, accountKey],
+    [publicKey, poolAddress, accountKey]
   );
 
   useEffect(() => {

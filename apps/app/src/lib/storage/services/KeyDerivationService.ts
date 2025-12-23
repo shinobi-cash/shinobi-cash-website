@@ -34,7 +34,10 @@ export class KeyDerivationService {
    */
   private async generateAccountSalt(accountName: string): Promise<Uint8Array> {
     const saltInput = CONFIG.SALT_PREFIX + accountName.toLowerCase().trim();
-    const hash = await crypto.subtle.digest(CONFIG.HASH_ALGORITHM, new TextEncoder().encode(saltInput));
+    const hash = await crypto.subtle.digest(
+      CONFIG.HASH_ALGORITHM,
+      new TextEncoder().encode(saltInput)
+    );
     return new Uint8Array(hash);
   }
 
@@ -56,9 +59,13 @@ export class KeyDerivationService {
   async deriveKeyFromPassword(password: string, accountName: string): Promise<DerivedKeyResult> {
     const salt = await this.buildHybridSalt(accountName);
 
-    const keyMaterial = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, [
-      "deriveKey",
-    ]);
+    const keyMaterial = await crypto.subtle.importKey(
+      "raw",
+      new TextEncoder().encode(password),
+      "PBKDF2",
+      false,
+      ["deriveKey"]
+    );
 
     const symmetricKey = await crypto.subtle.deriveKey(
       {
@@ -70,7 +77,7 @@ export class KeyDerivationService {
       keyMaterial,
       { name: "AES-GCM", length: CONFIG.KEY_LENGTH },
       false,
-      ["encrypt", "decrypt"],
+      ["encrypt", "decrypt"]
     );
 
     return { symmetricKey, salt };
@@ -83,7 +90,13 @@ export class KeyDerivationService {
     const prfBytes = await this.getPasskeyDerivedBytes(accountName, credentialId);
     const accountSalt = await this.generateAccountSalt(accountName);
 
-    const keyMaterial = await crypto.subtle.importKey("raw", prfBytes as BufferSource, "HKDF", false, ["deriveKey"]);
+    const keyMaterial = await crypto.subtle.importKey(
+      "raw",
+      prfBytes as BufferSource,
+      "HKDF",
+      false,
+      ["deriveKey"]
+    );
     const symmetricKey = await crypto.subtle.deriveKey(
       {
         name: "HKDF",
@@ -94,7 +107,7 @@ export class KeyDerivationService {
       keyMaterial,
       { name: "AES-GCM", length: CONFIG.KEY_LENGTH },
       false,
-      ["encrypt", "decrypt"],
+      ["encrypt", "decrypt"]
     );
 
     return { symmetricKey, salt: accountSalt };
@@ -103,7 +116,10 @@ export class KeyDerivationService {
   /**
    * Get passkey derived bytes - exact implementation from keyDerivation.ts
    */
-  private async getPasskeyDerivedBytes(accountName: string, credentialId: string): Promise<Uint8Array> {
+  private async getPasskeyDerivedBytes(
+    accountName: string,
+    credentialId: string
+  ): Promise<Uint8Array> {
     const challenge = crypto.getRandomValues(new Uint8Array(32));
     const prfInput = new TextEncoder().encode(`shinobi-prf:${accountName.toLowerCase().trim()}`);
 
@@ -129,7 +145,7 @@ export class KeyDerivationService {
 
     if (!first || !(first instanceof ArrayBuffer)) {
       throw new Error(
-        "Authenticator does not support PRF (hmac-secret) extension; deterministic passkey KDF unavailable.",
+        "Authenticator does not support PRF (hmac-secret) extension; deterministic passkey KDF unavailable."
       );
     }
 
@@ -139,13 +155,17 @@ export class KeyDerivationService {
   /**
    * Create passkey credential - exact implementation from keyDerivation.ts
    */
-  async createPasskeyCredential(accountName: string, userHandle: string): Promise<{ credentialId: string }> {
+  async createPasskeyCredential(
+    accountName: string,
+    userHandle: string
+  ): Promise<{ credentialId: string }> {
     const challenge = crypto.getRandomValues(new Uint8Array(32));
     const userId = new TextEncoder().encode(userHandle);
     // Safe access to environment variables in browser context
-    const rpId = typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_RP_ID
-      ? process.env.NEXT_PUBLIC_RP_ID
-      : window.location.hostname;
+    const rpId =
+      typeof process !== "undefined" && process.env?.NEXT_PUBLIC_RP_ID
+        ? process.env.NEXT_PUBLIC_RP_ID
+        : window.location.hostname;
 
     const credential = (await navigator.credentials.create({
       publicKey: {
@@ -211,7 +231,7 @@ export class KeyDerivationService {
   async storeSessionInfo(
     accountName: string,
     authMethod: "passkey" | "password",
-    opts?: { credentialId?: string },
+    opts?: { credentialId?: string }
   ): Promise<void> {
     return this.sessionRepo.storeSessionInfo(accountName, authMethod, opts);
   }

@@ -22,7 +22,11 @@ const TYPES = {
  * For wallet-based accounts (login/encryption), uses deterministic message without timestamp
  * For temporary key generation, can use timestamp for uniqueness
  */
-export function getEIP712Message(walletAddress: string, chainId?: number, options?: { deterministic?: boolean }) {
+export function getEIP712Message(
+  walletAddress: string,
+  chainId?: number,
+  options?: { deterministic?: boolean }
+) {
   // For wallet-based accounts, use deterministic signature (no timestamp)
   // This ensures the same signature is generated each time for encryption/decryption
   const useDeterministic = options?.deterministic !== false; // Default to deterministic

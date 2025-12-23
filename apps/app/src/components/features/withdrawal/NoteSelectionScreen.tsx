@@ -31,9 +31,9 @@ export function NoteSelectionScreen({
   asset,
 }: NoteSelectionScreenProps) {
   return (
-    <div className="flex flex-col h-full bg-gray-900">
+    <div className="flex h-full flex-col bg-gray-900">
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-4 border-b border-gray-800">
+      <div className="flex items-center gap-3 border-b border-gray-800 px-4 py-4">
         <BackButton onClick={onBack} />
         <h2 className="text-lg font-semibold text-white">Select Note</h2>
       </div>
@@ -42,12 +42,12 @@ export function NoteSelectionScreen({
       <div className="flex-1 overflow-y-auto">
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+            <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
           </div>
         ) : availableNotes.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 px-4">
-            <div className="text-gray-400 text-center">
-              <p className="text-lg font-medium mb-2">No notes available</p>
+          <div className="flex flex-col items-center justify-center px-4 py-12">
+            <div className="text-center text-gray-400">
+              <p className="mb-2 text-lg font-medium">No notes available</p>
               <p className="text-sm">Make a deposit to create a note</p>
             </div>
           </div>
@@ -65,38 +65,38 @@ export function NoteSelectionScreen({
                     onSelectNote(note);
                     onBack();
                   }}
-                  className={`w-full px-4 py-4 flex items-center gap-3 transition-colors ${
+                  className={`flex w-full items-center gap-3 px-4 py-4 transition-colors ${
                     isSelected
-                      ? "bg-orange-600/20 border-l-4 border-orange-600"
-                      : "hover:bg-gray-800/50 border-l-4 border-transparent"
+                      ? "border-l-4 border-orange-600 bg-orange-600/20"
+                      : "border-l-4 border-transparent hover:bg-gray-800/50"
                   }`}
                 >
                   {/* Asset Icon */}
                   <div className="flex-shrink-0">
-                    <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600">
                       <Image
                         src={asset.icon}
                         alt={asset.symbol}
                         width={24}
                         height={24}
-                        className="w-6 h-6"
+                        className="h-6 w-6"
                       />
                     </div>
                   </div>
 
                   {/* Note Info */}
-                  <div className="flex-1 min-w-0 text-left">
-                    <div className="flex items-center justify-between mb-1">
+                  <div className="min-w-0 flex-1 text-left">
+                    <div className="mb-1 flex items-center justify-between">
                       <span className="text-base font-semibold text-white">
                         {Number.parseFloat(amount).toFixed(4)} {asset.symbol}
                       </span>
                       {note.isActivated && (
-                        <span className="text-xs text-green-400 bg-green-400/10 px-2 py-1 rounded">
+                        <span className="rounded bg-green-400/10 px-2 py-1 text-xs text-green-400">
                           Active
                         </span>
                       )}
                     </div>
-                    <div className="text-xs text-gray-400 truncate">
+                    <div className="truncate text-xs text-gray-400">
                       Note #{note.depositIndex}.{note.changeIndex}
                     </div>
                   </div>

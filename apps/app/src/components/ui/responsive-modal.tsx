@@ -2,8 +2,22 @@ import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { ChevronLeft, X } from "lucide-react";
 import type * as React from "react";
 import { Button } from "@workspace/ui/components/button";
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@workspace/ui/components/dialog";
-import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from "@workspace/ui/components/drawer";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@workspace/ui/components/dialog";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+} from "@workspace/ui/components/drawer";
 
 interface ResponsiveModalProps {
   open: boolean;
@@ -52,14 +66,14 @@ export function ResponsiveModal({
                     variant="ghost"
                     size="sm"
                     onClick={onBack}
-                    className="h-8 w-8 p-0 hover:bg-app-surface-hover transition-colors duration-200"
+                    className="hover:bg-app-surface-hover h-8 w-8 p-0 transition-colors duration-200"
                   >
-                    <ChevronLeft className="h-4 w-4 text-app-secondary" />
+                    <ChevronLeft className="text-app-secondary h-4 w-4" />
                   </Button>
                 )}
                 <div>
                   {title && (
-                    <DialogTitle className="text-lg font-semibold text-app-primary tracking-tight text-left">
+                    <DialogTitle className="text-app-primary text-left text-lg font-semibold tracking-tight">
                       {title}
                     </DialogTitle>
                   )}
@@ -71,7 +85,7 @@ export function ResponsiveModal({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-8 w-8 p-0 hover:bg-app-surface-hover transition-colors duration-200"
+                  className="hover:bg-app-surface-hover h-8 w-8 p-0 transition-colors duration-200"
                   onClick={() => {
                     // Avoid leaving focus on a control that may become hidden
                     requestAnimationFrame(() => {
@@ -81,7 +95,7 @@ export function ResponsiveModal({
                   }}
                   onMouseDown={(e) => e.preventDefault()}
                 >
-                  <X className="h-4 w-4 text-app-secondary" />
+                  <X className="text-app-secondary h-4 w-4" />
                 </Button>
               </DialogClose>
             </div>
@@ -89,7 +103,7 @@ export function ResponsiveModal({
           <div className="flex-1 overflow-y-auto">
             {description && (
               <div className="px-0 pb-2">
-                <p className="text-sm text-left text-app-secondary">{description}</p>
+                <p className="text-app-secondary text-left text-sm">{description}</p>
               </div>
             )}
             {children}
@@ -104,9 +118,9 @@ export function ResponsiveModal({
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent className="bg-app-background border-app flex flex-col">
         {/* iOS-style drag handle */}
-        <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-app-tertiary/30" />
+        <div className="bg-app-tertiary/30 mx-auto mt-2 h-1 w-10 rounded-full" />
 
-        <DrawerHeader className="pb-0 px-4 pt-2">
+        <DrawerHeader className="px-4 pb-0 pt-2">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-2">
               {showBackButton && onBack && (
@@ -114,14 +128,14 @@ export function ResponsiveModal({
                   variant="ghost"
                   size="sm"
                   onClick={onBack}
-                  className="h-8 w-8 p-0 hover:bg-app-surface-hover transition-colors duration-200"
+                  className="hover:bg-app-surface-hover h-8 w-8 p-0 transition-colors duration-200"
                 >
-                  <ChevronLeft className="h-4 w-4 text-app-secondary" />
+                  <ChevronLeft className="text-app-secondary h-4 w-4" />
                 </Button>
               )}
               <div className="flex-1">
                 {title && (
-                  <DrawerTitle className="text-lg font-semibold text-app-primary tracking-tight text-left">
+                  <DrawerTitle className="text-app-primary text-left text-lg font-semibold tracking-tight">
                     {title}
                   </DrawerTitle>
                 )}
@@ -130,7 +144,7 @@ export function ResponsiveModal({
               </div>
             </div>
             <DrawerClose
-              className="h-8 w-8 flex items-center justify-center hover:bg-app-surface-hover transition-colors duration-200"
+              className="hover:bg-app-surface-hover flex h-8 w-8 items-center justify-center transition-colors duration-200"
               onClick={() => {
                 requestAnimationFrame(() => {
                   const active = document.activeElement as HTMLElement | null;
@@ -139,21 +153,23 @@ export function ResponsiveModal({
               }}
               onMouseDown={(e) => e.preventDefault()}
             >
-              <X className="h-4 w-4 text-app-secondary" />
+              <X className="text-app-secondary h-4 w-4" />
             </DrawerClose>
           </div>
         </DrawerHeader>
 
         <div className="flex-1 overflow-y-auto px-4">
           {description && (
-            <div className="pt-1 pb-2">
-              <p className="text-sm text-left text-app-secondary">{description}</p>
+            <div className="pb-2 pt-1">
+              <p className="text-app-secondary text-left text-sm">{description}</p>
             </div>
           )}
           <div className="p-2">{children}</div>
         </div>
 
-        {showFooter && <div className="p-4 mt-auto border-t border-app-border">{footerContent}</div>}
+        {showFooter && (
+          <div className="border-app-border mt-auto border-t p-4">{footerContent}</div>
+        )}
       </DrawerContent>
     </Drawer>
   );

@@ -66,7 +66,11 @@ export class EncryptionService {
     const encoder = new TextEncoder();
     const jsonData = encoder.encode(JSON.stringify(data));
 
-    const encryptedData = await crypto.subtle.encrypt({ name: CRYPTO_ALGO, iv: iv } as AesGcmParams, key, jsonData);
+    const encryptedData = await crypto.subtle.encrypt(
+      { name: CRYPTO_ALGO, iv: iv } as AesGcmParams,
+      key,
+      jsonData
+    );
 
     return {
       iv,
@@ -84,7 +88,7 @@ export class EncryptionService {
     const decryptedBuffer = await crypto.subtle.decrypt(
       { name: CRYPTO_ALGO, iv: encryptedData.iv } as AesGcmParams,
       key,
-      new Uint8Array(encryptedData.data),
+      new Uint8Array(encryptedData.data)
     );
 
     const decoder = new TextDecoder();
@@ -106,7 +110,7 @@ export class EncryptionService {
     return new Uint8Array(
       atob(base64)
         .split("")
-        .map((c) => c.charCodeAt(0)),
+        .map((c) => c.charCodeAt(0))
     );
   }
 }

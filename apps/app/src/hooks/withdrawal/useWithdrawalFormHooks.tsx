@@ -13,7 +13,7 @@ import { POOL_CHAIN_ID } from "@/config/chains";
 interface WithdrawalFormState {
   withdrawAmount: string;
   toAddress: string;
-  destinationChainId:number
+  destinationChainId: number;
 }
 
 interface WithdrawalValidationErrors {
@@ -26,7 +26,7 @@ export const useWithdrawalFormState = (selectedNote: Note | null, asset: { symbo
   const [form, setForm] = useState<WithdrawalFormState>({
     withdrawAmount: "",
     toAddress: "",
-    destinationChainId: POOL_CHAIN_ID
+    destinationChainId: POOL_CHAIN_ID,
   });
 
   const [validationErrors, setValidationErrors] = useState<WithdrawalValidationErrors>({
@@ -36,9 +36,8 @@ export const useWithdrawalFormState = (selectedNote: Note | null, asset: { symbo
 
   const availableBalance = useMemo(
     () => (selectedNote ? Number.parseFloat(formatEthAmount(selectedNote.amount)) : 0),
-    [selectedNote],
+    [selectedNote]
   );
-  
 
   const validateAmount = useCallback(
     (value: string): string => {
@@ -56,7 +55,7 @@ export const useWithdrawalFormState = (selectedNote: Note | null, asset: { symbo
         return "Please enter a valid amount";
       }
     },
-    [availableBalance, selectedNote, asset.symbol],
+    [availableBalance, selectedNote, asset.symbol]
   );
 
   const validateAddress = useCallback((value: string): string => {
@@ -73,7 +72,7 @@ export const useWithdrawalFormState = (selectedNote: Note | null, asset: { symbo
         amount: validateAmount(value),
       }));
     },
-    [validateAmount],
+    [validateAmount]
   );
 
   const handleAddressChange = useCallback(
@@ -84,7 +83,7 @@ export const useWithdrawalFormState = (selectedNote: Note | null, asset: { symbo
         toAddress: validateAddress(value),
       }));
     },
-    [validateAddress],
+    [validateAddress]
   );
 
   const handleMaxClick = useCallback(() => {
@@ -98,23 +97,23 @@ export const useWithdrawalFormState = (selectedNote: Note | null, asset: { symbo
   }, [availableBalance, validateAmount, selectedNote]);
 
   const handleDestinationChainChange = useCallback((chainId: number) => {
-    setForm(prev => ({
+    setForm((prev) => ({
       ...prev,
       destinationChainId: chainId,
       // Clear address when switching chains for UX
-      toAddress: chainId !== POOL_CHAIN_ID ? '' : prev.toAddress
+      toAddress: chainId !== POOL_CHAIN_ID ? "" : prev.toAddress,
     }));
     // Clear address validation error when switching chains
     if (chainId !== POOL_CHAIN_ID) {
-      setValidationErrors(prev => ({ ...prev, toAddress: '' }));
+      setValidationErrors((prev) => ({ ...prev, toAddress: "" }));
     }
   }, []);
 
   const resetForm = useCallback(() => {
-    setForm(prev => ({ 
-      ...prev, 
-      withdrawAmount: "", 
-      toAddress: "" 
+    setForm((prev) => ({
+      ...prev,
+      withdrawAmount: "",
+      toAddress: "",
       // Keep destinationChainId - don't reset user's chain selection
     }));
     setValidationErrors({ amount: "", toAddress: "" });
@@ -142,7 +141,11 @@ export const useWithdrawalFormState = (selectedNote: Note | null, asset: { symbo
 };
 
 // Note selection and discovery hook
-export const useNoteSelection = (publicKey: string, poolAddress: string, preSelectedNote?: Note | null) => {
+export const useNoteSelection = (
+  publicKey: string,
+  poolAddress: string,
+  preSelectedNote?: Note | null
+) => {
   const { data: noteDiscovery, loading: isLoadingNotes } = useCachedNotes(publicKey, poolAddress);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [isNoteDropdownOpen, setIsNoteDropdownOpen] = useState(false);

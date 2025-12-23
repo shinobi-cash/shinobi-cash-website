@@ -10,7 +10,7 @@ import {
   WithdrawalProofGenerator as SDKProofGenerator,
   type CircuitFileLoader,
   type WithdrawalProofData,
-} from '@shinobi-cash/core';
+} from "@shinobi-cash/core";
 
 // Re-export types for convenience
 export type { WithdrawalProofData };
@@ -22,16 +22,16 @@ export type { WithdrawalProofData };
  * Loads circuit files from the /circuits/ public directory using fetch
  */
 const loadWithdrawalCircuits: CircuitFileLoader = async () => {
-  console.log('📥 Loading withdrawal circuit files...');
+  console.log("📥 Loading withdrawal circuit files...");
 
   const [wasmResponse, zkeyResponse, vkeyResponse] = await Promise.all([
-    fetch('/circuits/build/withdraw/withdraw.wasm'),
-    fetch('/circuits/keys/withdraw.zkey'),
-    fetch('/circuits/keys/withdraw.vkey'),
+    fetch("/circuits/build/withdraw/withdraw.wasm"),
+    fetch("/circuits/keys/withdraw.zkey"),
+    fetch("/circuits/keys/withdraw.vkey"),
   ]);
 
   if (!wasmResponse.ok || !zkeyResponse.ok || !vkeyResponse.ok) {
-    throw new Error('Failed to load withdrawal circuit files from public directory');
+    throw new Error("Failed to load withdrawal circuit files from public directory");
   }
 
   const [wasmBuffer, zkeyBuffer, vkeyData] = await Promise.all([
@@ -40,7 +40,7 @@ const loadWithdrawalCircuits: CircuitFileLoader = async () => {
     vkeyResponse.json(),
   ]);
 
-  console.log('✅ Withdrawal circuit files loaded successfully');
+  console.log("✅ Withdrawal circuit files loaded successfully");
 
   return {
     wasmFile: new Uint8Array(wasmBuffer),
@@ -54,16 +54,16 @@ const loadWithdrawalCircuits: CircuitFileLoader = async () => {
  * Loads circuit files from the /circuits/ public directory using fetch
  */
 const loadCrosschainCircuits: CircuitFileLoader = async () => {
-  console.log('📥 Loading crosschain withdrawal circuit files...');
+  console.log("📥 Loading crosschain withdrawal circuit files...");
 
   const [wasmResponse, zkeyResponse, vkeyResponse] = await Promise.all([
-    fetch('/circuits/build/crosschain_withdraw/crosschain_withdrawal.wasm'),
-    fetch('/circuits/keys/crosschain_withdrawal.zkey'),
-    fetch('/circuits/keys/crosschain_withdrawal.vkey'),
+    fetch("/circuits/build/crosschain_withdraw/crosschain_withdrawal.wasm"),
+    fetch("/circuits/keys/crosschain_withdrawal.zkey"),
+    fetch("/circuits/keys/crosschain_withdrawal.vkey"),
   ]);
 
   if (!wasmResponse.ok || !zkeyResponse.ok || !vkeyResponse.ok) {
-    throw new Error('Failed to load crosschain circuit files from public directory');
+    throw new Error("Failed to load crosschain circuit files from public directory");
   }
 
   const [wasmBuffer, zkeyBuffer, vkeyData] = await Promise.all([
@@ -72,7 +72,7 @@ const loadCrosschainCircuits: CircuitFileLoader = async () => {
     vkeyResponse.json(),
   ]);
 
-  console.log('✅ Crosschain circuit files loaded successfully');
+  console.log("✅ Crosschain circuit files loaded successfully");
 
   return {
     wasmFile: new Uint8Array(wasmBuffer),

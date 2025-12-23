@@ -73,7 +73,9 @@ export class IndexedDBAdapter<T = unknown> implements IEncryptedStorageAdapter<T
         if (oldVersion < 3) {
           if (!db.objectStoreNames.contains(PASSKEY_STORE_NAME)) {
             console.log("Creating passkey store");
-            const passkeyStore = db.createObjectStore(PASSKEY_STORE_NAME, { keyPath: "accountName" });
+            const passkeyStore = db.createObjectStore(PASSKEY_STORE_NAME, {
+              keyPath: "accountName",
+            });
             passkeyStore.createIndex("publicKeyHash", "publicKeyHash", { unique: false });
             passkeyStore.createIndex("credentialId", "credentialId", { unique: false });
           }
@@ -168,7 +170,11 @@ export class IndexedDBAdapter<T = unknown> implements IEncryptedStorageAdapter<T
 
       // Check if store exists
       if (!this.db?.objectStoreNames.contains(this.storeName)) {
-        reject(new Error(`Database corruption: ${this.storeName} object store missing. Try clearing browser data.`));
+        reject(
+          new Error(
+            `Database corruption: ${this.storeName} object store missing. Try clearing browser data.`
+          )
+        );
         return;
       }
 
@@ -262,7 +268,10 @@ export class IndexedDBAdapter<T = unknown> implements IEncryptedStorageAdapter<T
     if (!this.db) await this.init();
 
     return new Promise((resolve, reject) => {
-      const transaction = this.db?.transaction([STORE_NAME, ACCOUNT_STORE_NAME, PASSKEY_STORE_NAME], "readwrite");
+      const transaction = this.db?.transaction(
+        [STORE_NAME, ACCOUNT_STORE_NAME, PASSKEY_STORE_NAME],
+        "readwrite"
+      );
       if (!transaction) {
         reject(new Error("Failed to create transaction"));
         return;
@@ -303,8 +312,14 @@ const sharedEncryptionService = new EncryptionService();
 
 // Create store-specific adapters
 export const notesStorageAdapter = new IndexedDBAdapter(STORE_NAME, sharedEncryptionService);
-export const accountStorageAdapter = new IndexedDBAdapter(ACCOUNT_STORE_NAME, sharedEncryptionService);
-export const passkeyStorageAdapter = new IndexedDBAdapter(PASSKEY_STORE_NAME, sharedEncryptionService);
+export const accountStorageAdapter = new IndexedDBAdapter(
+  ACCOUNT_STORE_NAME,
+  sharedEncryptionService
+);
+export const passkeyStorageAdapter = new IndexedDBAdapter(
+  PASSKEY_STORE_NAME,
+  sharedEncryptionService
+);
 
 // Export shared encryption service for repositories
 export { sharedEncryptionService };

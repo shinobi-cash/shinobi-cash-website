@@ -94,7 +94,10 @@ export function calculateContextHash(
 ): bigint {
   return hashToBigInt(
     encodeAbiParameters(
-      [{ type: "tuple", components: [{ type: "address" }, { type: "bytes" }] }, { type: "uint256" }],
+      [
+        { type: "tuple", components: [{ type: "address" }, { type: "bytes" }] },
+        { type: "uint256" },
+      ],
       [withdrawalDataStruct, BigInt(poolScope)]
     )
   );

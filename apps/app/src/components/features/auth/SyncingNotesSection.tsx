@@ -18,11 +18,14 @@ interface SyncingNotesSectionProps {
       onClick: () => void;
       variant?: "default" | "outline" | "ghost";
       disabled?: boolean;
-    } | null,
+    } | null
   ) => void;
 }
 
-export function SyncingNotesSection({ onSyncComplete, registerFooterActions }: SyncingNotesSectionProps) {
+export function SyncingNotesSection({
+  onSyncComplete,
+  registerFooterActions,
+}: SyncingNotesSectionProps) {
   const { publicKey, accountKey } = useAuth();
 
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
@@ -103,27 +106,27 @@ export function SyncingNotesSection({ onSyncComplete, registerFooterActions }: S
     const baseContent = (
       <>
         <div className="flex justify-center">
-          <CheckCircle className="w-16 h-16 text-green-500" />
+          <CheckCircle className="h-16 w-16 text-green-500" />
         </div>
-        <div className="text-center mb-6">
-          <h3 className="text-lg font-semibold text-app-primary mb-2">Welcome to Shinobi!</h3>
-          <p className="text-sm text-app-secondary">Your account is ready to use</p>
+        <div className="mb-6 text-center">
+          <h3 className="text-app-primary mb-2 text-lg font-semibold">Welcome to Shinobi!</h3>
+          <p className="text-app-secondary text-sm">Your account is ready to use</p>
         </div>
       </>
     );
 
-    return <div className="text-center space-y-4">{baseContent}</div>;
+    return <div className="space-y-4 text-center">{baseContent}</div>;
   }
 
   if (status === "error") {
     return (
-      <div className="text-center space-y-4">
+      <div className="space-y-4 text-center">
         <div className="flex justify-center">
-          <RefreshCw className="w-16 h-16 text-red-500" />
+          <RefreshCw className="h-16 w-16 text-red-500" />
         </div>
         <div>
-          <h3 className="text-lg font-semibold text-app-primary mb-2">Sync Failed</h3>
-          <p className="text-sm text-app-secondary mb-4">{error}</p>
+          <h3 className="text-app-primary mb-2 text-lg font-semibold">Sync Failed</h3>
+          <p className="text-app-secondary mb-4 text-sm">{error}</p>
         </div>
       </div>
     );
@@ -131,14 +134,16 @@ export function SyncingNotesSection({ onSyncComplete, registerFooterActions }: S
 
   // default: loading
   return (
-    <div className="text-center space-y-6">
+    <div className="space-y-6 text-center">
       <div className="flex justify-center">
-        <Loader2 className="w-16 h-16 text-app-primary animate-spin" />
+        <Loader2 className="text-app-primary h-16 w-16 animate-spin" />
       </div>
       <div>
-        <h3 className="text-lg font-semibold text-app-primary mb-2">Syncing Your Notes</h3>
-        <p className="text-sm text-app-secondary mb-2">Discovering your privacy notes from the blockchain...</p>
-        <p className="text-xs text-app-tertiary mb-4">This may take a few minutes</p>
+        <h3 className="text-app-primary mb-2 text-lg font-semibold">Syncing Your Notes</h3>
+        <p className="text-app-secondary mb-2 text-sm">
+          Discovering your privacy notes from the blockchain...
+        </p>
+        <p className="text-app-tertiary mb-4 text-xs">This may take a few minutes</p>
       </div>
     </div>
   );

@@ -105,14 +105,15 @@ export function AddPasskeyModal({ open, onOpenChange }: AddPasskeyModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md bg-linear-to-br from-gray-900 via-gray-900 border-gray-700">
+      <DialogContent className="bg-linear-to-br border-gray-700 from-gray-900 via-gray-900 sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-white">
             <Fingerprint className="h-5 w-5 text-blue-500" />
             Add Passkey
           </DialogTitle>
           <DialogDescription className="text-gray-400">
-            Add a passkey to your account for convenient sign-in without needing to connect your wallet each time.
+            Add a passkey to your account for convenient sign-in without needing to connect your
+            wallet each time.
           </DialogDescription>
         </DialogHeader>
 
@@ -134,13 +135,13 @@ export function AddPasskeyModal({ open, onOpenChange }: AddPasskeyModalProps) {
               aria-invalid={!!accountNameError}
               disabled={isProcessing}
             />
-            {accountNameError && <p className="text-red-400 text-xs">{accountNameError}</p>}
+            {accountNameError && <p className="text-xs text-red-400">{accountNameError}</p>}
           </div>
 
           {setupError && (
-            <div className="flex items-center gap-2 p-3 bg-red-950/20 border border-red-900 rounded-lg">
-              <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
-              <p className="text-red-400 text-sm">{setupError}</p>
+            <div className="flex items-center gap-2 rounded-lg border border-red-900 bg-red-950/20 p-3">
+              <AlertCircle className="h-4 w-4 flex-shrink-0 text-red-400" />
+              <p className="text-sm text-red-400">{setupError}</p>
             </div>
           )}
 
@@ -153,7 +154,7 @@ export function AddPasskeyModal({ open, onOpenChange }: AddPasskeyModalProps) {
             >
               Cancel
             </Button>
-            <Button variant={'default'} type="submit" disabled={!canSubmit}>
+            <Button variant={"default"} type="submit" disabled={!canSubmit}>
               <Fingerprint /> {isProcessing ? "Creating..." : "Create Passkey"}
             </Button>
           </DialogFooter>

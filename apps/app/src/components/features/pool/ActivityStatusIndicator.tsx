@@ -8,7 +8,7 @@ interface ActivityStatusIndicatorProps {
 export const ActivityStatusIndicator = ({ type, status }: ActivityStatusIndicatorProps) => {
   // Withdrawals and ragequits are always auto-approved (green)
   if (type === "WITHDRAWAL" || type === "RAGEQUIT" || type === "CROSSCHAIN_WITHDRAWAL") {
-    return <div className="w-3 h-3 rounded-full bg-status-success" />;
+    return <div className="bg-status-success h-3 w-3 rounded-full" />;
   }
 
   // Deposits (same-chain and cross-chain) have different statuses
@@ -20,8 +20,8 @@ export const ActivityStatusIndicator = ({ type, status }: ActivityStatusIndicato
     } as const;
 
     const color = colorMap[status as keyof typeof colorMap] || "bg-status-neutral";
-    return <div className={`w-3 h-3 rounded-full ${color}`} />;
+    return <div className={`h-3 w-3 rounded-full ${color}`} />;
   }
 
-  return <div className="w-3 h-3 rounded-full bg-status-neutral" />;
+  return <div className="bg-status-neutral h-3 w-3 rounded-full" />;
 };

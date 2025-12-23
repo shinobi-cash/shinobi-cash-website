@@ -8,7 +8,16 @@
 
 import { storageManager, KDF } from "@/lib/storage";
 import { getAccountKey, type KeyGenerationResult, restoreFromMnemonic } from "@shinobi-cash/core";
-import { type ReactNode, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type ReactNode,
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 interface QuickAuthState {
   show: boolean;
@@ -140,8 +149,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!currentQuickAuthState) return;
 
     try {
-      const { symmetricKey } = await KDF.deriveKeyFromPassword(password, currentQuickAuthState.accountName);
-      await storageManager.initializeAccountSession(currentQuickAuthState.accountName, symmetricKey);
+      const { symmetricKey } = await KDF.deriveKeyFromPassword(
+        password,
+        currentQuickAuthState.accountName
+      );
+      await storageManager.initializeAccountSession(
+        currentQuickAuthState.accountName,
+        symmetricKey
+      );
       const accountData = await storageManager.getAccountData();
       if (!accountData) throw new Error("Account data not found");
 
@@ -170,34 +185,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Memoize context value to prevent unnecessary re-renders when parent re-renders
-  const contextValue = useMemo(() => ({
-    isAuthenticated,
-    isRestoringSession,
-    publicKey: derivedKeys.publicKey,
-    privateKey: derivedKeys.privateKey,
-    mnemonic,
-    accountKey,
-    quickAuthState,
-    setKeys,
-    signOut,
-    handleQuickPasswordAuth,
-    dismissQuickAuth,
-  }), [
-    isAuthenticated,
-    isRestoringSession,
-    derivedKeys.publicKey,
-    derivedKeys.privateKey,
-    mnemonic,
-    accountKey,
-    quickAuthState,
-    // Don't include callbacks - they're already memoized with useCallback
-  ]);
-
-  return (
-    <AuthContext.Provider value={contextValue}>
-      {children}
-    </AuthContext.Provider>
+  const contextValue = useMemo(
+    () => ({
+      isAuthenticated,
+      isRestoringSession,
+      publicKey: derivedKeys.publicKey,
+      privateKey: derivedKeys.privateKey,
+      mnemonic,
+      accountKey,
+      quickAuthState,
+      setKeys,
+      signOut,
+      handleQuickPasswordAuth,
+      dismissQuickAuth,
+    }),
+    [
+      isAuthenticated,
+      isRestoringSession,
+      derivedKeys.publicKey,
+      derivedKeys.privateKey,
+      mnemonic,
+      accountKey,
+      quickAuthState,
+      // Don't include callbacks - they're already memoized with useCallback
+    ]
   );
+
+  return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

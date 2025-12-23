@@ -33,7 +33,7 @@ function isStorageRecord(value: unknown): value is StorageRecord {
 export class AccountRepository {
   constructor(
     private storageAdapter: IndexedDBAdapter,
-    private encryptionService: EncryptionService,
+    private encryptionService: EncryptionService
   ) {}
 
   /**
@@ -96,7 +96,8 @@ export class AccountRepository {
           salt: this.encryptionService.base64ToArrayBuffer(result.encryptedPayload.salt),
         };
 
-        const decryptedData = await this.encryptionService.decrypt<CachedAccountData>(encryptedData);
+        const decryptedData =
+          await this.encryptionService.decrypt<CachedAccountData>(encryptedData);
         return decryptedData;
       } catch (decryptionError) {
         console.error("Failed to decrypt account data:", decryptionError);

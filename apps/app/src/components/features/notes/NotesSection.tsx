@@ -35,11 +35,13 @@ export function NotesSection({ noteChains, loading, error, onNoteChainClick }: N
     const lastNote = chain[chain.length - 1];
     return lastNote.status === "unspent" && !lastNote.isActivated;
   }).length;
-  const spentCount = noteChains.filter((chain) => chain[chain.length - 1].status === "spent").length;
+  const spentCount = noteChains.filter(
+    (chain) => chain[chain.length - 1].status === "spent"
+  ).length;
 
   return (
-    <div className="flex-1 flex flex-col min-h-0">
-      <div className="flex-shrink-0 bg-app-surface border border-app rounded-t-xl">
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="bg-app-surface border-app flex-shrink-0 rounded-t-xl border">
         <div className="flex">
           <button
             type="button"
@@ -77,19 +79,21 @@ export function NotesSection({ noteChains, loading, error, onNoteChainClick }: N
         </div>
       </div>
 
-      <div className="flex-1 bg-app-surface border-x border-b border-app rounded-b-xl overflow-hidden">
+      <div className="bg-app-surface border-app flex-1 overflow-hidden rounded-b-xl border-x border-b">
         <div className="h-full overflow-y-auto">
           {error ? (
             <div className="flex items-center justify-center py-8">
               <div className="text-center">
                 <p className="text-app-secondary mb-1">Unable to load notes</p>
-                <p className="text-sm text-app-tertiary">Please check your connection and try again</p>
+                <p className="text-app-tertiary text-sm">
+                  Please check your connection and try again
+                </p>
               </div>
             </div>
           ) : loading ? (
             <div className="flex items-center justify-center py-8">
               <div className="text-center">
-                <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-app-secondary" />
+                <RefreshCw className="text-app-secondary mx-auto mb-2 h-6 w-6 animate-spin" />
                 <p className="text-app-secondary">Discovering your notes...</p>
               </div>
             </div>
@@ -98,21 +102,23 @@ export function NotesSection({ noteChains, loading, error, onNoteChainClick }: N
               <div className="text-center">
                 {activeFilter === "unspent" ? (
                   <>
-                    <span className="text-2xl mb-2 block">💸</span>
+                    <span className="mb-2 block text-2xl">💸</span>
                     <p className="text-app-secondary mb-1">No available funds</p>
-                    <p className="text-sm text-app-tertiary">All your deposits have been spent</p>
+                    <p className="text-app-tertiary text-sm">All your deposits have been spent</p>
                   </>
                 ) : activeFilter === "pending" ? (
                   <>
-                    <span className="text-2xl mb-2 block">⏳</span>
+                    <span className="mb-2 block text-2xl">⏳</span>
                     <p className="text-app-secondary mb-1">No pending deposits</p>
-                    <p className="text-sm text-app-tertiary">All cross-chain deposits have been filled</p>
+                    <p className="text-app-tertiary text-sm">
+                      All cross-chain deposits have been filled
+                    </p>
                   </>
                 ) : (
                   <>
-                    <span className="text-2xl mb-2 block">🔒</span>
+                    <span className="mb-2 block text-2xl">🔒</span>
                     <p className="text-app-secondary mb-1">No spent deposits</p>
-                    <p className="text-sm text-app-tertiary">Your deposits are still available</p>
+                    <p className="text-app-tertiary text-sm">Your deposits are still available</p>
                   </>
                 )}
               </div>
@@ -120,9 +126,11 @@ export function NotesSection({ noteChains, loading, error, onNoteChainClick }: N
           ) : noteChains.length === 0 ? (
             <div className="flex items-center justify-center py-12">
               <div className="text-center">
-                <span className="text-2xl mb-2 block">💰</span>
+                <span className="mb-2 block text-2xl">💰</span>
                 <p className="text-app-secondary mb-1">No deposits yet</p>
-                <p className="text-sm text-app-tertiary">Make your first private deposit to get started</p>
+                <p className="text-app-tertiary text-sm">
+                  Make your first private deposit to get started
+                </p>
               </div>
             </div>
           ) : (
@@ -132,7 +140,7 @@ export function NotesSection({ noteChains, loading, error, onNoteChainClick }: N
                 return (
                   <div
                     key={`chain-${index}-${lastNote.depositIndex}-${lastNote.changeIndex}`}
-                    className="border-b border-app-border last:border-b-0"
+                    className="border-app-border border-b last:border-b-0"
                   >
                     <NoteRow
                       note={lastNote}

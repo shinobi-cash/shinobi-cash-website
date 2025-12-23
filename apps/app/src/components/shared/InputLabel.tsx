@@ -13,7 +13,7 @@ export function InputLabel({ label, labelRight }: InputLabelProps) {
   if (!label && !labelRight) return null;
 
   return (
-    <div className="flex items-center justify-between mb-2">
+    <div className="mb-2 flex items-center justify-between">
       {label && <label className="text-sm text-gray-400">{label}</label>}
       {labelRight}
     </div>

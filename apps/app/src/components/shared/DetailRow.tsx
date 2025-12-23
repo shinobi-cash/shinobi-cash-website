@@ -20,14 +20,12 @@ export function DetailRow({
   value,
   className,
   labelClassName,
-  valueClassName
+  valueClassName,
 }: DetailRowProps) {
   return (
     <div className={cn("flex items-center justify-between px-2 py-2", className)}>
-      <span className={cn("text-xs font-medium text-app-secondary", labelClassName)}>
-        {label}
-      </span>
-      <span className={cn("text-xs font-semibold text-app-primary text-right", valueClassName)}>
+      <span className={cn("text-app-secondary text-xs font-medium", labelClassName)}>{label}</span>
+      <span className={cn("text-app-primary text-right text-xs font-semibold", valueClassName)}>
         {value}
       </span>
     </div>

@@ -14,7 +14,8 @@ import {
 } from "./AppErrors";
 
 // Lazy import to avoid circular dependencies
-let reportErrorToSentry: ((error: unknown, context?: Record<string, unknown>) => void) | null = null;
+let reportErrorToSentry: ((error: unknown, context?: Record<string, unknown>) => void) | null =
+  null;
 
 // Initialize Sentry integration if available
 if (process.env.NODE_ENV === "production" || process.env.NEXT_PUBLIC_SENTRY_ENABLED === "true") {
@@ -159,7 +160,7 @@ export function logError(
     userId?: string;
     suppressed?: boolean; // Already checked before calling
     [key: string]: unknown;
-  },
+  }
 ): void {
   // Skip if already marked as suppressed
   if (context?.suppressed) return;
@@ -213,7 +214,7 @@ export function logError(
       console.warn(
         `[${context?.action ?? "Unknown"}]`,
         error instanceof Error ? error.message : String(error),
-        context,
+        context
       );
       return;
     }
@@ -319,7 +320,7 @@ export function wrapError(
   error: unknown,
   category: ErrorCategory,
   code: string,
-  message: string,
+  message: string
 ): AppError {
   return new AppError(category, code, message, {
     cause: error,

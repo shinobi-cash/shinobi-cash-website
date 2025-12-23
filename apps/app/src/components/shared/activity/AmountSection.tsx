@@ -20,9 +20,10 @@ export function AmountSection({
   originalAmount,
   vettingFeeAmount,
   activityType,
-  showBreakdown = false
+  showBreakdown = false,
 }: AmountSectionProps) {
-  const hasBreakdown = showBreakdown &&
+  const hasBreakdown =
+    showBreakdown &&
     originalAmount != null &&
     originalAmount > BigInt(0) &&
     vettingFeeAmount != null &&
@@ -34,25 +35,25 @@ export function AmountSection({
     return (
       <SectionCard title="Deposit Breakdown" headerClassName="px-0 py-1" className="p-2">
         <div className="space-y-2 pt-2">
-          <div className="flex justify-between items-center">
-            <span className="text-xs text-app-secondary">Original Amount:</span>
-            <span className="text-xs font-semibold text-app-primary tabular-nums">
+          <div className="flex items-center justify-between">
+            <span className="text-app-secondary text-xs">Original Amount:</span>
+            <span className="text-app-primary text-xs font-semibold tabular-nums">
               {formatEthAmount(originalAmount!)} ETH
             </span>
           </div>
 
-          <div className="flex justify-between items-center">
-            <span className="text-xs text-app-secondary">Vetting Fee:</span>
-            <span className="text-xs font-semibold text-red-500 tabular-nums">
+          <div className="flex items-center justify-between">
+            <span className="text-app-secondary text-xs">Vetting Fee:</span>
+            <span className="text-xs font-semibold tabular-nums text-red-500">
               -{formatEthAmount(vettingFeeAmount!)} ETH
             </span>
           </div>
 
-          <div className="border-t border-app-border my-1" />
+          <div className="border-app-border my-1 border-t" />
 
-          <div className="flex justify-between items-center">
-            <span className="text-xs font-medium text-app-secondary">Final Amount:</span>
-            <span className="text-lg font-bold text-app-primary tabular-nums">
+          <div className="flex items-center justify-between">
+            <span className="text-app-secondary text-xs font-medium">Final Amount:</span>
+            <span className="text-app-primary text-lg font-bold tabular-nums">
               {formatEthAmount(amount!)} ETH
             </span>
           </div>
@@ -64,13 +65,11 @@ export function AmountSection({
   return (
     <SectionCard className="p-2">
       <div className="text-center">
-        <p className="text-sm font-medium text-app-secondary mb-1">Amount</p>
-        <p className="text-2xl font-bold text-app-primary tabular-nums">
-          {amount !== null ? `${formatEthAmount(amount)} ETH` : '0 ETH'}
+        <p className="text-app-secondary mb-1 text-sm font-medium">Amount</p>
+        <p className="text-app-primary text-2xl font-bold tabular-nums">
+          {amount !== null ? `${formatEthAmount(amount)} ETH` : "0 ETH"}
         </p>
-        {isDeposit && (
-          <p className="text-xs text-app-tertiary mt-0.5">After vetting fees</p>
-        )}
+        {isDeposit && <p className="text-app-tertiary mt-0.5 text-xs">After vetting fees</p>}
       </div>
     </SectionCard>
   );

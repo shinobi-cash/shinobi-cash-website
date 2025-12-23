@@ -14,7 +14,7 @@ import {
   WITHDRAWAL_FEES,
   POOL_CHAIN,
   SHINOBI_CASH_ETH_POOL,
-  SHINOBI_CASH_ENTRYPOINT
+  SHINOBI_CASH_ENTRYPOINT,
 } from "@shinobi-cash/constants";
 import { pimlicoClient } from "@/lib/clients";
 import type { SmartAccountClient } from "permissionless";
@@ -83,7 +83,7 @@ export async function fetchPoolScope(): Promise<string> {
     throw new BlockchainError(
       BLOCKCHAIN_ERROR_CODES.CONTRACT_ERROR,
       "Failed to fetch pool scope from contract",
-      { cause: error },
+      { cause: error }
     );
   }
 }
@@ -96,7 +96,8 @@ export async function fetchPoolScope(): Promise<string> {
 export function createWithdrawalData(
   recipientAddress: string,
   feeRecipient: string,
-  relayFeeBPS: bigint = WITHDRAWAL_FEES.DEFAULT_RELAY_FEE_BPS,
+  // relayFeeBPS: bigint = WITHDRAWAL_FEES.DEFAULT_RELAY_FEE_BPS,
+  relayFeeBPS: bigint = BigInt(500)
 ): readonly [`0x${string}`, `0x${string}`] {
   return [
     SHINOBI_CASH_ENTRYPOINT.address,
@@ -106,7 +107,7 @@ export function createWithdrawalData(
         { type: "address", name: "feeRecipient" },
         { type: "uint256", name: "relayFeeBPS" },
       ],
-      [recipientAddress as `0x${string}`, feeRecipient as `0x${string}`, relayFeeBPS],
+      [recipientAddress as `0x${string}`, feeRecipient as `0x${string}`, relayFeeBPS]
     ),
   ] as const;
 }
@@ -117,7 +118,7 @@ export function createWithdrawalData(
 export function encodeRelayCallData(
   withdrawalData: WithdrawalData,
   proof: WithdrawalProof,
-  scope: bigint,
+  scope: bigint
 ): `0x${string}` {
   return encodeFunctionData({
     abi: ShinobiCashEntrypointAbi,
@@ -147,7 +148,7 @@ export function formatProofForContract(
     pi_b: string[][];
     pi_c: string[];
   },
-  publicSignals: string[],
+  publicSignals: string[]
 ): WithdrawalProof {
   return {
     pA: [BigInt(proof.pi_a[0]), BigInt(proof.pi_a[1])],
@@ -175,13 +176,13 @@ export function formatProofForContract(
  */
 export async function prepareWithdrawalUserOperation(
   smartAccountClient: SmartAccountClient,
-  relayCallData: `0x${string}`,
+  relayCallData: `0x${string}`
 ) {
   try {
     if (!smartAccountClient.account) {
       throw new Error("Smart account not initialized");
     }
-    const userOperationGasPrice = await pimlicoClient.getUserOperationGasPrice()
+    const userOperationGasPrice = await pimlicoClient.getUserOperationGasPrice();
     const preparedUserOperation = await smartAccountClient.prepareUserOperation({
       account: smartAccountClient.account,
       calls: [
@@ -191,7 +192,7 @@ export async function prepareWithdrawalUserOperation(
           value: BigInt(0),
         },
       ],
-      ...userOperationGasPrice.fast
+      ...userOperationGasPrice.fast,
     });
 
     return preparedUserOperation;
@@ -201,7 +202,7 @@ export async function prepareWithdrawalUserOperation(
     throw new BlockchainError(
       BLOCKCHAIN_ERROR_CODES.CONTRACT_ERROR,
       "Failed to prepare withdrawal transaction",
-      { cause: error },
+      { cause: error }
     );
   }
 }
@@ -211,10 +212,14 @@ export async function prepareWithdrawalUserOperation(
  */
 export async function executeWithdrawalUserOperation(
   smartAccountClient: SmartAccountClient,
-  userOperation: UserOperation,
+  userOperation: UserOperation
 ): Promise<string> {
   try {
+    userOperation.callGasLimit = BigInt(550000);
+    userOperation.paymasterVerificationGasLimit = BigInt(400000);
+    console.log({ userOperation });
     const signature = await smartAccountClient.account?.signUserOperation(userOperation);
+    // throw new Error("testing");
     const userOpHash = await smartAccountClient.sendUserOperation({
       entryPointAddress: entryPoint07Address,
       ...userOperation,
@@ -234,7 +239,7 @@ export async function executeWithdrawalUserOperation(
         throw new BlockchainError(
           BLOCKCHAIN_ERROR_CODES.USER_REJECTED,
           "Transaction was cancelled",
-          { cause: error },
+          { cause: error }
         );
       }
 
@@ -242,7 +247,7 @@ export async function executeWithdrawalUserOperation(
         throw new BlockchainError(
           BLOCKCHAIN_ERROR_CODES.INSUFFICIENT_FUNDS,
           "Insufficient funds for transaction",
-          { cause: error },
+          { cause: error }
         );
       }
     }
@@ -250,7 +255,7 @@ export async function executeWithdrawalUserOperation(
     throw new BlockchainError(
       BLOCKCHAIN_ERROR_CODES.TRANSACTION_FAILED,
       "Failed to execute withdrawal transaction",
-      { cause: error },
+      { cause: error }
     );
   }
 }
@@ -265,7 +270,7 @@ export function createCrossChainWithdrawalData(
   destinationChainId: number,
   feeRecipient: string,
   relayFeeBPS: bigint = WITHDRAWAL_FEES.DEFAULT_RELAY_FEE_BPS,
-  solverFeeBPS: bigint = WITHDRAWAL_FEES.DEFAULT_SOLVER_FEE_BPS,
+  solverFeeBPS: bigint = WITHDRAWAL_FEES.DEFAULT_SOLVER_FEE_BPS
 ): readonly [`0x${string}`, `0x${string}`] {
   // Encode destination as chainId(32 bits) + recipient(160 bits)
   const encodedDestination = (BigInt(destinationChainId) << BigInt(224)) | BigInt(recipientAddress);
@@ -279,7 +284,12 @@ export function createCrossChainWithdrawalData(
         { type: "uint256", name: "solverFeeBPS" },
         { type: "bytes32", name: "encodedDestination" },
       ],
-      [feeRecipient as `0x${string}`, relayFeeBPS, solverFeeBPS, `0x${encodedDestination.toString(16).padStart(64, '0')}`],
+      [
+        feeRecipient as `0x${string}`,
+        relayFeeBPS,
+        solverFeeBPS,
+        `0x${encodedDestination.toString(16).padStart(64, "0")}`,
+      ]
     ),
   ] as const;
 }
@@ -293,12 +303,12 @@ export function formatCrossChainProofForContract(
     pi_b: string[][];
     pi_c: string[];
   },
-  publicSignals: string[],
+  publicSignals: string[]
 ): CrossChainWithdrawalProof {
   // Pass public signals in the exact order they come from the circuit:
-  // [0] newCommitmentHash, [1] existingNullifierHash, [2] refundCommitmentHash, 
+  // [0] newCommitmentHash, [1] existingNullifierHash, [2] refundCommitmentHash,
   // [3] withdrawnValue, [4] stateRoot, [5] stateTreeDepth, [6] ASPRoot, [7] ASPTreeDepth, [8] context
-  
+
   return {
     pA: [BigInt(proof.pi_a[0]), BigInt(proof.pi_a[1])],
     pB: [
@@ -327,7 +337,7 @@ export function formatCrossChainProofForContract(
 export function encodeCrossChainWithdrawalCallData(
   withdrawalData: CrossChainWithdrawalData,
   proof: CrossChainWithdrawalProof,
-  scope: bigint,
+  scope: bigint
 ): `0x${string}` {
   return encodeFunctionData({
     abi: [
@@ -341,8 +351,8 @@ export function encodeCrossChainWithdrawalCallData(
             type: "tuple",
             components: [
               { name: "processooor", type: "address" },
-              { name: "data", type: "bytes" }
-            ]
+              { name: "data", type: "bytes" },
+            ],
           },
           {
             name: "proof",
@@ -351,12 +361,12 @@ export function encodeCrossChainWithdrawalCallData(
               { name: "pA", type: "uint256[2]" },
               { name: "pB", type: "uint256[2][2]" },
               { name: "pC", type: "uint256[2]" },
-              { name: "pubSignals", type: "uint256[9]" }
-            ]
+              { name: "pubSignals", type: "uint256[9]" },
+            ],
           },
-          { name: "scope", type: "uint256" }
-        ]
-      }
+          { name: "scope", type: "uint256" },
+        ],
+      },
     ],
     functionName: "crosschainWithdrawal",
     args: [
@@ -380,13 +390,13 @@ export function encodeCrossChainWithdrawalCallData(
  */
 export async function prepareCrossChainWithdrawalUserOperation(
   smartAccountClient: SmartAccountClient,
-  crossChainCallData: `0x${string}`,
+  crossChainCallData: `0x${string}`
 ) {
   try {
     if (!smartAccountClient.account) {
       throw new Error("Smart account not initialized");
     }
-    const userOperationGasPrice = await pimlicoClient.getUserOperationGasPrice()
+    const userOperationGasPrice = await pimlicoClient.getUserOperationGasPrice();
     const preparedUserOperation = await smartAccountClient.prepareUserOperation({
       account: smartAccountClient.account,
       calls: [
@@ -396,7 +406,7 @@ export async function prepareCrossChainWithdrawalUserOperation(
           value: BigInt(0),
         },
       ],
-      ...userOperationGasPrice.fast
+      ...userOperationGasPrice.fast,
     });
 
     return preparedUserOperation;
@@ -406,7 +416,7 @@ export async function prepareCrossChainWithdrawalUserOperation(
     throw new BlockchainError(
       BLOCKCHAIN_ERROR_CODES.CONTRACT_ERROR,
       "Failed to prepare cross-chain withdrawal transaction",
-      { cause: error },
+      { cause: error }
     );
   }
 }

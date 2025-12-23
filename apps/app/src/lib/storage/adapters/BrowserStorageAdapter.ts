@@ -102,8 +102,8 @@ export class BrowserStorageAdapter<T = string> implements IBrowserStorageAdapter
 // Concrete implementations for localStorage and sessionStorage
 // Use lazy initialization to avoid SSR issues
 export const localStorageAdapter = new BrowserStorageAdapter<unknown>(
-  typeof window !== 'undefined' ? localStorage : ({} as Storage)
+  typeof window !== "undefined" ? localStorage : ({} as Storage)
 );
 export const sessionStorageAdapter = new BrowserStorageAdapter<unknown>(
-  typeof window !== 'undefined' ? sessionStorage : ({} as Storage)
+  typeof window !== "undefined" ? sessionStorage : ({} as Storage)
 );

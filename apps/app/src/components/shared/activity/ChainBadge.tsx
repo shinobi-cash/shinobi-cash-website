@@ -20,31 +20,30 @@ export function ChainBadge({ chainId, txHash, label, className }: ChainBadgeProp
   if (chainId === null) {
     return (
       <div className={cn("flex flex-col items-center gap-1", className)}>
-        {label && <span className="text-xs font-medium text-app-secondary">{label}</span>}
-        <span className="text-xs font-semibold text-app-tertiary">Pending...</span>
+        {label && <span className="text-app-secondary text-xs font-medium">{label}</span>}
+        <span className="text-app-tertiary text-xs font-semibold">Pending...</span>
       </div>
     );
   }
 
-  const chainName = SHINOBI_CASH_SUPPORTED_CHAINS.find(c => c.id === Number(chainId))?.name ?? `Chain ${chainId}`;
+  const chainName =
+    SHINOBI_CASH_SUPPORTED_CHAINS.find((c) => c.id === Number(chainId))?.name ?? `Chain ${chainId}`;
   const showLink = txHash !== null && txHash !== undefined;
 
   return (
     <div className={cn("flex flex-col items-center gap-1", className)}>
-      {label && <span className="text-xs font-medium text-app-secondary">{label}</span>}
+      {label && <span className="text-app-secondary text-xs font-medium">{label}</span>}
       <div className="flex items-center gap-1">
-        <span className="text-xs font-semibold text-app-primary text-center">
-          {chainName}
-        </span>
+        <span className="text-app-primary text-center text-xs font-semibold">{chainName}</span>
         {showLink && (
           <a
             href={getTxExplorerUrl(chainId.toString(), txHash)}
             target="_blank"
             rel="noopener noreferrer"
-            className="p-0.5 rounded-md hover:bg-app-surface-hover transition-colors duration-200"
+            className="hover:bg-app-surface-hover rounded-md p-0.5 transition-colors duration-200"
             title="View transaction"
           >
-            <ExternalLink className="h-3 w-3 text-app-tertiary" />
+            <ExternalLink className="text-app-tertiary h-3 w-3" />
           </a>
         )}
       </div>

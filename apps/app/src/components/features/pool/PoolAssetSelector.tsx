@@ -18,25 +18,33 @@ interface PoolAssetSelectorProps {
   disabled?: boolean;
 }
 
-export function PoolAssetSelector({ selectedAsset, onAssetChange, disabled = false }: PoolAssetSelectorProps) {
+export function PoolAssetSelector({
+  selectedAsset,
+  onAssetChange,
+  disabled = false,
+}: PoolAssetSelectorProps) {
   return (
     <button
       type="button"
       onClick={() => onAssetChange?.(selectedAsset)}
       disabled={disabled}
-      className="bg-app-card rounded-lg p-2 border border-app hover:bg-app-surface-hover transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed w-full"
+      className="bg-app-card border-app hover:bg-app-surface-hover w-full rounded-lg border p-2 transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-50"
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center bg-white">
-            <img src={selectedAsset.icon} alt={`${selectedAsset.name} icon`} className="w-full h-full object-cover" />
+          <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-white">
+            <img
+              src={selectedAsset.icon}
+              alt={`${selectedAsset.name} icon`}
+              className="h-full w-full object-cover"
+            />
           </div>
           <div className="text-left">
-            <p className="text-sm font-semibold text-app-primary">{selectedAsset.symbol}</p>
-            <p className="text-xs text-app-secondary">{selectedAsset.name}</p>
+            <p className="text-app-primary text-sm font-semibold">{selectedAsset.symbol}</p>
+            <p className="text-app-secondary text-xs">{selectedAsset.name}</p>
           </div>
         </div>
-        <ChevronDown className="w-4 h-4 text-app-secondary" />
+        <ChevronDown className="text-app-secondary h-4 w-4" />
       </div>
     </button>
   );

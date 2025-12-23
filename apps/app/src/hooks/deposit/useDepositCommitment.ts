@@ -21,7 +21,10 @@ export interface DepositCashNoteResult {
 /**
  * Hook for deposit commitment generation with decoupled storage and business logic
  */
-export function useDepositCommitment(publicKey: string | null, accountKey: bigint | null): DepositCashNoteResult {
+export function useDepositCommitment(
+  publicKey: string | null,
+  accountKey: bigint | null
+): DepositCashNoteResult {
   const { address } = useAccount();
 
   const [state, setState] = useState<{

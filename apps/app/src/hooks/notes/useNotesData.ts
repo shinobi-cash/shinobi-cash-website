@@ -20,12 +20,9 @@ export function useNotesData() {
     error,
     progress,
     refresh,
-  } = useNotes(
-    publicKey || "",
-    poolAddress,
-    accountKey || BigInt(0),
-    { autoScan: !!publicKey && !!accountKey }
-  );
+  } = useNotes(publicKey || "", poolAddress, accountKey || BigInt(0), {
+    autoScan: !!publicKey && !!accountKey,
+  });
 
   useEffect(() => {
     const cleanup = onTransactionIndexed(() => {

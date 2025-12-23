@@ -12,10 +12,10 @@ export function BackButton({ onClick, className = "" }: BackButtonProps) {
       variant="ghost"
       size="sm"
       onClick={onClick}
-      className={`h-8 w-8 p-0 hover:bg-app-surface-hover transition-colors duration-200 ${className}`}
+      className={`hover:bg-app-surface-hover h-8 w-8 p-0 transition-colors duration-200 ${className}`}
       aria-label="Go back"
     >
-      <ChevronLeft className="h-4 w-4 text-app-secondary" />
+      <ChevronLeft className="text-app-secondary h-4 w-4" />
     </Button>
   );
 }

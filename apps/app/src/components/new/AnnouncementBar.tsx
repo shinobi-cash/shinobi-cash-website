@@ -9,18 +9,18 @@ export function AnnouncementBar() {
   if (!isVisible) return null;
 
   return (
-    <div className="relative z-40 bg-gray-900/90 backdrop-blur-sm border-t border-gray-800 text-white">
-      <div className="max-w-7xl mx-auto px-4 py-3 sm:px-6 lg:px-8">
+    <div className="relative z-40 border-t border-gray-800 bg-gray-900/90 text-white backdrop-blur-sm">
+      <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8">
         <div className="flex items-center justify-center gap-2">
-          <p className="text-sm sm:text-base font-medium text-center">
+          <p className="text-center text-sm font-medium sm:text-base">
             Private cross-chain transactions powered by zero-knowledge proofs
           </p>
           <button
             onClick={() => setIsVisible(false)}
-            className="p-1 hover:bg-gray-800 rounded transition-colors"
+            className="rounded p-1 transition-colors hover:bg-gray-800"
             aria-label="Close announcement"
           >
-            <X className="w-4 h-4" />
+            <X className="h-4 w-4" />
           </button>
         </div>
       </div>

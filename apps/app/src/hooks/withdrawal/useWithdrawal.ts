@@ -6,7 +6,10 @@ import { useTransactionTracking } from "@/hooks/transactions/useTransactionTrack
 import type { Note } from "@/lib/storage/types";
 import { showToast } from "@/lib/toast";
 import type { PreparedWithdrawal, WithdrawalRequest } from "@/services/withdrawal/types";
-import { executePreparedWithdrawal, processWithdrawal } from "@/services/withdrawal/withdrawalService";
+import {
+  executePreparedWithdrawal,
+  processWithdrawal,
+} from "@/services/withdrawal/withdrawalService";
 import { validateWithdrawalRequest } from "@/services/withdrawal/helpers";
 import { POOL_CHAIN } from "@shinobi-cash/constants";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -17,7 +20,11 @@ export interface UseWithdrawalProps {
   onTransactionSuccess?: () => void;
 }
 
-export function useWithdrawal({ note, destinationChainId, onTransactionSuccess }: UseWithdrawalProps) {
+export function useWithdrawal({
+  note,
+  destinationChainId,
+  onTransactionSuccess,
+}: UseWithdrawalProps) {
   const { accountKey } = useAuth();
   const { trackTransaction } = useTransactionTracking();
 
@@ -65,39 +72,57 @@ export function useWithdrawal({ note, destinationChainId, onTransactionSuccess }
         description: "Building withdrawal transaction with smart account...",
         status: "pending",
       },
-      { id: "ready", title: "Ready for Preview", description: "Withdrawal prepared successfully!", status: "pending" },
+      {
+        id: "ready",
+        title: "Ready for Preview",
+        description: "Withdrawal prepared successfully!",
+        status: "pending",
+      },
     ];
     setState((prevState) => ({ ...prevState, steps: initialSteps, currentStep: 0 }));
   }, []);
 
-  const updateStepStatus = useCallback((stepId: string, status: WithdrawalStep["status"], error?: string) => {
-    if (!mountedRef.current) return;
+  const updateStepStatus = useCallback(
+    (stepId: string, status: WithdrawalStep["status"], error?: string) => {
+      if (!mountedRef.current) return;
 
-    setState((prevState) => {
-      const updatedSteps = prevState.steps.map((step) =>
-        step.id === stepId
-          ? {
-              ...step,
-              status,
-              timestamp: Date.now(),
-              ...(error && { error }),
-            }
-          : step,
-      );
+      setState((prevState) => {
+        const updatedSteps = prevState.steps.map((step) =>
+          step.id === stepId
+            ? {
+                ...step,
+                status,
+                timestamp: Date.now(),
+                ...(error && { error }),
+              }
+            : step
+        );
 
-      const newCurrentStep = updatedSteps.findIndex((s) => s.status === "processing" || s.status === "error");
+        const newCurrentStep = updatedSteps.findIndex(
+          (s) => s.status === "processing" || s.status === "error"
+        );
 
-      return {
-        ...prevState,
-        steps: updatedSteps,
-        currentStep: newCurrentStep >= 0 ? newCurrentStep : prevState.steps.findIndex((s) => s.id === stepId),
-      };
-    });
-  }, []);
+        return {
+          ...prevState,
+          steps: updatedSteps,
+          currentStep:
+            newCurrentStep >= 0
+              ? newCurrentStep
+              : prevState.steps.findIndex((s) => s.id === stepId),
+        };
+      });
+    },
+    []
+  );
 
   const handlePreviewWithdrawal = useCallback(
     async (withdrawAmount: string, recipientAddress: string) => {
-      setState((prevState) => ({ ...prevState, isPreparing: true, preparationError: null, showPreviewMode: false }));
+      setState((prevState) => ({
+        ...prevState,
+        isPreparing: true,
+        preparationError: null,
+        showPreviewMode: false,
+      }));
 
       initializeSteps();
       setState((prevState) => ({ ...prevState, showTimeline: true }));
@@ -160,7 +185,7 @@ export function useWithdrawal({ note, destinationChainId, onTransactionSuccess }
         if (mountedRef.current) setState((prevState) => ({ ...prevState, isPreparing: false }));
       }
     },
-    [note, accountKey, destinationChainId, initializeSteps, updateStepStatus, state.steps],
+    [note, accountKey, destinationChainId, initializeSteps, updateStepStatus, state.steps]
   );
 
   const handleExecuteTransaction = useCallback(async () => {

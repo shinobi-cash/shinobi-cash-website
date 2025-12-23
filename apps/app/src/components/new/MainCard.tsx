@@ -66,7 +66,7 @@ export function MainCard() {
   const balanceInUSD = "0.00"; // TODO: Calculate USD value when price feed is available
 
   return (
-    <div className="overflow-scroll w-full h-full">
+    <div className="h-full w-full overflow-scroll">
       {!isAuthenticated || !publicKey || !accountKey ? (
         <AuthScreen />
       ) : isDepositOpen ? (
@@ -87,33 +87,41 @@ export function MainCard() {
           onWithdrawClick={startWithdrawal}
         />
       ) : (
-        <div className="w-full h-full">
+        <div className="h-full w-full">
           {/* Balance and Action Buttons Section */}
           <div className="flex flex-col gap-4 p-4 sm:p-6">
             {/* Balance */}
-            <div className="flex justify-between items-start">
+            <div className="flex items-start justify-between">
               <div className="flex flex-col">
-                <div className="text-3xl sm:text-4xl font-bold text-white mb-1">
+                <div className="mb-1 text-3xl font-bold text-white sm:text-4xl">
                   {Number(formattedBalance).toFixed(4)} ETH
                 </div>
-                <div className="text-gray-400 text-base">≈ ${balanceInUSD} USD</div>
+                <div className="text-base text-gray-400">≈ ${balanceInUSD} USD</div>
               </div>
 
               <div className="flex gap-2">
-                <Button variant="outline" size="icon" aria-label="activity"
+                <Button
+                  variant="outline"
+                  size="icon"
+                  aria-label="activity"
                   onClick={() => {
                     // TODO: Show activity
                     console.log("Activity clicked");
                   }}
                 >
-                  <ActivityIcon className="w-4 h-4 text-white" />
+                  <ActivityIcon className="h-4 w-4 text-white" />
                 </Button>
 
-                <Button variant="outline" size="icon" aria-label="refresh"
+                <Button
+                  variant="outline"
+                  size="icon"
+                  aria-label="refresh"
                   onClick={handleRefresh}
                   disabled={isRefreshing}
                 >
-                  <RefreshCw className={`w-4 h-4 text-white ${isRefreshing ? "animate-spin" : ""}`} />
+                  <RefreshCw
+                    className={`h-4 w-4 text-white ${isRefreshing ? "animate-spin" : ""}`}
+                  />
                 </Button>
               </div>
             </div>
@@ -121,17 +129,17 @@ export function MainCard() {
             {/* Deposit and Withdraw Buttons */}
             <div className="flex gap-3">
               <Button
-                variant={'default'}
+                variant={"default"}
                 onClick={() => setIsDepositOpen(true)}
-                className="flex-1 h-12 text-base font-semibold rounded-xl"
+                className="h-12 flex-1 rounded-xl text-base font-semibold"
                 size="lg"
               >
                 Deposit
               </Button>
               <Button
-                variant={'default'}
+                variant={"default"}
                 onClick={() => setIsWithdrawalOpen(true)}
-                className="flex-1 h-12 text-base font-semibold rounded-xl"
+                className="h-12 flex-1 rounded-xl text-base font-semibold"
                 size="lg"
               >
                 Withdraw

@@ -11,7 +11,7 @@ export async function performPasskeyLogin(accountName: string) {
   if (!passkeyData) {
     throw new AuthError(
       AuthErrorCode.PASSKEY_NOT_FOUND,
-      `No passkey found for account '${trimmed}'. Please create one first.`,
+      `No passkey found for account '${trimmed}'. Please create one first.`
     );
   }
 
@@ -31,12 +31,14 @@ export async function performPasskeyLogin(accountName: string) {
   return { publicKey, privateKey, address, mnemonic: accountData.mnemonic } as KeyGenerationResult;
 }
 
-
 export async function performPasskeySetup(accountName: string, generatedKeys: KeyGenerationResult) {
   const trimmed = accountName.trim();
   const hasPasskey = await storageManager.passkeyExists(trimmed);
   if (hasPasskey) {
-    throw new AuthError(AuthErrorCode.ACCOUNT_ALREADY_EXISTS, "Passkey already exists for this account");
+    throw new AuthError(
+      AuthErrorCode.ACCOUNT_ALREADY_EXISTS,
+      "Passkey already exists for this account"
+    );
   }
 
   const userHandle = await createHash(generatedKeys.publicKey);
@@ -118,11 +120,15 @@ export async function performWalletLogin(
     // Store session info (wallet-based auth)
     await KDF.storeSessionInfo(accountId, "passkey"); // Using "passkey" as auth method for now
 
-    return { publicKey, privateKey, address, mnemonic: accountData.mnemonic } as KeyGenerationResult;
+    return {
+      publicKey,
+      privateKey,
+      address,
+      mnemonic: accountData.mnemonic,
+    } as KeyGenerationResult;
   } catch (error) {
     // Failed to decrypt or load account data - treat as new account
     console.warn("Failed to load account data, treating as new account:", error);
     return null;
   }
 }
-

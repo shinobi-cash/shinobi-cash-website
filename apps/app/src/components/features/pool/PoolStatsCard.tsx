@@ -11,19 +11,25 @@ interface PoolStatsCardProps {
   loading?: boolean;
 }
 
-export function PoolStatsCard({ totalDeposits, depositCount, loading = false }: PoolStatsCardProps) {
+export function PoolStatsCard({
+  totalDeposits,
+  depositCount,
+  loading = false,
+}: PoolStatsCardProps) {
   return (
-    <div className="bg-app-surface p-2 border border-app rounded-xl shadow-sm">
-      <div className="flex justify-between items-start">
+    <div className="bg-app-surface border-app rounded-xl border p-2 shadow-sm">
+      <div className="flex items-start justify-between">
         <div className="flex flex-col">
-          <p className="text-2xl font-bold text-app-primary tabular-nums">
+          <p className="text-app-primary text-2xl font-bold tabular-nums">
             {loading ? "..." : `${formatEthAmount(totalDeposits, { decimals: 4 })} ETH`}
           </p>
-          <p className="text-sm text-app-secondary">Total Pool Value</p>
+          <p className="text-app-secondary text-sm">Total Pool Value</p>
         </div>
         <div className="flex flex-col text-right">
-          <p className="text-2xl font-bold text-app-primary tabular-nums">{loading ? "..." : depositCount}</p>
-          <p className="text-sm text-app-secondary">Total Deposits</p>
+          <p className="text-app-primary text-2xl font-bold tabular-nums">
+            {loading ? "..." : depositCount}
+          </p>
+          <p className="text-app-secondary text-sm">Total Deposits</p>
         </div>
       </div>
     </div>

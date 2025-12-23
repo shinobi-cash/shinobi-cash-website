@@ -11,7 +11,10 @@ import {
 import { POOL_CHAIN_ID } from "@/config/chains";
 import { WithdrawalProofGenerator } from "@/utils/WithdrawalProofGenerator";
 import { parseEther } from "viem";
-import { getCrosschainWithdrawalSmartAccountClient, getWithdrawalSmartAccountClient } from "@/lib/clients";
+import {
+  getCrosschainWithdrawalSmartAccountClient,
+  getWithdrawalSmartAccountClient,
+} from "@/lib/clients";
 import {
   deriveChangeNullifier,
   deriveChangeSecret,
@@ -45,7 +48,13 @@ import type {
 } from "./types";
 import { calculateContextHash } from "./types";
 import { deriveExistingNullifierAndSecret } from "./helpers";
-import { WithdrawalError, WITHDRAWAL_ERROR_CODES, logError, wrapError, ErrorCategory } from "@/lib/errors";
+import {
+  WithdrawalError,
+  WITHDRAWAL_ERROR_CODES,
+  logError,
+  wrapError,
+  ErrorCategory,
+} from "@/lib/errors";
 
 // ============ DATA FETCHING ============
 
@@ -78,7 +87,8 @@ async function calculateWithdrawalContext(
   const withdrawalDataStruct = createWithdrawalData(
     recipientAddress,
     SHINOBI_CASH_RELAY_WITHDRAWAL_PAYMASTER.address,
-    WITHDRAWAL_FEES.DEFAULT_RELAY_FEE_BPS
+    BigInt(500)
+    // WITHDRAWAL_FEES.DEFAULT_RELAY_FEE_BPS
   );
 
   // Calculate context hash
@@ -87,8 +97,18 @@ async function calculateWithdrawalContext(
   const poolAddress = SHINOBI_CASH_ETH_POOL.address;
 
   // Generate new nullifier and secret for change note
-  const newNullifier = deriveChangeNullifier(accountKey, poolAddress, note.depositIndex, note.changeIndex + 1);
-  const newSecret = deriveChangeSecret(accountKey, poolAddress, note.depositIndex, note.changeIndex + 1);
+  const newNullifier = deriveChangeNullifier(
+    accountKey,
+    poolAddress,
+    note.depositIndex,
+    note.changeIndex + 1
+  );
+  const newSecret = deriveChangeSecret(
+    accountKey,
+    poolAddress,
+    note.depositIndex,
+    note.changeIndex + 1
+  );
 
   // Get existing nullifier and secret from note being spent
   const { existingNullifier, existingSecret } = deriveExistingNullifierAndSecret(accountKey, note);
@@ -115,7 +135,15 @@ async function generateWithdrawalProof(
 ): Promise<WithdrawalProofData> {
   const { note, withdrawAmount } = request;
   const noteCommitment = derivedNoteCommitment(request.accountKey, note);
-  const { stateTreeLeaves, aspData, context: contextHash, existingNullifier, existingSecret, newNullifier, newSecret } = context;
+  const {
+    stateTreeLeaves,
+    aspData,
+    context: contextHash,
+    existingNullifier,
+    existingSecret,
+    newNullifier,
+    newSecret,
+  } = context;
 
   const prover = new WithdrawalProofGenerator();
   const withdrawalProof = await prover.generateWithdrawalProof({
@@ -138,7 +166,10 @@ async function generateWithdrawalProof(
 /**
  * Prepare UserOperation for same-chain withdrawal
  */
-async function prepareWithdrawalTransaction(context: WithdrawalContext, proofData: WithdrawalProofData) {
+async function prepareWithdrawalTransaction(
+  context: WithdrawalContext,
+  proofData: WithdrawalProofData
+) {
   const { poolScope, withdrawalData } = context;
 
   // Format proof for contract
@@ -186,12 +217,32 @@ async function calculateCrossChainWithdrawalContext(
   const poolAddress = SHINOBI_CASH_ETH_POOL.address;
 
   // Generate new nullifier and secret for change note
-  const newNullifier = deriveChangeNullifier(accountKey, poolAddress, note.depositIndex, note.changeIndex + 1);
-  const newSecret = deriveChangeSecret(accountKey, poolAddress, note.depositIndex, note.changeIndex + 1);
+  const newNullifier = deriveChangeNullifier(
+    accountKey,
+    poolAddress,
+    note.depositIndex,
+    note.changeIndex + 1
+  );
+  const newSecret = deriveChangeSecret(
+    accountKey,
+    poolAddress,
+    note.depositIndex,
+    note.changeIndex + 1
+  );
 
   // Generate refund nullifier and secret for cross-chain withdrawal
-  const refundNullifier = deriveRefundNullifier(accountKey, poolAddress, note.depositIndex, note.changeIndex + 1);
-  const refundSecret = deriveRefundSecret(accountKey, poolAddress, note.depositIndex, note.changeIndex + 1);
+  const refundNullifier = deriveRefundNullifier(
+    accountKey,
+    poolAddress,
+    note.depositIndex,
+    note.changeIndex + 1
+  );
+  const refundSecret = deriveRefundSecret(
+    accountKey,
+    poolAddress,
+    note.depositIndex,
+    note.changeIndex + 1
+  );
 
   // Get existing nullifier and secret from note being spent
   const { existingNullifier, existingSecret } = deriveExistingNullifierAndSecret(accountKey, note);
@@ -279,7 +330,10 @@ async function prepareCrossChainWithdrawalTransaction(
 
   // Create smart account client and prepare UserOperation
   const smartAccountClient = await getCrosschainWithdrawalSmartAccountClient();
-  const userOperation = await prepareCrossChainWithdrawalUserOperation(smartAccountClient, crossChainWithdrawalCallData);
+  const userOperation = await prepareCrossChainWithdrawalUserOperation(
+    smartAccountClient,
+    crossChainWithdrawalCallData
+  );
 
   return { userOperation, smartAccountClient };
 }
@@ -347,7 +401,7 @@ export async function processWithdrawal(request: WithdrawalRequest): Promise<Pre
             noteAmount: request.note.amount,
             withdrawAmount: request.withdrawAmount,
           },
-        },
+        }
       );
     }
 
@@ -361,7 +415,7 @@ export async function processWithdrawal(request: WithdrawalRequest): Promise<Pre
       error,
       ErrorCategory.WITHDRAWAL,
       WITHDRAWAL_ERROR_CODES.PREPARATION_FAILED,
-      "Failed to prepare withdrawal. Please try again.",
+      "Failed to prepare withdrawal. Please try again."
     );
   }
 }
@@ -379,6 +433,8 @@ export async function executeWithdrawal(
 /**
  * Execute a prepared withdrawal (convenience wrapper)
  */
-export async function executePreparedWithdrawal(preparedWithdrawal: PreparedWithdrawal): Promise<string> {
+export async function executePreparedWithdrawal(
+  preparedWithdrawal: PreparedWithdrawal
+): Promise<string> {
   return executeWithdrawal(preparedWithdrawal.smartAccountClient, preparedWithdrawal.userOperation);
 }

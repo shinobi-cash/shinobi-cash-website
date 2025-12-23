@@ -21,7 +21,7 @@ export function ExternalLink({
   children,
   className,
   iconClassName,
-  showIcon = true
+  showIcon = true,
 }: ExternalLinkProps) {
   return (
     <a
@@ -29,14 +29,12 @@ export function ExternalLink({
       target="_blank"
       rel="noopener noreferrer"
       className={cn(
-        "inline-flex items-center gap-1 text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors duration-200",
+        "inline-flex items-center gap-1 text-blue-500 transition-colors duration-200 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300",
         className
       )}
     >
       {children}
-      {showIcon && (
-        <ExternalLinkIcon className={cn("h-3 w-3", iconClassName)} />
-      )}
+      {showIcon && <ExternalLinkIcon className={cn("h-3 w-3", iconClassName)} />}
     </a>
   );
 }

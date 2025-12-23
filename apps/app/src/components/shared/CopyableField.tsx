@@ -21,7 +21,7 @@ export function CopyableField({
   label,
   displayValue,
   className,
-  showLabel = true
+  showLabel = true,
 }: CopyableFieldProps) {
   const [copied, setCopied] = useState(false);
 
@@ -38,24 +38,20 @@ export function CopyableField({
   return (
     <div className={cn("flex items-center justify-between", className)}>
       {showLabel && label && (
-        <span className="text-xs font-medium text-app-secondary">
-          {label}
-        </span>
+        <span className="text-app-secondary text-xs font-medium">{label}</span>
       )}
       <div className="flex items-center gap-1.5">
-        <span className="text-xs font-mono text-app-primary">
-          {displayValue || value}
-        </span>
+        <span className="text-app-primary font-mono text-xs">{displayValue || value}</span>
         <button
           type="button"
           onClick={handleCopy}
-          className="rounded-md hover:bg-app-surface-hover transition-colors duration-200"
-          title={copied ? "Copied!" : `Copy ${label || 'value'}`}
+          className="hover:bg-app-surface-hover rounded-md transition-colors duration-200"
+          title={copied ? "Copied!" : `Copy ${label || "value"}`}
         >
           {copied ? (
             <Check className="h-3.5 w-3.5 text-green-500" />
           ) : (
-            <Copy className="h-3.5 w-3.5 text-app-tertiary" />
+            <Copy className="text-app-tertiary h-3.5 w-3.5" />
           )}
         </button>
       </div>

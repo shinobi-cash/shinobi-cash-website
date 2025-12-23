@@ -4,12 +4,7 @@ import { useAccount, useChainId, useSwitchChain } from "wagmi";
 import { modal } from "@/context";
 import { SHINOBI_CASH_SUPPORTED_CHAINS } from "@shinobi-cash/constants";
 import Image from "next/image";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-} from "@workspace/ui/components/select";
+import { Select, SelectContent, SelectItem, SelectTrigger } from "@workspace/ui/components/select";
 
 export function BottomNav() {
   const { isConnected, address } = useAccount();
@@ -53,20 +48,20 @@ export function BottomNav() {
   const currentChain = getCurrentChain();
 
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-gray-900/95 backdrop-blur-md border-t border-gray-800">
+    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-800 bg-gray-900/95 backdrop-blur-md md:hidden">
       <div className="flex items-center justify-between gap-3 px-4 py-3">
         {/* Wallet Address / Connect */}
         {isConnected && address ? (
           <button
             onClick={handleConnectWallet}
-            className="flex items-center gap-2 px-3 py-2 bg-gray-800 rounded-lg text-sm font-medium text-white"
+            className="flex items-center gap-2 rounded-lg bg-gray-800 px-3 py-2 text-sm font-medium text-white"
           >
             {shortenAddress(address)}
           </button>
         ) : (
           <button
             onClick={handleConnectWallet}
-            className="px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors"
+            className="rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors"
           >
             Connect Wallet
           </button>
@@ -75,16 +70,16 @@ export function BottomNav() {
         {/* Chain Selector */}
         {isConnected && currentChain ? (
           <Select value={chainId.toString()} onValueChange={handleChainSwitch}>
-            <SelectTrigger className="h-10 w-10 p-2 border-gray-700 bg-gray-800 [&>svg]:hidden">
+            <SelectTrigger className="h-10 w-10 border-gray-700 bg-gray-800 p-2 [&>svg]:hidden">
               <Image
                 src={getChainIcon(chainId)}
                 alt={currentChain.name}
                 width={20}
                 height={20}
-                className="w-full h-full"
+                className="h-full w-full"
               />
             </SelectTrigger>
-            <SelectContent className="bg-gray-900 border-gray-700">
+            <SelectContent className="border-gray-700 bg-gray-900">
               {SHINOBI_CASH_SUPPORTED_CHAINS.map((chain) => (
                 <SelectItem
                   key={chain.id}
@@ -97,7 +92,7 @@ export function BottomNav() {
                       alt={chain.name}
                       width={20}
                       height={20}
-                      className="w-5 h-5"
+                      className="h-5 w-5"
                     />
                     <span className="text-sm font-medium">{chain.name}</span>
                   </div>

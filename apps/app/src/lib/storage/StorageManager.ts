@@ -11,7 +11,12 @@ import {
   passkeyStorageAdapter,
   sharedEncryptionService,
 } from "./adapters/IndexedDBAdapter";
-import type { CachedAccountData, DiscoveryResult, NamedPasskeyData, NoteChain } from "./interfaces/IDataTypes";
+import type {
+  CachedAccountData,
+  DiscoveryResult,
+  NamedPasskeyData,
+  NoteChain,
+} from "./interfaces/IDataTypes";
 import { AccountRepository } from "./repositories/AccountRepository";
 import { NotesRepository } from "./repositories/NotesRepository";
 import { PasskeyRepository } from "./repositories/PasskeyRepository";
@@ -55,7 +60,10 @@ class StorageManager {
    * Initialize wallet-based account session with signature-derived encryption key
    * Used when user skips passkey setup and relies on wallet signature for encryption
    */
-  async initializeWalletAccountSession(accountId: string, encryptionKey: Uint8Array): Promise<void> {
+  async initializeWalletAccountSession(
+    accountId: string,
+    encryptionKey: Uint8Array
+  ): Promise<void> {
     // Convert Uint8Array to CryptoKey for encryption
     // Ensure the buffer is an ArrayBuffer for crypto.subtle
     const keyBuffer = encryptionKey.buffer.slice(
@@ -63,13 +71,10 @@ class StorageManager {
       encryptionKey.byteOffset + encryptionKey.byteLength
     ) as ArrayBuffer;
 
-    const cryptoKey = await crypto.subtle.importKey(
-      "raw",
-      keyBuffer,
-      { name: "AES-GCM" },
-      false,
-      ["encrypt", "decrypt"]
-    );
+    const cryptoKey = await crypto.subtle.importKey("raw", keyBuffer, { name: "AES-GCM" }, false, [
+      "encrypt",
+      "decrypt",
+    ]);
 
     // Use standard session initialization
     await this.initializeAccountSession(accountId, cryptoKey);
@@ -144,7 +149,7 @@ class StorageManager {
     publicKey: string,
     poolAddress: string,
     notes: NoteChain[],
-    lastProcessedCursor?: string,
+    lastProcessedCursor?: string
   ): Promise<void> {
     return this.notesRepo.storeDiscoveredNotes(publicKey, poolAddress, notes, lastProcessedCursor);
   }
@@ -153,7 +158,11 @@ class StorageManager {
     return this.notesRepo.getNextDepositIndex(publicKey, poolAddress);
   }
 
-  async updateLastUsedDepositIndex(publicKey: string, poolAddress: string, depositIndex: number): Promise<void> {
+  async updateLastUsedDepositIndex(
+    publicKey: string,
+    poolAddress: string,
+    depositIndex: number
+  ): Promise<void> {
     return this.notesRepo.updateLastUsedDepositIndex(publicKey, poolAddress, depositIndex);
   }
 
@@ -231,7 +240,10 @@ class StorageManager {
    * Initialize sync baseline for new accounts to avoid scanning historical data
    * Sets the current blockchain cursor as the starting point for future syncs
    */
-  async initializeSyncBaseline(publicKey: string, poolAddress: string = SHINOBI_CASH_ETH_POOL.address): Promise<void> {
+  async initializeSyncBaseline(
+    publicKey: string,
+    poolAddress: string = SHINOBI_CASH_ETH_POOL.address
+  ): Promise<void> {
     try {
       // Get the most recent cursor from the indexer (latest activity)
       const result = await fetchActivities(poolAddress, 1, undefined, "desc");
@@ -253,7 +265,7 @@ class StorageManager {
         poolAddress,
         baselineData.notes,
         baselineData.lastUsedDepositIndex,
-        baselineData.lastProcessedCursor,
+        baselineData.lastProcessedCursor
       );
 
       console.log(`Initialized sync baseline for new account with cursor: ${currentCursor}`);

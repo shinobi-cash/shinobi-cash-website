@@ -7,18 +7,19 @@ interface ActivityRowProps {
 
 export const ActivityRow = ({ activity }: ActivityRowProps) => {
   const isDeposit = activity.type === "DEPOSIT" || activity.type === "CROSSCHAIN_DEPOSIT";
-  const displayType = activity.type === "CROSSCHAIN_DEPOSIT" ? "cross-chain deposit" : activity.type.toLowerCase();
+  const displayType =
+    activity.type === "CROSSCHAIN_DEPOSIT" ? "cross-chain deposit" : activity.type.toLowerCase();
 
   return (
-    <div className="bg-app-surface border-b border-app px-2 py-2 active:bg-app-surface-hover transition-all duration-150 cursor-pointer hover:bg-app-surface-hover">
+    <div className="bg-app-surface border-app active:bg-app-surface-hover hover:bg-app-surface-hover cursor-pointer border-b px-2 py-2 transition-all duration-150">
       <div className="flex items-center justify-between gap-2">
         {/* Left side: Type and amount */}
-        <div className="flex-1 min-w-0">
-          <div className="font-semibold text-app-primary tracking-tight capitalize text-base sm:text-lg truncate">
+        <div className="min-w-0 flex-1">
+          <div className="text-app-primary truncate text-base font-semibold capitalize tracking-tight sm:text-lg">
             {displayType}
           </div>
           <div
-            className={`text-xs sm:text-sm font-medium tabular-nums flex items-center gap-1 ${
+            className={`flex items-center gap-1 text-xs font-medium tabular-nums sm:text-sm ${
               isDeposit ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
             }`}
           >
@@ -30,7 +31,7 @@ export const ActivityRow = ({ activity }: ActivityRowProps) => {
         {/* Right side: Timestamp and status */}
         <div className="flex items-center gap-2 sm:gap-3">
           <div className="text-right">
-            <div className="text-xs sm:text-sm text-app-tertiary font-medium whitespace-nowrap">
+            <div className="text-app-tertiary whitespace-nowrap text-xs font-medium sm:text-sm">
               {formatTimestamp(activity.timestamp)}
             </div>
           </div>

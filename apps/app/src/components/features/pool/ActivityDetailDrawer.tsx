@@ -25,12 +25,15 @@ interface ActivityDetailDrawerProps {
  */
 const isCrossChain = (activity: Activity): boolean => {
   return !!(
-    activity.destinationChainId !== null &&
-    activity.originChainId !== activity.destinationChainId
+    activity.destinationChainId !== null && activity.originChainId !== activity.destinationChainId
   );
 };
 
-export const ActivityDetailDrawer = ({ activity, open, onOpenChange }: ActivityDetailDrawerProps) => {
+export const ActivityDetailDrawer = ({
+  activity,
+  open,
+  onOpenChange,
+}: ActivityDetailDrawerProps) => {
   if (!activity) return null;
 
   const crossChain = isCrossChain(activity);
@@ -42,7 +45,7 @@ export const ActivityDetailDrawer = ({ activity, open, onOpenChange }: ActivityD
       <Button
         variant="outline"
         onClick={() => onOpenChange(false)}
-        className="flex-1 h-12 text-base font-medium rounded-xl"
+        className="h-12 flex-1 rounded-xl text-base font-medium"
         size="lg"
       >
         Close
@@ -81,15 +84,18 @@ export const ActivityDetailDrawer = ({ activity, open, onOpenChange }: ActivityD
 
         {/* Details Section */}
         <SectionCard title="Details" className="overflow-hidden">
-          <div className="divide-y divide-app-border">
+          <div className="divide-app-border divide-y">
             {/* Transaction Link (same-chain only) */}
             {!crossChain && activity.originChainId !== null && activity.originTransactionHash && (
               <DetailRow
                 label="Transaction"
                 value={
                   <ExternalLink
-                    href={getTxExplorerUrl(activity.originChainId.toString(), activity.originTransactionHash)}
-                    className="text-xs font-mono"
+                    href={getTxExplorerUrl(
+                      activity.originChainId.toString(),
+                      activity.originTransactionHash
+                    )}
+                    className="font-mono text-xs"
                   >
                     View
                   </ExternalLink>
@@ -106,10 +112,7 @@ export const ActivityDetailDrawer = ({ activity, open, onOpenChange }: ActivityD
             )}
 
             {/* Timestamp */}
-            <DetailRow
-              label="Time"
-              value={formatTimestamp(activity.timestamp.toString())}
-            />
+            <DetailRow label="Time" value={formatTimestamp(activity.timestamp.toString())} />
 
             {/* Recipient (withdrawals) */}
             {isWithdrawal && activity.recipient && (
@@ -132,10 +135,7 @@ export const ActivityDetailDrawer = ({ activity, open, onOpenChange }: ActivityD
 
             {/* Fee Information (withdrawals) */}
             {isWithdrawal && activity.feeAmount != null && (
-              <DetailRow
-                label="Fee Amount"
-                value={`${formatEthAmount(activity.feeAmount)} ETH`}
-              />
+              <DetailRow label="Fee Amount" value={`${formatEthAmount(activity.feeAmount)} ETH`} />
             )}
           </div>
         </SectionCard>

@@ -36,7 +36,7 @@ interface AuthStepContentProps {
       variant?: "default" | "outline" | "ghost";
       disabled?: boolean;
       icon?: React.ReactNode;
-    } | null,
+    } | null
   ) => void;
 }
 
@@ -91,7 +91,12 @@ export function AuthStepContent({
       );
 
     case "syncing-notes":
-      return <SyncingNotesSection onSyncComplete={onSyncingComplete} registerFooterActions={registerFooterActions} />;
+      return (
+        <SyncingNotesSection
+          onSyncComplete={onSyncingComplete}
+          registerFooterActions={registerFooterActions}
+        />
+      );
 
     default:
       return null;

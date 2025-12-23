@@ -22,7 +22,7 @@ export function TokenBalance({
   const displayUsd = usdValue ? `$${Number.parseFloat(usdValue).toFixed(2)}` : "$0.00";
 
   return (
-    <div className="flex items-center justify-between text-sm sm:text-base mb-2">
+    <div className="mb-2 flex items-center justify-between text-sm sm:text-base">
       <span className="text-gray-400">{displayUsd}</span>
       <div className="flex items-center gap-2">
         <span className="text-gray-400">
@@ -30,7 +30,7 @@ export function TokenBalance({
         </span>
         <button
           onClick={onMaxClick}
-          className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="rounded-lg bg-gray-700 px-3 py-1 text-sm font-medium text-white transition-colors hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
           disabled={disabled}
         >
           Max

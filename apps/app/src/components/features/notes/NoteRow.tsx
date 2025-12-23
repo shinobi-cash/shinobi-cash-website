@@ -19,7 +19,7 @@ export function NoteRow({ note, chainLength, onClick }: NoteRowProps) {
   return (
     <button
       type="button"
-      className="w-full text-left bg-app-surface border-b border-app px-2 py-2 sm:px-3 sm:py-3 active:bg-app-surface-hover transition-all duration-150 cursor-pointer hover:bg-app-surface-hover"
+      className="bg-app-surface border-app active:bg-app-surface-hover hover:bg-app-surface-hover w-full cursor-pointer border-b px-2 py-2 text-left transition-all duration-150 sm:px-3 sm:py-3"
       onMouseDown={(e) => e.preventDefault()}
       onClick={() => {
         // Blur any focused element prior to opening the drawer
@@ -31,18 +31,18 @@ export function NoteRow({ note, chainLength, onClick }: NoteRowProps) {
       <div className="flex flex-col gap-1">
         <div className="flex items-center justify-between gap-2">
           {/* Left side: Type and amount */}
-          <div className="flex-1 min-w-0">
+          <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <div className="font-semibold text-app-primary tracking-tight capitalize text-base sm:text-lg truncate">
+              <div className="text-app-primary truncate text-base font-semibold capitalize tracking-tight sm:text-lg">
                 {noteLabel}
               </div>
               {!note.isActivated && (
-                <span className="text-xs bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400 px-2 py-0.5 rounded-full font-medium whitespace-nowrap">
+                <span className="whitespace-nowrap rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
                   Pending
                 </span>
               )}
             </div>
-            <div className="text-xs sm:text-base text-app-secondary font-medium tabular-nums">
+            <div className="text-app-secondary text-xs font-medium tabular-nums sm:text-base">
               Balance: {formatEthAmount(note.amount)} ETH
             </div>
           </div>
@@ -50,7 +50,7 @@ export function NoteRow({ note, chainLength, onClick }: NoteRowProps) {
           {/* Right side: Status and timestamp */}
           <div className="flex items-center gap-2 sm:gap-3">
             <div className="text-right">
-              <div className="text-xs sm:text-sm text-app-tertiary font-medium whitespace-nowrap">
+              <div className="text-app-tertiary whitespace-nowrap text-xs font-medium sm:text-sm">
                 {formatTimestamp(note.timestamp)}
               </div>
             </div>

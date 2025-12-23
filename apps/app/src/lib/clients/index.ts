@@ -8,29 +8,28 @@ import {
   POOL_CHAIN,
   SHINOBI_CASH_RELAY_WITHDRAWAL_PAYMASTER,
   SHINOBI_CASH_CROSSCHAIN_WITHDRAWAL_PAYMASTER,
-  SHINOBI_CASH_SUPPORTED_CHAINS
+  SHINOBI_CASH_SUPPORTED_CHAINS,
 } from "@shinobi-cash/constants";
 import { createSmartAccountClient } from "permissionless";
-import { createPimlicoClient } from 'permissionless/clients/pimlico'
+import { createPimlicoClient } from "permissionless/clients/pimlico";
 import { toSimpleSmartAccount } from "permissionless/accounts";
 import { http, createPublicClient } from "viem";
 import { entryPoint07Address } from "viem/account-abstraction";
 import { privateKeyToAccount } from "viem/accounts";
-
 
 /**
  * Get public client for specific chain
  * @returns Public client for the specified chain
  */
 export function getPublicClient(chainId: number) {
-  const chain = SHINOBI_CASH_SUPPORTED_CHAINS.find(chain => chain.id === chainId)
-  if(chain == undefined){
-    throw new Error(`Unsupported chain ${chainId}`)
+  const chain = SHINOBI_CASH_SUPPORTED_CHAINS.find((chain) => chain.id === chainId);
+  if (chain == undefined) {
+    throw new Error(`Unsupported chain ${chainId}`);
   }
   const client = createPublicClient({
-    chain : chain as any,
-    transport: http()
-  })
+    chain: chain as any,
+    transport: http(),
+  });
   if (!client) {
     throw new Error(`No public client configured for chain ${chainId}`);
   }
@@ -42,8 +41,8 @@ export const pimlicoClient = createPimlicoClient({
   entryPoint: {
     address: entryPoint07Address,
     version: "0.7",
-  }
-})
+  },
+});
 
 /**
  * Factory function to create a smart account client with specified paymaster
@@ -53,8 +52,8 @@ async function createWithdrawalSmartAccountClient(paymasterAddress: `0x${string}
   const account = privateKeyToAccount(WITHDRAWAL_ACCOUNT_PRIVATE_KEY);
   const publicClient = createPublicClient({
     chain: POOL_CHAIN as any,
-    transport: http()
-  })
+    transport: http(),
+  });
 
   const simpleAccount = await toSimpleSmartAccount({
     owner: account,

@@ -34,7 +34,7 @@ export class AppError extends Error {
       cause?: unknown;
       context?: Record<string, unknown>;
       isOperational?: boolean;
-    },
+    }
   ) {
     super(message);
     this.name = "AppError";
@@ -72,7 +72,7 @@ export class WithdrawalError extends AppError {
   constructor(
     code: string,
     message: string,
-    options?: { cause?: unknown; context?: Record<string, unknown> },
+    options?: { cause?: unknown; context?: Record<string, unknown> }
   ) {
     super(ErrorCategory.WITHDRAWAL, code, message, options);
     this.name = "WithdrawalError";
@@ -97,7 +97,7 @@ export class DepositError extends AppError {
   constructor(
     code: string,
     message: string,
-    options?: { cause?: unknown; context?: Record<string, unknown> },
+    options?: { cause?: unknown; context?: Record<string, unknown> }
   ) {
     super(ErrorCategory.DEPOSIT, code, message, options);
     this.name = "DepositError";
@@ -118,7 +118,7 @@ export class BlockchainError extends AppError {
   constructor(
     code: string,
     message: string,
-    options?: { cause?: unknown; context?: Record<string, unknown> },
+    options?: { cause?: unknown; context?: Record<string, unknown> }
   ) {
     super(ErrorCategory.BLOCKCHAIN, code, message, options);
     this.name = "BlockchainError";
@@ -143,7 +143,7 @@ export class StorageError extends AppError {
   constructor(
     code: string,
     message: string,
-    options?: { cause?: unknown; context?: Record<string, unknown> },
+    options?: { cause?: unknown; context?: Record<string, unknown> }
   ) {
     super(ErrorCategory.STORAGE, code, message, options);
     this.name = "StorageError";
@@ -167,7 +167,7 @@ export class NetworkError extends AppError {
   constructor(
     code: string,
     message: string,
-    options?: { cause?: unknown; context?: Record<string, unknown> },
+    options?: { cause?: unknown; context?: Record<string, unknown> }
   ) {
     super(ErrorCategory.NETWORK, code, message, options);
     this.name = "NetworkError";
@@ -189,7 +189,7 @@ export class IndexerError extends AppError {
   constructor(
     code: string,
     message: string,
-    options?: { cause?: unknown; context?: Record<string, unknown> },
+    options?: { cause?: unknown; context?: Record<string, unknown> }
   ) {
     super(ErrorCategory.INDEXER, code, message, options);
     this.name = "IndexerError";
@@ -210,7 +210,7 @@ export class ValidationError extends AppError {
   constructor(
     code: string,
     message: string,
-    options?: { cause?: unknown; context?: Record<string, unknown> },
+    options?: { cause?: unknown; context?: Record<string, unknown> }
   ) {
     super(ErrorCategory.VALIDATION, code, message, options);
     this.name = "ValidationError";

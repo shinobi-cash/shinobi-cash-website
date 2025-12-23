@@ -19,7 +19,7 @@ export function CrossChainFlowSection({
   originChainId,
   originTxHash,
   destinationChainId,
-  destinationTxHash
+  destinationTxHash,
 }: CrossChainFlowSectionProps) {
   return (
     <SectionCard title="Cross-Chain Flow" className="overflow-hidden" contentClassName="px-2 py-2">
@@ -31,7 +31,7 @@ export function CrossChainFlowSection({
           className="flex-1"
         />
 
-        <ArrowRight className="h-4 w-4 text-app-tertiary flex-shrink-0" />
+        <ArrowRight className="text-app-tertiary h-4 w-4 flex-shrink-0" />
 
         <ChainBadge
           chainId={destinationChainId ?? null}

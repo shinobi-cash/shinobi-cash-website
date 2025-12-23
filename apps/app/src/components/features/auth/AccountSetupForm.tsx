@@ -38,7 +38,7 @@ interface AccountSetupFormProps {
       variant?: "default" | "outline" | "ghost";
       disabled?: boolean;
       icon?: React.ReactNode;
-    } | null,
+    } | null
   ) => void;
 }
 
@@ -98,7 +98,7 @@ function PasskeySetupForm({
       variant?: "default" | "outline" | "ghost";
       disabled?: boolean;
       icon?: React.ReactNode;
-    } | null,
+    } | null
   ) => void;
 }) {
   const [accountName, setAccountName] = useState("");
@@ -203,16 +203,26 @@ function PasskeySetupForm({
           formRef.current?.requestSubmit();
         },
         disabled,
-        icon: <Fingerprint className="h-5 w-5" />
+        icon: <Fingerprint className="h-5 w-5" />,
       },
-      onSkip ? {
-        label: "Skip for now",
-        onClick: handleSkip,
-        variant: "ghost"
-      } : null
+      onSkip
+        ? {
+            label: "Skip for now",
+            onClick: handleSkip,
+            variant: "ghost",
+          }
+        : null
     );
     return () => registerFooterActions(null);
-  }, [registerFooterActions, isProcessing, accountNameError, accountName, generatedKeys, onSkip, handleSkip]);
+  }, [
+    registerFooterActions,
+    isProcessing,
+    accountNameError,
+    accountName,
+    generatedKeys,
+    onSkip,
+    handleSkip,
+  ]);
 
   return (
     <form ref={formRef} onSubmit={handlePasskeySetup} className="space-y-2">
@@ -233,13 +243,13 @@ function PasskeySetupForm({
         autoComplete="off"
         aria-invalid={!!accountNameError}
       />
-      {accountNameError && <p className="text-red-600 text-xs">{accountNameError}</p>}
+      {accountNameError && <p className="text-xs text-red-600">{accountNameError}</p>}
 
       {/* Setup Status Messages */}
       {setupError && (
-        <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-          <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
-          <p className="text-red-700 text-sm">{setupError}</p>
+        <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-3">
+          <AlertCircle className="h-4 w-4 flex-shrink-0 text-red-600" />
+          <p className="text-sm text-red-700">{setupError}</p>
         </div>
       )}
 

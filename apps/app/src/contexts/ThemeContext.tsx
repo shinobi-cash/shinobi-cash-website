@@ -30,14 +30,16 @@ export function ThemeProvider({
   storageKey = "shinobi.cash.theme",
   ...props
 }: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>(() =>
-    (typeof window !== 'undefined' ? localStorage.getItem(storageKey) as Theme : null) || defaultTheme
+  const [theme, setTheme] = useState<Theme>(
+    () =>
+      (typeof window !== "undefined" ? (localStorage.getItem(storageKey) as Theme) : null) ||
+      defaultTheme
   );
 
   // Calculate the effective theme (what's actually applied)
   const getEffectiveTheme = useCallback((): "light" | "dark" => {
     if (theme === "system") {
-      if (typeof window === 'undefined') return "dark";
+      if (typeof window === "undefined") return "dark";
       return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
     }
     return theme;
@@ -72,7 +74,9 @@ export function ThemeProvider({
 
   const toggleTheme = useCallback(() => {
     if (theme === "system") {
-      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : "light";
       const nextTheme = systemTheme === "dark" ? "light" : "dark";
       localStorage.setItem(storageKey, nextTheme);
       setTheme(nextTheme);
@@ -83,10 +87,13 @@ export function ThemeProvider({
     }
   }, [theme, storageKey]);
 
-  const updateTheme = useCallback((newTheme: Theme) => {
-    localStorage.setItem(storageKey, newTheme);
-    setTheme(newTheme);
-  }, [storageKey]);
+  const updateTheme = useCallback(
+    (newTheme: Theme) => {
+      localStorage.setItem(storageKey, newTheme);
+      setTheme(newTheme);
+    },
+    [storageKey]
+  );
 
   const value = useMemo(
     () => ({
@@ -95,7 +102,7 @@ export function ThemeProvider({
       toggleTheme,
       effectiveTheme,
     }),
-    [theme, updateTheme, toggleTheme, effectiveTheme],
+    [theme, updateTheme, toggleTheme, effectiveTheme]
   );
 
   return (

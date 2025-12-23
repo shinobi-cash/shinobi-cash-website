@@ -22,7 +22,7 @@ export function useDepositFormState({ availableBalance }: UseDepositFormStatePro
         return "Please enter a valid amount";
       }
     },
-    [availableBalance],
+    [availableBalance]
   );
 
   const amountError = amount ? validateAmount(amount) : "";

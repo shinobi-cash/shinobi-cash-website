@@ -6,8 +6,8 @@
  * Migrated: 2025-01-06
  */
 
-import { DepositService } from '@shinobi-cash/core';
-import { DepositStorageProviderAdapter } from './adapters/DepositStorageProviderAdapter';
+import { DepositService } from "@shinobi-cash/core";
+import { DepositStorageProviderAdapter } from "./adapters/DepositStorageProviderAdapter";
 
 /**
  * Create singleton service instance with storage adapter

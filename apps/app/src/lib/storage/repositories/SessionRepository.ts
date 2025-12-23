@@ -14,7 +14,7 @@ const STORAGE_KEY = "shinobi.encrypted.session";
 export class SessionRepository {
   constructor(
     private localStorageAdapter: IBrowserStorageAdapter,
-    private sessionStorageAdapter: IBrowserStorageAdapter,
+    private sessionStorageAdapter: IBrowserStorageAdapter
   ) {}
 
   /**
@@ -23,7 +23,7 @@ export class SessionRepository {
   async storeSessionInfo(
     accountName: string,
     authMethod: "passkey" | "password",
-    opts?: { credentialId?: string },
+    opts?: { credentialId?: string }
   ): Promise<void> {
     const isIframe = window.self !== window.top;
     const sessionInfo: SessionInfo = {

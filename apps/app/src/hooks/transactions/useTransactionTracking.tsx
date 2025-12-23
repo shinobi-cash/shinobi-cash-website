@@ -36,11 +36,7 @@ export function useTransactionTracking() {
 // Use pre-configured singleton service
 const discoveryService = noteDiscoveryService;
 
-export function TransactionTrackingProvider({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export function TransactionTrackingProvider({ children }: { children: React.ReactNode }) {
   const [trackingStatus, setTrackingStatus] = useState<TrackingStatus>("idle");
   const [trackedTransaction, setTrackedTransaction] = useState<TransactionInfo | null>(null);
   const eventTargetRef = useRef(new EventTarget());
@@ -74,7 +70,7 @@ export function TransactionTrackingProvider({
         clearTracking();
       }, ms);
     },
-    [clearTracking],
+    [clearTracking]
   );
 
   /**
@@ -95,7 +91,7 @@ export function TransactionTrackingProvider({
       // Auto-clear if it gets stuck for >5 min
       scheduleAutoClear();
     },
-    [clearTracking, scheduleAutoClear],
+    [clearTracking, scheduleAutoClear]
   );
 
   /**
@@ -114,7 +110,8 @@ export function TransactionTrackingProvider({
    * Wait for transaction receipt
    */
   useEffect(() => {
-    if (!trackedTransaction?.hash || !trackedTransaction?.chainId || trackingStatus !== "pending") return;
+    if (!trackedTransaction?.hash || !trackedTransaction?.chainId || trackingStatus !== "pending")
+      return;
 
     const waitForReceipt = async () => {
       try {
@@ -129,8 +126,12 @@ export function TransactionTrackingProvider({
         const shortHash = `${trackedTransaction.hash.slice(0, 6)}...${trackedTransaction.hash.slice(-4)}`;
 
         if (receipt.status === "success") {
-          showToast.success(`${shortHash} • Transaction successful! Indexing...`, { duration: 4000 });
-          setTrackedTransaction((prev) => (prev ? { ...prev, blockNumber: Number(receipt.blockNumber) } : null));
+          showToast.success(`${shortHash} • Transaction successful! Indexing...`, {
+            duration: 4000,
+          });
+          setTrackedTransaction((prev) =>
+            prev ? { ...prev, blockNumber: Number(receipt.blockNumber) } : null
+          );
           setTrackingStatus("waiting");
         } else {
           showToast.error(`${shortHash} • Transaction failed`, {
@@ -165,7 +166,11 @@ export function TransactionTrackingProvider({
    * Poll until transaction is indexed
    */
   useEffect(() => {
-    if (!trackedTransaction?.hash || trackingStatus !== "waiting" || trackedTransaction.blockNumber === null) {
+    if (
+      !trackedTransaction?.hash ||
+      trackingStatus !== "waiting" ||
+      trackedTransaction.blockNumber === null
+    ) {
       return;
     }
 
@@ -242,5 +247,9 @@ export function TransactionTrackingProvider({
     trackedTxHash: trackedTransaction?.hash || null,
   };
 
-  return <TransactionTrackingContext.Provider value={contextValue}>{children}</TransactionTrackingContext.Provider>;
+  return (
+    <TransactionTrackingContext.Provider value={contextValue}>
+      {children}
+    </TransactionTrackingContext.Provider>
+  );
 }

@@ -33,7 +33,7 @@ interface WalletSignatureKeyGenerationProps {
       variant?: "default" | "outline" | "ghost";
       disabled?: boolean;
       icon?: React.ReactNode;
-    } | null,
+    } | null
   ) => void;
 }
 
@@ -129,11 +129,13 @@ export function WalletSignatureKeyGeneration({
   useEffect(() => {
     if (!registerFooterActions) return;
 
-    const secondaryAction = onLoginChoice ? {
-      label: "Sign in instead",
-      onClick: onLoginChoice,
-      variant: "ghost" as const,
-    } : null;
+    const secondaryAction = onLoginChoice
+      ? {
+          label: "Sign in instead",
+          onClick: onLoginChoice,
+          variant: "ghost" as const,
+        }
+      : null;
 
     if (currentStep === "connect") {
       registerFooterActions(
@@ -142,7 +144,7 @@ export function WalletSignatureKeyGeneration({
           onClick: handleConnectWallet,
           variant: "default",
         },
-        secondaryAction,
+        secondaryAction
       );
     } else if (currentStep === "sign") {
       registerFooterActions(
@@ -152,26 +154,33 @@ export function WalletSignatureKeyGeneration({
           variant: "default",
           disabled: isSigning,
         },
-        secondaryAction,
+        secondaryAction
       );
     } else {
       registerFooterActions(null, null);
     }
-  }, [currentStep, registerFooterActions, handleConnectWallet, handleSignMessage, isSigning, onLoginChoice]);
+  }, [
+    currentStep,
+    registerFooterActions,
+    handleConnectWallet,
+    handleSignMessage,
+    isSigning,
+    onLoginChoice,
+  ]);
 
   // Render based on current step
   if (currentStep === "connect") {
     return (
       <div className="space-y-4">
-        <div className="text-center space-y-3">
-          <div className="w-16 h-16 bg-blue-600/20 rounded-full flex items-center justify-center mx-auto">
-            <WalletIcon className="w-8 h-8 text-blue-600" />
+        <div className="space-y-3 text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-600/20">
+            <WalletIcon className="h-8 w-8 text-blue-600" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-app-primary mb-2">Connect Your Wallet</h3>
-            <p className="text-sm text-app-secondary">
-              Connect your wallet to create your Shinobi Cash account. Your keys will be derived from your wallet
-              signature.
+            <h3 className="text-app-primary mb-2 text-lg font-semibold">Connect Your Wallet</h3>
+            <p className="text-app-secondary text-sm">
+              Connect your wallet to create your Shinobi Cash account. Your keys will be derived
+              from your wallet signature.
             </p>
           </div>
         </div>
@@ -182,36 +191,36 @@ export function WalletSignatureKeyGeneration({
   if (currentStep === "sign") {
     return (
       <div className="space-y-4">
-        <div className="text-center space-y-3">
-          <div className="w-16 h-16 bg-orange-600/20 rounded-full flex items-center justify-center mx-auto">
-            <WalletIcon className="w-8 h-8 text-orange-600" />
+        <div className="space-y-3 text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-orange-600/20">
+            <WalletIcon className="h-8 w-8 text-orange-600" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-app-primary mb-2">Sign Message</h3>
-            <p className="text-sm text-app-secondary mb-4">
-              Sign a message with your wallet to generate your account keys. This is free and won't send any
-              transactions.
+            <h3 className="text-app-primary mb-2 text-lg font-semibold">Sign Message</h3>
+            <p className="text-app-secondary mb-4 text-sm">
+              Sign a message with your wallet to generate your account keys. This is free and won't
+              send any transactions.
             </p>
             {address && (
-              <div className="bg-app-card px-3 py-2 rounded-lg">
-                <p className="text-xs text-app-tertiary mb-1">Connected Wallet</p>
-                <p className="text-sm font-mono text-app-primary truncate">{address}</p>
+              <div className="bg-app-card rounded-lg px-3 py-2">
+                <p className="text-app-tertiary mb-1 text-xs">Connected Wallet</p>
+                <p className="text-app-primary truncate font-mono text-sm">{address}</p>
               </div>
             )}
           </div>
         </div>
 
         {error && (
-          <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-lg p-3 flex gap-2">
-            <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+          <div className="flex gap-2 rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-900 dark:bg-red-950/20">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-600 dark:text-red-400" />
             <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
           </div>
         )}
 
-        <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-lg p-3">
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-900 dark:bg-blue-950/20">
           <p className="text-xs text-blue-600 dark:text-blue-400">
-            💡 Your signature generates a unique seed for your account. You can always recover your account by signing
-            the same message with this wallet.
+            💡 Your signature generates a unique seed for your account. You can always recover your
+            account by signing the same message with this wallet.
           </p>
         </div>
       </div>
@@ -221,13 +230,15 @@ export function WalletSignatureKeyGeneration({
   if (currentStep === "deriving") {
     return (
       <div className="space-y-4">
-        <div className="text-center space-y-3">
-          <div className="w-16 h-16 bg-orange-600/20 rounded-full flex items-center justify-center mx-auto">
-            <Loader2 className="w-8 h-8 text-orange-600 animate-spin" />
+        <div className="space-y-3 text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-orange-600/20">
+            <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-app-primary mb-2">Generating Keys</h3>
-            <p className="text-sm text-app-secondary">Deriving your account keys from wallet signature...</p>
+            <h3 className="text-app-primary mb-2 text-lg font-semibold">Generating Keys</h3>
+            <p className="text-app-secondary text-sm">
+              Deriving your account keys from wallet signature...
+            </p>
           </div>
         </div>
       </div>
@@ -237,13 +248,15 @@ export function WalletSignatureKeyGeneration({
   if (currentStep === "complete") {
     return (
       <div className="space-y-4">
-        <div className="text-center space-y-3">
-          <div className="w-16 h-16 bg-green-600/20 rounded-full flex items-center justify-center mx-auto">
-            <CheckCircle className="w-8 h-8 text-green-600" />
+        <div className="space-y-3 text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-600/20">
+            <CheckCircle className="h-8 w-8 text-green-600" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-app-primary mb-2">Keys Generated!</h3>
-            <p className="text-sm text-app-secondary">Your account keys have been created successfully.</p>
+            <h3 className="text-app-primary mb-2 text-lg font-semibold">Keys Generated!</h3>
+            <p className="text-app-secondary text-sm">
+              Your account keys have been created successfully.
+            </p>
           </div>
         </div>
       </div>
@@ -253,12 +266,12 @@ export function WalletSignatureKeyGeneration({
   if (currentStep === "error") {
     return (
       <div className="space-y-4">
-        <div className="text-center space-y-3">
-          <div className="w-16 h-16 bg-red-600/20 rounded-full flex items-center justify-center mx-auto">
-            <AlertCircle className="w-8 h-8 text-red-600" />
+        <div className="space-y-3 text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-600/20">
+            <AlertCircle className="h-8 w-8 text-red-600" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-app-primary mb-2">Error</h3>
+            <h3 className="text-app-primary mb-2 text-lg font-semibold">Error</h3>
             <p className="text-sm text-red-600 dark:text-red-400">{error || "An error occurred"}</p>
           </div>
         </div>

@@ -18,8 +18,7 @@ import { AppError } from "@/lib/errors";
 export function initializeSentry() {
   // Only initialize in production or if explicitly enabled
   const isEnabled =
-    process.env.NODE_ENV === "production" ||
-    process.env.NEXT_PUBLIC_SENTRY_ENABLED === "true";
+    process.env.NODE_ENV === "production" || process.env.NEXT_PUBLIC_SENTRY_ENABLED === "true";
 
   if (!isEnabled) {
     console.log("[Sentry] Monitoring disabled in development");
@@ -128,10 +127,7 @@ export function initializeSentry() {
 /**
  * Report error to Sentry with structured context
  */
-export function reportErrorToSentry(
-  error: unknown,
-  context?: Record<string, unknown>,
-): void {
+export function reportErrorToSentry(error: unknown, context?: Record<string, unknown>): void {
   // Set context tags for filtering/searching in Sentry
   if (error instanceof AppError) {
     Sentry.setTag("error_category", error.category);
@@ -172,7 +168,7 @@ export function setSentryUser(userId: string | null) {
 export function addSentryBreadcrumb(
   message: string,
   data?: Record<string, unknown>,
-  level: "info" | "warning" | "error" = "info",
+  level: "info" | "warning" | "error" = "info"
 ) {
   Sentry.addBreadcrumb({
     message: sanitizeMessage(message),
@@ -188,15 +184,17 @@ export function addSentryBreadcrumb(
  * Sanitize error messages to remove sensitive data
  */
 function sanitizeMessage(message: string): string {
-  return message
-    // Remove Ethereum addresses
-    .replace(/0x[a-fA-F0-9]{40}/g, "0x[ADDRESS]")
-    // Remove transaction hashes
-    .replace(/0x[a-fA-F0-9]{64}/g, "0x[HASH]")
-    // Remove numbers that might be private keys or amounts
-    .replace(/\b\d{10,}\b/g, "[NUMBER]")
-    // Remove email addresses
-    .replace(/[\w.-]+@[\w.-]+\.\w+/g, "[EMAIL]");
+  return (
+    message
+      // Remove Ethereum addresses
+      .replace(/0x[a-fA-F0-9]{40}/g, "0x[ADDRESS]")
+      // Remove transaction hashes
+      .replace(/0x[a-fA-F0-9]{64}/g, "0x[HASH]")
+      // Remove numbers that might be private keys or amounts
+      .replace(/\b\d{10,}\b/g, "[NUMBER]")
+      // Remove email addresses
+      .replace(/[\w.-]+@[\w.-]+\.\w+/g, "[EMAIL]")
+  );
 }
 
 /**

@@ -3,11 +3,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { storageManager } from "@/lib/storage";
 import { isPasskeySupported } from "@/utils/environment";
 
-export type AuthStep =
-  | "login-convenient"
-  | "create-keys"
-  | "setup-convenient"
-  | "syncing-notes";
+export type AuthStep = "login-convenient" | "create-keys" | "setup-convenient" | "syncing-notes";
 
 interface UseAuthStepsOptions {
   onAuthComplete?: () => void;
@@ -91,42 +87,45 @@ export function useAuthSteps(options: UseAuthStepsOptions = {}) {
   const handleLoginChoice = useCallback(() => setCurrentStep("login-convenient"), []);
   const handleCreateChoice = useCallback(() => setCurrentStep("create-keys"), []);
 
-  const handleKeyGenerationComplete = useCallback(async (data: {
-    keys: KeyGenerationResult;
-    encryptionKey: Uint8Array;
-    walletAddress: string;
-  }) => {
-    setGeneratedKeys(data.keys);
-    setEncryptionKey(data.encryptionKey);
-    setWalletAddress(data.walletAddress);
+  const handleKeyGenerationComplete = useCallback(
+    async (data: {
+      keys: KeyGenerationResult;
+      encryptionKey: Uint8Array;
+      walletAddress: string;
+    }) => {
+      setGeneratedKeys(data.keys);
+      setEncryptionKey(data.encryptionKey);
+      setWalletAddress(data.walletAddress);
 
-    // Skip passkey setup if device doesn't support it - save directly to wallet-based storage
-    if (!passkeySupported) {
-      try {
-        const accountId = data.walletAddress.toLowerCase();
+      // Skip passkey setup if device doesn't support it - save directly to wallet-based storage
+      if (!passkeySupported) {
+        try {
+          const accountId = data.walletAddress.toLowerCase();
 
-        // Initialize storage with signature-derived encryption key
-        await storageManager.initializeWalletAccountSession(accountId, data.encryptionKey);
+          // Initialize storage with signature-derived encryption key
+          await storageManager.initializeWalletAccountSession(accountId, data.encryptionKey);
 
-        // Store account data encrypted with signature-derived key
-        await storageManager.saveWalletAccountData({
-          accountId,
-          walletAddress: data.walletAddress,
-          mnemonic: data.keys.mnemonic,
-          publicKey: data.keys.publicKey,
-        });
+          // Store account data encrypted with signature-derived key
+          await storageManager.saveWalletAccountData({
+            accountId,
+            walletAddress: data.walletAddress,
+            mnemonic: data.keys.mnemonic,
+            publicKey: data.keys.publicKey,
+          });
 
-        // Go to syncing step
-        setCurrentStep("syncing-notes");
-      } catch (error) {
-        console.error("Failed to save wallet account:", error);
-        // Fall back to setup step on error
+          // Go to syncing step
+          setCurrentStep("syncing-notes");
+        } catch (error) {
+          console.error("Failed to save wallet account:", error);
+          // Fall back to setup step on error
+          setCurrentStep("setup-convenient");
+        }
+      } else {
         setCurrentStep("setup-convenient");
       }
-    } else {
-      setCurrentStep("setup-convenient");
-    }
-  }, [passkeySupported]);
+    },
+    [passkeySupported]
+  );
 
   const handleAccountSetupComplete = useCallback(() => {
     // Always go to syncing step for consistent UX and "Welcome to Shinobi!" experience

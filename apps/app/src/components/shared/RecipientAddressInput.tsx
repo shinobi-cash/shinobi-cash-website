@@ -31,7 +31,7 @@ export function RecipientAddressInput({
 
   return (
     <div>
-      <label className="text-sm font-medium text-gray-400 mb-3 block">Recipient Address</label>
+      <label className="mb-3 block text-sm font-medium text-gray-400">Recipient Address</label>
       <div className="space-y-3">
         <div className="relative">
           <input
@@ -39,18 +39,18 @@ export function RecipientAddressInput({
             value={value}
             onChange={(e) => onChange(e.target.value)}
             placeholder={placeholder}
-            className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm placeholder:text-gray-500 focus:outline-none focus:border-purple-600 transition-colors pr-20"
+            className="w-full rounded-xl border border-gray-700 bg-gray-800 px-4 py-3 pr-20 text-sm text-white transition-colors placeholder:text-gray-500 focus:border-purple-600 focus:outline-none"
             disabled={disabled}
           />
           <button
             onClick={handlePaste}
-            className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg bg-gray-700 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
             disabled={disabled}
           >
             Paste
           </button>
         </div>
-        {error && <p className="text-red-500 text-sm">{error}</p>}
+        {error && <p className="text-sm text-red-500">{error}</p>}
       </div>
     </div>
   );

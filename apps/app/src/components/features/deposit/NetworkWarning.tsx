@@ -33,18 +33,14 @@ const WARNING_STYLES = {
   },
 } as const;
 
-export const NetworkWarning = memo(({
-  type = "warning",
-  title,
-  message,
-}: NetworkWarningProps) => {
+export const NetworkWarning = memo(({ type = "warning", title, message }: NetworkWarningProps) => {
   const styles = WARNING_STYLES[type];
   const IconComponent = styles.Icon;
 
   return (
-    <div className={`${styles.container} border rounded-xl p-2 mb-4`}>
+    <div className={`${styles.container} mb-4 rounded-xl border p-2`}>
       <div className="flex items-center gap-2">
-        <IconComponent className={`w-4 h-4 ${styles.icon}`} />
+        <IconComponent className={`h-4 w-4 ${styles.icon}`} />
         <div>
           <p className={`text-xs font-medium ${styles.title}`}>{title}</p>
           <p className={`text-xs ${styles.message}`}>{message}</p>
@@ -54,4 +50,4 @@ export const NetworkWarning = memo(({
   );
 });
 
-NetworkWarning.displayName = 'NetworkWarning';
+NetworkWarning.displayName = "NetworkWarning";

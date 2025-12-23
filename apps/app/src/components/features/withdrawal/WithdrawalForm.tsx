@@ -5,7 +5,10 @@ import { calculateWithdrawalAmounts } from "@/services/withdrawal/helpers";
 import { formatEthAmount } from "@/utils/formatters";
 import { Loader2, ChevronDown } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNoteSelection, useWithdrawalFormState } from "../../../hooks/withdrawal/useWithdrawalFormHooks";
+import {
+  useNoteSelection,
+  useWithdrawalFormState,
+} from "../../../hooks/withdrawal/useWithdrawalFormHooks";
 import { Button } from "@workspace/ui/components/button";
 import { NoteSelectionScreen } from "./NoteSelectionScreen";
 import { WithdrawalTimelineScreen } from "./WithdrawalTimelineScreen";
@@ -48,12 +51,19 @@ export function WithdrawalForm({ onTransactionSuccess, onBack }: WithdrawalFormP
   const { availableNotes, selectedNote, setSelectedNote, isLoadingNotes } = useNoteSelection(
     publicKey,
     poolAddress,
-    null, // Always start with no note selected
+    null // Always start with no note selected
   );
 
   // Use custom hook to manage form state and validation
-  const { form, validationErrors, handleAmountChange, handleAddressChange, handleMaxClick, resetForm, handleDestinationChainChange } =
-    useWithdrawalFormState(selectedNote, asset);
+  const {
+    form,
+    validationErrors,
+    handleAmountChange,
+    handleAddressChange,
+    handleMaxClick,
+    resetForm,
+    handleDestinationChainChange,
+  } = useWithdrawalFormState(selectedNote, asset);
 
   // Derived state from form values
   const withdrawAmountNum = Number.parseFloat(form.withdrawAmount) || 0;
@@ -76,8 +86,11 @@ export function WithdrawalForm({ onTransactionSuccess, onBack }: WithdrawalFormP
 
   const { executionFee, solverFee, youReceive, isCrossChain } = withdrawalAmounts;
   const remainingBalance = useMemo(
-    () => (selectedNote?.amount ? Number.parseFloat(formatEthAmount(selectedNote.amount)) - withdrawAmountNum : 0),
-    [selectedNote, withdrawAmountNum],
+    () =>
+      selectedNote?.amount
+        ? Number.parseFloat(formatEthAmount(selectedNote.amount)) - withdrawAmountNum
+        : 0,
+    [selectedNote, withdrawAmountNum]
   );
 
   const {
@@ -103,7 +116,14 @@ export function WithdrawalForm({ onTransactionSuccess, onBack }: WithdrawalFormP
     if (selectedNote && isValidAmount && isValidAddress) {
       handlePreviewWithdrawal(form.withdrawAmount, form.toAddress);
     }
-  }, [selectedNote, isValidAmount, isValidAddress, handlePreviewWithdrawal, form.withdrawAmount, form.toAddress]);
+  }, [
+    selectedNote,
+    isValidAmount,
+    isValidAddress,
+    handlePreviewWithdrawal,
+    form.withdrawAmount,
+    form.toAddress,
+  ]);
 
   const noteBalance = selectedNote ? formatEthAmount(selectedNote.amount) : "0";
 
@@ -160,9 +180,9 @@ export function WithdrawalForm({ onTransactionSuccess, onBack }: WithdrawalFormP
   // Show destination selection screen (chain/asset only)
   if (isDestinationSelectionOpen) {
     return (
-      <div className="flex flex-col h-full bg-gray-900">
+      <div className="flex h-full flex-col bg-gray-900">
         {/* Header */}
-        <div className="flex items-center gap-3 px-4 py-4 border-b border-gray-800">
+        <div className="flex items-center gap-3 border-b border-gray-800 px-4 py-4">
           <BackButton onClick={() => setIsDestinationSelectionOpen(false)} />
           <h2 className="text-lg font-semibold text-white">Select Asset & Chain</h2>
         </div>
@@ -182,150 +202,149 @@ export function WithdrawalForm({ onTransactionSuccess, onBack }: WithdrawalFormP
 
   // Show withdrawal form
   return (
-    <div className="flex flex-col w-full h-full overflow-x-hidden">
+    <div className="flex h-full w-full flex-col overflow-x-hidden">
       {/* Header with Back Button */}
       {onBack && (
-        <div className="flex items-center gap-3 px-4 py-4 border-b border-gray-800">
+        <div className="flex items-center gap-3 border-b border-gray-800 px-4 py-4">
           <BackButton onClick={onBack} />
           <h2 className="text-lg font-semibold text-white">Withdraw</h2>
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6">
+      <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6">
         {/* You Pay Section - From Note (Pool Chain) */}
-      <InputLabel
-        label="You Pay"
-        labelRight={
-          <Button
-            onClick={() => setIsNoteSelectionOpen(true)}
-            variant={'ghost'}
-            className="text-sm text-purple-400 hover:text-purple-300 transition-colors flex items-center gap-1 h-auto p-0"
-            disabled={isPreparing || isExecuting}
-          >
-            {selectedNote ? (
-              <>
-                {Number.parseFloat(formatEthAmount(selectedNote.amount)).toFixed(4)} {asset.symbol}
-                <ChevronDown className="w-3 h-3" />
-              </>
-            ) : (
-              <>
-                Select note
-                <ChevronDown className="w-3 h-3" />
-              </>
-            )}
-          </Button>
-        }
-      />
-      <TokenAmountInput
-        amount={form.withdrawAmount}
-        onAmountChange={handleAmountChange}
-        disabled={isPreparing || isExecuting || !selectedNote}
-        rightElement={
-          <TokenChainSelector
-            asset={asset}
-            chainId={POOL_CHAIN.id}
-            showChevron={false}
-          />
-        }
-      />
-
-      {/* Balance and Max */}
-      {selectedNote && (
-        <TokenBalance
-          balance={noteBalance}
-          usdValue={(Number.parseFloat(noteBalance) * 0).toString()}
-          assetSymbol={asset.symbol}
-          onMaxClick={handleMaxClick}
-          disabled={isPreparing || isExecuting}
+        <InputLabel
+          label="You Pay"
+          labelRight={
+            <Button
+              onClick={() => setIsNoteSelectionOpen(true)}
+              variant={"ghost"}
+              className="flex h-auto items-center gap-1 p-0 text-sm text-purple-400 transition-colors hover:text-purple-300"
+              disabled={isPreparing || isExecuting}
+            >
+              {selectedNote ? (
+                <>
+                  {Number.parseFloat(formatEthAmount(selectedNote.amount)).toFixed(4)}{" "}
+                  {asset.symbol}
+                  <ChevronDown className="h-3 w-3" />
+                </>
+              ) : (
+                <>
+                  Select note
+                  <ChevronDown className="h-3 w-3" />
+                </>
+              )}
+            </Button>
+          }
         />
-      )}
+        <TokenAmountInput
+          amount={form.withdrawAmount}
+          onAmountChange={handleAmountChange}
+          disabled={isPreparing || isExecuting || !selectedNote}
+          rightElement={
+            <TokenChainSelector asset={asset} chainId={POOL_CHAIN.id} showChevron={false} />
+          }
+        />
 
-      {/* Error Message */}
-      {validationErrors.amount && (
-        <p className="text-red-500 text-sm mt-1">{validationErrors.amount}</p>
-      )}
+        {/* Balance and Max */}
+        {selectedNote && (
+          <TokenBalance
+            balance={noteBalance}
+            usdValue={(Number.parseFloat(noteBalance) * 0).toString()}
+            assetSymbol={asset.symbol}
+            onMaxClick={handleMaxClick}
+            disabled={isPreparing || isExecuting}
+          />
+        )}
 
-      {/* Arrow/Divider */}
-      <SectionDivider />
+        {/* Error Message */}
+        {validationErrors.amount && (
+          <p className="mt-1 text-sm text-red-500">{validationErrors.amount}</p>
+        )}
 
-      {/* Destination Section - Receive */}
-      {/* You Receive Section - To Destination Chain */}
-      <InputLabel
-        label="You Receive"
-        labelRight={
+        {/* Arrow/Divider */}
+        <SectionDivider />
+
+        {/* Destination Section - Receive */}
+        {/* You Receive Section - To Destination Chain */}
+        <InputLabel
+          label="You Receive"
+          labelRight={
+            <Button
+              onClick={() => setIsRecipientAddressInputOpen(true)}
+              variant={"ghost"}
+              className="flex h-auto items-center gap-1 p-0 text-sm text-purple-400 transition-colors hover:text-purple-300"
+              disabled={isPreparing || isExecuting || !selectedNote}
+            >
+              {form.toAddress ? (
+                <>
+                  {form.toAddress.slice(0, 6)}...{form.toAddress.slice(-4)}
+                  <ChevronDown className="h-3 w-3" />
+                </>
+              ) : (
+                <>
+                  Select recipient
+                  <ChevronDown className="h-3 w-3" />
+                </>
+              )}
+            </Button>
+          }
+        />
+        <TokenAmountInput
+          amount={youReceive > 0 ? youReceive.toFixed(4) : form.withdrawAmount || "0"}
+          onAmountChange={() => {}} // Read-only
+          disabled={isPreparing || isExecuting}
+          readOnly={true}
+          rightElement={
+            <TokenChainSelector
+              asset={asset}
+              chainId={form.destinationChainId}
+              onClick={() => setIsDestinationSelectionOpen(true)}
+              disabled={isPreparing || isExecuting || !selectedNote}
+              showChevron={true}
+            />
+          }
+        />
+
+        {/* Fee Breakdown */}
+        <WithdrawalFeeBreakdown
+          withdrawalAmount={withdrawAmountNum}
+          executionFee={executionFee}
+          solverFee={solverFee}
+          youReceive={youReceive}
+          assetSymbol={asset.symbol}
+          isCrossChain={isCrossChain}
+        />
+
+        {/* Action Button */}
+        <div className="mt-2 sm:mt-4">
           <Button
-            onClick={() => setIsRecipientAddressInputOpen(true)}
-            variant={'ghost'}
-            className="text-sm text-purple-400 hover:text-purple-300 transition-colors flex items-center gap-1 h-auto p-0"
-            disabled={isPreparing || isExecuting || !selectedNote}
+            onClick={handleSubmit}
+            disabled={
+              !selectedNote || !isValidAmount || !isValidAddress || isPreparing || isExecuting
+            }
+            className="h-12 w-full rounded-xl text-base font-semibold disabled:cursor-not-allowed disabled:opacity-50 sm:h-14 sm:text-lg"
+            size="lg"
           >
-            {form.toAddress ? (
+            {isPreparing ? (
               <>
-                {form.toAddress.slice(0, 6)}...{form.toAddress.slice(-4)}
-                <ChevronDown className="w-3 h-3" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Preparing...
               </>
+            ) : isExecuting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Executing...
+              </>
+            ) : !selectedNote ? (
+              "Select Note to Continue"
+            ) : !form.toAddress || validationErrors.toAddress ? (
+              "Continue"
             ) : (
-              <>
-                Select recipient
-                <ChevronDown className="w-3 h-3" />
-              </>
+              "Preview Withdrawal"
             )}
           </Button>
-        }
-      />
-      <TokenAmountInput
-        amount={youReceive > 0 ? youReceive.toFixed(4) : form.withdrawAmount || "0"}
-        onAmountChange={() => {}} // Read-only
-        disabled={isPreparing || isExecuting}
-        readOnly={true}
-        rightElement={
-          <TokenChainSelector
-            asset={asset}
-            chainId={form.destinationChainId}
-            onClick={() => setIsDestinationSelectionOpen(true)}
-            disabled={isPreparing || isExecuting || !selectedNote}
-            showChevron={true}
-          />
-        }
-      />
-
-      {/* Fee Breakdown */}
-      <WithdrawalFeeBreakdown
-        withdrawalAmount={withdrawAmountNum}
-        executionFee={executionFee}
-        solverFee={solverFee}
-        youReceive={youReceive}
-        assetSymbol={asset.symbol}
-        isCrossChain={isCrossChain}
-      />
-
-      {/* Action Button */}
-      <div className="mt-2 sm:mt-4">
-        <Button
-          onClick={handleSubmit}
-          disabled={!selectedNote || !isValidAmount || !isValidAddress || isPreparing || isExecuting}
-          className="w-full h-12 sm:h-14 rounded-xl text-base sm:text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-          size="lg"
-        >
-          {isPreparing ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin mr-2" />
-              Preparing...
-            </>
-          ) : isExecuting ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin mr-2" />
-              Executing...
-            </>
-          ) : !selectedNote ? (
-            "Select Note to Continue"
-          ) : !form.toAddress || validationErrors.toAddress ? (
-            "Continue"
-          ) : (
-            "Preview Withdrawal"
-          )}
-        </Button>
-      </div>
+        </div>
       </div>
     </div>
   );

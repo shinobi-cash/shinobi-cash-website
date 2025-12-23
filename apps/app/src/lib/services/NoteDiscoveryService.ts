@@ -6,9 +6,9 @@
  * Migrated: 2025-01-06
  */
 
-import { NoteDiscoveryService, type ActivityFetcher } from '@shinobi-cash/core';
-import { StorageProviderAdapter } from './adapters/StorageProviderAdapter';
-import { fetchActivities } from '@/services/data/indexerService';
+import { NoteDiscoveryService, type ActivityFetcher } from "@shinobi-cash/core";
+import { StorageProviderAdapter } from "./adapters/StorageProviderAdapter";
+import { fetchActivities } from "@/services/data/indexerService";
 
 /**
  * Create adapter function to bridge mini-app's fetchActivities to SDK's ActivityFetcher interface
@@ -20,7 +20,7 @@ const activityFetcher: ActivityFetcher = async (
   poolAddress: string,
   limit: number,
   cursor?: string,
-  orderDirection?: 'asc' | 'desc'
+  orderDirection?: "asc" | "desc"
 ) => {
   const result = await fetchActivities(poolAddress, limit, cursor, orderDirection);
   return {

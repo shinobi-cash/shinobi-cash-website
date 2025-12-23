@@ -20,24 +20,20 @@ import { FeeBreakdown } from "@/components/shared/FeeBreakdown";
 import { TokenChainSelector } from "@/components/shared/TokenChainSelector";
 import { AssetChainSelectorScreen } from "@/components/shared/AssetChainSelectorScreen";
 import { BackButton } from "@/components/ui/back-button";
-import { CircleQuestionMarkIcon } from 'lucide-react'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@workspace/ui/components/tooltip"
+import { CircleQuestionMarkIcon } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { modal } from "@/context";
 function DepositNoteInfo() {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <CircleQuestionMarkIcon className="w-5 h-5" />
+        <CircleQuestionMarkIcon className="h-5 w-5" />
       </TooltipTrigger>
       <TooltipContent>
         <p>Amount after deducting 1% compliance fee</p>
       </TooltipContent>
     </Tooltip>
-  )
+  );
 }
 interface DepositFormProps {
   asset: { symbol: string; name: string; icon: string };
@@ -53,7 +49,7 @@ export function DepositForm({ asset, onTransactionSuccess, onBack }: DepositForm
   const { publicKey, accountKey } = useAuth();
   const [isAssetSelectorOpen, setIsAssetSelectorOpen] = useState(false);
   const [copiedAddress, setCopiedAddress] = useState(false);
-  
+
   const availableBalance = balance?.value ?? BigInt(0);
 
   // Copy address handler
@@ -69,8 +65,8 @@ export function DepositForm({ asset, onTransactionSuccess, onBack }: DepositForm
   };
 
   const handleConnectWallet = () => {
-      modal.open();
-    };
+    modal.open();
+  };
 
   // Use custom hook for form state management
   const { amount, amountError, handleAmountChange, resetForm } = useDepositFormState({
@@ -78,10 +74,20 @@ export function DepositForm({ asset, onTransactionSuccess, onBack }: DepositForm
   });
 
   // ---- Transaction Hooks ----
-  const isOnSupportedChain = SHINOBI_CASH_SUPPORTED_CHAINS.some(chain => chain.id === chainId);
-  const { noteData, isGeneratingNote, error: noteError, regenerateNote } = useDepositCommitment(publicKey, accountKey);
-  const { deposit, reset, clearError, isLoading, isSuccess, error, transactionHash } = useDepositTransaction();
-  const { gasCostEth, isLoading: isEstimatingGas, error: gasEstimationError } = useDepositGasEstimate(amount, noteData);
+  const isOnSupportedChain = SHINOBI_CASH_SUPPORTED_CHAINS.some((chain) => chain.id === chainId);
+  const {
+    noteData,
+    isGeneratingNote,
+    error: noteError,
+    regenerateNote,
+  } = useDepositCommitment(publicKey, accountKey);
+  const { deposit, reset, clearError, isLoading, isSuccess, error, transactionHash } =
+    useDepositTransaction();
+  const {
+    gasCostEth,
+    isLoading: isEstimatingGas,
+    error: gasEstimationError,
+  } = useDepositGasEstimate(amount, noteData);
 
   // ---- Error + Success Tracking ----
   const shownErrorsRef = useRef(new Set<string>());
@@ -116,7 +122,15 @@ export function DepositForm({ asset, onTransactionSuccess, onBack }: DepositForm
         onTransactionSuccess?.();
       }, 1000);
     }
-  }, [isSuccess, transactionHash, reset, resetForm, trackTransaction, chainId, onTransactionSuccess]);
+  }, [
+    isSuccess,
+    transactionHash,
+    reset,
+    resetForm,
+    trackTransaction,
+    chainId,
+    onTransactionSuccess,
+  ]);
 
   // ---- Deposit Action ----
   const handleDeposit = () => {
@@ -145,7 +159,7 @@ export function DepositForm({ asset, onTransactionSuccess, onBack }: DepositForm
     if (isLoading) {
       return (
         <div className="flex items-center gap-2">
-          <Loader2 className="w-4 h-4 animate-spin" />
+          <Loader2 className="h-4 w-4 animate-spin" />
           Depositing...
         </div>
       );
@@ -171,17 +185,22 @@ export function DepositForm({ asset, onTransactionSuccess, onBack }: DepositForm
   // Show Asset/Chain Selector
   if (isAssetSelectorOpen) {
     return (
-      <div className="flex flex-col h-full bg-gray-900">
+      <div className="flex h-full flex-col bg-gray-900">
         {/* Header */}
-        <div className="flex items-center gap-3 px-4 py-4 border-b border-gray-800">
+        <div className="flex items-center gap-3 border-b border-gray-800 px-4 py-4">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setIsAssetSelectorOpen(false)}
             className="h-8 w-8 p-0"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 19l-7-7 7-7"
+              />
             </svg>
           </Button>
           <h2 className="text-lg font-semibold text-white">Select Asset & Chain</h2>
@@ -203,123 +222,117 @@ export function DepositForm({ asset, onTransactionSuccess, onBack }: DepositForm
   }
 
   return (
-    <div className="flex flex-col w-full h-full overflow-x-hidden">
+    <div className="flex h-full w-full flex-col overflow-x-hidden">
       {/* Header with Back Button */}
       {onBack && (
-        <div className="flex items-center gap-3 px-4 py-4 border-b border-gray-800">
+        <div className="flex items-center gap-3 border-b border-gray-800 px-4 py-4">
           <BackButton onClick={onBack} />
           <h2 className="text-lg font-semibold text-white">Deposit</h2>
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6">
+      <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6">
         {/* Unsupported Network Warning */}
-      {!isOnSupportedChain && (
-        <div className="mb-6">
-          <NetworkWarning
-            type="warning"
-            title="Unsupported Network"
-            message="Please switch to a supported network in your wallet"
-          />
+        {!isOnSupportedChain && (
+          <div className="mb-6">
+            <NetworkWarning
+              type="warning"
+              title="Unsupported Network"
+              message="Please switch to a supported network in your wallet"
+            />
+          </div>
+        )}
+
+        {/* You Pay Section */}
+        <InputLabel
+          label="You Pay"
+          labelRight={
+            address ? (
+              <Button
+                onClick={handleCopyAddress}
+                variant="ghost"
+                className="flex h-auto items-center gap-1.5 p-0 text-sm text-purple-400 transition-colors hover:text-purple-300"
+              >
+                {address.slice(0, 6)}...{address.slice(-4)}
+                {copiedAddress ? (
+                  <Check className="h-3 w-3 text-green-500" />
+                ) : (
+                  <Copy className="h-3 w-3" />
+                )}
+              </Button>
+            ) : (
+              <Button
+                variant="ghost"
+                onClick={handleConnectWallet}
+                className="h-auto p-0 text-sm text-purple-400 transition-colors hover:text-purple-300"
+              >
+                Connect Wallet
+              </Button>
+            )
+          }
+        />
+        <TokenAmountInput
+          amount={amount}
+          onAmountChange={handleAmountChange}
+          disabled={isTransacting || !isOnSupportedChain}
+          rightElement={
+            <TokenChainSelector
+              asset={asset}
+              chainId={chainId}
+              onClick={() => setIsAssetSelectorOpen(true)}
+              disabled={isTransacting || !isOnSupportedChain}
+              showChevron={true}
+            />
+          }
+        />
+
+        {/* Balance and Max Button */}
+        <TokenBalance
+          balance={formattedBalance}
+          usdValue={(Number.parseFloat(formattedBalance) * 0).toString()}
+          assetSymbol={asset.symbol}
+          onMaxClick={() => handleAmountChange(formattedBalance)}
+          disabled={!hasBalance || isTransacting}
+        />
+
+        {/* Error Messages */}
+        {amountError && <p className="mt-1 text-sm text-red-500">{amountError}</p>}
+        {gasEstimationError && amount && !amountError && (
+          <p className="mt-1 text-sm text-red-500">{gasEstimationError}</p>
+        )}
+
+        {/* Arrow Divider */}
+        <SectionDivider />
+
+        {/* You Receive Section */}
+        <InputLabel label="You Receive (Deposit Note)" labelRight={<DepositNoteInfo />} />
+        <TokenAmountInput
+          amount={depositNoteAmount > 0 ? depositNoteAmount.toFixed(4) : "0"}
+          onAmountChange={() => {}} // Read-only
+          readOnly={true}
+          rightElement={
+            <TokenChainSelector asset={asset} chainId={POOL_CHAIN.id} showChevron={false} />
+          }
+        />
+
+        {/* Fee Breakdown (Collapsible) */}
+        <FeeBreakdown
+          gasCost={gasCostEth}
+          assetSymbol={asset.symbol}
+          isEstimatingGas={isEstimatingGas}
+        />
+
+        {/* Submit Button */}
+        <div className="mt-2 sm:mt-4">
+          <Button
+            disabled={!canMakeDeposit}
+            onClick={handleDeposit}
+            className="h-12 w-full rounded-xl text-base font-semibold disabled:cursor-not-allowed disabled:opacity-50 sm:h-14 sm:text-lg"
+            size="lg"
+          >
+            {getButtonLabel()}
+          </Button>
         </div>
-      )}
-
-      {/* You Pay Section */}
-      <InputLabel
-        label="You Pay"
-        labelRight={
-          address ? (
-            <Button
-              onClick={handleCopyAddress}
-              variant="ghost"
-              className="text-sm text-purple-400 hover:text-purple-300 transition-colors flex items-center gap-1.5 h-auto p-0"
-            >
-              {address.slice(0, 6)}...{address.slice(-4)}
-              {copiedAddress ? (
-                <Check className="w-3 h-3 text-green-500" />
-              ) : (
-                <Copy className="w-3 h-3" />
-              )}
-            </Button>
-          ) : (
-            <Button
-              variant="ghost"
-              onClick={handleConnectWallet}
-              className="text-sm text-purple-400 hover:text-purple-300 transition-colors h-auto p-0"
-            >
-              Connect Wallet
-            </Button>
-          )
-        }
-      />
-      <TokenAmountInput
-        amount={amount}
-        onAmountChange={handleAmountChange}
-        disabled={isTransacting || !isOnSupportedChain}
-        rightElement={
-          <TokenChainSelector
-            asset={asset}
-            chainId={chainId}
-            onClick={() => setIsAssetSelectorOpen(true)}
-            disabled={isTransacting || !isOnSupportedChain}
-            showChevron={true}
-          />
-        }
-      />
-
-      {/* Balance and Max Button */}
-      <TokenBalance
-        balance={formattedBalance}
-        usdValue={(Number.parseFloat(formattedBalance) * 0).toString()}
-        assetSymbol={asset.symbol}
-        onMaxClick={() => handleAmountChange(formattedBalance)}
-        disabled={!hasBalance || isTransacting}
-      />
-
-      {/* Error Messages */}
-      {amountError && (
-        <p className="text-red-500 text-sm mt-1">{amountError}</p>
-      )}
-      {gasEstimationError && amount && !amountError && (
-        <p className="text-red-500 text-sm mt-1">{gasEstimationError}</p>
-      )}
-
-      {/* Arrow Divider */}
-      <SectionDivider />
-
-      {/* You Receive Section */}
-      <InputLabel label="You Receive (Deposit Note)" labelRight={<DepositNoteInfo />} />
-      <TokenAmountInput
-        amount={depositNoteAmount > 0 ? depositNoteAmount.toFixed(4) : "0"}
-        onAmountChange={() => {}} // Read-only
-        readOnly={true}
-        rightElement={
-          <TokenChainSelector
-            asset={asset}
-            chainId={POOL_CHAIN.id}
-            showChevron={false}
-          />
-        }
-      />
-
-      {/* Fee Breakdown (Collapsible) */}
-      <FeeBreakdown
-        gasCost={gasCostEth}
-        assetSymbol={asset.symbol}
-        isEstimatingGas={isEstimatingGas}
-      />
-
-      {/* Submit Button */}
-      <div className="mt-2 sm:mt-4">
-        <Button
-          disabled={!canMakeDeposit}
-          onClick={handleDeposit}
-          className="w-full h-12 sm:h-14 rounded-xl text-base sm:text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-          size="lg"
-        >
-          {getButtonLabel()}
-        </Button>
-      </div>
       </div>
     </div>
   );

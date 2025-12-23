@@ -93,13 +93,17 @@ export function AuthScreen({ onAuthComplete, onBack }: AuthScreenProps) {
     resetFooter();
   }, [authSteps.currentStep, resetFooter]);
 
-  const registerFooterActions = useCallback((primary: FooterAction | null, secondary?: FooterAction | null) => {
-    setFooterPrimary(primary);
-    setFooterSecondary(secondary ?? null);
-  }, []);
+  const registerFooterActions = useCallback(
+    (primary: FooterAction | null, secondary?: FooterAction | null) => {
+      setFooterPrimary(primary);
+      setFooterSecondary(secondary ?? null);
+    },
+    []
+  );
 
   const canGoBack = authSteps.canGoBack();
-  const isFirstStep = authSteps.currentStep === "login-convenient" || authSteps.currentStep === "create-keys";
+  const isFirstStep =
+    authSteps.currentStep === "login-convenient" || authSteps.currentStep === "create-keys";
 
   const handleBack = () => {
     if (canGoBack) {
@@ -109,12 +113,13 @@ export function AuthScreen({ onAuthComplete, onBack }: AuthScreenProps) {
     }
   };
 
-  const shouldShowFooter = () => !!footerPrimary || !!footerSecondary || (canGoBack && !isFirstStep);
+  const shouldShowFooter = () =>
+    !!footerPrimary || !!footerSecondary || (canGoBack && !isFirstStep);
 
   return (
     <div className="flex flex-col bg-gray-900">
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-4 border-b border-gray-800">
+      <div className="flex items-center gap-3 border-b border-gray-800 px-4 py-4">
         {canGoBack && !isFirstStep && <BackButton onClick={handleBack} />}
         <div>
           <h2 className="text-lg font-semibold text-white">{getTitle()}</h2>
@@ -145,17 +150,17 @@ export function AuthScreen({ onAuthComplete, onBack }: AuthScreenProps) {
 
       {/* Footer */}
       {shouldShowFooter() && (
-        <div className="px-4 py-4 border-t border-gray-800">
-          <div className="grid grid-cols-2 gap-3 w-full">
+        <div className="border-t border-gray-800 px-4 py-4">
+          <div className="grid w-full grid-cols-2 gap-3">
             {(footerSecondary || (canGoBack && footerPrimary)) && (
               <Button
                 variant={footerSecondary?.variant ?? "outline"}
                 onClick={footerSecondary?.onClick ?? handleBack}
                 disabled={footerSecondary?.disabled}
-                className="col-span-1 w-full min-h-12 py-3 text-base font-medium rounded-2xl"
+                className="col-span-1 min-h-12 w-full rounded-2xl py-3 text-base font-medium"
                 size="lg"
               >
-                <span className="w-full text-center leading-tight flex items-center justify-center gap-2">
+                <span className="flex w-full items-center justify-center gap-2 text-center leading-tight">
                   {footerSecondary?.icon}
                   {footerSecondary?.label ?? "Back"}
                 </span>
@@ -166,10 +171,10 @@ export function AuthScreen({ onAuthComplete, onBack }: AuthScreenProps) {
                 variant={footerPrimary.variant ?? "default"}
                 onClick={footerPrimary.onClick}
                 disabled={footerPrimary.disabled}
-                className={`${footerSecondary || (canGoBack && footerPrimary) ? "col-span-1" : "col-span-2"} w-full min-h-12 py-3 text-base font-medium rounded-2xl`}
+                className={`${footerSecondary || (canGoBack && footerPrimary) ? "col-span-1" : "col-span-2"} min-h-12 w-full rounded-2xl py-3 text-base font-medium`}
                 size="lg"
               >
-                <span className="w-full text-center leading-tight flex items-center justify-center gap-2">
+                <span className="flex w-full items-center justify-center gap-2 text-center leading-tight">
                   {footerPrimary.icon}
                   {footerPrimary.label}
                 </span>

@@ -15,7 +15,7 @@ export class StorageProviderAdapter implements INoteStorageProvider {
     publicKey: string,
     poolAddress: string,
     notes: NoteChain[],
-    lastProcessedCursor?: string,
+    lastProcessedCursor?: string
   ): Promise<void> {
     return storageManager.storeDiscoveredNotes(publicKey, poolAddress, notes, lastProcessedCursor);
   }
@@ -24,7 +24,11 @@ export class StorageProviderAdapter implements INoteStorageProvider {
     return storageManager.getNextDepositIndex(publicKey, poolAddress);
   }
 
-  async updateLastUsedDepositIndex(publicKey: string, poolAddress: string, depositIndex: number): Promise<void> {
+  async updateLastUsedDepositIndex(
+    publicKey: string,
+    poolAddress: string,
+    depositIndex: number
+  ): Promise<void> {
     return storageManager.updateLastUsedDepositIndex(publicKey, poolAddress, depositIndex);
   }
 }

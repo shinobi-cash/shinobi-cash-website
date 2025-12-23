@@ -92,15 +92,13 @@ export function AccountMenu({ children, onAddPasskey }: AccountMenuProps) {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        {children}
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48 bg-gray-900 border-gray-700 p-1">
+      <DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-48 border-gray-700 bg-gray-900 p-1">
         {canAddPasskey && (
           <>
             <DropdownMenuItem
               onClick={handleAddPasskey}
-              className="cursor-pointer text-gray-300 hover:text-white hover:bg-gray-800 focus:bg-gray-800 focus:text-white"
+              className="cursor-pointer text-gray-300 hover:bg-gray-800 hover:text-white focus:bg-gray-800 focus:text-white"
             >
               <Fingerprint className="mr-2 h-4 w-4" />
               Add Passkey
@@ -111,7 +109,7 @@ export function AccountMenu({ children, onAddPasskey }: AccountMenuProps) {
         {isConnected && (
           <DropdownMenuItem
             onClick={handleDisconnectWallet}
-            className="cursor-pointer text-gray-300 hover:text-white hover:bg-gray-800 focus:bg-gray-800 focus:text-white"
+            className="cursor-pointer text-gray-300 hover:bg-gray-800 hover:text-white focus:bg-gray-800 focus:text-white"
           >
             <WalletIcon className="mr-2 h-4 w-4" />
             Disconnect Wallet
@@ -119,7 +117,7 @@ export function AccountMenu({ children, onAddPasskey }: AccountMenuProps) {
         )}
         <DropdownMenuItem
           onClick={handleLogout}
-          className="cursor-pointer text-red-400 hover:text-red-300 hover:bg-gray-800 focus:bg-gray-800 focus:text-red-300"
+          className="cursor-pointer text-red-400 hover:bg-gray-800 hover:text-red-300 focus:bg-gray-800 focus:text-red-300"
         >
           <LogOut className="mr-2 h-4 w-4" />
           Logout
