@@ -5,7 +5,7 @@ import { Activity as ActivityIcon, RefreshCw } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNotesController, NotesSection, type NoteChain } from "@/features/notes";
 import { useModalWithSelection } from "@/hooks/ui/useModalState";
-import { NoteChainScreen } from "../features/notes/NoteChainScreen";
+import { NoteChainScreen } from "../../features/notes/components/NoteChainScreen";
 import { WithdrawalForm } from "@/features/withdraw";
 import { DepositForm } from "@/features/deposit";
 import { formatEther } from "viem";
