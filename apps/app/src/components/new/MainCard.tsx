@@ -3,10 +3,8 @@
 import { useState, useMemo } from "react";
 import { Activity as ActivityIcon, RefreshCw } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNotesData } from "@/hooks/notes/useNotesData";
-import { NotesSection } from "../features/notes/NotesSection";
+import { useNotesController, NotesSection, type NoteChain } from "@/features/notes";
 import { useModalWithSelection } from "@/hooks/ui/useModalState";
-import type { NoteChain } from "@/lib/storage/types";
 import { NoteChainScreen } from "../features/notes/NoteChainScreen";
 import { WithdrawalForm } from "@/features/withdraw";
 import { DepositForm } from "@/features/deposit";
@@ -19,28 +17,16 @@ export function MainCard() {
   const [isDepositOpen, setIsDepositOpen] = useState(false);
   const [isWithdrawalOpen, setIsWithdrawalOpen] = useState(false);
 
-  // Notes data
+  // Notes data - uses controller now
   const noteChainModal = useModalWithSelection<NoteChain>(false);
-  const {
-    noteChains,
-    loading: notesLoading,
-    error: notesError,
-    isRefreshing,
-    handleRefresh,
-  } = useNotesData();
+  const notesController = useNotesController();
 
-  // Calculate total balance from unspent notes
+  // Calculate total balance from available notes
   const totalBalance = useMemo(() => {
-    if (!noteChains || noteChains.length === 0) return BigInt(0);
-
-    return noteChains.reduce((total, noteChain) => {
-      const lastNote = noteChain[noteChain.length - 1];
-      if (lastNote.status === "unspent" && lastNote.isActivated) {
-        return total + BigInt(lastNote.amount);
-      }
-      return total;
+    return notesController.availableNotes.reduce((total, note) => {
+      return total + BigInt(note.amount);
     }, BigInt(0));
-  }, [noteChains]);
+  }, [notesController.availableNotes]);
 
   const startWithdrawal = (noteChain: NoteChain) => {
     const lastNote = noteChain[noteChain.length - 1];
@@ -53,12 +39,12 @@ export function MainCard() {
 
   const exitWithdrawal = () => {
     setIsWithdrawalOpen(false);
-    handleRefresh();
+    notesController.refresh();
   };
 
   const exitDeposit = () => {
     setIsDepositOpen(false);
-    handleRefresh();
+    notesController.refresh();
   };
 
   // Format balance for display
@@ -116,11 +102,11 @@ export function MainCard() {
                   variant="outline"
                   size="icon"
                   aria-label="refresh"
-                  onClick={handleRefresh}
-                  disabled={isRefreshing}
+                  onClick={notesController.refresh}
+                  disabled={notesController.isRefreshing}
                 >
                   <RefreshCw
-                    className={`h-4 w-4 text-white ${isRefreshing ? "animate-spin" : ""}`}
+                    className={`h-4 w-4 text-white ${notesController.isRefreshing ? "animate-spin" : ""}`}
                   />
                 </Button>
               </div>
@@ -148,12 +134,7 @@ export function MainCard() {
           </div>
 
           {/* Notes Section */}
-          <NotesSection
-            noteChains={noteChains}
-            loading={notesLoading}
-            error={!!notesError}
-            onNoteChainClick={noteChainModal.openWith}
-          />
+          <NotesSection onNoteChainClick={noteChainModal.openWith} />
         </div>
       )}
     </div>
