@@ -1,31 +1,21 @@
+/**
+ * Syncing Notes Section
+ * Handles initial note discovery and synchronization
+ * @file features/auth/components/SyncingNotesSection.tsx
+ */
+
 import { useAuth } from "@/contexts/AuthContext";
 import { noteDiscoveryService } from "@/lib/services/NoteDiscoveryService";
 import { CheckCircle, Loader2, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
+import { Button } from "@workspace/ui/components/button";
 
 interface SyncingNotesSectionProps {
   onSyncComplete: () => void;
-  registerFooterActions?: (
-    primary: {
-      label: string;
-      onClick: () => void;
-      variant?: "default" | "outline" | "ghost";
-      disabled?: boolean;
-    } | null,
-    secondary?: {
-      label: string;
-      onClick: () => void;
-      variant?: "default" | "outline" | "ghost";
-      disabled?: boolean;
-    } | null
-  ) => void;
 }
 
-export function SyncingNotesSection({
-  onSyncComplete,
-  registerFooterActions,
-}: SyncingNotesSectionProps) {
+export function SyncingNotesSection({ onSyncComplete }: SyncingNotesSectionProps) {
   const { publicKey, accountKey } = useAuth();
 
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
@@ -84,57 +74,65 @@ export function SyncingNotesSection({
     setStatus("idle"); // will trigger startSync via effect
   }, []);
 
-  // Register footer actions based on status
-  useEffect(() => {
-    if (!registerFooterActions) return;
-    if (status === "success") {
-      registerFooterActions({ label: "Get Started", onClick: onSyncComplete });
-      return () => registerFooterActions(null);
-    }
-    if (status === "error") {
-      registerFooterActions({ label: "Try Again", onClick: handleRetry });
-      return () => registerFooterActions(null);
-    }
-    // loading/idle: no primary action
-    registerFooterActions(null);
-    return () => registerFooterActions(null);
-  }, [registerFooterActions, status, onSyncComplete, handleRetry]);
-
-  // ----- UI states -----
+  // ----- UI states with integrated footer -----
 
   if (status === "success") {
-    const baseContent = (
+    return (
       <>
-        <div className="flex justify-center">
-          <CheckCircle className="h-16 w-16 text-green-500" />
+        <div className="flex-1 space-y-4 px-4 py-6 text-center">
+          <div className="flex justify-center">
+            <CheckCircle className="h-16 w-16 text-green-500" />
+          </div>
+          <div className="mb-6 text-center">
+            <h3 className="text-app-primary mb-2 text-lg font-semibold">Welcome to Shinobi!</h3>
+            <p className="text-app-secondary text-sm">Your account is ready to use</p>
+          </div>
         </div>
-        <div className="mb-6 text-center">
-          <h3 className="text-app-primary mb-2 text-lg font-semibold">Welcome to Shinobi!</h3>
-          <p className="text-app-secondary text-sm">Your account is ready to use</p>
+
+        <div className="border-t border-gray-800 px-4 py-4">
+          <Button
+            variant="default"
+            onClick={onSyncComplete}
+            className="min-h-12 w-full rounded-2xl py-3 text-base font-medium"
+            size="lg"
+          >
+            Get Started
+          </Button>
         </div>
       </>
     );
-
-    return <div className="space-y-4 text-center">{baseContent}</div>;
   }
 
   if (status === "error") {
     return (
-      <div className="space-y-4 text-center">
-        <div className="flex justify-center">
-          <RefreshCw className="h-16 w-16 text-red-500" />
+      <>
+        <div className="flex-1 space-y-4 px-4 py-6 text-center">
+          <div className="flex justify-center">
+            <RefreshCw className="h-16 w-16 text-red-500" />
+          </div>
+          <div>
+            <h3 className="text-app-primary mb-2 text-lg font-semibold">Sync Failed</h3>
+            <p className="text-app-secondary mb-4 text-sm">{error}</p>
+          </div>
         </div>
-        <div>
-          <h3 className="text-app-primary mb-2 text-lg font-semibold">Sync Failed</h3>
-          <p className="text-app-secondary mb-4 text-sm">{error}</p>
+
+        <div className="border-t border-gray-800 px-4 py-4">
+          <Button
+            variant="default"
+            onClick={handleRetry}
+            className="min-h-12 w-full rounded-2xl py-3 text-base font-medium"
+            size="lg"
+          >
+            Try Again
+          </Button>
         </div>
-      </div>
+      </>
     );
   }
 
-  // default: loading
+  // default: loading - no footer
   return (
-    <div className="space-y-6 text-center">
+    <div className="flex-1 space-y-6 px-4 py-6 text-center">
       <div className="flex justify-center">
         <Loader2 className="text-app-primary h-16 w-16 animate-spin" />
       </div>

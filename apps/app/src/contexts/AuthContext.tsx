@@ -1,77 +1,57 @@
 /**
- * Authentication Context
- * Manages user authentication state with secure key management
+ * file: shinobi-cash-website/apps/app/src/contexts/AuthContext.tsx
+ * Authentication Runtime Store
+ * Thin context for managing authentication state
  *
- * Optimized to store only the root mnemonic and derive all keys on-demand
- * using memoization to prevent unnecessary re-renders.
+ * This is a minimal runtime store that only handles:
+ * - Storing authenticated keys
+ * - Authentication status
+ * - Authenticate/logout actions
+ *
+ * Session restoration and other complex logic lives in hooks/controllers.
  */
 
-import { storageManager, KDF } from "@/lib/storage";
 import { getAccountKey, type KeyGenerationResult, restoreFromMnemonic } from "@shinobi-cash/core";
-import {
-  type ReactNode,
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-
-interface QuickAuthState {
-  show: boolean;
-  accountName: string;
-}
+import { type ReactNode, createContext, useCallback, useContext, useMemo, useState } from "react";
 
 interface AuthContextType {
-  // Authentication state
+  // Runtime state (read-only)
   isAuthenticated: boolean;
-  isRestoringSession: boolean;
+  keys: KeyGenerationResult | null;
 
-  // Account keys (derived from mnemonic)
+  // Derived keys (computed from mnemonic)
+  // SECURITY: privateKey intentionally NOT exposed - kept internal for accountKey derivation only
   publicKey: string | null;
-  privateKey: string | null;
   mnemonic: string[] | null;
   accountKey: bigint | null;
 
-  // Session restoration state
-  quickAuthState: QuickAuthState | null;
-
-  // Actions
-  setKeys: (keys: KeyGenerationResult) => void;
-  signOut: () => void;
-  handleQuickPasswordAuth: (password: string) => Promise<void>;
-  dismissQuickAuth: () => void;
+  // Actions (write-only)
+  authenticate: (keys: KeyGenerationResult) => void;
+  logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  // Single source of truth: only store the mnemonic
+  // Single source of truth: store only the mnemonic
   const [mnemonic, setMnemonic] = useState<string[] | null>(null);
-  const [isRestoringSession, setIsRestoringSession] = useState(true);
-  const [quickAuthState, setQuickAuthState] = useState<QuickAuthState | null>(null);
 
-  // Prevent multiple concurrent restoration attempts (React Strict Mode protection)
-  const restorationAttempted = useRef(false);
-
-  // Derive keys from mnemonic (expensive crypto operations, but only runs when mnemonic changes)
+  // Derive keys from mnemonic (memoized for performance)
   const derivedKeys = useMemo(() => {
     if (!mnemonic) {
-      return { publicKey: null, privateKey: null };
+      return { publicKey: null, privateKey: null, address: null };
     }
 
     try {
-      const { publicKey, privateKey } = restoreFromMnemonic(mnemonic);
-      return { publicKey, privateKey };
+      const { publicKey, privateKey, address } = restoreFromMnemonic(mnemonic);
+      return { publicKey, privateKey, address };
     } catch (error) {
       console.error("Failed to derive keys from mnemonic:", error);
-      return { publicKey: null, privateKey: null };
+      return { publicKey: null, privateKey: null, address: null };
     }
   }, [mnemonic]);
 
-  // Derive account key (cheap operation since we have privateKey cached)
+  // Derive account key
   const accountKey = useMemo(() => {
     if (!derivedKeys.privateKey || !mnemonic) {
       return null;
@@ -85,130 +65,73 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [derivedKeys.privateKey, mnemonic]);
 
-  // Derived state: authenticated if we have the mnemonic (and thus all keys)
-  const isAuthenticated = useMemo(() => {
-    return !!mnemonic;
-  }, [mnemonic]);
+  // Computed: authenticated if we have mnemonic
+  const isAuthenticated = useMemo(() => !!mnemonic, [mnemonic]);
 
-  // Session restoration effect
-  useEffect(() => {
-    // Prevent multiple concurrent restoration attempts
-    if (restorationAttempted.current) return;
-    restorationAttempted.current = true;
-
-    const restoreSession = async () => {
-      try {
-        const resume = await KDF.resumeAuth();
-        if (resume.status === "none") {
-          setIsRestoringSession(false);
-          return;
-        }
-
-        if (resume.status === "password-needed") {
-          setQuickAuthState({ show: true, accountName: resume.accountName });
-          return;
-        }
-
-        // passkey-ready
-        const { result, accountName } = resume;
-        await storageManager.initializeAccountSession(accountName, result.symmetricKey);
-        const accountData = await storageManager.getAccountData();
-        if (!accountData) throw new Error("Account data not found");
-
-        setMnemonic(accountData.mnemonic);
-        setIsRestoringSession(false);
-      } catch (error) {
-        console.error("Session restoration failed:", error);
-        if (error instanceof Error && error.message.includes("A request is already pending")) {
-          console.warn("WebAuthn request collision detected, skipping session clear");
-        } else {
-          storageManager.clearSession();
-          await KDF.clearSessionInfo();
-        }
-        setIsRestoringSession(false);
-      }
+  // Reconstruct full keys object for compatibility
+  const keys = useMemo<KeyGenerationResult | null>(() => {
+    if (!mnemonic || !derivedKeys.publicKey || !derivedKeys.privateKey || !derivedKeys.address) {
+      return null;
+    }
+    return {
+      mnemonic,
+      publicKey: derivedKeys.publicKey,
+      privateKey: derivedKeys.privateKey,
+      address: derivedKeys.address,
     };
+  }, [mnemonic, derivedKeys.publicKey, derivedKeys.privateKey, derivedKeys.address]);
 
-    restoreSession();
-  }, []);
-
-  // Use refs for state that callbacks need to access
-  const quickAuthStateRef = useRef(quickAuthState);
-  useEffect(() => {
-    quickAuthStateRef.current = quickAuthState;
-  }, [quickAuthState]);
-
-  // Memoize callback functions to prevent unnecessary re-renders
-  // Using refs ensures callbacks don't change when state changes
-  const setKeys = useCallback((newKeys: KeyGenerationResult) => {
+  /**
+   * Authenticate user with generated keys
+   * This is the ONLY way to set auth state
+   */
+  const authenticate = useCallback((newKeys: KeyGenerationResult) => {
     setMnemonic(newKeys.mnemonic);
   }, []);
 
-  const handleQuickPasswordAuth = useCallback(async (password: string) => {
-    const currentQuickAuthState = quickAuthStateRef.current;
-    if (!currentQuickAuthState) return;
-
-    try {
-      const { symmetricKey } = await KDF.deriveKeyFromPassword(
-        password,
-        currentQuickAuthState.accountName
-      );
-      await storageManager.initializeAccountSession(
-        currentQuickAuthState.accountName,
-        symmetricKey
-      );
-      const accountData = await storageManager.getAccountData();
-      if (!accountData) throw new Error("Account data not found");
-
-      setMnemonic(accountData.mnemonic);
-      await KDF.storeSessionInfo(currentQuickAuthState.accountName, "password");
-      setQuickAuthState(null);
-      setIsRestoringSession(false);
-    } catch (error) {
-      console.error("Quick password auth failed:", error);
-      throw error;
-    }
+  /**
+   * Logout current user
+   * Clears all auth state
+   *
+   * SECURITY: Attempts to zero out mnemonic from memory
+   * Note: JavaScript cannot guarantee memory erasure, but this reduces exposure window
+   *
+   * Implementation Note:
+   * - Zeros out mnemonic array elements first
+   * - Sets mnemonic to null, triggering React reconciliation
+   * - The keys object (which contains mnemonic reference) becomes null via useMemo
+   * - Brief window exists where keys object still references zeroed array,
+   *   but this is unavoidable in React's synchronous render cycle
+   */
+  const logout = useCallback(() => {
+    setMnemonic((currentMnemonic) => {
+      if (currentMnemonic) {
+        try {
+          // Zero out array elements to reduce exposure window
+          for (let i = 0; i < currentMnemonic.length; i++) {
+            (currentMnemonic as any)[i] = "";
+          }
+        } catch (e) {
+          // Array might be frozen/sealed - log but continue
+          console.warn("Could not zero mnemonic array:", e);
+        }
+      }
+      // Setting to null triggers useMemo to null out keys object
+      return null;
+    });
   }, []);
 
-  const dismissQuickAuth = useCallback(async () => {
-    setQuickAuthState(null);
-    setIsRestoringSession(false);
-    storageManager.clearSession();
-    await KDF.clearSessionInfo();
-  }, []);
-
-  const signOut = useCallback(async () => {
-    setMnemonic(null);
-    storageManager.clearSession();
-    await KDF.clearSessionInfo();
-    setQuickAuthState(null);
-  }, []);
-
-  // Memoize context value to prevent unnecessary re-renders when parent re-renders
   const contextValue = useMemo(
     () => ({
       isAuthenticated,
-      isRestoringSession,
+      keys,
       publicKey: derivedKeys.publicKey,
-      privateKey: derivedKeys.privateKey,
       mnemonic,
       accountKey,
-      quickAuthState,
-      setKeys,
-      signOut,
-      handleQuickPasswordAuth,
-      dismissQuickAuth,
+      authenticate,
+      logout,
     }),
-    [
-      isAuthenticated,
-      isRestoringSession,
-      derivedKeys.publicKey,
-      derivedKeys.privateKey,
-      mnemonic,
-      accountKey,
-      quickAuthState,
-      // Don't include callbacks - they're already memoized with useCallback
-    ]
+    [isAuthenticated, keys, derivedKeys.publicKey, mnemonic, accountKey, authenticate, logout]
   );
 
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;

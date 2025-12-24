@@ -1,13 +1,12 @@
 /**
  * Add Passkey Modal
  * Allows users with wallet-based accounts to add passkey authentication
+ * @file features/auth/components/AddPasskeyModal.tsx
  */
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useAccountNameValidation } from "@/hooks/useAccountNameValidation";
-import { AuthError, AuthErrorCode } from "@/lib/errors/AuthError";
-import { storageManager } from "@/lib/storage";
-import { showToast } from "@/lib/toast";
+import { restoreFromMnemonic } from "@shinobi-cash/core";
 import { AlertCircle, Fingerprint } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@workspace/ui/components/button";
@@ -20,7 +19,7 @@ import {
   DialogTitle,
 } from "@workspace/ui/components/dialog";
 import { Input } from "@workspace/ui/components/input";
-import { performPasskeySetup } from "./helpers/authFlows";
+import { useAddPasskeyFlow } from "@/features/auth";
 
 interface AddPasskeyModalProps {
   open: boolean;
@@ -30,9 +29,17 @@ interface AddPasskeyModalProps {
 export function AddPasskeyModal({ open, onOpenChange }: AddPasskeyModalProps) {
   const [accountName, setAccountName] = useState("");
   const { accountNameError, onAccountNameChange, setAccountNameError } = useAccountNameValidation();
-  const [isProcessing, setIsProcessing] = useState(false);
   const [setupError, setSetupError] = useState("");
-  const { mnemonic, publicKey, privateKey } = useAuth();
+  const { mnemonic, publicKey } = useAuth();
+
+  // Use shared passkey flow (handles setup, sync baseline, toast)
+  // setAuthKeys: false because account is already authenticated
+  const passkeyFlow = useAddPasskeyFlow({
+    onSuccess: () => onOpenChange(false),
+    setAuthKeys: false, // User is already authenticated with wallet
+  });
+
+  const { isProcessing, error: passkeyError, addPasskey, clearError } = passkeyFlow;
 
   // Reset form when modal opens/closes
   useEffect(() => {
@@ -40,9 +47,9 @@ export function AddPasskeyModal({ open, onOpenChange }: AddPasskeyModalProps) {
       setAccountName("");
       setAccountNameError("");
       setSetupError("");
-      setIsProcessing(false);
+      clearError();
     }
-  }, [open, setAccountNameError]);
+  }, [open, setAccountNameError, clearError]);
 
   const handleAddPasskey = useCallback(
     async (e?: React.FormEvent) => {
@@ -52,53 +59,27 @@ export function AddPasskeyModal({ open, onOpenChange }: AddPasskeyModalProps) {
         return;
       }
 
-      setIsProcessing(true);
       setSetupError("");
 
-      try {
-        // Create a KeyGenerationResult object from current auth state
-        const generatedKeys = {
-          mnemonic,
-          publicKey: publicKey!,
-          privateKey: privateKey!,
-          address: publicKey!, // Using publicKey as address since we don't store Ethereum address separately
-        };
+      // Derive privateKey from mnemonic (not exposed in AuthContext for security)
+      const { privateKey, address } = restoreFromMnemonic(mnemonic);
 
-        // Perform passkey setup with existing keys
-        await performPasskeySetup(accountName, generatedKeys);
+      // Create a KeyGenerationResult object from current auth state
+      const generatedKeys = {
+        mnemonic,
+        publicKey: publicKey!,
+        privateKey,
+        address,
+      };
 
-        // Optionally initialize sync baseline for the passkey account
-        if (publicKey) {
-          try {
-            await storageManager.initializeSyncBaseline(publicKey);
-          } catch (error) {
-            console.warn("Failed to initialize sync baseline:", error);
-            // Non-fatal
-          }
-        }
+      // Use shared passkey flow (handles setup, sync baseline, toast, and close modal)
+      const success = await addPasskey(accountName, generatedKeys);
 
-        showToast.auth.success("Passkey added successfully");
-        onOpenChange(false);
-      } catch (error) {
-        console.error("Add passkey failed:", error);
-        if (error instanceof AuthError) {
-          if (error.code === AuthErrorCode.PASSKEY_PRF_UNSUPPORTED) {
-            setSetupError("Device not supported - passkeys with PRF extension required");
-          } else if (error.code === AuthErrorCode.ACCOUNT_ALREADY_EXISTS) {
-            setSetupError("Passkey already exists for this account name");
-          } else if (error.code === AuthErrorCode.PASSKEY_CANCELLED) {
-            setSetupError("Setup was cancelled. Please try again.");
-          } else {
-            setSetupError(error.message || "Failed to add passkey. Please try again.");
-          }
-        } else {
-          setSetupError("Failed to add passkey. Please try again.");
-        }
-      } finally {
-        setIsProcessing(false);
+      if (!success && passkeyError) {
+        setSetupError(passkeyError.message);
       }
     },
-    [accountName, accountNameError, mnemonic, publicKey, privateKey, onOpenChange]
+    [accountName, accountNameError, mnemonic, publicKey, addPasskey, passkeyError]
   );
 
   const canSubmit = !isProcessing && !accountNameError && accountName.trim() && mnemonic;

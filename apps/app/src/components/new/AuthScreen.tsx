@@ -1,13 +1,11 @@
 /**
+ * file: shinobi-cash-website/apps/app/src/components/new/AuthScreen.tsx
  * Auth Screen Component
  */
 
-import { useAuth } from "@/contexts/AuthContext";
-import { useAuthSteps } from "@/hooks/auth/useAuthSteps";
-import { isPasskeySupported } from "@/utils/environment";
-import { useCallback, useEffect, useState } from "react";
-import { AuthStepContent } from "../features/auth/AuthStepContent";
-import { Button } from "@workspace/ui/components/button";
+import { useAuthFlowController } from "@/features/auth/controller/useAuthFlowController";
+import { useCallback, useEffect, useRef } from "react";
+import { AuthStepContent } from "@/features/auth";
 import { BackButton } from "../ui/back-button";
 
 interface AuthScreenProps {
@@ -16,32 +14,29 @@ interface AuthScreenProps {
 }
 
 export function AuthScreen({ onAuthComplete, onBack }: AuthScreenProps) {
-  const shouldShowPasskey = isPasskeySupported();
-  const { isAuthenticated } = useAuth();
+  // Use ref for callback to avoid including it in dependencies
+  const onAuthCompleteRef = useRef(onAuthComplete);
+  useEffect(() => {
+    onAuthCompleteRef.current = onAuthComplete;
+  }, [onAuthComplete]);
 
   // Memoize the callback to prevent infinite loops
   const handleAuthComplete = useCallback(() => {
-    onAuthComplete?.();
-  }, [onAuthComplete]);
+    onAuthCompleteRef.current?.();
+  }, []);
 
-  // Use shared auth steps logic
-  const authSteps = useAuthSteps({
+  // Use auth flow controller - single source of truth
+  const flow = useAuthFlowController({
     onAuthComplete: handleAuthComplete,
   });
 
-  // Auto-close when authenticated
-  useEffect(() => {
-    if (isAuthenticated && authSteps.currentStep !== "syncing-notes") {
-      setTimeout(() => {
-        onAuthComplete?.();
-      }, 500);
-    }
-  }, [isAuthenticated, authSteps.currentStep, onAuthComplete]);
+  // NOTE: Auth completion is handled by flow controller via handleSyncingComplete
+  // No auto-close effect needed - prevents race condition during sync
 
   const getTitle = () => {
-    if (!authSteps.currentStep) return "Loading...";
+    if (!flow.currentStep) return "Loading...";
 
-    switch (authSteps.currentStep) {
+    switch (flow.currentStep) {
       case "login-convenient":
         return "Sign in";
       case "create-keys":
@@ -56,9 +51,9 @@ export function AuthScreen({ onAuthComplete, onBack }: AuthScreenProps) {
   };
 
   const getDescription = () => {
-    if (!authSteps.currentStep) return "Checking for existing local accounts...";
+    if (!flow.currentStep) return "Checking for existing local accounts...";
 
-    switch (authSteps.currentStep) {
+    switch (flow.currentStep) {
       case "login-convenient":
         return "Use your credentials to continue. They never leave your device.";
       case "create-keys":
@@ -72,49 +67,17 @@ export function AuthScreen({ onAuthComplete, onBack }: AuthScreenProps) {
     }
   };
 
-  // Footer actions registration
-  type FooterAction = {
-    label: string;
-    onClick: () => void;
-    variant?: "default" | "outline" | "ghost";
-    disabled?: boolean;
-    icon?: React.ReactNode;
-  };
-
-  const [footerPrimary, setFooterPrimary] = useState<FooterAction | null>(null);
-  const [footerSecondary, setFooterSecondary] = useState<FooterAction | null>(null);
-
-  const resetFooter = useCallback(() => {
-    setFooterPrimary(null);
-    setFooterSecondary(null);
-  }, []);
-
-  useEffect(() => {
-    resetFooter();
-  }, [authSteps.currentStep, resetFooter]);
-
-  const registerFooterActions = useCallback(
-    (primary: FooterAction | null, secondary?: FooterAction | null) => {
-      setFooterPrimary(primary);
-      setFooterSecondary(secondary ?? null);
-    },
-    []
-  );
-
-  const canGoBack = authSteps.canGoBack();
+  const canGoBack = flow.canGoBack;
   const isFirstStep =
-    authSteps.currentStep === "login-convenient" || authSteps.currentStep === "create-keys";
+    flow.currentStep === "login-convenient" || flow.currentStep === "create-keys";
 
   const handleBack = () => {
     if (canGoBack) {
-      authSteps.handleBack();
+      flow.handleBack();
     } else if (onBack && !isFirstStep) {
       onBack();
     }
   };
-
-  const shouldShowFooter = () =>
-    !!footerPrimary || !!footerSecondary || (canGoBack && !isFirstStep);
 
   return (
     <div className="flex flex-col bg-gray-900">
@@ -127,62 +90,27 @@ export function AuthScreen({ onAuthComplete, onBack }: AuthScreenProps) {
         </div>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto px-4 py-6">
-        {authSteps.currentStep && (
+      {/* Content with integrated footer - each step renders its own footer */}
+      <div className="flex flex-1 flex-col overflow-y-auto">
+        {flow.currentStep && (
           <AuthStepContent
-            currentStep={authSteps.currentStep}
-            generatedKeys={authSteps.generatedKeys}
-            encryptionKey={authSteps.encryptionKey}
-            walletAddress={authSteps.walletAddress}
-            hasExistingAccounts={authSteps.hasExistingAccounts ?? false}
-            hasPasskeyAccounts={authSteps.hasPasskeyAccounts}
-            onLoginChoice={authSteps.handleLoginChoice}
-            onCreateChoice={authSteps.handleCreateChoice}
-            onKeyGenerationComplete={authSteps.handleKeyGenerationComplete}
-            onAccountSetupComplete={authSteps.handleAccountSetupComplete}
-            onSkipSetup={authSteps.handleSkipSetup}
-            onSyncingComplete={authSteps.handleSyncingComplete}
-            registerFooterActions={registerFooterActions}
+            currentStep={flow.currentStep}
+            generatedKeys={flow.generatedKeys}
+            encryptionKey={flow.encryptionKey}
+            walletAddress={flow.walletAddress}
+            hasExistingAccounts={flow.hasExistingAccounts ?? false}
+            hasPasskeyAccounts={flow.hasPasskeyAccounts}
+            onLoginChoice={flow.handleLoginChoice}
+            onCreateChoice={flow.handleCreateChoice}
+            onPasskeyLoginSuccess={flow.handlePasskeyLoginSuccess}
+            onWalletLoginSuccess={flow.handleWalletLoginSuccess}
+            onKeyGenerationComplete={flow.handleKeyGenerationComplete}
+            onAccountSetupComplete={flow.handleAccountSetupComplete}
+            onSkipSetup={flow.handleSkipSetup}
+            onSyncingComplete={flow.handleSyncingComplete}
           />
         )}
       </div>
-
-      {/* Footer */}
-      {shouldShowFooter() && (
-        <div className="border-t border-gray-800 px-4 py-4">
-          <div className="grid w-full grid-cols-2 gap-3">
-            {(footerSecondary || (canGoBack && footerPrimary)) && (
-              <Button
-                variant={footerSecondary?.variant ?? "outline"}
-                onClick={footerSecondary?.onClick ?? handleBack}
-                disabled={footerSecondary?.disabled}
-                className="col-span-1 min-h-12 w-full rounded-2xl py-3 text-base font-medium"
-                size="lg"
-              >
-                <span className="flex w-full items-center justify-center gap-2 text-center leading-tight">
-                  {footerSecondary?.icon}
-                  {footerSecondary?.label ?? "Back"}
-                </span>
-              </Button>
-            )}
-            {footerPrimary && (
-              <Button
-                variant={footerPrimary.variant ?? "default"}
-                onClick={footerPrimary.onClick}
-                disabled={footerPrimary.disabled}
-                className={`${footerSecondary || (canGoBack && footerPrimary) ? "col-span-1" : "col-span-2"} min-h-12 w-full rounded-2xl py-3 text-base font-medium`}
-                size="lg"
-              >
-                <span className="flex w-full items-center justify-center gap-2 text-center leading-tight">
-                  {footerPrimary.icon}
-                  {footerPrimary.label}
-                </span>
-              </Button>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

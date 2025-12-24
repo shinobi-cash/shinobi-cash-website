@@ -1,4 +1,5 @@
 /**
+ * file: shinobi-cash-website/apps/app/src/lib/storage/StorageManager.ts
  * Storage Manager - Main coordinator for all storage operations
  * Maintains exact same API as current noteCache for seamless replacement
  */
@@ -101,6 +102,43 @@ class StorageManager {
     };
 
     await this.storeAccountData(accountData);
+  }
+
+  /**
+   * Transactional wallet account setup
+   * Ensures both session initialization and data save succeed, or rolls back
+   * Prevents partial state (initialized session without account data)
+   */
+  async setupWalletAccountTransaction(
+    accountId: string,
+    encryptionKey: Uint8Array,
+    data: {
+      walletAddress: string;
+      mnemonic: string[];
+      publicKey: string;
+    }
+  ): Promise<void> {
+    let sessionInitialized = false;
+
+    try {
+      // Step 1: Initialize session
+      await this.initializeWalletAccountSession(accountId, encryptionKey);
+      sessionInitialized = true;
+
+      // Step 2: Save account data
+      await this.saveWalletAccountData({
+        accountId,
+        walletAddress: data.walletAddress,
+        mnemonic: data.mnemonic,
+        publicKey: data.publicKey,
+      });
+    } catch (error) {
+      // Rollback: Clear session if it was initialized
+      if (sessionInitialized) {
+        this.clearSession();
+      }
+      throw error;
+    }
   }
 
   /**

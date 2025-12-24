@@ -1,4 +1,10 @@
-import type { AuthStep } from "@/hooks/auth/useAuthSteps";
+/**
+ * Auth Step Content
+ * Router component for auth flow steps
+ * @file features/auth/components/AuthStepContent.tsx
+ */
+
+import type { AuthStep } from "@/features/auth/types";
 import type { KeyGenerationResult } from "@shinobi-cash/core";
 import { AccountLoginForm } from "./AccountLoginForm";
 import AccountSetupForm from "./AccountSetupForm";
@@ -14,6 +20,11 @@ interface AuthStepContentProps {
   hasPasskeyAccounts: boolean;
   onLoginChoice: () => void;
   onCreateChoice: () => void;
+
+  // Login success handlers
+  onPasskeyLoginSuccess: (keys: KeyGenerationResult) => void;
+  onWalletLoginSuccess: (keys: KeyGenerationResult) => void;
+
   onKeyGenerationComplete: (data: {
     keys: KeyGenerationResult;
     encryptionKey: Uint8Array;
@@ -22,22 +33,6 @@ interface AuthStepContentProps {
   onAccountSetupComplete: () => void;
   onSkipSetup: () => void;
   onSyncingComplete: () => void;
-  registerFooterActions?: (
-    primary: {
-      label: string;
-      onClick: () => void;
-      variant?: "default" | "outline" | "ghost";
-      disabled?: boolean;
-      icon?: React.ReactNode;
-    } | null,
-    secondary?: {
-      label: string;
-      onClick: () => void;
-      variant?: "default" | "outline" | "ghost";
-      disabled?: boolean;
-      icon?: React.ReactNode;
-    } | null
-  ) => void;
 }
 
 export function AuthStepContent({
@@ -49,21 +44,22 @@ export function AuthStepContent({
   hasPasskeyAccounts,
   onLoginChoice,
   onCreateChoice,
+  onPasskeyLoginSuccess,
+  onWalletLoginSuccess,
   onKeyGenerationComplete,
   onAccountSetupComplete,
   onSkipSetup,
   onSyncingComplete,
-  registerFooterActions,
 }: AuthStepContentProps) {
   switch (currentStep) {
     case "login-convenient":
       return (
         <AccountLoginForm
-          onSuccess={onAccountSetupComplete}
+          onPasskeyLoginSuccess={onPasskeyLoginSuccess}
+          onWalletLoginSuccess={onWalletLoginSuccess}
+          onNewWalletKeysGenerated={onKeyGenerationComplete}
           onCreateAccount={onCreateChoice}
-          onKeyGenerationComplete={onKeyGenerationComplete}
           hasPasskeyAccounts={hasPasskeyAccounts}
-          registerFooterActions={registerFooterActions}
         />
       );
 
@@ -72,7 +68,6 @@ export function AuthStepContent({
         <WalletSignatureKeyGeneration
           onKeyGenerationComplete={onKeyGenerationComplete}
           onLoginChoice={hasExistingAccounts ? onLoginChoice : undefined}
-          registerFooterActions={registerFooterActions}
         />
       );
 
@@ -86,17 +81,11 @@ export function AuthStepContent({
           onSkip={onSkipSetup}
           hasExistingAccounts={hasExistingAccounts}
           onLoginChoice={onLoginChoice}
-          registerFooterActions={registerFooterActions}
         />
       );
 
     case "syncing-notes":
-      return (
-        <SyncingNotesSection
-          onSyncComplete={onSyncingComplete}
-          registerFooterActions={registerFooterActions}
-        />
-      );
+      return <SyncingNotesSection onSyncComplete={onSyncingComplete} />;
 
     default:
       return null;

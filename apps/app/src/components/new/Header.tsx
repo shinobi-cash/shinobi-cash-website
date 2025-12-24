@@ -14,8 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@workspace/ui/components/select";
-import { AccountMenu } from "@/components/features/auth/AccountMenu";
-import { AddPasskeyModal } from "@/components/features/auth/AddPasskeyModal";
+import { AccountMenu, AddPasskeyModal } from "@/features/auth";
 import { useState } from "react";
 
 export function Header() {

@@ -1,9 +1,9 @@
 /**
  * Account Management Menu
  * Provides logout, disconnect wallet, and add passkey options
+ * @file features/auth/components/AccountMenu.tsx
  */
 
-import { useAuth } from "@/contexts/AuthContext";
 import { storageManager } from "@/lib/storage";
 import { isPasskeySupported } from "@/utils/environment";
 import { Fingerprint, LogOut, WalletIcon } from "lucide-react";
@@ -16,6 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu";
+import { useAuthController } from "@/features/auth";
 
 interface AccountMenuProps {
   children: React.ReactNode;
@@ -23,7 +24,7 @@ interface AccountMenuProps {
 }
 
 export function AccountMenu({ children, onAddPasskey }: AccountMenuProps) {
-  const { isAuthenticated, signOut } = useAuth();
+  const { isAuthenticated, logout } = useAuthController();
   const { isConnected } = useAccount();
   const { disconnect } = useDisconnect();
   const [canAddPasskey, setCanAddPasskey] = useState(false);
@@ -70,12 +71,12 @@ export function AccountMenu({ children, onAddPasskey }: AccountMenuProps) {
   }, [isAuthenticated]);
 
   const handleLogout = useCallback(async () => {
-    await signOut();
+    await logout();
     // Also disconnect wallet when logging out
     if (isConnected) {
       disconnect();
     }
-  }, [signOut, isConnected, disconnect]);
+  }, [logout, isConnected, disconnect]);
 
   const handleDisconnectWallet = useCallback(() => {
     disconnect();
