@@ -3,7 +3,7 @@
  * Full-screen view for selecting a note to withdraw from
  */
 
-import { BackButton } from "../../ui/back-button";
+import { BackButton } from "@/components/ui/back-button";
 import type { Note } from "@/lib/storage/types";
 import { formatEthAmount } from "@/utils/formatters";
 import { Loader2 } from "lucide-react";

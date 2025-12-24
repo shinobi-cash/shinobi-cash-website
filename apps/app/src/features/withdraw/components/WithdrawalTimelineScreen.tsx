@@ -9,7 +9,7 @@ import { Check, Copy, Info, Loader2, ArrowRight } from "lucide-react";
 import { POOL_CHAIN, SHINOBI_CASH_SUPPORTED_CHAINS } from "@shinobi-cash/constants";
 import { memo, useCallback, useState } from "react";
 import { Button } from "@workspace/ui/components/button";
-import { BackButton } from "../../ui/back-button";
+import { BackButton } from "@/components/ui/back-button";
 
 export interface WithdrawalStep {
   id: string;
