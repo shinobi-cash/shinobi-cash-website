@@ -1,6 +1,6 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { getPublicClient } from "@/lib/clients";
-import { noteDiscoveryService } from "@/lib/services/NoteDiscoveryService";
+import { noteDiscoveryService } from "@/features/notes/services/NoteDiscoveryService";
 import { showToast } from "@/lib/toast";
 import { fetchLatestIndexedBlock } from "@/services/data/indexerService";
 import type React from "react";

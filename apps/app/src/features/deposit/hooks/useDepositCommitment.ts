@@ -3,7 +3,7 @@
  * Manages deposit commitment generation with collision detection
  */
 
-import { type CashNoteData, depositService } from "@/lib/services/DepositService";
+import { type CashNoteData, depositService } from "@/features/deposit/services/DepositService";
 import type { DepositCommitmentResult } from "@shinobi-cash/core";
 import { useCallback, useEffect, useState } from "react";
 import { useAccount } from "wagmi";

@@ -4,8 +4,8 @@
  */
 
 import { useState, useCallback } from "react";
-import type { PreparedWithdrawal } from "@/services/withdrawal/types";
-import { executePreparedWithdrawal } from "@/services/withdrawal/withdrawalService";
+import type { PreparedWithdrawal } from "@/features/withdraw/services/types";
+import { executePreparedWithdrawal } from "@/features/withdraw/services/withdrawalService";
 
 interface TransactionState {
   transactionHash: string | null;

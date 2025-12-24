@@ -5,7 +5,7 @@
  */
 
 import { useAuth } from "@/contexts/AuthContext";
-import { noteDiscoveryService } from "@/lib/services/NoteDiscoveryService";
+import { noteDiscoveryService } from "@/features/notes/services/NoteDiscoveryService";
 import { CheckCircle, Loader2, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";

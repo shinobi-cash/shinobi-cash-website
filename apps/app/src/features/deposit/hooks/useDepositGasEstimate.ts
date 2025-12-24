@@ -1,7 +1,7 @@
 import { useConfig, useChainId, useGasPrice } from "wagmi";
 import { formatEther, parseEther } from "viem";
 import { useEffect, useState } from "react";
-import type { CashNoteData } from "@/lib/services/DepositService";
+import type { CashNoteData } from "@/features/deposit/services/DepositService";
 import { estimateContractGas } from "viem/actions";
 import { resolveDepositRoute, buildDepositCallParams } from "../protocol/depositRoute";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";

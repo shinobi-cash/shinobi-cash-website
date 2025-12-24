@@ -1,4 +1,4 @@
-import type { CashNoteData } from "@/lib/services/DepositService";
+import type { CashNoteData } from "@/features/deposit/services/DepositService";
 import { useCallback, useEffect, useState } from "react";
 import { parseEther } from "viem";
 import { useWriteContract, useChainId } from "wagmi";

@@ -37,8 +37,8 @@ import {
   formatProofForContract,
   prepareCrossChainWithdrawalUserOperation,
   prepareWithdrawalUserOperation,
-} from "../blockchain/contractService";
-import { fetchASPData, fetchStateTreeLeaves } from "../data/indexerService";
+} from "@/services/blockchain/contractService";
+import { fetchASPData, fetchStateTreeLeaves } from "@/services/data/indexerService";
 import type {
   WithdrawalRequest,
   WithdrawalContext,

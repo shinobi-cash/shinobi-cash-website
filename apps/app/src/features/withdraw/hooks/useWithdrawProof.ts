@@ -5,8 +5,8 @@
 
 import { useState, useCallback } from "react";
 import type { Note } from "@/lib/storage/types";
-import type { PreparedWithdrawal, WithdrawalRequest } from "@/services/withdrawal/types";
-import { processWithdrawal } from "@/services/withdrawal/withdrawalService";
+import type { PreparedWithdrawal, WithdrawalRequest } from "@/features/withdraw/services/types";
+import { processWithdrawal } from "@/features/withdraw/services/withdrawalService";
 
 interface ProofState {
   preparedWithdrawal: PreparedWithdrawal | null;
