@@ -9,11 +9,9 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { SessionRestoreManager } from "@/components/SessionRestoreManager";
 import { TransactionTrackingProvider } from "@/hooks/transactions/useTransactionTracking";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import React, { type ReactNode, useEffect } from "react";
+import React, { type ReactNode } from "react";
 import { cookieToInitialState, WagmiProvider, type Config } from "wagmi";
 import { Toaster } from "@workspace/ui/components/sonner";
-import { INDEXER_CONFIG } from "@/config/constants";
-import { IndexerClient, setShinobiClient } from "@shinobi-cash/data";
 import { Particles } from "@workspace/ui/components/particles";
 
 // Set up queryClient
@@ -44,23 +42,6 @@ export const modal = createAppKit({
 
 function ContextProvider({ children, cookies }: { children: ReactNode; cookies: string | null }) {
   const initialState = cookieToInitialState(wagmiAdapter.wagmiConfig as Config, cookies);
-
-  // Initialize indexer client on client side
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const indexerClient = new IndexerClient({
-        endpoint: INDEXER_CONFIG.ENDPOINT,
-        headers: {
-          "Content-Type": "application/json",
-          "User-Agent": "shinobi-app/1.0.0",
-          ...(INDEXER_CONFIG.TOKEN && { Authorization: `Bearer ${INDEXER_CONFIG.TOKEN}` }),
-        },
-        timeout: 30000,
-      });
-
-      setShinobiClient(indexerClient);
-    }
-  }, []);
 
   return (
     <ErrorBoundary>

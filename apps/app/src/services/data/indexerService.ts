@@ -1,9 +1,9 @@
 /**
  * Indexer Service
+ * Proxies all indexer queries through Next.js API routes to hide credentials
  */
 
-import { IPFS_GATEWAY_URL, SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
-import { getShinobiClient } from "@shinobi-cash/data";
+import { IPFS_GATEWAY_URL } from "@shinobi-cash/constants";
 import type { Activity, StateTreeLeaf, ASPApprovalList } from "@shinobi-cash/data";
 import {
   IndexerError,
@@ -47,7 +47,7 @@ export interface ASPApprovalListLegacy {
 
 /**
  * Get all activities with pagination support
- * Uses SDK's proper pagination handling
+ * Proxied through Next.js API to hide credentials
  */
 export async function fetchActivities(
   poolAddress?: string,
@@ -56,26 +56,30 @@ export async function fetchActivities(
   orderDirection: "asc" | "desc" = "desc"
 ) {
   try {
-    const poolId = (poolAddress || SHINOBI_CASH_ETH_POOL.address).toLowerCase();
-    const client = getShinobiClient();
-
-    // Use SDK's getActivities method which properly handles pagination
-    const response = await client.getActivities({
-      poolId,
-      limit,
-      orderDirection,
-      after,
+    const response = await fetch("/api/indexer", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        endpoint: "activities",
+        params: { poolAddress, limit, after, orderDirection },
+      }),
     });
+
+    const result = await response.json();
+
+    if (!result.success) {
+      throw new Error(result.error || "Failed to fetch activities");
+    }
 
     console.log("[fetchActivities] Response:", {
-      itemCount: response.items.length,
+      itemCount: result.data.items.length,
       limit,
-      hasNextPage: response.pageInfo.hasNextPage,
-      firstItem: response.items[0]?.type,
+      hasNextPage: result.data.pageInfo.hasNextPage,
+      firstItem: result.data.items[0]?.type,
       orderDirection,
     });
 
-    return response;
+    return result.data;
   } catch (error) {
     logError(error, { action: "fetchActivities", poolId: poolAddress });
 
@@ -94,13 +98,26 @@ export async function fetchActivities(
 
 /**
  * Fetch all state tree commitments ordered by leafIndex (with automatic pagination)
- * Uses SDK client which handles pagination internally
+ * Proxied through Next.js API to hide credentials
  */
 export async function fetchStateTreeLeaves(poolId: string): Promise<StateTreeLeaf[]> {
   try {
-    // Use SDK's convenience method that handles pagination automatically
-    const client = getShinobiClient();
-    return await client.getAllStateTreeLeaves(poolId);
+    const response = await fetch("/api/indexer", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        endpoint: "stateTree",
+        params: { poolId },
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!result.success) {
+      throw new Error(result.error || "Failed to fetch state tree");
+    }
+
+    return result.data;
   } catch (error) {
     logError(error, { action: "fetchStateTreeLeaves", poolId });
 
@@ -119,7 +136,7 @@ export async function fetchStateTreeLeaves(poolId: string): Promise<StateTreeLea
 
 /**
  * Fetch latest ASP root and IPFS CID from indexer
- * Uses SDK's getLatestASPRoot method
+ * Proxied through Next.js API to hide credentials
  */
 export async function fetchLatestASPRoot(): Promise<{
   root: string;
@@ -127,26 +144,23 @@ export async function fetchLatestASPRoot(): Promise<{
   timestamp: string;
 }> {
   try {
-    const client = getShinobiClient();
+    const response = await fetch("/api/indexer", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        endpoint: "aspRoot",
+      }),
+    });
 
-    // Use SDK's getLatestASPRoot method
-    const latestUpdate = await client.getLatestASPRoot();
+    const result = await response.json();
 
-    console.log("[fetchLatestASPRoot] Result:", latestUpdate);
-
-    if (!latestUpdate?.root || !latestUpdate?.ipfsCID) {
-      throw new IndexerError(
-        INDEXER_ERROR_CODES.INVALID_RESPONSE,
-        "No ASP root found or missing IPFS CID",
-        { context: { latestUpdate } }
-      );
+    if (!result.success) {
+      throw new Error(result.error || "Failed to fetch ASP root");
     }
 
-    return {
-      root: latestUpdate.root,
-      ipfsCID: latestUpdate.ipfsCID,
-      timestamp: latestUpdate.timestamp.toString(),
-    };
+    console.log("[fetchLatestASPRoot] Result:", result.data);
+
+    return result.data;
   } catch (error) {
     // If already an IndexerError, re-throw
     if (error instanceof IndexerError) {
@@ -252,7 +266,7 @@ export async function fetchASPData() {
 
 /**
  * Fetch pool statistics (total deposits, withdrawals, deposit count)
- * Uses SDK's getPoolStats method
+ * Proxied through Next.js API to hide credentials
  */
 export async function fetchPoolStats(poolAddress?: string): Promise<{
   totalDeposits: string;
@@ -261,23 +275,24 @@ export async function fetchPoolStats(poolAddress?: string): Promise<{
   createdAt: string;
 } | null> {
   try {
-    const poolId = (poolAddress || SHINOBI_CASH_ETH_POOL.address).toLowerCase();
-    const client = getShinobiClient();
+    const response = await fetch("/api/indexer", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        endpoint: "poolStats",
+        params: { poolAddress },
+      }),
+    });
 
-    // Use SDK's getPoolStats method
-    const pool = await client.getPoolStats(poolId);
+    const result = await response.json();
 
-    console.log("[fetchPoolStats] Result:", pool);
+    if (!result.success) {
+      throw new Error(result.error || "Failed to fetch pool stats");
+    }
 
-    if (!pool) return null;
+    console.log("[fetchPoolStats] Result:", result.data);
 
-    // Convert BigInt values to strings
-    return {
-      totalDeposits: pool.totalDeposits.toString(),
-      totalWithdrawals: pool.totalWithdrawals.toString(),
-      depositCount: Number(pool.depositCount),
-      createdAt: pool.createdAt.toString(),
-    };
+    return result.data;
   } catch (error) {
     logError(error, { action: "fetchPoolStats", poolAddress });
 
@@ -290,24 +305,26 @@ export async function fetchPoolStats(poolAddress?: string): Promise<{
 
 /**
  * Get pool configuration and stats
- * Uses the Shinobi Indexer SDK consistently
+ * Proxied through Next.js API to hide credentials
  */
 export async function fetchPoolConfig(poolId: string) {
   try {
-    const client = getShinobiClient();
-    // SDK uses getPoolStats for pool config data
-    const result = await client.getPoolStats(poolId);
+    const response = await fetch("/api/indexer", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        endpoint: "poolConfig",
+        params: { poolId },
+      }),
+    });
 
-    if (!result) return null;
+    const result = await response.json();
 
-    // Return with bigint fields converted to strings/numbers
-    return {
-      id: result.id,
-      totalDeposits: result.totalDeposits.toString(),
-      totalWithdrawals: result.totalWithdrawals.toString(),
-      depositCount: Number(result.depositCount),
-      createdAt: result.createdAt.toString(),
-    };
+    if (!result.success || !result.data) {
+      return null;
+    }
+
+    return result.data;
   } catch (error) {
     // Log but return null (non-critical, has fallback behavior)
     logError(error, { action: "fetchPoolConfig", poolId });
@@ -318,15 +335,22 @@ export async function fetchPoolConfig(poolId: string) {
 // ============ HEALTH CHECK QUERIES ============
 
 /**
- * Simple health check using SDK
- * Uses SDK client for consistency
+ * Simple health check
+ * Proxied through Next.js API to hide credentials
  */
 export async function checkIndexerHealth(): Promise<boolean> {
   try {
-    const client = getShinobiClient();
-    const health = await client.healthCheck();
-    return health.status === "ok" || health.status === "healthy";
-  } catch (error) {
+    const response = await fetch("/api/indexer", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        endpoint: "health",
+      }),
+    });
+
+    const result = await response.json();
+    return result.success && result.data?.status === true;
+  } catch {
     return false;
   }
 }
@@ -334,15 +358,28 @@ export async function checkIndexerHealth(): Promise<boolean> {
 /**
  * Get latest indexed block from Ponder meta status
  * Returns actual block data for transaction tracking
+ * Proxied through Next.js API to hide credentials
  */
 export async function fetchLatestIndexedBlock(): Promise<{
   blockNumber: string;
   timestamp: string;
 } | null> {
   try {
-    const client = getShinobiClient();
-    const latestBlock = await client.getLatestIndexedBlock();
-    return latestBlock;
+    const response = await fetch("/api/indexer", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        endpoint: "latestBlock",
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!result.success || !result.data) {
+      return null;
+    }
+
+    return result.data;
   } catch (error) {
     // Log but return null (non-critical, used for monitoring)
     logError(error, { action: "fetchLatestIndexedBlock" });
