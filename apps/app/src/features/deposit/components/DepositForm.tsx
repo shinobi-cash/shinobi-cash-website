@@ -114,9 +114,7 @@ export function DepositForm({ asset, onTransactionSuccess, onBack }: DepositForm
 
         <AssetChainSelectorScreen
           selectedChainId={chainId}
-          selectedAsset={asset}
           onSelect={() => setIsAssetSelectorOpen(false)}
-          onBack={() => {}}
         />
       </div>
     );

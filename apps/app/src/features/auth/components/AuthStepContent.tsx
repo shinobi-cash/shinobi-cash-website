@@ -58,7 +58,6 @@ export function AuthStepContent({
           onPasskeyLoginSuccess={onPasskeyLoginSuccess}
           onWalletLoginSuccess={onWalletLoginSuccess}
           onNewWalletKeysGenerated={onKeyGenerationComplete}
-          onCreateAccount={onCreateChoice}
           hasPasskeyAccounts={hasPasskeyAccounts}
         />
       );
@@ -79,8 +78,6 @@ export function AuthStepContent({
           walletAddress={walletAddress}
           onAccountSetupComplete={onAccountSetupComplete}
           onSkip={onSkipSetup}
-          hasExistingAccounts={hasExistingAccounts}
-          onLoginChoice={onLoginChoice}
         />
       );
 

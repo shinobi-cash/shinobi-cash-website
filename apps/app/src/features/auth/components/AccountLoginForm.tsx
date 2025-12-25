@@ -23,9 +23,6 @@ interface AccountLoginFormProps {
     walletAddress: string;
   }) => void;
 
-  // Legacy support (deprecated)
-  onCreateAccount?: () => void;
-
   hasPasskeyAccounts: boolean;
 }
 
@@ -35,7 +32,6 @@ export function AccountLoginForm({
   onPasskeyLoginSuccess,
   onWalletLoginSuccess,
   onNewWalletKeysGenerated,
-  onCreateAccount,
   hasPasskeyAccounts,
 }: AccountLoginFormProps) {
   const { address } = useAccount();

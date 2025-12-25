@@ -130,12 +130,10 @@ export function WithdrawalForm({ onTransactionSuccess, onBack }: WithdrawalFormP
 
         <AssetChainSelectorScreen
           selectedChainId={controller.destinationChainId}
-          selectedAsset={asset}
           onSelect={(newChainId) => {
             controller.setDestinationChain(newChainId);
             setIsDestinationSelectionOpen(false);
           }}
-          onBack={() => {}}
         />
       </div>
     );

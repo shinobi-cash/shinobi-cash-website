@@ -21,8 +21,6 @@ interface AccountSetupFormProps {
   walletAddress: string | null;
   onAccountSetupComplete: () => void;
   onSkip?: () => void;
-  hasExistingAccounts?: boolean;
-  onLoginChoice?: () => void;
 }
 
 export default function AccountSetupForm({
@@ -31,8 +29,6 @@ export default function AccountSetupForm({
   walletAddress,
   onAccountSetupComplete,
   onSkip,
-  hasExistingAccounts,
-  onLoginChoice,
 }: AccountSetupFormProps) {
   return (
     <PasskeySetupForm

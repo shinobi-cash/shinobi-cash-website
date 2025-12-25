@@ -6,7 +6,6 @@
 
 import { useState, useMemo } from "react";
 import Image from "next/image";
-import { BackButton } from "../ui/back-button";
 import { getChainIcon, getChainName } from "@/utils/chainIcons";
 import { SHINOBI_CASH_SUPPORTED_CHAINS } from "@shinobi-cash/constants";
 import { Search } from "lucide-react";
@@ -19,9 +18,7 @@ interface Asset {
 
 interface AssetChainSelectorScreenProps {
   selectedChainId: number;
-  selectedAsset: Asset;
   onSelect: (chainId: number, asset: Asset) => void;
-  onBack: () => void;
 }
 
 // For now, we only support ETH on all chains
@@ -29,9 +26,7 @@ const AVAILABLE_ASSETS: Asset[] = [{ symbol: "ETH", name: "Ethereum", icon: "/et
 
 export function AssetChainSelectorScreen({
   selectedChainId,
-  selectedAsset,
   onSelect,
-  onBack,
 }: AssetChainSelectorScreenProps) {
   const [searchChain, setSearchChain] = useState("");
   const [searchToken, setSearchToken] = useState("");
