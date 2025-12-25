@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Settings, BarChart3, Menu } from "lucide-react";
+import { Settings, Menu } from "lucide-react";
 import { useAccount, useChainId, useSwitchChain } from "wagmi";
 import { modal } from "@/context";
 import { Button } from "@workspace/ui/components/button";
@@ -91,17 +91,6 @@ export function Header() {
               priority
             />
           </Link>
-
-          {/* Desktop Navigation Links */}
-          <nav className="hidden items-center gap-1 md:flex">
-            <Link
-              href="/pool"
-              className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-gray-800/50 hover:text-white"
-            >
-              <BarChart3 className="h-4 w-4" />
-              Pool
-            </Link>
-          </nav>
         </div>
 
         {/* Actions - Right */}
