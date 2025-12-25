@@ -58,7 +58,7 @@ export interface SmartAccountConfig {
 
 // Create public client for contract calls (using pool chain from shared constants)
 const publicClient = createPublicClient({
-  chain: POOL_CHAIN as any,
+  chain: POOL_CHAIN as never,
   transport: http(),
 });
 

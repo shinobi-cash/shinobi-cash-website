@@ -8,7 +8,7 @@ import { useMemo, useCallback, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTransactionTracking } from "@/hooks/transactions/useTransactionTracking";
 import { SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
-import type { Note, NoteChain } from "@/lib/storage/types";
+import type { Note } from "@/lib/storage/types";
 import type { NotesStatus, NotesError, NoteFilter, NoteChainView } from "../types";
 import { useNoteDiscovery } from "../hooks/useNoteDiscovery";
 import { useNoteFilter } from "../hooks/useNoteFilter";

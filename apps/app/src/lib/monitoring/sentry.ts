@@ -219,7 +219,7 @@ function sanitizeData<T>(data: T): T {
     return data.map((item) => sanitizeData(item)) as T;
   }
 
-  const result: any = {};
+  const result: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(data)) {
     // Redact sensitive keys
     if (sensitiveKeys.some((sensitive) => key.toLowerCase().includes(sensitive))) {

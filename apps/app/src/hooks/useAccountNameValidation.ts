@@ -42,7 +42,7 @@ export function useAccountNameValidation(delay = 500) {
       try {
         const err = await validateAccountName(trimmed);
         setAccountNameError(err || "");
-      } catch (e) {
+      } catch {
         // non-fatal, skip validation error surfacing
       }
     }, delay);

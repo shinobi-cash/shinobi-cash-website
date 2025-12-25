@@ -72,7 +72,7 @@ export function isWithdrawSupported(destinationChainId?: number): boolean {
  * @param route - Withdrawal route
  * @returns Relay fee in basis points
  */
-export function getDefaultRelayFeeBps(route: WithdrawRoute): number {
+export function getDefaultRelayFeeBps(_route: WithdrawRoute): number {
   // Currently using fixed fee, but this function allows
   // future fee policies based on route (e.g., different fees for cross-chain)
   return 500; // Using 500 BPS (5%) instead of DEFAULT_RELAY_FEE_BPS constant

@@ -165,7 +165,7 @@ export function WalletSignatureKeyGeneration({
               <h3 className="text-app-primary mb-2 text-lg font-semibold">Sign Message</h3>
               <p className="text-app-secondary mb-4 text-sm">
                 Sign a message with your wallet to generate your account keys. This is free and
-                won't send any transactions.
+                won&apos;t send any transactions.
               </p>
               {address && (
                 <div className="bg-app-card rounded-lg px-3 py-2">

@@ -17,7 +17,6 @@ export class AuthError extends Error {
     this.name = "AuthError";
     this.code = code;
     if (options?.cause) {
-      // @ts-ignore
       this.cause = options.cause;
     }
   }

@@ -38,7 +38,11 @@ import {
   prepareCrossChainWithdrawalUserOperation,
   prepareWithdrawalUserOperation,
 } from "@/services/blockchain/contractService";
-import { fetchASPData, fetchStateTreeLeaves } from "@/services/data/indexerService";
+import {
+  fetchASPData,
+  fetchStateTreeLeaves,
+  type StateTreeLeaf,
+} from "@/services/data/indexerService";
 import type {
   WithdrawalRequest,
   WithdrawalContext,
@@ -46,6 +50,13 @@ import type {
   WithdrawalProofData,
   PreparedWithdrawal,
 } from "./types";
+
+interface ASPData {
+  root: string;
+  ipfsCID: string;
+  timestamp: string;
+  approvalList: string[];
+}
 import { calculateContextHash } from "./types";
 import { deriveExistingNullifierAndSecret } from "./helpers";
 import {
@@ -78,7 +89,7 @@ async function fetchWithdrawalData(poolAddress: string) {
  */
 async function calculateWithdrawalContext(
   request: WithdrawalRequest,
-  withdrawalData: { stateTreeLeaves: any; aspData: any; poolScope: string }
+  withdrawalData: { stateTreeLeaves: StateTreeLeaf[]; aspData: ASPData; poolScope: string }
 ): Promise<WithdrawalContext> {
   const { note, recipientAddress, accountKey } = request;
   const { stateTreeLeaves, aspData, poolScope } = withdrawalData;
@@ -198,7 +209,7 @@ async function prepareWithdrawalTransaction(
  */
 async function calculateCrossChainWithdrawalContext(
   request: WithdrawalRequest,
-  withdrawalData: { stateTreeLeaves: any; aspData: any; poolScope: string }
+  withdrawalData: { stateTreeLeaves: StateTreeLeaf[]; aspData: ASPData; poolScope: string }
 ): Promise<CrosschainWithdrawalContext> {
   const { note, recipientAddress, accountKey } = request;
   const { stateTreeLeaves, aspData, poolScope } = withdrawalData;

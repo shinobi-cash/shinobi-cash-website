@@ -27,7 +27,7 @@ export function getPublicClient(chainId: number) {
     throw new Error(`Unsupported chain ${chainId}`);
   }
   const client = createPublicClient({
-    chain: chain as any,
+    chain: chain as never,
     transport: http(),
   });
   if (!client) {
@@ -51,7 +51,7 @@ export const pimlicoClient = createPimlicoClient({
 async function createWithdrawalSmartAccountClient(paymasterAddress: `0x${string}`) {
   const account = privateKeyToAccount(WITHDRAWAL_ACCOUNT_PRIVATE_KEY);
   const publicClient = createPublicClient({
-    chain: POOL_CHAIN as any,
+    chain: POOL_CHAIN as never,
     transport: http(),
   });
 

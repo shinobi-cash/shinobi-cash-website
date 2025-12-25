@@ -101,7 +101,6 @@ export function AuthScreen({ onAuthComplete, onBack }: AuthScreenProps) {
             hasExistingAccounts={flow.hasExistingAccounts ?? false}
             hasPasskeyAccounts={flow.hasPasskeyAccounts}
             onLoginChoice={flow.handleLoginChoice}
-            onCreateChoice={flow.handleCreateChoice}
             onPasskeyLoginSuccess={flow.handlePasskeyLoginSuccess}
             onWalletLoginSuccess={flow.handleWalletLoginSuccess}
             onKeyGenerationComplete={flow.handleKeyGenerationComplete}

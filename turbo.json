@@ -1,11 +1,31 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "ui": "tui",
+  "globalEnv": [
+    "NODE_ENV",
+    "INDEXER_URL_DEV",
+    "INDEXER_URL_PROD",
+    "INDEXER_TOKEN_DEV",
+    "INDEXER_TOKEN_PROD",
+    "NEXT_PUBLIC_SENTRY_ENABLED"
+  ],
+  "globalDependencies": [
+    ".env",
+    ".env.local"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": [".next/**", "!.next/cache/**"]
+      "outputs": [".next/**", "!.next/cache/**"],
+      "env": [
+        "NODE_ENV",
+        "INDEXER_URL_DEV",
+        "INDEXER_URL_PROD",
+        "INDEXER_TOKEN_DEV",
+        "INDEXER_TOKEN_PROD",
+        "NEXT_PUBLIC_SENTRY_ENABLED"
+      ]
     },
     "lint": {
       "dependsOn": ["^lint"]

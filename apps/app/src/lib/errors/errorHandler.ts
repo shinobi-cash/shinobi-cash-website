@@ -126,7 +126,7 @@ export function isRecoverable(error: unknown): boolean {
         BLOCKCHAIN_ERROR_CODES.TRANSACTION_TIMEOUT,
         BLOCKCHAIN_ERROR_CODES.NETWORK_ERROR,
       ];
-      return recoverableCodes.includes(error.code as any);
+      return recoverableCodes.includes(error.code as never);
     }
 
     // Indexer errors are recoverable
@@ -266,7 +266,7 @@ function serializeError(error: unknown): Record<string, unknown> {
       name: error.name,
       message: error.message,
       stack: error.stack,
-      cause: (error as any).cause ? serializeError((error as any).cause) : undefined,
+      cause: "cause" in error && error.cause ? serializeError(error.cause) : undefined,
     };
   }
 

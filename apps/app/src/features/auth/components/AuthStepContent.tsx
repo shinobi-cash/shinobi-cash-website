@@ -19,7 +19,6 @@ interface AuthStepContentProps {
   hasExistingAccounts: boolean;
   hasPasskeyAccounts: boolean;
   onLoginChoice: () => void;
-  onCreateChoice: () => void;
 
   // Login success handlers
   onPasskeyLoginSuccess: (keys: KeyGenerationResult) => void;
@@ -43,7 +42,6 @@ export function AuthStepContent({
   hasExistingAccounts,
   hasPasskeyAccounts,
   onLoginChoice,
-  onCreateChoice,
   onPasskeyLoginSuccess,
   onWalletLoginSuccess,
   onKeyGenerationComplete,

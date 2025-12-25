@@ -109,7 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           // Zero out array elements to reduce exposure window
           for (let i = 0; i < currentMnemonic.length; i++) {
-            (currentMnemonic as any)[i] = "";
+            (currentMnemonic as string[])[i] = "";
           }
         } catch (e) {
           // Array might be frozen/sealed - log but continue

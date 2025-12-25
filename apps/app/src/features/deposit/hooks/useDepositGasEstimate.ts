@@ -52,7 +52,7 @@ export function useDepositGasEstimate(
           functionName: callParams.functionName,
           args: callParams.args,
           value: valueWei,
-        } as any); // Type assertion needed due to viem's complex type inference
+        } as never); // Type assertion needed due to viem's complex type inference
 
         // Apply buffer and calculate cost
         const bufferedGas = (gasLimit * GAS_BUFFER) / DIVISOR;
