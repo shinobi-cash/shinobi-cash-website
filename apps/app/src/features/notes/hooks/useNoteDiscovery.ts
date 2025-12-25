@@ -4,7 +4,10 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { noteDiscoveryService, noteStorageProvider } from "@/features/notes/services/NoteDiscoveryService";
+import {
+  noteDiscoveryService,
+  noteStorageProvider,
+} from "@/features/notes/services/NoteDiscoveryService";
 import type { DiscoveryResult } from "@/lib/storage/types";
 import type { DiscoveryProgress } from "@shinobi-cash/core";
 

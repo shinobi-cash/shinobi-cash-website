@@ -104,11 +104,7 @@ export function normalizeAuthError(
     }
 
     // Detect network errors
-    if (
-      message.includes("network") ||
-      message.includes("fetch") ||
-      message.includes("timeout")
-    ) {
+    if (message.includes("network") || message.includes("fetch") || message.includes("timeout")) {
       return createNetworkError(message);
     }
 

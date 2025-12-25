@@ -6,7 +6,7 @@
 import { useAuthFlowController } from "@/features/auth/controller/useAuthFlowController";
 import { useCallback, useEffect, useRef } from "react";
 import { AuthStepContent } from "@/features/auth";
-import { BackButton } from "../ui/back-button";
+import { BackButton } from "./ui/back-button";
 
 interface AuthScreenProps {
   onAuthComplete?: () => void;
@@ -68,8 +68,7 @@ export function AuthScreen({ onAuthComplete, onBack }: AuthScreenProps) {
   };
 
   const canGoBack = flow.canGoBack;
-  const isFirstStep =
-    flow.currentStep === "login-convenient" || flow.currentStep === "create-keys";
+  const isFirstStep = flow.currentStep === "login-convenient" || flow.currentStep === "create-keys";
 
   const handleBack = () => {
     if (canGoBack) {
