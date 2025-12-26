@@ -38,7 +38,6 @@ const CACHE_CONFIG = {
   activities: 10, // 10 seconds (real-time data)
   stateTree: 30, // 30 seconds (changes occasionally)
   aspRoot: 60, // 1 minute (updates periodically)
-  poolStats: 30, // 30 seconds
   health: 5, // 5 seconds
 } as const;
 
@@ -48,8 +47,6 @@ interface IndexerRequest {
     | "activities"
     | "stateTree"
     | "aspRoot"
-    | "poolStats"
-    | "poolConfig"
     | "health"
     | "latestBlock";
   params?: {
@@ -70,9 +67,6 @@ export async function POST(request: Request) {
     const body: IndexerRequest = await request.json();
     const { endpoint, params = {} } = body;
 
-    // Use server-side client with protected credentials
-    const client = serverClient;
-
     let data: unknown;
     let cacheTTL = 30; // default
 
@@ -80,7 +74,7 @@ export async function POST(request: Request) {
     switch (endpoint) {
       case "activities": {
         const poolId = (params.poolAddress || SHINOBI_CASH_ETH_POOL.address).toLowerCase();
-        data = await client.getActivities({
+        data = await serverClient.getActivities({
           poolId,
           limit: params.limit || 100,
           orderDirection: params.orderDirection || "desc",
@@ -94,71 +88,29 @@ export async function POST(request: Request) {
         if (!params.poolId) {
           return NextResponse.json({ error: "poolId is required" }, { status: 400 });
         }
-        data = await client.getAllStateTreeLeaves(params.poolId);
+        data = await serverClient.getAllStateTreeLeaves(params.poolId);
         cacheTTL = CACHE_CONFIG.stateTree;
         break;
       }
 
       case "aspRoot": {
-        const latestUpdate = await client.getLatestASPRoot();
-        if (!latestUpdate?.root || !latestUpdate?.ipfsCID) {
+        data = await serverClient.getLatestASPRoot();
+        if (!data || !(data as { root?: string }).root) {
           return NextResponse.json({ error: "No ASP root found" }, { status: 404 });
         }
-        data = {
-          root: latestUpdate.root,
-          ipfsCID: latestUpdate.ipfsCID,
-          timestamp: latestUpdate.timestamp.toString(),
-        };
         cacheTTL = CACHE_CONFIG.aspRoot;
         break;
       }
 
-      case "poolStats": {
-        const poolId = (params.poolAddress || SHINOBI_CASH_ETH_POOL.address).toLowerCase();
-        const pool = await client.getPoolStats(poolId);
-        if (!pool) {
-          data = null;
-        } else {
-          data = {
-            totalDeposits: pool.totalDeposits.toString(),
-            totalWithdrawals: pool.totalWithdrawals.toString(),
-            depositCount: Number(pool.depositCount),
-            createdAt: pool.createdAt.toString(),
-          };
-        }
-        cacheTTL = CACHE_CONFIG.poolStats;
-        break;
-      }
-
-      case "poolConfig": {
-        if (!params.poolId) {
-          return NextResponse.json({ error: "poolId is required" }, { status: 400 });
-        }
-        const result = await client.getPoolStats(params.poolId);
-        if (!result) {
-          data = null;
-        } else {
-          data = {
-            id: result.id,
-            totalDeposits: result.totalDeposits.toString(),
-            totalWithdrawals: result.totalWithdrawals.toString(),
-            depositCount: Number(result.depositCount),
-            createdAt: result.createdAt.toString(),
-          };
-        }
-        cacheTTL = CACHE_CONFIG.poolStats;
-        break;
-      }
-
       case "health": {
-        const health = await client.healthCheck();
+        const health = await serverClient.healthCheck();
         data = { status: health.status === "ok" || health.status === "healthy" };
         cacheTTL = CACHE_CONFIG.health;
         break;
       }
 
       case "latestBlock": {
-        data = await client.getLatestIndexedBlock();
+        data = await serverClient.getLatestIndexedBlock();
         cacheTTL = CACHE_CONFIG.health;
         break;
       }
