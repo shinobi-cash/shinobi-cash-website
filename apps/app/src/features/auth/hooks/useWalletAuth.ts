@@ -56,7 +56,9 @@ export function useWalletAuth() {
 
     try {
       // Get user to sign EIP-712 message
-      const message = getEIP712Message(address, chainId);
+      const message = getEIP712Message(address, chainId, {
+        deterministic: true,
+      });
       const signature = await signTypedDataAsync(message);
 
       // SECURITY: Generate keys using HKDF with chain binding
@@ -93,7 +95,9 @@ export function useWalletAuth() {
 
     try {
       // Get user to sign EIP-712 message
-      const message = getEIP712Message(address, chainId);
+      const message = getEIP712Message(address, chainId, {
+        deterministic: true,
+      });
       const signature = await signTypedDataAsync(message);
 
       // SECURITY: Login with chain-bound account

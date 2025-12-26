@@ -13,7 +13,6 @@ import type { AuthMethod } from "../types";
 
 export type SessionResumeResult =
   | { status: "none" } // No session to resume
-  | { status: "password-needed"; accountName: string } // Password required
   | { status: "passkey-ready"; result: { symmetricKey: CryptoKey }; accountName: string }; // Passkey available
 
 /**
@@ -24,42 +23,6 @@ export type SessionResumeResult =
  */
 export async function checkSessionResume(): Promise<SessionResumeResult> {
   return await KDF.resumeAuth();
-}
-
-/**
- * Resume session with password
- * Pure function - derives key from password and loads account data
- *
- * @param password - User password
- * @param accountName - Account name
- * @returns KeyGenerationResult with decrypted keys
- */
-export async function resumeWithPassword(
-  password: string,
-  accountName: string
-): Promise<KeyGenerationResult> {
-  // Derive symmetric key from password
-  const { symmetricKey } = await KDF.deriveKeyFromPassword(password, accountName);
-
-  // Initialize session
-  await storageManager.initializeAccountSession(accountName, symmetricKey);
-
-  // Load account data
-  const accountData = await storageManager.getAccountData();
-  if (!accountData) throw new Error("Account data not found");
-
-  // Restore keys from mnemonic
-  const { publicKey, privateKey, address } = restoreFromMnemonic(accountData.mnemonic);
-
-  // Store session info
-  await KDF.storeSessionInfo(accountName, "password");
-
-  return {
-    publicKey,
-    privateKey,
-    address,
-    mnemonic: accountData.mnemonic,
-  } as KeyGenerationResult;
 }
 
 /**
@@ -116,10 +79,8 @@ export async function storeSession(
   method: AuthMethod,
   metadata?: Record<string, unknown>
 ): Promise<void> {
-  // Map AuthMethod to KDF-supported methods
-  // Wallet-based auth uses "passkey" in KDF for now
-  const kdfMethod: "passkey" | "password" = method === "wallet" ? "passkey" : method;
-  await KDF.storeSessionInfo(accountName, kdfMethod, metadata);
+  // Both passkey and wallet auth use "passkey" in KDF
+  await KDF.storeSessionInfo(accountName, "passkey", metadata);
 }
 
 // ============ ACCOUNT MANAGEMENT ============

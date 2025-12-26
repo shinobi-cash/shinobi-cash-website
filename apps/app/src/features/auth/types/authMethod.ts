@@ -11,7 +11,6 @@
  */
 export type AuthMethod =
   | "passkey" // WebAuthn passkey with PRF extension
-  | "password" // Password-based authentication
   | "wallet"; // Wallet signature-based authentication
 
 // ============ METHOD LABELS ============
@@ -21,7 +20,6 @@ export type AuthMethod =
  */
 export const AUTH_METHOD_LABELS: Record<AuthMethod, string> = {
   passkey: "Passkey",
-  password: "Password",
   wallet: "Wallet",
 };
 

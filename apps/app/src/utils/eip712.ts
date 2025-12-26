@@ -6,14 +6,14 @@
 const DOMAIN = {
   name: "Shinobi Cash",
   version: "1",
-  chainId: 1, // Will be overridden with actual chain
 } as const;
 
 const TYPES = {
   ShinobiAuth: [
-    { name: "message", type: "string" },
-    { name: "timestamp", type: "uint256" },
+    { name: "wallet", type: "address" },
     { name: "action", type: "string" },
+    { name: "message", type: "string" },
+    { name: "nonce", type: "string" }, // static or time-based
   ],
 } as const;
 
@@ -23,37 +23,26 @@ const TYPES = {
  * For temporary key generation, can use timestamp for uniqueness
  */
 export function getEIP712Message(
-  walletAddress: string,
-  chainId?: number,
+  walletAddress: `0x${string}`,
+  chainId: number,
   options?: { deterministic?: boolean }
 ) {
-  // For wallet-based accounts, use deterministic signature (no timestamp)
-  // This ensures the same signature is generated each time for encryption/decryption
-  const useDeterministic = options?.deterministic !== false; // Default to deterministic
-
-  const message = useDeterministic
-    ? {
-        message:
-          "Sign this message to access your Shinobi Cash account. This signature will be used to deterministically generate your encryption keys. This will not trigger any blockchain transaction or cost gas.",
-        timestamp: BigInt(0), // Fixed timestamp for deterministic signature
-        action: "shinobi-auth",
-      }
-    : {
-        message:
-          "Sign this message to create your Shinobi Cash account. This signature will be used to deterministically generate your private keys. This will not trigger any blockchain transaction or cost gas.",
-        timestamp: BigInt(Math.floor(Date.now() / 1000)),
-        action: "create-account",
-      };
-
-  const domain = {
-    ...DOMAIN,
-    chainId: chainId ?? 1,
-  };
+  const deterministic = options?.deterministic !== false;
 
   return {
-    domain,
+    domain: {
+      ...DOMAIN,
+      chainId,
+    },
     types: TYPES,
     primaryType: "ShinobiAuth" as const,
-    message,
+    message: {
+      wallet: walletAddress,
+      action: deterministic ? "shinobi-auth" : "create-account",
+      message: deterministic
+        ? "Sign to access your Shinobi Cash account."
+        : "Sign to create your Shinobi Cash account.",
+      nonce: deterministic ? "static-v1" : String(Date.now()),
+    },
   };
 }

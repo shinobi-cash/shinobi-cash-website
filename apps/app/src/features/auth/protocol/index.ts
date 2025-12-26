@@ -31,7 +31,6 @@ export { deriveKeysFromSignature } from "./crypto";
 export type { SessionResumeResult } from "./sessionManagement";
 export {
   checkSessionResume,
-  resumeWithPassword,
   resumeWithPasskey,
   clearSession,
   storeSession,

@@ -13,7 +13,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import {
   checkSessionResume,
-  resumeWithPassword,
   resumeWithPasskey,
   clearSession,
 } from "../protocol";
@@ -36,7 +35,6 @@ interface SessionRestoreResult {
   isRestoring: boolean;
   quickAuthState: QuickAuthState | null;
   error: AuthError;
-  handlePasswordAuth: (password: string) => Promise<void>;
   dismissQuickAuth: () => Promise<void>;
   clearError: () => void;
 }
@@ -83,16 +81,6 @@ export function useSessionRestore(
           return;
         }
 
-        if (resume.status === "password-needed") {
-          // Password required for resume
-          setState({
-            isRestoring: true,
-            quickAuthState: { show: true, accountName: resume.accountName },
-            error: null,
-          });
-          return;
-        }
-
         // Passkey available - auto-resume
         const keys = await resumeWithPasskey(resume.result.symmetricKey, resume.accountName);
 
@@ -128,33 +116,6 @@ export function useSessionRestore(
   }, [state.quickAuthState]);
 
   /**
-   * Handle password-based quick auth
-   */
-  const handlePasswordAuth = useCallback(async (password: string): Promise<void> => {
-    const currentQuickAuthState = quickAuthStateRef.current;
-    if (!currentQuickAuthState) return;
-
-    setState((prev) => ({ ...prev, isRestoring: true, error: null }));
-
-    try {
-      const keys = await resumeWithPassword(password, currentQuickAuthState.accountName);
-
-      // Authenticate user with restored keys
-      onRestoreRef.current(keys);
-
-      setState({ isRestoring: false, quickAuthState: null, error: null });
-    } catch (error) {
-      console.error("Quick password auth failed:", error);
-      setState((prev) => ({
-        ...prev,
-        isRestoring: false,
-        error: createSessionError("Password authentication failed"),
-      }));
-      throw error; // Re-throw for UI error handling
-    }
-  }, []);
-
-  /**
    * Dismiss quick auth prompt
    */
   const dismissQuickAuth = useCallback(async () => {
@@ -173,7 +134,6 @@ export function useSessionRestore(
     isRestoring: state.isRestoring,
     quickAuthState: state.quickAuthState,
     error: state.error,
-    handlePasswordAuth,
     dismissQuickAuth,
     clearError,
   };

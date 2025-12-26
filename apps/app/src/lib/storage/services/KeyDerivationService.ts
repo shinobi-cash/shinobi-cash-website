@@ -54,36 +54,6 @@ export class KeyDerivationService {
   }
 
   /**
-   * Derive key from password - exact implementation from keyDerivation.ts
-   */
-  async deriveKeyFromPassword(password: string, accountName: string): Promise<DerivedKeyResult> {
-    const salt = await this.buildHybridSalt(accountName);
-
-    const keyMaterial = await crypto.subtle.importKey(
-      "raw",
-      new TextEncoder().encode(password),
-      "PBKDF2",
-      false,
-      ["deriveKey"]
-    );
-
-    const symmetricKey = await crypto.subtle.deriveKey(
-      {
-        name: "PBKDF2",
-        salt: salt as BufferSource,
-        iterations: CONFIG.PBKDF2_ITERATIONS,
-        hash: CONFIG.HASH_ALGORITHM,
-      },
-      keyMaterial,
-      { name: "AES-GCM", length: CONFIG.KEY_LENGTH },
-      false,
-      ["encrypt", "decrypt"]
-    );
-
-    return { symmetricKey, salt };
-  }
-
-  /**
    * Derive key from passkey - exact implementation from keyDerivation.ts
    */
   async deriveKeyFromPasskey(accountName: string, credentialId: string): Promise<DerivedKeyResult> {
@@ -206,7 +176,6 @@ export class KeyDerivationService {
    */
   async resumeAuth(): Promise<
     | { status: "passkey-ready"; result: DerivedKeyResult; accountName: string }
-    | { status: "password-needed"; accountName: string }
     | { status: "none" }
   > {
     const session = await this.sessionRepo.getStoredSessionInfo();
@@ -218,10 +187,6 @@ export class KeyDerivationService {
       return { status: "passkey-ready", result, accountName: session.accountName };
     }
 
-    if (session.authMethod === "password") {
-      return { status: "password-needed", accountName: session.accountName };
-    }
-
     return { status: "none" };
   }
 
@@ -230,7 +195,7 @@ export class KeyDerivationService {
    */
   async storeSessionInfo(
     accountName: string,
-    authMethod: "passkey" | "password",
+    authMethod: "passkey",
     opts?: { credentialId?: string }
   ): Promise<void> {
     return this.sessionRepo.storeSessionInfo(accountName, authMethod, opts);
@@ -268,7 +233,6 @@ export const keyDerivationService = new KeyDerivationService();
 
 // Export public API that matches current KDF export from keyDerivation.ts
 export const KDF = {
-  deriveKeyFromPassword: keyDerivationService.deriveKeyFromPassword.bind(keyDerivationService),
   deriveKeyFromPasskey: keyDerivationService.deriveKeyFromPasskey.bind(keyDerivationService),
   createPasskeyCredential: keyDerivationService.createPasskeyCredential.bind(keyDerivationService),
   storeSessionInfo: keyDerivationService.storeSessionInfo.bind(keyDerivationService),
