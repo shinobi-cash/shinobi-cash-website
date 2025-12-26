@@ -7,7 +7,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { IndexerClient } from "@shinobi-cash/data";
+import { IndexerClient, convertBigIntsToStrings } from "@shinobi-cash/data";
 import { SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
 
 // Server-side indexer configuration (credentials never exposed to client)
@@ -167,9 +167,12 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Unknown endpoint" }, { status: 404 });
     }
 
+    // Serialize BigInts before returning
+    const serializedData = convertBigIntsToStrings(data);
+
     // Return with caching headers
     return NextResponse.json(
-      { success: true, data },
+      { success: true, data: serializedData },
       {
         headers: {
           "Cache-Control": `s-maxage=${cacheTTL}, stale-while-revalidate`,
