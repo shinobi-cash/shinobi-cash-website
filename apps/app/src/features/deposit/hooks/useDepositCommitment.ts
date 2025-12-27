@@ -1,9 +1,9 @@
 /**
  * Deposit Commitment Hook
- * Manages deposit commitment generation with collision detection
+ * Manages deposit commitment generation with decoupled storage and business logic
  */
 
-import { type CashNoteData, depositService } from "@/features/deposit/services/DepositService";
+import { useDepositRepository } from "@/lib/storage/hooks/useDepositRepository";
 import type { DepositCommitmentResult } from "@shinobi-cash/core";
 import { useCallback, useEffect, useState } from "react";
 import { useAccount } from "wagmi";
@@ -11,6 +11,13 @@ import { SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
 import { getUserMessage, logError } from "@/lib/errors";
 
 // Legacy type for backwards compatibility
+export interface CashNoteData {
+  poolAddress: string;
+  depositIndex: number;
+  changeIndex: number;
+  precommitment: bigint;
+}
+
 export interface DepositCashNoteResult {
   noteData: CashNoteData | null;
   isGeneratingNote: boolean;
@@ -26,6 +33,7 @@ export function useDepositCommitment(
   accountKey: bigint | null
 ): DepositCashNoteResult {
   const { address } = useAccount();
+  const depositRepo = useDepositRepository();
 
   const [state, setState] = useState<{
     noteData: CashNoteData | null;
@@ -48,14 +56,14 @@ export function useDepositCommitment(
     try {
       const poolAddress = SHINOBI_CASH_ETH_POOL.address;
 
-      // Use SDK deposit service
-      const result: DepositCommitmentResult = await depositService.generateDepositCommitment(
+      // Use DepositRepository which orchestrates core SDK + storage
+      const result: DepositCommitmentResult = await depositRepo.generateDepositCommitment(
         accountKey,
         publicKey,
         poolAddress
       );
 
-      // Convert SDK result to legacy CashNoteData format
+      // Convert result to legacy CashNoteData format
       const noteData: CashNoteData = {
         poolAddress: result.poolAddress,
         depositIndex: result.depositIndex,
@@ -83,9 +91,9 @@ export function useDepositCommitment(
         error: getUserMessage(error, "Failed to generate deposit commitment"),
       });
     }
-  }, [address, accountKey, publicKey]);
+  }, [address, accountKey, publicKey, depositRepo]);
 
-  // Auto-generate on mount and when dependencies change - exact logic from original
+  // Auto-generate on mount and when dependencies change
   useEffect(() => {
     generateNewDepositCommitment();
   }, [generateNewDepositCommitment]);

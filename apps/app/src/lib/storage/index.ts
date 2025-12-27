@@ -39,6 +39,7 @@ export {
 
 // ============ REPOSITORIES ============
 export { AccountRepository } from "./repositories/AccountRepository";
+export { DepositRepository } from "./repositories/DepositRepository";
 export { NotesRepository } from "./repositories/NotesRepository";
 export { PasskeyRepository } from "./repositories/PasskeyRepository";
 export { SessionRepository } from "./repositories/SessionRepository";
