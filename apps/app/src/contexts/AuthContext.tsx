@@ -11,7 +11,7 @@
  */
 
 import { useSessionRestore } from "@/features/auth/session/useSession";
-import { getAccountKey, type KeyGenerationResult } from "@shinobi-cash/core";
+import { parseUserKey, type KeyGenerationResult } from "@shinobi-cash/core";
 import { type ReactNode, createContext, useCallback, useContext, useMemo, useState } from "react";
 
 interface AuthContextType {
@@ -42,8 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!keys) return null;
 
     try {
-      // Pass only privateKey since it's more efficient than deriving from mnemonic
-      return getAccountKey({ privateKey: keys.privateKey });
+      return parseUserKey(keys.privateKey);
     } catch (error) {
       console.error("Failed to derive account key:", error);
       return null;
