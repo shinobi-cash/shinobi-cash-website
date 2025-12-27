@@ -47,14 +47,35 @@ export function getUserMessage(error: unknown, fallback = "An unexpected error o
     // Map common blockchain error patterns to user-friendly messages
     const msg = error.message.toLowerCase();
 
+    // User actions
     if (msg.includes("user rejected") || msg.includes("user denied")) {
       return "Transaction was cancelled";
     }
 
+    // Balance/funds errors
     if (msg.includes("insufficient funds") || msg.includes("insufficient balance")) {
       return "Insufficient funds for this transaction";
     }
 
+    // Contract-specific errors
+    if (msg.includes("minimumdepositamount")) {
+      return "Deposit amount is below the minimum required";
+    }
+
+    if (msg.includes("contractpaused") || msg.includes("pausable: paused")) {
+      return "Contract is temporarily paused";
+    }
+
+    if (msg.includes("nonce too low")) {
+      return "Transaction already processed or outdated";
+    }
+
+    // Gas errors
+    if (msg.includes("gas required exceeds allowance") || msg.includes("out of gas")) {
+      return "Transaction would fail - insufficient gas";
+    }
+
+    // Network errors
     if (msg.includes("network") || msg.includes("failed to fetch")) {
       return "Network error. Please check your connection and try again.";
     }
@@ -63,8 +84,20 @@ export function getUserMessage(error: unknown, fallback = "An unexpected error o
       return "Request timed out. Please try again.";
     }
 
+    // Generic contract revert - try to extract custom error name
+    if (msg.includes("reverted")) {
+      const customErrorMatch = error.message.match(/Error:\s*(\w+)\(\)/);
+      if (customErrorMatch) {
+        const errorName = customErrorMatch[1];
+        // Convert PascalCase to readable text
+        const readable = errorName.replace(/([A-Z])/g, " $1").trim();
+        return `Transaction failed: ${readable}`;
+      }
+      return "Transaction would fail - please check your input";
+    }
+
     // Return original message if it's not too technical
-    if (error.message.length < 100 && !msg.includes("0x")) {
+    if (error.message.length < 100 && !msg.includes("0x") && !msg.includes("contract call:")) {
       return error.message;
     }
   }
