@@ -18,6 +18,7 @@ export interface Note {
   blockNumber: string;
   timestamp: string;
   status: "unspent" | "spent";
+  aspStatus: "pending" | "approved" | "rejected"; // ASP (Approved Set of Participants) approval status
   isActivated: boolean; // false for pending deposits (no label yet), true when deposited in pool
   label: string;
   refundCommitment?: string; // For withdrawal change notes - used if withdrawal intent fails

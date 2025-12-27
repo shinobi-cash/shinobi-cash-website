@@ -15,13 +15,20 @@ export function useNoteSelection(
   const { data: noteDiscovery, loading: isLoadingNotes } = useCachedNotes(publicKey, poolAddress);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
 
-  // Filter for available (unspent and activated) notes
+  // Filter for available (unspent, activated, and ASP-approved) notes
+  // Note: Only approved notes can use regular withdrawal flow
+  // Pending/rejected notes require "ragequit" withdrawal (different contract call, full amount only, same recipient as depositor)
+  // Ragequit flow is not yet implemented - will be added in future
   const availableNotes = useMemo(() => {
     return (
       (noteDiscovery?.notes
         ?.map((noteChain) => {
           const lastNote = noteChain[noteChain.length - 1];
-          return lastNote.status === "unspent" && lastNote.isActivated ? lastNote : null;
+          return lastNote.status === "unspent" &&
+                 lastNote.isActivated &&
+                 lastNote.aspStatus === "approved"
+            ? lastNote
+            : null;
         })
         .filter(Boolean) as Note[]) || []
     );
@@ -30,8 +37,14 @@ export function useNoteSelection(
   // Handle pre-selected note
   // Used for deep links or returning users only - not for auto-selection
   // User must still explicitly select a note in normal flow
+  // Only allow approved notes (pending/rejected require ragequit flow)
   useEffect(() => {
-    if (preSelectedNote && preSelectedNote.status === "unspent" && preSelectedNote.isActivated) {
+    if (
+      preSelectedNote &&
+      preSelectedNote.status === "unspent" &&
+      preSelectedNote.isActivated &&
+      preSelectedNote.aspStatus === "approved"
+    ) {
       setSelectedNote(preSelectedNote);
     }
   }, [preSelectedNote]);

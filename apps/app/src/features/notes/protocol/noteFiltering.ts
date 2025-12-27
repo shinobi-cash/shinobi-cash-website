@@ -19,19 +19,19 @@ export function getLastNote(noteChain: NoteChain): Note {
 }
 
 /**
- * Check if a note is available (unspent and activated)
+ * Check if a note is available (unspent, activated, and approved by ASP)
  * Pure function - no side effects
  */
 export function isNoteAvailable(note: Note): boolean {
-  return note.status === "unspent" && note.isActivated;
+  return note.status === "unspent" && note.isActivated && note.aspStatus === "approved";
 }
 
 /**
- * Check if a note is pending (unspent but not activated)
+ * Check if a note is pending (unspent but not activated or not approved by ASP)
  * Pure function - no side effects
  */
 export function isNotePending(note: Note): boolean {
-  return note.status === "unspent" && !note.isActivated;
+  return note.status === "unspent" && (!note.isActivated || note.aspStatus === "pending");
 }
 
 /**
