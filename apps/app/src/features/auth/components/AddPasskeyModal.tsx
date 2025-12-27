@@ -6,7 +6,6 @@
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useAccountNameValidation } from "@/hooks/useAccountNameValidation";
-import { restoreFromMnemonic } from "@shinobi-cash/core";
 import { AlertCircle, Fingerprint } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@workspace/ui/components/button";
@@ -19,7 +18,7 @@ import {
   DialogTitle,
 } from "@workspace/ui/components/dialog";
 import { Input } from "@workspace/ui/components/input";
-import { useAddPasskeyFlow } from "@/features/auth";
+import { useAddPasskeyFlow } from "../passkey/usePasskey";
 
 interface AddPasskeyModalProps {
   open: boolean;
@@ -30,7 +29,7 @@ export function AddPasskeyModal({ open, onOpenChange }: AddPasskeyModalProps) {
   const [accountName, setAccountName] = useState("");
   const { accountNameError, onAccountNameChange, setAccountNameError } = useAccountNameValidation();
   const [setupError, setSetupError] = useState("");
-  const { mnemonic, publicKey } = useAuth();
+  const { getFullKeys } = useAuth();
 
   // Use shared passkey flow (handles setup, sync baseline, toast)
   // setAuthKeys: false because account is already authenticated
@@ -55,22 +54,14 @@ export function AddPasskeyModal({ open, onOpenChange }: AddPasskeyModalProps) {
     async (e?: React.FormEvent) => {
       if (e) e.preventDefault();
 
-      if (accountNameError || !accountName.trim() || !mnemonic) {
+      // Get full keys from auth context
+      const generatedKeys = getFullKeys();
+
+      if (accountNameError || !accountName.trim() || !generatedKeys) {
         return;
       }
 
       setSetupError("");
-
-      // Derive privateKey from mnemonic (not exposed in AuthContext for security)
-      const { privateKey, address } = restoreFromMnemonic(mnemonic);
-
-      // Create a KeyGenerationResult object from current auth state
-      const generatedKeys = {
-        mnemonic,
-        publicKey: publicKey!,
-        privateKey,
-        address,
-      };
 
       // Use shared passkey flow (handles setup, sync baseline, toast, and close modal)
       const success = await addPasskey(accountName, generatedKeys);
@@ -79,10 +70,10 @@ export function AddPasskeyModal({ open, onOpenChange }: AddPasskeyModalProps) {
         setSetupError(passkeyError.message);
       }
     },
-    [accountName, accountNameError, mnemonic, publicKey, addPasskey, passkeyError]
+    [accountName, accountNameError, getFullKeys, addPasskey, passkeyError]
   );
 
-  const canSubmit = !isProcessing && !accountNameError && accountName.trim() && mnemonic;
+  const canSubmit = !isProcessing && !accountNameError && accountName.trim() && getFullKeys();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

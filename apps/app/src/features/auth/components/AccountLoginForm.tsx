@@ -7,11 +7,13 @@ import { Fingerprint, Wallet, WalletIcon } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useAccount, useChainId } from "wagmi";
 import { Input } from "@workspace/ui/components/input";
-import { usePasskeyAuth, useWalletAuth } from "@/features/auth";
-import { accountExists, getWalletAccountId } from "@/features/auth/protocol";
 import type { KeyGenerationResult } from "@shinobi-cash/core";
 import { modal } from "@/context";
 import { Button } from "@workspace/ui/components/button";
+import { usePasskeyAuth } from "../passkey/usePasskey";
+import { useWalletAuth } from "../wallet/useWallet";
+import { getWalletAccountId } from "../shared";
+import { accountExists } from "../session/sessionManagement";
 
 interface AccountLoginFormProps {
   // Event emissions - controller handles all auth state mutations

@@ -9,13 +9,14 @@
  * @file features/auth/controller/useAuthFlowController.ts
  */
 
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { isPasskeySupported } from "@/utils/environment";
-import { listAccounts, hasPasskey as checkPasskey } from "../protocol";
 import { useAuthController } from "./useAuthController";
 import { showToast } from "@/lib/toast";
-import type { AuthStep, AuthStatus, AuthError } from "../types";
+import type { AuthStep, AuthStatus } from "../types";
+import type { AuthError } from "@/lib/errors/AuthError";
 import type { KeyGenerationResult } from "@shinobi-cash/core";
+import { listAccounts, listPasskeyAccounts } from "../session/sessionManagement";
 
 // ============ TYPES ============
 
@@ -23,7 +24,7 @@ export interface AuthFlowController {
   // State
   status: AuthStatus;
   currentStep: AuthStep | null;
-  lastError: AuthError;
+  lastError: AuthError | null;
 
   // Account state
   hasExistingAccounts: boolean | null;
@@ -78,12 +79,22 @@ export function useAuthFlowController(options: AuthFlowOptions = {}): AuthFlowCo
   const [generatedKeys, setGeneratedKeys] = useState<KeyGenerationResult | null>(null);
   const [encryptionKey, setEncryptionKey] = useState<Uint8Array | null>(null);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
-  const [lastError, setLastError] = useState<AuthError>(null);
+  const [lastError, setLastError] = useState<AuthError | null>(null);
 
   // ============ INITIALIZATION ============
 
-  // Check for existing accounts on mount
+  // Guard to ensure account check runs exactly once
+  const initializedRef = useRef(false);
+
+  // Check for existing accounts on mount (gated by session restore)
   useEffect(() => {
+    // Wait for session restore to complete before checking accounts
+    if (authController.isRestoring) return;
+
+    // Guard: ensure this runs exactly once (even in React Strict Mode)
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+
     const checkExistingAccounts = async () => {
       try {
         // Check if passkey is supported
@@ -95,16 +106,11 @@ export function useAuthFlowController(options: AuthFlowOptions = {}): AuthFlowCo
         const hasAccounts = accounts.length > 0;
         setHasExistingAccounts(hasAccounts);
 
-        // Check if there are any passkey-based accounts
+        // Check if there are any passkey-based accounts (efficient with discriminated union)
         let hasPasskeys = false;
         if (supported && hasAccounts) {
-          for (const accountName of accounts) {
-            const passkeyExists = await checkPasskey(accountName);
-            if (passkeyExists) {
-              hasPasskeys = true;
-              break;
-            }
-          }
+          const passkeyAccounts = await listPasskeyAccounts();
+          hasPasskeys = passkeyAccounts.length > 0;
         }
         setHasPasskeyAccounts(hasPasskeys);
 
@@ -120,17 +126,25 @@ export function useAuthFlowController(options: AuthFlowOptions = {}): AuthFlowCo
     };
 
     checkExistingAccounts();
-  }, []);
+  }, [authController.isRestoring]);
+
+  // Short-circuit flow if already authenticated (prevents UI flicker)
+  useEffect(() => {
+    if (authController.isAuthenticated) {
+      setCurrentStep(null);
+    }
+  }, [authController.isAuthenticated]);
 
   // ============ DERIVED STATE ============
 
-  // Status state machine
+  // Status state machine (with session restore awareness)
   const status: AuthStatus = useMemo(() => {
+    if (authController.isRestoring) return "checking-accounts";
     if (currentStep === null) return "checking-accounts";
     if (lastError) return "error";
     if (currentStep === "syncing-notes") return "syncing";
     return "ready";
-  }, [currentStep, lastError]);
+  }, [authController.isRestoring, currentStep, lastError]);
 
   // Can go back from setup step
   const canGoBack = useMemo(() => {
@@ -225,12 +239,18 @@ export function useAuthFlowController(options: AuthFlowOptions = {}): AuthFlowCo
 
   /**
    * Skip passkey setup (wallet-only account)
+   * ARCHITECTURE: Central point for authentication
    */
   const handleSkipSetup = useCallback(() => {
+    // Authenticate with generated keys
+    if (generatedKeys) {
+      authController.authenticate(generatedKeys);
+    }
+
     // Complete auth flow immediately for temporary sessions
     resetFlow();
     options.onAuthComplete?.();
-  }, [resetFlow, options]);
+  }, [generatedKeys, authController, resetFlow, options]);
 
   /**
    * Handle syncing complete

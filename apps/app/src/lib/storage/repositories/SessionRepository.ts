@@ -22,7 +22,7 @@ export class SessionRepository {
    */
   async storeSessionInfo(
     accountName: string,
-    authMethod: "passkey" | "password",
+    authMethod: "passkey" | "wallet",
     opts?: { credentialId?: string }
   ): Promise<void> {
     const isIframe = window.self !== window.top;

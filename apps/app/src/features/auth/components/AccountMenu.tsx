@@ -16,7 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu";
-import { useAuthController } from "@/features/auth";
+import { useAuthController } from "../controller/useAuthController";
 
 interface AccountMenuProps {
   children: React.ReactNode;
@@ -51,15 +51,16 @@ export function AccountMenu({ children, onAddPasskey }: AccountMenuProps) {
           return;
         }
 
-        // Check if account is wallet-based (has wallet address but no passkey)
-        const isWalletBased = accountData.isWalletBased || accountData.walletAddress;
-        if (!isWalletBased) {
+        // Wallet accounts (type: "wallet") can add passkeys
+        // Passkey accounts (type: "passkey") already have passkeys
+        if (accountData.type === "passkey") {
           setCanAddPasskey(false);
           return;
         }
 
-        // Check if passkey already exists for this account
-        const hasPasskey = await storageManager.passkeyExists(accountData.accountName);
+        // For wallet accounts, check if passkey already exists
+        const accountId = accountData.accountId;
+        const hasPasskey = await storageManager.passkeyExists(accountId);
         setCanAddPasskey(!hasPasskey);
       } catch (error) {
         console.error("Failed to check passkey status:", error);

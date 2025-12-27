@@ -1,137 +1,94 @@
 /**
  * file: shinobi-cash-website/apps/app/src/contexts/AuthContext.tsx
  * Authentication Runtime Store
- * Thin context for managing authentication state
+ * Minimal runtime store for managing authentication state
  *
- * This is a minimal runtime store that only handles:
+ * Handles:
  * - Storing authenticated keys
  * - Authentication status
  * - Authenticate/logout actions
- *
- * Session restoration and other complex logic lives in hooks/controllers.
+ * - Session restoration (via useSessionRestore hook)
  */
 
-import { getAccountKey, type KeyGenerationResult, restoreFromMnemonic } from "@shinobi-cash/core";
+import { useSessionRestore } from "@/features/auth/session/useSession";
+import { getAccountKey, type KeyGenerationResult } from "@shinobi-cash/core";
 import { type ReactNode, createContext, useCallback, useContext, useMemo, useState } from "react";
 
 interface AuthContextType {
   // Runtime state (read-only)
   isAuthenticated: boolean;
-  keys: KeyGenerationResult | null;
-
-  // Derived keys (computed from mnemonic)
-  // SECURITY: privateKey intentionally NOT exposed - kept internal for accountKey derivation only
+  isRestoring: boolean; // Session restore in progress
   publicKey: string | null;
-  mnemonic: string[] | null;
   accountKey: bigint | null;
 
-  // Actions (write-only)
+  // Actions
   authenticate: (keys: KeyGenerationResult) => void;
   logout: () => void;
+
+  // Internal access (for special cases like AddPasskeyModal)
+  // Returns full KeyGenerationResult including mnemonic and privateKey
+  // Should be used sparingly - most components should use publicKey/accountKey
+  getFullKeys: () => KeyGenerationResult | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  // Single source of truth: store only the mnemonic
-  const [mnemonic, setMnemonic] = useState<string[] | null>(null);
+  // Store full KeyGenerationResult (includes mnemonic, publicKey, privateKey, address)
+  const [keys, setKeys] = useState<KeyGenerationResult | null>(null);
 
-  // Derive keys from mnemonic (memoized for performance)
-  const derivedKeys = useMemo(() => {
-    if (!mnemonic) {
-      return { publicKey: null, privateKey: null, address: null };
-    }
-
-    try {
-      const { publicKey, privateKey, address } = restoreFromMnemonic(mnemonic);
-      return { publicKey, privateKey, address };
-    } catch (error) {
-      console.error("Failed to derive keys from mnemonic:", error);
-      return { publicKey: null, privateKey: null, address: null };
-    }
-  }, [mnemonic]);
-
-  // Derive account key
+  // Derive account key once from stored keys
   const accountKey = useMemo(() => {
-    if (!derivedKeys.privateKey || !mnemonic) {
-      return null;
-    }
+    if (!keys) return null;
 
     try {
-      return getAccountKey({ privateKey: derivedKeys.privateKey, mnemonic });
+      // Pass only privateKey since it's more efficient than deriving from mnemonic
+      return getAccountKey({ privateKey: keys.privateKey });
     } catch (error) {
       console.error("Failed to derive account key:", error);
       return null;
     }
-  }, [derivedKeys.privateKey, mnemonic]);
+  }, [keys]);
 
-  // Computed: authenticated if we have mnemonic
-  const isAuthenticated = useMemo(() => !!mnemonic, [mnemonic]);
-
-  // Reconstruct full keys object for compatibility
-  const keys = useMemo<KeyGenerationResult | null>(() => {
-    if (!mnemonic || !derivedKeys.publicKey || !derivedKeys.privateKey || !derivedKeys.address) {
-      return null;
-    }
-    return {
-      mnemonic,
-      publicKey: derivedKeys.publicKey,
-      privateKey: derivedKeys.privateKey,
-      address: derivedKeys.address,
-    };
-  }, [mnemonic, derivedKeys.publicKey, derivedKeys.privateKey, derivedKeys.address]);
+  // Computed: authenticated if we have keys
+  const isAuthenticated = useMemo(() => !!keys, [keys]);
 
   /**
    * Authenticate user with generated keys
    * This is the ONLY way to set auth state
    */
   const authenticate = useCallback((newKeys: KeyGenerationResult) => {
-    setMnemonic(newKeys.mnemonic);
+    setKeys(newKeys);
   }, []);
 
   /**
    * Logout current user
    * Clears all auth state
-   *
-   * SECURITY: Attempts to zero out mnemonic from memory
-   * Note: JavaScript cannot guarantee memory erasure, but this reduces exposure window
-   *
-   * Implementation Note:
-   * - Zeros out mnemonic array elements first
-   * - Sets mnemonic to null, triggering React reconciliation
-   * - The keys object (which contains mnemonic reference) becomes null via useMemo
-   * - Brief window exists where keys object still references zeroed array,
-   *   but this is unavoidable in React's synchronous render cycle
    */
   const logout = useCallback(() => {
-    setMnemonic((currentMnemonic) => {
-      if (currentMnemonic) {
-        try {
-          // Zero out array elements to reduce exposure window
-          for (let i = 0; i < currentMnemonic.length; i++) {
-            (currentMnemonic as string[])[i] = "";
-          }
-        } catch (e) {
-          // Array might be frozen/sealed - log but continue
-          console.warn("Could not zero mnemonic array:", e);
-        }
-      }
-      // Setting to null triggers useMemo to null out keys object
-      return null;
-    });
+    setKeys(null);
   }, []);
+
+  /**
+   * Get full keys including mnemonic and privateKey
+   * For special cases only (e.g., AddPasskeyModal)
+   */
+  const getFullKeys = useCallback(() => keys, [keys]);
+
+  // Auto-restore session on mount
+  const { isRestoring } = useSessionRestore(authenticate);
 
   const contextValue = useMemo(
     () => ({
       isAuthenticated,
-      keys,
-      publicKey: derivedKeys.publicKey,
-      mnemonic,
+      isRestoring,
+      publicKey: keys?.publicKey ?? null,
       accountKey,
       authenticate,
       logout,
+      getFullKeys,
     }),
-    [isAuthenticated, keys, derivedKeys.publicKey, mnemonic, accountKey, authenticate, logout]
+    [isAuthenticated, isRestoring, keys?.publicKey, accountKey, authenticate, logout, getFullKeys]
   );
 
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;

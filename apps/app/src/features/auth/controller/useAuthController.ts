@@ -18,6 +18,7 @@ import { storageManager, KDF } from "@/lib/storage";
 interface AuthController {
   // State (read-only)
   isAuthenticated: boolean;
+  isRestoring: boolean; // Session restore in progress
 
   // Derived keys (read-only) - only expose what UI needs
   publicKey: string | null;
@@ -59,6 +60,7 @@ export function useAuthController(): AuthController {
   return {
     // State
     isAuthenticated: auth.isAuthenticated,
+    isRestoring: auth.isRestoring,
     publicKey: auth.publicKey,
     accountKey: auth.accountKey,
 

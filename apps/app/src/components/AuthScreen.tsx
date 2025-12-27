@@ -5,8 +5,8 @@
 
 import { useAuthFlowController } from "@/features/auth/controller/useAuthFlowController";
 import { useCallback, useEffect, useRef } from "react";
-import { AuthStepContent } from "@/features/auth";
 import { BackButton } from "./ui/back-button";
+import { AuthStepContent } from "@/features/auth/components/AuthStepContent";
 
 interface AuthScreenProps {
   onAuthComplete?: () => void;

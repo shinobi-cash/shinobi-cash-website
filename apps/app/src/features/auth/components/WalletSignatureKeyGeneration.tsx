@@ -13,7 +13,7 @@ import { AlertCircle, Loader2, WalletIcon, CheckCircle } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useAccount } from "wagmi";
 import { Button } from "@workspace/ui/components/button";
-import { useWalletAuth } from "@/features/auth";
+import { useWalletAuth } from "../wallet/useWallet";
 
 interface WalletSignatureKeyGenerationProps {
   onKeyGenerationComplete: (data: {
@@ -106,7 +106,7 @@ export function WalletSignatureKeyGeneration({
         setCurrentStep("error");
       }
     }
-  }, [address, walletAuth, onKeyGenerationComplete]);
+  }, [address, walletAuth]);
 
   // Render based on current step
   if (currentStep === "connect") {

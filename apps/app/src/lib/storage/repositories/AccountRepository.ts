@@ -3,10 +3,27 @@
  * Maintains exact logic and data compatibility with current noteCache account methods
  */
 
-import { restoreFromMnemonic } from "@shinobi-cash/core";
+import { ethers } from "ethers";
 import type { IndexedDBAdapter } from "../adapters/IndexedDBAdapter";
 import type { CachedAccountData, EncryptedData } from "../interfaces/IDataTypes";
 import type { EncryptionService } from "../services/EncryptionService";
+
+/**
+ * Stored account data (without derived fields)
+ * publicKey and address are derived from privateKey at runtime
+ */
+type StoredAccountData = Omit<CachedAccountData, "publicKey" | "address">;
+
+/**
+ * Derive publicKey and address from privateKey
+ */
+function deriveKeysFromPrivateKey(privateKey: string): { publicKey: string; address: string } {
+  const wallet = new ethers.Wallet(privateKey);
+  return {
+    publicKey: wallet.signingKey.publicKey,
+    address: wallet.address,
+  };
+}
 
 type StorageRecord = {
   id: string;
@@ -37,21 +54,27 @@ export class AccountRepository {
   ) {}
 
   /**
-   * Store account data - exact implementation from noteCache.storeAccountData
+   * Store account data
    */
   async storeAccountData(accountData: CachedAccountData): Promise<void> {
     if (!this.encryptionService.isKeyAvailable()) {
       throw new Error("Session not initialized");
     }
 
-    // Derive public key from mnemonic for indexing
-    const { publicKey } = restoreFromMnemonic(accountData.mnemonic);
-
-    const encrypted = await this.encryptionService.encrypt(accountData);
+    // Derive publicKey from privateKey for hashing
+    const { publicKey } = deriveKeysFromPrivateKey(accountData.privateKey);
     const publicKeyHash = await this.encryptionService.createHash(publicKey);
 
+    // Remove derived fields before encryption (only persist privateKey)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { publicKey: _, address: __, ...storedData } = accountData;
+    const encrypted = await this.encryptionService.encrypt(storedData as StoredAccountData);
+
+    // Determine storage key based on account type
+    const storageKey = accountData.type === "passkey" ? accountData.accountName : accountData.accountId;
+
     const storageData = {
-      id: accountData.accountName, // Use account name as primary key
+      id: storageKey, // Use accountName for passkey, accountId for wallet
       publicKeyHash,
       encryptedPayload: {
         iv: this.encryptionService.arrayBufferToBase64(encrypted.iv),
@@ -65,21 +88,22 @@ export class AccountRepository {
   }
 
   /**
-   * Get account data by name - exact implementation from noteCache.getAccountDataByName
+   * Get encrypted account record by name
+   * Returns raw encrypted storage record without decryption
    */
-  async getAccountDataByName(accountName: string): Promise<StorageRecord | null> {
+  async getEncryptedAccountRecord(accountName: string): Promise<StorageRecord | null> {
     const result = (await this.storageAdapter.get(accountName)) as unknown;
     if (isStorageRecord(result)) {
-      // Return the raw encrypted data for now - matches current implementation
       return result;
     }
     return null;
   }
 
   /**
-   * Get current account data - exact implementation from noteCache.getAccountData
+   * Get decrypted account data by name
+   * Decrypts storage record and derives publicKey/address from privateKey
    */
-  async getAccountData(currentAccountName: string): Promise<CachedAccountData | null> {
+  async getDecryptedAccountData(currentAccountName: string): Promise<CachedAccountData | null> {
     if (!this.encryptionService.isKeyAvailable()) {
       throw new Error("Session not initialized");
     }
@@ -96,9 +120,18 @@ export class AccountRepository {
           salt: this.encryptionService.base64ToArrayBuffer(result.encryptedPayload.salt),
         };
 
-        const decryptedData =
-          await this.encryptionService.decrypt<CachedAccountData>(encryptedData);
-        return decryptedData;
+        // Decrypt stored data (without publicKey/address)
+        const storedData = await this.encryptionService.decrypt<StoredAccountData>(encryptedData);
+
+        // Derive publicKey and address from privateKey
+        const { publicKey, address } = deriveKeysFromPrivateKey(storedData.privateKey);
+
+        // Return complete account data with derived fields
+        return {
+          ...storedData,
+          publicKey,
+          address,
+        } as CachedAccountData;
       } catch (decryptionError) {
         console.error("Failed to decrypt account data:", decryptionError);
         return null;
@@ -119,7 +152,7 @@ export class AccountRepository {
    */
   async accountExists(accountName: string): Promise<boolean> {
     try {
-      const accountData = await this.getAccountDataByName(accountName);
+      const accountData = await this.getEncryptedAccountRecord(accountName);
       return accountData !== null;
     } catch (error) {
       console.warn("Failed to check account existence:", error);

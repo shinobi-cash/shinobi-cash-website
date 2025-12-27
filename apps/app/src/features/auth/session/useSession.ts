@@ -1,24 +1,16 @@
 /**
  * Session Restore Hook
- * Manages automatic session restoration on app load
  *
- * This hook has been moved OUT of AuthContext to maintain separation:
- * - AuthContext: thin runtime store
- * - useSessionRestore: session restoration logic
- * @file features/auth/hooks/useSessionRestore.ts
- *
- * Usage: Call this at app root level to handle auto-login
+ * Manages automatic session restoration on app load.
+ * Separated from AuthContext to maintain clean separation:
+ * - AuthContext handles runtime authentication state
+ * - useSessionRestore handles automatic session recovery
  */
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import {
-  checkSessionResume,
-  resumeWithPasskey,
-  clearSession,
-} from "../protocol";
+import { checkSessionResume, resumeWithPasskey, clearSession } from "./sessionManagement";
 import type { KeyGenerationResult } from "@shinobi-cash/core";
-import type { AuthError } from "../types";
-import { createSessionError } from "../types";
+import { AuthError, AuthErrorCode } from "@/lib/errors/AuthError";
 
 interface QuickAuthState {
   show: boolean;
@@ -28,13 +20,13 @@ interface QuickAuthState {
 interface SessionRestoreState {
   isRestoring: boolean;
   quickAuthState: QuickAuthState | null;
-  error: AuthError;
+  error: AuthError | null;
 }
 
 interface SessionRestoreResult {
   isRestoring: boolean;
   quickAuthState: QuickAuthState | null;
-  error: AuthError;
+  error: AuthError | null;
   dismissQuickAuth: () => Promise<void>;
   clearError: () => void;
 }
@@ -42,8 +34,6 @@ interface SessionRestoreResult {
 /**
  * Session Restore Hook
  * Automatically restores user session on app load
- *
- * @param onRestore - Called when session is successfully restored with keys
  */
 export function useSessionRestore(
   onRestore: (keys: KeyGenerationResult) => void
@@ -67,7 +57,6 @@ export function useSessionRestore(
    * Attempt to restore session on mount
    */
   useEffect(() => {
-    // Prevent multiple concurrent restoration attempts
     if (restorationAttempted.current) return;
     restorationAttempted.current = true;
 
@@ -76,7 +65,6 @@ export function useSessionRestore(
         const resume = await checkSessionResume();
 
         if (resume.status === "none") {
-          // No session to restore
           setState({ isRestoring: false, quickAuthState: null, error: null });
           return;
         }
@@ -84,7 +72,6 @@ export function useSessionRestore(
         // Passkey available - auto-resume
         const keys = await resumeWithPasskey(resume.result.symmetricKey, resume.accountName);
 
-        // Authenticate user with restored keys
         onRestoreRef.current(keys);
 
         setState({ isRestoring: false, quickAuthState: null, error: null });
@@ -98,10 +85,14 @@ export function useSessionRestore(
           await clearSession();
         }
 
+        const authError = error instanceof AuthError
+          ? error
+          : new AuthError(AuthErrorCode.UNKNOWN, "Session restoration failed");
+
         setState({
           isRestoring: false,
           quickAuthState: null,
-          error: createSessionError("Session restoration failed"),
+          error: authError,
         });
       }
     };

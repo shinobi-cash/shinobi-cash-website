@@ -195,7 +195,7 @@ export class KeyDerivationService {
    */
   async storeSessionInfo(
     accountName: string,
-    authMethod: "passkey",
+    authMethod: "passkey" | "wallet",
     opts?: { credentialId?: string }
   ): Promise<void> {
     return this.sessionRepo.storeSessionInfo(accountName, authMethod, opts);

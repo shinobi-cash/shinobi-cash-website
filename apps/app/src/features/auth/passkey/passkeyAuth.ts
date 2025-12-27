@@ -1,24 +1,20 @@
 /**
- * Passkey Operations Protocol
- * Pure functions for WebAuthn passkey operations
- * No side effects except crypto operations
- * @file features/auth/protocol/passkeyOperations.ts
+ * Passkey Authentication
+ * file: src/features/auth/passkey/passkeyAuth.ts
+ * Handles WebAuthn passkey operations for authentication.
+ * Uses PRF extension for deterministic key derivation.
  */
 
 import { storageManager, KDF } from "@/lib/storage";
 import { AuthError, AuthErrorCode, mapPasskeyError } from "@/lib/errors/AuthError";
-import { createHash } from "@/utils/crypto";
-import { restoreFromMnemonic, type KeyGenerationResult } from "@shinobi-cash/core";
+import { createHash } from "../shared/crypto-utils";
+import type { KeyGenerationResult } from "@shinobi-cash/core";
 
 // ============ PASSKEY LOGIN ============
 
 /**
  * Perform passkey-based login for existing account
- * Pure function - returns keys or throws typed error
- *
- * @param accountName - Account name to login to
- * @returns KeyGenerationResult with decrypted keys
- * @throws AuthError with specific error code
+ * Returns keys or throws typed error
  */
 export async function performPasskeyLogin(accountName: string): Promise<KeyGenerationResult> {
   const trimmed = accountName.trim();
@@ -43,35 +39,29 @@ export async function performPasskeyLogin(accountName: string): Promise<KeyGener
   // Initialize session with derived key
   await storageManager.initializeAccountSession(trimmed, symmetricKey);
 
-  // Load and decrypt account data
+  // Load and decrypt account data (already contains full keys)
   const accountData = await storageManager.getAccountData();
   if (!accountData) {
     throw new AuthError(AuthErrorCode.ACCOUNT_NOT_FOUND, "Account data not found");
   }
 
-  // Restore keys from mnemonic
-  const { publicKey, privateKey, address } = restoreFromMnemonic(accountData.mnemonic);
-
   // Store session info for auto-resume
   await KDF.storeSessionInfo(trimmed, "passkey", { credentialId: passkeyData.credentialId });
 
+  // Return keys (mnemonic not stored, will be empty array)
   return {
-    publicKey,
-    privateKey,
-    address,
-    mnemonic: accountData.mnemonic,
-  } as KeyGenerationResult;
+    publicKey: accountData.publicKey,
+    privateKey: accountData.privateKey,
+    address: accountData.address,
+    mnemonic: [], // Not stored in database
+  };
 }
 
 // ============ PASSKEY SETUP ============
 
 /**
  * Setup passkey for new account
- * Pure function - creates passkey and stores encrypted data
- *
- * @param accountName - Account name for the new passkey
- * @param generatedKeys - Keys to encrypt and store
- * @throws AuthError with specific error code
+ * Creates passkey and stores encrypted data
  */
 export async function performPasskeySetup(
   accountName: string,
@@ -110,11 +100,14 @@ export async function performPasskeySetup(
   // Initialize session with passkey-derived key
   await storageManager.initializeAccountSession(trimmed, symmetricKey);
 
-  // Store encrypted account data
+  // Store encrypted account data (privateKey only, no mnemonic)
   await storageManager.storeAccountData({
+    type: "passkey",
     accountName: trimmed,
-    mnemonic: generatedKeys.mnemonic,
+    displayName: trimmed, // For passkeys, display name = account name
     publicKey: generatedKeys.publicKey,
+    privateKey: generatedKeys.privateKey,
+    address: generatedKeys.address,
     createdAt: Date.now(),
   });
 
@@ -134,10 +127,6 @@ export async function performPasskeySetup(
 
 /**
  * Check if an account has a passkey
- * Pure function - returns boolean
- *
- * @param accountName - Account name to check
- * @returns true if passkey exists
  */
 export async function hasPasskey(accountName: string): Promise<boolean> {
   return await storageManager.passkeyExists(accountName.trim());

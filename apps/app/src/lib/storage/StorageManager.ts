@@ -82,23 +82,31 @@ class StorageManager {
   }
 
   /**
-   * Save wallet-based account data
-   * Account is identified by wallet address instead of passkey credential name
+   * Save wallet-based account data with auto-generated display name
+   * Account is identified by wallet address + chain ID
    */
   async saveWalletAccountData(data: {
     accountId: string;
     walletAddress: string;
-    mnemonic: string[];
+    chainId: number;
     publicKey: string;
+    privateKey: string;
+    address: string;
   }): Promise<void> {
+    // Generate display name like "Account 1", "Account 2", etc.
+    const existingWalletAccounts = await this.listWalletAccounts();
+    const displayName = `Account ${existingWalletAccounts.length + 1}`;
+
     const accountData: CachedAccountData = {
-      accountName: data.accountId, // Use wallet address as account name
-      mnemonic: data.mnemonic,
-      publicKey: data.publicKey,
-      createdAt: Date.now(),
-      // Wallet-based accounts don't have passkey credentials
-      isWalletBased: true,
+      type: "wallet",
+      accountId: data.accountId,
+      displayName,
       walletAddress: data.walletAddress,
+      chainId: data.chainId,
+      publicKey: data.publicKey,
+      privateKey: data.privateKey,
+      address: data.address,
+      createdAt: Date.now(),
     };
 
     await this.storeAccountData(accountData);
@@ -114,8 +122,10 @@ class StorageManager {
     encryptionKey: Uint8Array,
     data: {
       walletAddress: string;
-      mnemonic: string[];
+      chainId: number;
       publicKey: string;
+      privateKey: string;
+      address: string;
     }
   ): Promise<void> {
     let sessionInitialized = false;
@@ -125,12 +135,14 @@ class StorageManager {
       await this.initializeWalletAccountSession(accountId, encryptionKey);
       sessionInitialized = true;
 
-      // Step 2: Save account data
+      // Step 2: Save account data (full keys, auto-generated display name)
       await this.saveWalletAccountData({
         accountId,
         walletAddress: data.walletAddress,
-        mnemonic: data.mnemonic,
+        chainId: data.chainId,
         publicKey: data.publicKey,
+        privateKey: data.privateKey,
+        address: data.address,
       });
     } catch (error) {
       // Rollback: Clear session if it was initialized
@@ -215,24 +227,53 @@ class StorageManager {
     if (!this.currentAccountName) {
       throw new Error("No current account context");
     }
-    return this.accountRepo.getAccountData(this.currentAccountName);
+    return this.accountRepo.getDecryptedAccountData(this.currentAccountName);
   }
 
   async getAccountDataByName(accountName: string): Promise<CachedAccountData | null> {
-    // We need decrypted data for callers expecting CachedAccountData
-    // Temporarily set context and use getAccountData which handles decryption
-    // without changing public API.
-    const previous = this.currentAccountName;
-    this.currentAccountName = accountName;
-    try {
-      return await this.accountRepo.getAccountData(accountName);
-    } finally {
-      this.currentAccountName = previous;
-    }
+    // Return decrypted data for callers expecting CachedAccountData
+    return this.accountRepo.getDecryptedAccountData(accountName);
   }
 
   async listAccountNames(): Promise<string[]> {
     return this.accountRepo.listAccountNames();
+  }
+
+  /**
+   * List all accounts with full data (discriminated by type)
+   */
+  async listAllAccounts(): Promise<CachedAccountData[]> {
+    const names = await this.accountRepo.listAccountNames();
+    const accounts: CachedAccountData[] = [];
+
+    for (const name of names) {
+      const account = await this.getAccountDataByName(name);
+      if (account) {
+        accounts.push(account);
+      }
+    }
+
+    return accounts;
+  }
+
+  /**
+   * List only passkey accounts
+   */
+  async listPasskeyAccounts(): Promise<CachedAccountData[]> {
+    const all = await this.listAllAccounts();
+    return all.filter((acc): acc is CachedAccountData & { type: "passkey" } =>
+      acc.type === "passkey"
+    );
+  }
+
+  /**
+   * List only wallet accounts
+   */
+  async listWalletAccounts(): Promise<CachedAccountData[]> {
+    const all = await this.listAllAccounts();
+    return all.filter((acc): acc is CachedAccountData & { type: "wallet" } =>
+      acc.type === "wallet"
+    );
   }
 
   async accountExists(accountName: string): Promise<boolean> {

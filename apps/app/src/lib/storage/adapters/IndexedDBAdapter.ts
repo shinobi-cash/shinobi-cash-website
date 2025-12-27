@@ -8,7 +8,7 @@ import { EncryptionService } from "../services/EncryptionService";
 
 // Database constants - exact match to current implementation
 const DB_NAME = "shinobi.cash";
-const DB_VERSION = 3;
+const DB_VERSION = 1;
 const STORE_NAME = "encrypted-notes";
 const ACCOUNT_STORE_NAME = "encrypted-account";
 const PASSKEY_STORE_NAME = "passkey-credentials";

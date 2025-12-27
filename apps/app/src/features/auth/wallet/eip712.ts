@@ -13,7 +13,7 @@ const TYPES = {
     { name: "wallet", type: "address" },
     { name: "action", type: "string" },
     { name: "message", type: "string" },
-    { name: "nonce", type: "string" }, // static or time-based
+    { name: "version", type: "string" }, // static or time-based
   ],
 } as const;
 
@@ -42,7 +42,7 @@ export function getEIP712Message(
       message: deterministic
         ? "Sign to access your Shinobi Cash account."
         : "Sign to create your Shinobi Cash account.",
-      nonce: deterministic ? "static-v1" : String(Date.now()),
+      version: "1",
     },
   };
 }

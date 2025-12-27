@@ -12,8 +12,10 @@ import { AlertCircle, Fingerprint } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Input } from "@workspace/ui/components/input";
-import { useAddPasskeyFlow, useAuthController } from "@/features/auth";
 import { Button } from "@workspace/ui/components/button";
+import { useChainId } from "wagmi";
+import { useAddPasskeyFlow } from "../passkey/usePasskey";
+import { getWalletAccountId } from "../shared";
 
 interface AccountSetupFormProps {
   generatedKeys: KeyGenerationResult | null;
@@ -60,8 +62,10 @@ function PasskeySetupForm({
   const [setupError, setSetupError] = useState("");
   const formRef = useRef<HTMLFormElement | null>(null);
 
+  // Get current chain ID for wallet account identification
+  const chainId = useChainId();
+
   // Controllers
-  const authController = useAuthController();
   const passkeyFlow = useAddPasskeyFlow({
     onSuccess,
     setAuthKeys: true, // This is a new account, so set auth keys
@@ -98,30 +102,29 @@ function PasskeySetupForm({
     if (!generatedKeys || !encryptionKey || !walletAddress || !onSkip) return;
 
     try {
-      // Use wallet address as account identifier
-      const accountId = walletAddress.toLowerCase();
+      // Use deterministic account ID (wallet address + chain ID)
+      const accountId = getWalletAccountId(walletAddress, chainId);
 
       // Initialize storage with signature-derived encryption key
       await storageManager.initializeWalletAccountSession(accountId, encryptionKey);
 
-      // Store account data encrypted with signature-derived key
+      // Store account data encrypted with signature-derived key (privateKey only, no mnemonic)
       await storageManager.saveWalletAccountData({
         accountId,
         walletAddress,
-        mnemonic: generatedKeys.mnemonic,
+        chainId,
         publicKey: generatedKeys.publicKey,
+        privateKey: generatedKeys.privateKey,
+        address: generatedKeys.address,
       });
 
-      // Authenticate user with generated keys
-      authController.authenticate(generatedKeys);
-
-      // Complete setup and proceed to syncing
+      // Emit event to controller (controller handles authentication)
       onSkip();
     } catch (error) {
       console.error("Failed to initialize wallet account:", error);
       setSetupError("Failed to save account. Please try again.");
     }
-  }, [generatedKeys, encryptionKey, walletAddress, onSkip, authController]);
+  }, [generatedKeys, encryptionKey, walletAddress, chainId, onSkip]);
 
   const isFormDisabled =
     isProcessing || !!accountNameError || !accountName.trim() || !generatedKeys;

@@ -14,8 +14,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@workspace/ui/components/select";
-import { AccountMenu, AddPasskeyModal } from "@/features/auth";
 import { useState } from "react";
+import { AddPasskeyModal } from "@/features/auth/components/AddPasskeyModal";
+import { AccountMenu } from "@/features/auth/components/AccountMenu";
 
 export function Header() {
   const { isConnected, address } = useAccount();
