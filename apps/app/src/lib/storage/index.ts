@@ -47,7 +47,7 @@ export { SessionRepository } from "./repositories/SessionRepository";
 
 // ============ SERVICES ============
 export { KDF } from "./services/KeyDerivationService";
-export { EncryptionService } from "./services/EncryptionService";
+export { EncryptionService } from "@shinobi-cash/core";
 
 /**
  * USAGE EXAMPLES:

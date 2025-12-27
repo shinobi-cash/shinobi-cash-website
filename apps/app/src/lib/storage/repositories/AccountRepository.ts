@@ -4,9 +4,9 @@
  */
 
 import { ethers } from "ethers";
+import type { EncryptionService } from "@shinobi-cash/core";
 import type { IndexedDBAdapter } from "../adapters/IndexedDBAdapter";
 import type { CachedAccountData, EncryptedData } from "../interfaces/IDataTypes";
-import type { EncryptionService } from "../services/EncryptionService";
 
 /**
  * Stored account data (without derived fields)

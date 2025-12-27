@@ -4,7 +4,7 @@
  */
 
 import type { IEncryptedStorageAdapter } from "../interfaces/IStorageAdapter";
-import { EncryptionService } from "../services/EncryptionService";
+import { EncryptionService } from "@shinobi-cash/core";
 
 // Database constants - exact match to current implementation
 const DB_NAME = "shinobi.cash";

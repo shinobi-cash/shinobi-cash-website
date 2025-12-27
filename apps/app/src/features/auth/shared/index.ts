@@ -5,12 +5,12 @@
 
 // ============ CRYPTOGRAPHY ============
 
-export { deriveKeysFromSignature } from "./crypto";
-
-// ============ KEY GENERATION ============
-
-export { generateKeysFromSeed, generateKeysFromWalletSignature } from "./keyGeneration";
+export { deriveKeysFromSignature, generateKeysFromWalletSignature } from "@shinobi-cash/core";
 
 // ============ ACCOUNT ID ============
 
 export { getWalletAccountId } from "./accountId";
+
+// ============ UTILITIES ============
+
+export { createHash } from "./crypto-utils";
