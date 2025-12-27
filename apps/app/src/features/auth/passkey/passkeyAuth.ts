@@ -7,8 +7,7 @@
 
 import { storageManager, KDF } from "@/lib/storage";
 import { AuthError, AuthErrorCode, mapPasskeyError } from "@/lib/errors/AuthError";
-import { createHash } from "../shared/crypto-utils";
-import type { KeyGenerationResult } from "@shinobi-cash/core";
+import { EncryptionService, type KeyGenerationResult } from "@shinobi-cash/core";
 
 // ============ PASSKEY LOGIN ============
 
@@ -78,7 +77,7 @@ export async function performPasskeySetup(
   }
 
   // Generate user handle (hash of public key)
-  const userHandle = await createHash(generatedKeys.publicKey);
+  const userHandle = await EncryptionService.createHash(generatedKeys.publicKey);
 
   // Create passkey credential
   let credentialId: string;

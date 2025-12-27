@@ -4,7 +4,7 @@
  */
 
 import { ethers } from "ethers";
-import type { EncryptionService, EncryptedData } from "@shinobi-cash/core";
+import { EncryptionService, type EncryptedData } from "@shinobi-cash/core";
 import type { IndexedDBAdapter } from "../adapters/IndexedDBAdapter";
 import type { CachedAccountData } from "../interfaces/IDataTypes";
 
@@ -63,7 +63,7 @@ export class AccountRepository {
 
     // Derive publicKey from privateKey for hashing
     const { publicKey } = deriveKeysFromPrivateKey(accountData.privateKey);
-    const publicKeyHash = await this.encryptionService.createHash(publicKey);
+    const publicKeyHash = await EncryptionService.createHash(publicKey);
 
     // Remove derived fields before encryption (only persist privateKey)
     // eslint-disable-next-line @typescript-eslint/no-unused-vars

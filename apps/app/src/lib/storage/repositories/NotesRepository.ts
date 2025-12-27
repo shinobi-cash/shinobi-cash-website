@@ -3,7 +3,7 @@
  * Maintains exact logic and data compatibility with current noteCache implementation
  */
 
-import type { EncryptionService, CachedNoteData, DiscoveryResult, EncryptedData, NoteChain } from "@shinobi-cash/core";
+import { EncryptionService, type CachedNoteData, type DiscoveryResult, type EncryptedData, type NoteChain } from "@shinobi-cash/core";
 import type { IndexedDBAdapter } from "../adapters/IndexedDBAdapter";
 import type { StoredEncryptedData } from "../interfaces/IDataTypes";
 
@@ -17,8 +17,8 @@ export class NotesRepository {
    * Generate storage key - exact implementation from noteCache
    */
   private async getKey(publicKey: string, poolAddress: string): Promise<string> {
-    const publicKeyHash = await this.encryptionService.createHash(publicKey);
-    const poolAddressHash = await this.encryptionService.createHash(poolAddress);
+    const publicKeyHash = await EncryptionService.createHash(publicKey);
+    const poolAddressHash = await EncryptionService.createHash(poolAddress);
     return `${publicKeyHash}_${poolAddressHash}`;
   }
 
@@ -112,8 +112,8 @@ export class NotesRepository {
 
     const storageData: StoredEncryptedData = {
       id: await this.getKey(publicKey, poolAddress),
-      publicKeyHash: await this.encryptionService.createHash(publicKey),
-      poolAddressHash: await this.encryptionService.createHash(poolAddress),
+      publicKeyHash: await EncryptionService.createHash(publicKey),
+      poolAddressHash: await EncryptionService.createHash(poolAddress),
       encryptedPayload: {
         iv: this.encryptionService.arrayBufferToBase64(encrypted.iv),
         data: this.encryptionService.arrayBufferToBase64(encrypted.data),
