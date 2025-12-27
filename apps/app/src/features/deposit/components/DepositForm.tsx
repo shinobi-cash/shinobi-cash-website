@@ -10,8 +10,8 @@ import { Button } from "@workspace/ui/components/button";
 import { NetworkWarning } from "./NetworkWarning";
 import { POOL_CHAIN } from "@shinobi-cash/constants";
 import { TokenAmountInput } from "@/components/shared/TokenAmountInput";
+import { TokenAmountInputWithBalance } from "@/components/shared/TokenAmountInputWithBalance";
 import { InputLabel } from "@/components/shared/InputLabel";
-import { TokenBalance } from "@/components/shared/TokenBalance";
 import { SectionDivider } from "@/components/shared/SectionDivider";
 import { FeeBreakdown } from "@/components/shared/FeeBreakdown";
 import { TokenChainSelector } from "@/components/shared/TokenChainSelector";
@@ -23,6 +23,7 @@ import { modal } from "@/context";
 import { useDepositController } from "../controller/useDepositController";
 import { showToast } from "@/lib/toast";
 import { DEPOSIT_STATUS_LABELS } from "../types/depositStatus";
+import { getUserMessage } from "@/lib/errors/errorHandler";
 
 function DepositNoteInfo() {
   return (
@@ -62,12 +63,14 @@ export function DepositForm({ asset, onTransactionSuccess, onBack }: DepositForm
       if (!shownErrorsRef.current.has(errorKey)) {
         shownErrorsRef.current.add(errorKey);
 
-        const errorMessage =
-          controller.lastError.type === "gas"
-            ? "Gas estimation failed"
-            : controller.lastError.type === "commitment"
-              ? "Note generation failed"
-              : "Transaction failed";
+        let errorMessage: string;
+        if (controller.lastError.type === "gas") {
+          errorMessage = getUserMessage(new Error(controller.lastError.message));
+        } else if (controller.lastError.type === "commitment") {
+          errorMessage = "Note generation failed";
+        } else {
+          errorMessage = getUserMessage(new Error(controller.lastError.message));
+        }
 
         showToast.error(errorMessage, { duration: 5000 });
       }
@@ -184,36 +187,31 @@ export function DepositForm({ asset, onTransactionSuccess, onBack }: DepositForm
             )
           }
         />
-        <TokenAmountInput
+        <TokenAmountInputWithBalance
           amount={controller.amount}
           onAmountChange={controller.setAmount}
-          disabled={controller.isDepositing || !controller.isOnSupportedChain}
-          rightElement={
-            <TokenChainSelector
-              asset={asset}
-              chainId={chainId}
-              onClick={() => setIsAssetSelectorOpen(true)}
-              disabled={controller.isDepositing || !controller.isOnSupportedChain}
-              showChevron={true}
-            />
-          }
-        />
-
-        {/* Balance and Max Button */}
-        <TokenBalance
           balance={controller.balance}
-          usdValue={(parseFloat(controller.balance) * 0).toString()}
           assetSymbol={asset.symbol}
           onMaxClick={() => controller.setAmount(controller.balance)}
-          disabled={!controller.hasBalance || controller.isDepositing}
-        />
+          disabled={controller.isDepositing || !controller.isOnSupportedChain}
+        >
+          <TokenChainSelector
+            asset={asset}
+            chainId={chainId}
+            onClick={() => setIsAssetSelectorOpen(true)}
+            disabled={controller.isDepositing || !controller.isOnSupportedChain}
+            showChevron={true}
+          />
+        </TokenAmountInputWithBalance>
 
         {/* Error Messages */}
         {controller.amountError && (
           <p className="mt-1 text-sm text-red-500">{controller.amountError}</p>
         )}
         {controller.gasEstimationError && controller.amount && !controller.amountError && (
-          <p className="mt-1 text-sm text-red-500">{controller.gasEstimationError}</p>
+          <p className="mt-1 text-sm text-red-500">
+            {getUserMessage(new Error(controller.gasEstimationError))}
+          </p>
         )}
 
         {/* Arrow Divider */}
@@ -225,10 +223,9 @@ export function DepositForm({ asset, onTransactionSuccess, onBack }: DepositForm
           amount={controller.depositNoteAmount > 0 ? controller.depositNoteAmount.toFixed(4) : "0"}
           onAmountChange={() => {}} // Read-only
           readOnly={true}
-          rightElement={
-            <TokenChainSelector asset={asset} chainId={POOL_CHAIN.id} showChevron={false} />
-          }
-        />
+        >
+          <TokenChainSelector asset={asset} chainId={POOL_CHAIN.id} showChevron={false} />
+        </TokenAmountInput>
 
         {/* Fee Breakdown */}
         <FeeBreakdown

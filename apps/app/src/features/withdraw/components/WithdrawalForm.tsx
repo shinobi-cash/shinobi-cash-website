@@ -9,8 +9,8 @@ import { Button } from "@workspace/ui/components/button";
 import { POOL_CHAIN } from "@shinobi-cash/constants";
 import { BackButton } from "@/components/ui/back-button";
 import { TokenAmountInput } from "@/components/shared/TokenAmountInput";
+import { TokenAmountInputWithBalance } from "@/components/shared/TokenAmountInputWithBalance";
 import { InputLabel } from "@/components/shared/InputLabel";
-import { TokenBalance } from "@/components/shared/TokenBalance";
 import { SectionDivider } from "@/components/shared/SectionDivider";
 import { TokenChainSelector } from "@/components/shared/TokenChainSelector";
 import { AssetChainSelectorScreen } from "@/components/shared/AssetChainSelectorScreen";
@@ -22,6 +22,7 @@ import { useWithdrawController } from "../controller/useWithdrawController";
 import { WITHDRAW_STATUS_LABELS } from "../types";
 import { ETH_ASSET, DISPLAY_DECIMALS } from "../constants";
 import { showToast } from "@/lib/toast";
+import { getUserMessage } from "@/lib/errors/errorHandler";
 
 interface WithdrawalFormProps {
   onTransactionSuccess?: () => void;
@@ -51,12 +52,14 @@ export function WithdrawalForm({ onTransactionSuccess, onBack }: WithdrawalFormP
       if (!shownErrorsRef.current.has(errorKey)) {
         shownErrorsRef.current.add(errorKey);
 
-        const errorMessage =
-          controller.lastError.type === "proof"
-            ? "Proof generation failed"
-            : controller.lastError.type === "transaction"
-              ? "Transaction failed"
-              : controller.lastError.message;
+        let errorMessage: string;
+        if (controller.lastError.type === "proof") {
+          errorMessage = "Proof generation failed";
+        } else if (controller.lastError.type === "transaction") {
+          errorMessage = getUserMessage(new Error(controller.lastError.message));
+        } else {
+          errorMessage = getUserMessage(new Error(controller.lastError.message));
+        }
 
         showToast.error(errorMessage, { duration: 5000 });
       }
@@ -177,26 +180,25 @@ export function WithdrawalForm({ onTransactionSuccess, onBack }: WithdrawalFormP
             </Button>
           }
         />
-        <TokenAmountInput
-          amount={controller.amount}
-          onAmountChange={controller.setAmount}
-          disabled={
-            controller.isPreparing || controller.status === "submitting" || !controller.selectedNote
-          }
-          rightElement={
-            <TokenChainSelector asset={asset} chainId={POOL_CHAIN.id} showChevron={false} />
-          }
-        />
-
-        {/* Balance and Max */}
-        {controller.selectedNote && (
-          <TokenBalance
+        {controller.selectedNote ? (
+          <TokenAmountInputWithBalance
+            amount={controller.amount}
+            onAmountChange={controller.setAmount}
             balance={controller.noteBalance.toString()}
-            usdValue={(controller.noteBalance * 0).toString()}
             assetSymbol={asset.symbol}
             onMaxClick={controller.setMax}
             disabled={controller.isPreparing || controller.status === "submitting"}
-          />
+          >
+            <TokenChainSelector asset={asset} chainId={POOL_CHAIN.id} showChevron={false} />
+          </TokenAmountInputWithBalance>
+        ) : (
+          <TokenAmountInput
+            amount={controller.amount}
+            onAmountChange={controller.setAmount}
+            disabled={true}
+          >
+            <TokenChainSelector asset={asset} chainId={POOL_CHAIN.id} showChevron={false} />
+          </TokenAmountInput>
         )}
 
         {/* Error Message */}
@@ -245,20 +247,19 @@ export function WithdrawalForm({ onTransactionSuccess, onBack }: WithdrawalFormP
           onAmountChange={() => {}} // Read-only
           disabled={controller.isPreparing || controller.status === "submitting"}
           readOnly={true}
-          rightElement={
-            <TokenChainSelector
-              asset={asset}
-              chainId={controller.destinationChainId}
-              onClick={() => setIsDestinationSelectionOpen(true)}
-              disabled={
-                controller.isPreparing ||
-                controller.status === "submitting" ||
-                !controller.selectedNote
-              }
-              showChevron={true}
-            />
-          }
-        />
+        >
+          <TokenChainSelector
+            asset={asset}
+            chainId={controller.destinationChainId}
+            onClick={() => setIsDestinationSelectionOpen(true)}
+            disabled={
+              controller.isPreparing ||
+              controller.status === "submitting" ||
+              !controller.selectedNote
+            }
+            showChevron={true}
+          />
+        </TokenAmountInput>
 
         {/* Fee Breakdown */}
         <WithdrawalFeeBreakdown
