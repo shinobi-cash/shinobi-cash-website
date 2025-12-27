@@ -1,5 +1,6 @@
 /**
  * Token Amount Input Component
+ * Uses composition pattern - children are rendered on the right side
  */
 
 import { ReactNode } from "react";
@@ -10,7 +11,7 @@ interface TokenAmountInputProps {
   disabled?: boolean;
   placeholder?: string;
   readOnly?: boolean;
-  rightElement?: ReactNode;
+  children?: ReactNode;
   className?: string;
 }
 
@@ -20,7 +21,7 @@ export function TokenAmountInput({
   disabled = false,
   placeholder = "0",
   readOnly = false,
-  rightElement,
+  children,
   className = "",
 }: TokenAmountInputProps) {
   const handleChange = (value: string) => {
@@ -50,8 +51,8 @@ export function TokenAmountInput({
         />
       )}
 
-      {/* Right Element - flexible slot for any component */}
-      {rightElement}
+      {/* Right slot - composable via children */}
+      {children}
     </div>
   );
 }
