@@ -5,16 +5,16 @@
 
 import { RefreshCw } from "lucide-react";
 import { NoteRow } from "@/features/notes/components/NoteRow";
-import { useNotesController } from "../controller/useNotesController";
+import { type NotesController } from "../controller/useNotesController";
 import { NOTE_FILTER_LABELS, type NoteFilter, type NoteChain } from "../types";
 
 interface NotesSectionProps {
+  controller: NotesController;
   onNoteChainClick: (noteChain: NoteChain) => void;
 }
 
-export function NotesSection({ onNoteChainClick }: NotesSectionProps) {
-  // All notes logic is in the controller
-  const controller = useNotesController();
+export function NotesSection({ controller, onNoteChainClick }: NotesSectionProps) {
+  // Controller is passed in to avoid double instantiation
 
   const renderFilterButton = (filter: NoteFilter, count: number, borderColor: string) => (
     <button

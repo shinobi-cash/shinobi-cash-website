@@ -18,7 +18,8 @@ interface Asset {
 
 interface AssetChainSelectorScreenProps {
   selectedChainId: number;
-  onSelect: (chainId: number, asset: Asset) => void;
+  onChainChange: (chainId: number) => void;
+  onSelect: (asset: Asset) => void;
 }
 
 // For now, we only support ETH on all chains
@@ -26,11 +27,11 @@ const AVAILABLE_ASSETS: Asset[] = [{ symbol: "ETH", name: "Ethereum", icon: "/et
 
 export function AssetChainSelectorScreen({
   selectedChainId,
+  onChainChange,
   onSelect,
 }: AssetChainSelectorScreenProps) {
   const [searchChain, setSearchChain] = useState("");
   const [searchToken, setSearchToken] = useState("");
-  const [selectedChain, setSelectedChain] = useState<number | null>(selectedChainId);
 
   // Filter chains based on search
   const filteredChains = useMemo(() => {
@@ -52,13 +53,11 @@ export function AssetChainSelectorScreen({
   }, [searchToken]);
 
   const handleSelectToken = (asset: Asset) => {
-    if (selectedChain !== null) {
-      onSelect(selectedChain, asset);
-    }
+    onSelect(asset);
   };
 
   return (
-    <div className="flex flex-col bg-gray-900">
+    <div className="flex flex-col">
       {/* Search Inputs */}
       <div className="flex border-b border-gray-800">
         <div className="w-1/2 border-r border-gray-800 px-4 py-4">
@@ -94,9 +93,9 @@ export function AssetChainSelectorScreen({
           {filteredChains.map((chain) => (
             <button
               key={chain.id}
-              onClick={() => setSelectedChain(chain.id)}
+              onClick={() => onChainChange(chain.id)}
               className={`flex w-full items-center gap-3 px-4 py-3 transition-colors ${
-                selectedChain === chain.id
+                selectedChainId === chain.id
                   ? "border-l-4 border-orange-600 bg-orange-600/20"
                   : "border-l-4 border-transparent hover:bg-gray-800/50"
               }`}
@@ -138,17 +137,15 @@ export function AssetChainSelectorScreen({
                     className="h-6 w-6"
                   />
                 </div>
-                {selectedChain !== null && (
-                  <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-gray-900 bg-white">
-                    <Image
-                      src={getChainIcon(selectedChain)}
-                      alt="Chain"
-                      width={12}
-                      height={12}
-                      className="h-3 w-3"
-                    />
-                  </div>
-                )}
+                <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-gray-900 bg-white">
+                  <Image
+                    src={getChainIcon(selectedChainId)}
+                    alt="Chain"
+                    width={12}
+                    height={12}
+                    className="h-3 w-3"
+                  />
+                </div>
               </div>
               <div className="flex min-w-0 flex-col items-start">
                 <div className="w-full truncate text-sm font-medium text-white">{asset.name}</div>

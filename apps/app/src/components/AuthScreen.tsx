@@ -79,7 +79,7 @@ export function AuthScreen({ onAuthComplete, onBack }: AuthScreenProps) {
   };
 
   return (
-    <div className="flex flex-col bg-gray-900">
+    <div className="flex flex-col">
       {/* Header */}
       <div className="flex items-center gap-3 border-b border-gray-800 px-4 py-4">
         {canGoBack && !isFirstStep && <BackButton onClick={handleBack} />}

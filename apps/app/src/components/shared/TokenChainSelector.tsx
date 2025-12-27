@@ -29,12 +29,17 @@ export function TokenChainSelector({
   className = "",
 }: TokenChainSelectorProps) {
   const Component = onClick ? "button" : "div";
+  const isButton = onClick !== undefined;
+
+  const baseStyles = "flex shrink-0 items-center gap-2";
+  const interactiveStyles = isButton ? "cursor-pointer transition-opacity hover:opacity-80" : "";
+  const disabledStyles = disabled ? "opacity-50 cursor-not-allowed" : "";
 
   return (
     <Component
-      onClick={onClick}
-      disabled={disabled}
-      className={`flex shrink-0 items-center gap-2 ${onClick ? "cursor-pointer transition-opacity hover:opacity-80" : ""} ${className}`}
+      onClick={disabled ? undefined : onClick}
+      {...(isButton ? { disabled } : { "aria-disabled": disabled })}
+      className={`${baseStyles} ${interactiveStyles} ${disabledStyles} ${className}`}
     >
       <div className="relative">
         {/* Asset icon */}

@@ -60,6 +60,10 @@ export function useNotesController(): NotesController {
 
   // ============ CHILD HOOKS ============
 
+  // Note: This controller is safe to mount even when unauthenticated
+  // useNoteDiscovery has internal guard (!!publicKey && !!accountKey)
+  // and won't fetch data until authenticated. All memos below will
+  // short-circuit to empty arrays when discovery.data is null.
   const discovery = useNoteDiscovery(
     publicKey || "",
     poolAddress,

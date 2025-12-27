@@ -5,7 +5,7 @@
 
 import { Copy, Check, Loader2 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
-import { useChainId } from "wagmi";
+import { useChainId, useSwitchChain } from "wagmi";
 import { Button } from "@workspace/ui/components/button";
 import { NetworkWarning } from "./NetworkWarning";
 import { POOL_CHAIN } from "@shinobi-cash/constants";
@@ -45,6 +45,7 @@ interface DepositFormProps {
 
 export function DepositForm({ asset, onTransactionSuccess, onBack }: DepositFormProps) {
   const chainId = useChainId();
+  const { switchChain } = useSwitchChain();
   const [isAssetSelectorOpen, setIsAssetSelectorOpen] = useState(false);
   const [copiedAddress, setCopiedAddress] = useState(false);
 
@@ -73,6 +74,13 @@ export function DepositForm({ asset, onTransactionSuccess, onBack }: DepositForm
     }
   }, [controller.lastError]);
 
+  // Clear shown errors when status resets (UX hygiene)
+  useEffect(() => {
+    if (controller.status === "idle") {
+      shownErrorsRef.current.clear();
+    }
+  }, [controller.status]);
+
   // Copy address handler
   const handleCopyAddress = async () => {
     if (!controller.address) return;
@@ -92,7 +100,7 @@ export function DepositForm({ asset, onTransactionSuccess, onBack }: DepositForm
   // Asset/Chain Selector Screen
   if (isAssetSelectorOpen) {
     return (
-      <div className="flex h-full flex-col bg-gray-900">
+      <div className="flex h-full flex-col">
         <div className="flex items-center gap-3 border-b border-gray-800 px-4 py-4">
           <Button
             variant="ghost"
@@ -114,7 +122,12 @@ export function DepositForm({ asset, onTransactionSuccess, onBack }: DepositForm
 
         <AssetChainSelectorScreen
           selectedChainId={chainId}
-          onSelect={() => setIsAssetSelectorOpen(false)}
+          onChainChange={(newChainId) => {
+            switchChain?.({ chainId: newChainId });
+          }}
+          onSelect={() => {
+            setIsAssetSelectorOpen(false);
+          }}
         />
       </div>
     );
@@ -122,7 +135,7 @@ export function DepositForm({ asset, onTransactionSuccess, onBack }: DepositForm
 
   // Main Deposit Form
   return (
-    <div className="flex h-full w-full flex-col overflow-x-hidden">
+    <div className="mx-auto flex h-full w-full max-w-md flex-col overflow-x-hidden lg:max-w-lg">
       {/* Header with Back Button */}
       {onBack && (
         <div className="flex items-center gap-3 border-b border-gray-800 px-4 py-4">

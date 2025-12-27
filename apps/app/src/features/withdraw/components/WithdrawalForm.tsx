@@ -122,7 +122,7 @@ export function WithdrawalForm({ onTransactionSuccess, onBack }: WithdrawalFormP
   // Show destination selection screen
   if (isDestinationSelectionOpen) {
     return (
-      <div className="flex h-full flex-col bg-gray-900">
+      <div className="flex h-full flex-col">
         <div className="flex items-center gap-3 border-b border-gray-800 px-4 py-4">
           <BackButton onClick={() => setIsDestinationSelectionOpen(false)} />
           <h2 className="text-lg font-semibold text-white">Select Asset & Chain</h2>
@@ -130,8 +130,10 @@ export function WithdrawalForm({ onTransactionSuccess, onBack }: WithdrawalFormP
 
         <AssetChainSelectorScreen
           selectedChainId={controller.destinationChainId}
-          onSelect={(newChainId) => {
+          onChainChange={(newChainId) => {
             controller.setDestinationChain(newChainId);
+          }}
+          onSelect={() => {
             setIsDestinationSelectionOpen(false);
           }}
         />
@@ -141,7 +143,7 @@ export function WithdrawalForm({ onTransactionSuccess, onBack }: WithdrawalFormP
 
   // Main Withdrawal Form
   return (
-    <div className="flex h-full w-full flex-col overflow-x-hidden">
+    <div className="mx-auto flex h-full w-full max-w-md flex-col overflow-x-hidden lg:max-w-lg">
       {/* Header with Back Button */}
       {onBack && (
         <div className="flex items-center gap-3 border-b border-gray-800 px-4 py-4">

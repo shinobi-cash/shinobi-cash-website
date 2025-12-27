@@ -52,7 +52,7 @@ export function MainCard() {
   const balanceInUSD = "0.00"; // TODO: Calculate USD value when price feed is available
 
   return (
-    <div className="h-full w-full overflow-scroll">
+    <div className="h-full w-full">
       {!isAuthenticated || !publicKey || !accountKey ? (
         <AuthScreen />
       ) : isDepositOpen ? (
@@ -134,7 +134,7 @@ export function MainCard() {
           </div>
 
           {/* Notes Section */}
-          <NotesSection onNoteChainClick={noteChainModal.openWith} />
+          <NotesSection controller={notesController} onNoteChainClick={noteChainModal.openWith} />
         </div>
       )}
     </div>
