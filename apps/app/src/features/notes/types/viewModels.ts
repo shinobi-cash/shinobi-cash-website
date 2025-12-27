@@ -3,7 +3,7 @@
  * Pre-computed views for UI rendering
  */
 
-import type { Note, NoteChain } from "@/lib/storage/types";
+import type { Note, NoteChain } from "@shinobi-cash/core";
 
 // ============ VIEW MODEL ============
 

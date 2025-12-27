@@ -8,13 +8,11 @@
 export { storageManager, storageManager as noteCache } from "./StorageManager";
 
 // ============ DATA TYPES ============
+// Note: Note, NoteChain, CachedNoteData, DiscoveryResult, EncryptedData
+// are in @shinobi-cash/core and should be imported from there
 export type {
-  Note,
-  NoteChain,
-  CachedNoteData,
   CachedAccountData,
   NamedPasskeyData,
-  DiscoveryResult,
   SessionInfo,
 } from "./interfaces/IDataTypes";
 

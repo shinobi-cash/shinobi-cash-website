@@ -5,7 +5,7 @@
 
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { isAddress, parseEther } from "viem";
-import type { Note } from "@/lib/storage/types";
+import type { Note } from "@shinobi-cash/core";
 import { formatEthAmount } from "@/utils/formatters";
 import { POOL_CHAIN_ID } from "@/config/chains";
 

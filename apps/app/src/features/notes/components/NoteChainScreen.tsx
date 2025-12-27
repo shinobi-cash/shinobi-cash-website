@@ -4,7 +4,7 @@
  */
 
 import { getTxExplorerUrl } from "@/config/chains";
-import type { NoteChain } from "@/lib/storage/types";
+import type { NoteChain } from "@shinobi-cash/core";
 import { formatTimestamp } from "@/utils/formatters";
 import { ExternalLink, Info } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";

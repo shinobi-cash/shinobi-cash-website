@@ -42,18 +42,6 @@ export class KeyDerivationService {
   }
 
   /**
-   * Build hybrid salt - exact implementation from keyDerivation.ts
-   */
-  private async buildHybridSalt(accountName: string): Promise<Uint8Array> {
-    const accountSalt = await this.generateAccountSalt(accountName);
-    const userSalt = await this.sessionRepo.getOrCreateUserSalt(accountName);
-    const out = new Uint8Array(accountSalt.length + userSalt.length);
-    out.set(accountSalt, 0);
-    out.set(userSalt, accountSalt.length);
-    return out;
-  }
-
-  /**
    * Derive key from passkey - exact implementation from keyDerivation.ts
    */
   async deriveKeyFromPasskey(accountName: string, credentialId: string): Promise<DerivedKeyResult> {

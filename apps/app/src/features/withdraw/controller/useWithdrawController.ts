@@ -6,7 +6,7 @@
 
 import { useCallback, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import type { Note } from "@/lib/storage/types";
+import type { Note } from "@shinobi-cash/core";
 import { SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
 import type { WithdrawStatus, WithdrawError } from "../types";
 import { useNoteSelection } from "../hooks/useNoteSelection";

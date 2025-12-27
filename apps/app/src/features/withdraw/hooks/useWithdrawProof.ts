@@ -4,7 +4,7 @@
  */
 
 import { useState, useCallback } from "react";
-import type { Note } from "@/lib/storage/types";
+import type { Note } from "@shinobi-cash/core";
 import type { PreparedWithdrawal, WithdrawalRequest } from "@/features/withdraw/services/types";
 import { processWithdrawal } from "@/features/withdraw/services/withdrawalService";
 

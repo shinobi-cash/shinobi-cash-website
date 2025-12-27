@@ -4,7 +4,7 @@
  * No side effects, no UI dependencies
  */
 
-import type { Note, NoteChain } from "@/lib/storage/types";
+import type { Note, NoteChain } from "@shinobi-cash/core";
 import type { NoteFilter } from "../types/filters";
 
 // Re-export for backward compatibility

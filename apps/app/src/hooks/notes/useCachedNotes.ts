@@ -4,7 +4,7 @@
  */
 
 import { storageManager } from "@/lib/storage";
-import type { DiscoveryResult } from "@/lib/storage/types";
+import type { DiscoveryResult } from "@shinobi-cash/core";
 import { useEffect, useState } from "react";
 
 export function useCachedNotes(publicKey: string, poolAddress: string) {

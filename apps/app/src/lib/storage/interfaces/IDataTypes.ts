@@ -1,39 +1,9 @@
 /**
- * Data Type Interfaces - Exact matches to current implementation
- * These maintain 100% compatibility with existing data structures
+ * App-Specific Data Type Interfaces
+ *
+ * Note: Core types (Note, NoteChain, CachedNoteData, DiscoveryResult, EncryptedData)
+ * should be imported from @shinobi-cash/core directly
  */
-
-// Re-export from current implementation to maintain compatibility
-export interface Note {
-  poolAddress: string;
-  depositIndex: number;
-  changeIndex: number;
-  refundIndex?: number; // For refund notes created from failed cross-chain withdrawals
-  noteType: "deposit" | "change" | "refund"; // Type of note
-  amount: string;
-  originTransactionHash: string; // Transaction on origin chain
-  destinationTransactionHash: string; // Transaction on destination chain (same as origin for same-chain)
-  originChainId: string; // Origin chain ID
-  destinationChainId: string; // Destination chain ID (same as origin for same-chain)
-  blockNumber: string;
-  timestamp: string;
-  status: "unspent" | "spent";
-  aspStatus: "pending" | "approved" | "rejected"; // ASP (Approved Set of Participants) approval status
-  isActivated: boolean; // false for pending deposits (no label yet), true when deposited in pool
-  label: string;
-  refundCommitment?: string; // For withdrawal change notes - used if withdrawal intent fails
-}
-
-export type NoteChain = Note[];
-
-export interface CachedNoteData {
-  poolAddress: string;
-  publicKey: string;
-  notes: NoteChain[];
-  lastUsedDepositIndex: number;
-  lastSyncTime: number;
-  lastProcessedCursor?: string;
-}
 
 // Account data discriminated by type for type-safe handling
 export type CachedAccountData =
@@ -69,20 +39,6 @@ export interface NamedPasskeyData {
   credentialId: string;
   publicKeyHash: string;
   created: number;
-}
-
-export interface DiscoveryResult {
-  notes: NoteChain[];
-  lastUsedIndex: number;
-  newNotesFound: number;
-  lastProcessedCursor?: string;
-}
-
-// Internal encryption types - exact match to current implementation
-export interface EncryptedData {
-  iv: Uint8Array;
-  data: Uint8Array;
-  salt: Uint8Array;
 }
 
 export interface StoredEncryptedData {

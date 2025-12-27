@@ -4,7 +4,7 @@
  */
 
 import { BackButton } from "@/components/ui/back-button";
-import type { Note } from "@/lib/storage/types";
+import type { Note } from "@shinobi-cash/core";
 import { formatEthAmount } from "@/utils/formatters";
 import { Loader2 } from "lucide-react";
 import Image from "next/image";

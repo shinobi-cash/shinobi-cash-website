@@ -17,4 +17,4 @@ export type { NoteFilter } from "./filters";
 export { NOTE_FILTER_LABELS } from "./filters";
 
 // Re-export commonly used types from storage
-export type { Note, NoteChain, DiscoveryResult } from "@/lib/storage/types";
+export type { Note, NoteChain, DiscoveryResult } from "@shinobi-cash/core";

@@ -3,7 +3,7 @@
  * Full-screen view for withdrawal progress and preview
  */
 
-import type { Note } from "@/lib/storage/types";
+import type { Note } from "@shinobi-cash/core";
 import { formatEthAmount, formatHash } from "@/utils/formatters";
 import { Check, Copy, Info, Loader2, ArrowRight } from "lucide-react";
 import { POOL_CHAIN, SHINOBI_CASH_SUPPORTED_CHAINS } from "@shinobi-cash/constants";

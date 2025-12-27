@@ -3,15 +3,9 @@
  * Maintains exact logic and data compatibility with current noteCache implementation
  */
 
-import type { EncryptionService } from "@shinobi-cash/core";
+import type { EncryptionService, CachedNoteData, DiscoveryResult, EncryptedData, NoteChain } from "@shinobi-cash/core";
 import type { IndexedDBAdapter } from "../adapters/IndexedDBAdapter";
-import type {
-  CachedNoteData,
-  DiscoveryResult,
-  EncryptedData,
-  NoteChain,
-  StoredEncryptedData,
-} from "../interfaces/IDataTypes";
+import type { StoredEncryptedData } from "../interfaces/IDataTypes";
 
 export class NotesRepository {
   constructor(

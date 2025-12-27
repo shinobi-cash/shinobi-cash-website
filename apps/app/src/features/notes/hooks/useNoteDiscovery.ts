@@ -8,7 +8,7 @@ import {
   noteDiscoveryService,
   noteStorageProvider,
 } from "@/features/notes/services/NoteDiscoveryService";
-import type { DiscoveryResult } from "@/lib/storage/types";
+import type { DiscoveryResult } from "@shinobi-cash/core";
 import type { DiscoveryProgress } from "@shinobi-cash/core";
 
 interface DiscoveryState {

@@ -5,7 +5,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useCachedNotes } from "@/hooks/notes/useCachedNotes";
-import type { Note } from "@/lib/storage/types";
+import type { Note } from "@shinobi-cash/core";
 
 export function useNoteSelection(
   publicKey: string,

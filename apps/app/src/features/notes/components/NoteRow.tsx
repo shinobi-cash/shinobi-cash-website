@@ -1,4 +1,4 @@
-import type { Note } from "@/lib/storage/types";
+import type { Note } from "@shinobi-cash/core";
 import { formatTimestamp } from "@/utils/formatters";
 import { AmountDisplay } from "@/components/shared/AmountDisplay";
 

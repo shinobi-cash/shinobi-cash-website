@@ -6,7 +6,7 @@ import { isAddress } from "viem";
 import { WITHDRAWAL_FEES } from "@shinobi-cash/constants";
 import { POOL_CHAIN_ID } from "@/config/chains";
 import type { WithdrawalRequest } from "./types";
-import type { Note } from "@/lib/storage/types";
+import type { Note } from "@shinobi-cash/core";
 import {
   deriveChangeNullifier,
   deriveChangeSecret,

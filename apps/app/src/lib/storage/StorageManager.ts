@@ -5,6 +5,7 @@
  */
 
 import { fetchActivities } from "@/services/data/indexerService";
+import type { DiscoveryResult, NoteChain } from "@shinobi-cash/core";
 import { localStorageAdapter, sessionStorageAdapter } from "./adapters/BrowserStorageAdapter";
 import {
   accountStorageAdapter,
@@ -14,9 +15,7 @@ import {
 } from "./adapters/IndexedDBAdapter";
 import type {
   CachedAccountData,
-  DiscoveryResult,
   NamedPasskeyData,
-  NoteChain,
 } from "./interfaces/IDataTypes";
 import { AccountRepository } from "./repositories/AccountRepository";
 import { NotesRepository } from "./repositories/NotesRepository";
