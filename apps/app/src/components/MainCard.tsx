@@ -8,9 +8,9 @@ import { useModalWithSelection } from "@/hooks/useModalState";
 import { NoteChainScreen } from "../features/notes/components/NoteChainScreen";
 import { WithdrawalForm } from "@/features/withdraw";
 import { DepositForm } from "@/features/deposit";
-import { formatEther } from "viem";
 import { AuthScreen } from "./AuthScreen";
 import { Button } from "@workspace/ui/components/button";
+import { AmountDisplay } from "./shared/AmountDisplay";
 
 export function MainCard() {
   const { isAuthenticated, publicKey, accountKey } = useAuth();
@@ -47,9 +47,7 @@ export function MainCard() {
     notesController.refresh();
   };
 
-  // Format balance for display
-  const formattedBalance = formatEther(totalBalance);
-  const balanceInUSD = "0.00"; // TODO: Calculate USD value when price feed is available
+  // Balance formatting handled by AmountDisplay component
 
   return (
     <div className="h-full w-full">
@@ -78,12 +76,13 @@ export function MainCard() {
           <div className="flex flex-col gap-4 p-4 sm:p-6">
             {/* Balance */}
             <div className="flex items-start justify-between">
-              <div className="flex flex-col">
-                <div className="mb-1 text-3xl font-bold text-white sm:text-4xl">
-                  {Number(formattedBalance).toFixed(4)} ETH
-                </div>
-                <div className="text-base text-gray-400">≈ ${balanceInUSD} USD</div>
-              </div>
+              <AmountDisplay
+                amount={totalBalance}
+                layout="stacked"
+                ethOptions={{ decimals: 4 }}
+                ethClassName="mb-1 text-3xl font-bold text-white sm:text-4xl"
+                usdClassName="text-base text-gray-400"
+              />
 
               <div className="flex gap-2">
                 <Button

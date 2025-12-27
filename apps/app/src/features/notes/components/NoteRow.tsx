@@ -1,5 +1,6 @@
 import type { Note } from "@/lib/storage/types";
-import { formatEthAmount, formatTimestamp } from "@/utils/formatters";
+import { formatTimestamp } from "@/utils/formatters";
+import { AmountDisplay } from "@/components/shared/AmountDisplay";
 
 interface NoteRowProps {
   note: Note;
@@ -43,7 +44,14 @@ export function NoteRow({ note, chainLength, onClick }: NoteRowProps) {
               )}
             </div>
             <div className="text-app-secondary text-xs font-medium tabular-nums sm:text-base">
-              Balance: {formatEthAmount(note.amount)} ETH
+              <AmountDisplay
+                amount={note.amount}
+                layout="inline"
+                ethOptions={{ maxDecimals: 6 }}
+                className="gap-1.5"
+                ethClassName="text-app-secondary"
+                usdClassName="text-app-tertiary text-xs"
+              />
             </div>
           </div>
 

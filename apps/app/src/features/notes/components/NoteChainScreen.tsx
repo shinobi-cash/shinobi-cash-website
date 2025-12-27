@@ -5,10 +5,11 @@
 
 import { getTxExplorerUrl } from "@/config/chains";
 import type { NoteChain } from "@/lib/storage/types";
-import { formatEthAmount, formatTimestamp } from "@/utils/formatters";
+import { formatTimestamp } from "@/utils/formatters";
 import { ExternalLink, Info } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
 import { BackButton } from "../../../components/ui/back-button";
+import { AmountDisplay } from "@/components/shared/AmountDisplay";
 
 interface NoteChainScreenProps {
   noteChain: NoteChain | null;
@@ -44,9 +45,15 @@ export function NoteChainScreen({ noteChain, onBack, onWithdrawClick }: NoteChai
           {/* Balance Summary */}
           <div className="rounded-xl border border-gray-700 bg-gray-800 p-4 text-center shadow">
             <p className="mb-1 text-sm font-medium text-gray-400">Current Balance</p>
-            <p className="mb-2 text-2xl font-bold tabular-nums text-white">
-              {formatEthAmount(lastNote.amount)} ETH
-            </p>
+            <div className="mb-2">
+              <AmountDisplay
+                amount={lastNote.amount}
+                layout="stacked"
+                ethOptions={{ maxDecimals: 6 }}
+                ethClassName="text-2xl font-bold tabular-nums text-white"
+                usdClassName="text-sm text-gray-400 mt-1"
+              />
+            </div>
             <div
               className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
                 lastNote.status === "spent"
@@ -112,26 +119,42 @@ export function NoteChainScreen({ noteChain, onBack, onWithdrawClick }: NoteChai
 
                       {/* Main content */}
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium text-white">
-                            {index === 0
-                              ? "Deposited: "
-                              : isLast
-                                ? "Current Balance: "
-                                : "Balance: "}
-                            <a
-                              href={getTxExplorerUrl(
-                                note.destinationChainId,
-                                note.destinationTransactionHash
-                              )}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-blue-500 hover:text-blue-600"
-                            >
-                              {formatEthAmount(note.amount)} ETH
-                              <ExternalLink className="h-3 w-3" />
-                            </a>
-                          </span>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-sm font-medium text-white">
+                              {index === 0
+                                ? "Deposited: "
+                                : isLast
+                                  ? "Current Balance: "
+                                  : "Balance: "}
+                              <a
+                                href={getTxExplorerUrl(
+                                  note.destinationChainId,
+                                  note.destinationTransactionHash
+                                )}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-blue-500 hover:text-blue-600"
+                              >
+                                <AmountDisplay
+                                  amount={note.amount}
+                                  layout="inline"
+                                  ethOptions={{ maxDecimals: 6 }}
+                                  showUsd={false}
+                                  ethClassName="text-blue-500 hover:text-blue-600"
+                                />
+                                <ExternalLink className="h-3 w-3" />
+                              </a>
+                            </span>
+                            <AmountDisplay
+                              amount={note.amount}
+                              layout="inline"
+                              ethOptions={{ maxDecimals: 6 }}
+                              showUsd={true}
+                              className="text-xs text-gray-500"
+                              usdClassName="text-xs text-gray-500"
+                            />
+                          </div>
                           <p className="whitespace-nowrap text-xs text-gray-400">
                             {formatTimestamp(note.timestamp)}
                           </p>
