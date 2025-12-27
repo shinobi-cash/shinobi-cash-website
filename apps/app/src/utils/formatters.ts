@@ -131,3 +131,22 @@ export function formatDate(timestamp: string | number): string {
       : new Date(timestamp);
   return date.toLocaleDateString();
 }
+
+/**
+ * Format USD amounts with consistent formatting
+ * Pure formatter - no hidden dependencies or side effects
+ *
+ * @param amount - USD amount to format
+ * @param decimals - Number of decimal places (default: 2)
+ * @returns Formatted USD string with $ prefix
+ *
+ * @example
+ * formatUsdAmount(1234.5) // "$1,234.50"
+ * formatUsdAmount(0.123, 4) // "$0.1230"
+ */
+export function formatUsdAmount(amount: number, decimals = 2): string {
+  return `$${amount.toLocaleString("en-US", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  })}`;
+}
