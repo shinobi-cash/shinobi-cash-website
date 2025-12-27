@@ -37,12 +37,11 @@ export async function resumeWithPasskey(
   const accountData = await storageManager.getAccountData();
   if (!accountData) throw new Error("Account data not found");
 
-  // Return keys (mnemonic not stored, will be empty array)
+  // Return keys
   return {
     publicKey: accountData.publicKey,
     privateKey: accountData.privateKey,
     address: accountData.address,
-    mnemonic: [], // Not stored in database
   };
 }
 

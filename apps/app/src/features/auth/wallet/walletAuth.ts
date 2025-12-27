@@ -45,12 +45,11 @@ export async function performWalletLogin(
     // Store session info (wallet-based auth)
     await KDF.storeSessionInfo(accountId, "wallet");
 
-    // Return keys (mnemonic not stored, will be empty array)
+    // Return keys
     return {
       publicKey: accountData.publicKey,
       privateKey: accountData.privateKey,
       address: accountData.address,
-      mnemonic: [], // Not stored in database
     };
   } catch (error) {
     console.warn("Failed to load account data, treating as new account:", error);

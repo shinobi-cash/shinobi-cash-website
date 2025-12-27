@@ -48,12 +48,11 @@ export async function performPasskeyLogin(accountName: string): Promise<KeyGener
   // Store session info for auto-resume
   await KDF.storeSessionInfo(trimmed, "passkey", { credentialId: passkeyData.credentialId });
 
-  // Return keys (mnemonic not stored, will be empty array)
+  // Return keys
   return {
     publicKey: accountData.publicKey,
     privateKey: accountData.privateKey,
     address: accountData.address,
-    mnemonic: [], // Not stored in database
   };
 }
 
