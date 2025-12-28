@@ -15,7 +15,7 @@ import { useWithdrawProof } from "../hooks/useWithdrawProof";
 import { useWithdrawTransaction } from "../hooks/useWithdrawTransaction";
 import { useWithdrawFeeEstimation } from "../hooks/useWithdrawFeeEstimation";
 import { resolveWithdrawRoute } from "../protocol/withdrawRoute";
-import { formatEthAmount } from "@/utils/formatters";
+import { parseEther, formatEther } from "viem";
 
 // ============ TYPES ============
 
@@ -108,29 +108,54 @@ export function useWithdrawController(
       };
     }
     // Use gas-based fee estimation with solver fees for cross-chain
+    // Parse ETH strings to BigInt, then convert to number for display
+    const executionFeeWei = feeEstimation.executionFeeEth
+      ? parseEther(feeEstimation.executionFeeEth)
+      : BigInt(0);
+    const solverFeeWei = feeEstimation.solverFeeEth
+      ? parseEther(feeEstimation.solverFeeEth)
+      : BigInt(0);
+    const netAmountWei = feeEstimation.netAmountEth
+      ? parseEther(feeEstimation.netAmountEth)
+      : BigInt(0);
+
     return {
-      executionFee: parseFloat(feeEstimation.executionFeeEth) || 0,
-      solverFee: parseFloat(feeEstimation.solverFeeEth) || 0,
-      youReceive: parseFloat(feeEstimation.netAmountEth) || 0,
+      executionFee: Number(formatEther(executionFeeWei)),
+      solverFee: Number(formatEther(solverFeeWei)),
+      youReceive: Number(formatEther(netAmountWei)),
       isCrossChain: route.isCrossChain,
       relayFeeBPS: feeEstimation.relayFeeBPS,
       solverFeeBPS: feeEstimation.solverFeeBPS,
     };
   }, [form.amount, route, feeEstimation]);
 
-  // Balance calculations - normalized numbers (UI should render, not calculate)
-  const noteBalance = useMemo(
-    () =>
-      noteSelection.selectedNote
-        ? parseFloat(formatEthAmount(noteSelection.selectedNote.amount))
-        : 0,
-    [noteSelection.selectedNote]
-  );
+  // Balance calculations - use BigInt internally, convert to number for display
+  const noteBalance = useMemo(() => {
+    if (!noteSelection.selectedNote) return 0;
 
-  const remainingBalance = useMemo(
-    () => noteBalance - (parseFloat(form.amount) || 0),
-    [noteBalance, form.amount]
-  );
+    const noteBalanceWei = BigInt(noteSelection.selectedNote.amount);
+    return Number(formatEther(noteBalanceWei));
+  }, [noteSelection.selectedNote]);
+
+  const remainingBalance = useMemo(() => {
+    if (!noteSelection.selectedNote || !form.amount) return noteBalance;
+
+    try {
+      const noteBalanceWei = BigInt(noteSelection.selectedNote.amount);
+      const withdrawAmountWei = parseEther(form.amount);
+
+      // Calculate remaining balance in wei
+      const remainingWei =
+        withdrawAmountWei > noteBalanceWei
+          ? BigInt(0)
+          : noteBalanceWei - withdrawAmountWei;
+
+      return Number(formatEther(remainingWei));
+    } catch {
+      // If parsing fails, return note balance
+      return noteBalance;
+    }
+  }, [noteSelection.selectedNote, form.amount, noteBalance]);
 
   // Error domain typing
   const lastError: WithdrawError = transaction.transactionError
