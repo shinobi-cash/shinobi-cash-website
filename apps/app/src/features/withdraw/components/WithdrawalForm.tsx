@@ -19,7 +19,7 @@ import { WithdrawalFeeBreakdown } from "@/components/shared/WithdrawalFeeBreakdo
 import { NoteSelectionScreen } from "./NoteSelectionScreen";
 import { WithdrawalTimelineScreen } from "./WithdrawalTimelineScreen";
 import { useWithdrawController } from "../controller/useWithdrawController";
-import { WITHDRAW_STATUS_LABELS } from "../types";
+import { WITHDRAW_STATUS_LABELS } from "../types/withdrawStatus";
 import { ETH_ASSET, DISPLAY_DECIMALS } from "../constants";
 import { showToast } from "@/lib/toast";
 import { getUserMessage } from "@/lib/errors/errorHandler";

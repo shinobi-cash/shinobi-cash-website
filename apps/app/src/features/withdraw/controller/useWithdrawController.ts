@@ -1,21 +1,20 @@
 /**
  * Withdrawal Controller
- * Main orchestrator for the withdrawal feature
- * Coordinates all child hooks and owns the state machine
  */
 
 import { useCallback, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Note } from "@shinobi-cash/core";
 import { SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
-import type { WithdrawStatus, WithdrawError } from "../types";
+import type { WithdrawStatus, WithdrawError } from "../types/withdrawStatus";
 import { useNoteSelection } from "../hooks/useNoteSelection";
 import { useWithdrawFormState } from "../hooks/useWithdrawFormState";
-import { useWithdrawProof } from "../hooks/useWithdrawProof";
-import { useWithdrawTransaction } from "../hooks/useWithdrawTransaction";
-import { useWithdrawFeeEstimation } from "../hooks/useWithdrawFeeEstimation";
+import { useWithdrawalEngine } from "../hooks/useWithdrawalEngine";
+import { useReactiveFeeQuote } from "../hooks/useReactiveFeeQuote";
 import { resolveWithdrawRoute } from "../protocol/withdrawRoute";
 import { parseEther, formatEther } from "viem";
+import type { WithdrawalRequest } from "../domain/types";
+import { formatFeeQuote } from "../domain/pipeline";
 
 // ============ TYPES ============
 
@@ -37,7 +36,7 @@ export interface WithdrawController {
   availableNotes: Note[];
   isLoadingNotes: boolean;
 
-  // Balance calculations (normalized numbers - UI should render, not calculate)
+  // Balance calculations
   noteBalance: number;
   remainingBalance: number;
 
@@ -74,7 +73,6 @@ export function useWithdrawController(
   const { publicKey, accountKey } = useAuth();
   const poolAddress = SHINOBI_CASH_ETH_POOL.address;
 
-  // TypeScript assertion: AuthenticationGate ensures these values exist
   if (!publicKey || !accountKey) {
     throw new Error("useWithdrawController: Missing auth values despite AuthenticationGate");
   }
@@ -83,56 +81,47 @@ export function useWithdrawController(
 
   const noteSelection = useNoteSelection(publicKey, poolAddress, null);
   const form = useWithdrawFormState(noteSelection.selectedNote, asset.symbol);
-  const proof = useWithdrawProof();
-  const transaction = useWithdrawTransaction();
+  const engine = useWithdrawalEngine();
 
-  // Calculate fee breakdown
+  // ============ DERIVED STATE ============
+
   const route = useMemo(
     () => resolveWithdrawRoute(form.destinationChainId),
     [form.destinationChainId]
   );
 
-  const feeEstimation = useWithdrawFeeEstimation(form.amount, route.isCrossChain);
+  // Reactively fetch fee quotes as user types
+  const { feeQuote } = useReactiveFeeQuote(
+    noteSelection.selectedNote,
+    form.amount,
+    form.recipientAddress,
+    accountKey,
+    route.isCrossChain ? form.destinationChainId : undefined
+  );
 
-  // ============ DERIVED STATE ============
-
+  // Fee breakdown from reactive fee quote
   const feeBreakdown = useMemo(() => {
-    if (!form.amount) {
+    if (!feeQuote) {
       return {
         executionFee: 0,
         solverFee: 0,
         youReceive: 0,
-        isCrossChain: false,
-        relayFeeBPS: 500, // Default fallback
-        solverFeeBPS: 0,
+        isCrossChain: route.isCrossChain,
       };
     }
-    // Use gas-based fee estimation with solver fees for cross-chain
-    // Parse ETH strings to BigInt, then convert to number for display
-    const executionFeeWei = feeEstimation.executionFeeEth
-      ? parseEther(feeEstimation.executionFeeEth)
-      : BigInt(0);
-    const solverFeeWei = feeEstimation.solverFeeEth
-      ? parseEther(feeEstimation.solverFeeEth)
-      : BigInt(0);
-    const netAmountWei = feeEstimation.netAmountEth
-      ? parseEther(feeEstimation.netAmountEth)
-      : BigInt(0);
 
+    const formatted = formatFeeQuote(feeQuote);
     return {
-      executionFee: Number(formatEther(executionFeeWei)),
-      solverFee: Number(formatEther(solverFeeWei)),
-      youReceive: Number(formatEther(netAmountWei)),
-      isCrossChain: route.isCrossChain,
-      relayFeeBPS: feeEstimation.relayFeeBPS,
-      solverFeeBPS: feeEstimation.solverFeeBPS,
+      executionFee: Number(formatted.executionFeeEth),
+      solverFee: Number(formatted.solverFeeEth),
+      youReceive: Number(formatted.netAmountEth),
+      isCrossChain: feeQuote.kind === "cross-chain",
     };
-  }, [form.amount, route, feeEstimation]);
+  }, [feeQuote, route.isCrossChain]);
 
-  // Balance calculations - use BigInt internally, convert to number for display
+  // Balance calculations - use BigInt internally
   const noteBalance = useMemo(() => {
     if (!noteSelection.selectedNote) return 0;
-
     const noteBalanceWei = BigInt(noteSelection.selectedNote.amount);
     return Number(formatEther(noteBalanceWei));
   }, [noteSelection.selectedNote]);
@@ -144,46 +133,40 @@ export function useWithdrawController(
       const noteBalanceWei = BigInt(noteSelection.selectedNote.amount);
       const withdrawAmountWei = parseEther(form.amount);
 
-      // Calculate remaining balance in wei
       const remainingWei =
-        withdrawAmountWei > noteBalanceWei
-          ? BigInt(0)
-          : noteBalanceWei - withdrawAmountWei;
+        withdrawAmountWei > noteBalanceWei ? BigInt(0) : noteBalanceWei - withdrawAmountWei;
 
       return Number(formatEther(remainingWei));
     } catch {
-      // If parsing fails, return note balance
       return noteBalance;
     }
   }, [noteSelection.selectedNote, form.amount, noteBalance]);
 
-  // Error domain typing
-  const lastError: WithdrawError = transaction.transactionError
-    ? { type: "transaction", message: transaction.transactionError }
-    : proof.proofError
-      ? { type: "proof", message: proof.proofError }
-      : form.amountError
-        ? { type: "validation", message: form.amountError }
-        : form.addressError
-          ? { type: "validation", message: form.addressError }
-          : null;
+  // Error handling
+  const lastError: WithdrawError = engine.error
+    ? { type: "proof", message: engine.error.message }
+    : form.amountError
+      ? { type: "validation", message: form.amountError }
+      : form.addressError
+        ? { type: "validation", message: form.addressError }
+        : null;
 
-  // Status state machine - single source of truth
+  // Status state machine
   const getStatus = useCallback((): WithdrawStatus => {
-    if (transaction.isSubmitted) return "submitted";
-    if (transaction.isExecuting) return "submitting";
-    if (proof.proofError) return "proof-failed";
-    if (proof.isGenerating) return "preparing-proof";
+    if (engine.executionResult) return "submitted";
+    if (engine.isExecuting) return "submitting";
+    if (engine.error) return "proof-failed";
+    if (engine.isPreparing) return "preparing-proof";
     if (!noteSelection.selectedNote) return "no-note-selected";
     if (form.amountError) return "invalid-amount";
     if (form.addressError) return "invalid-address";
     if (form.amount.trim() !== "" && form.recipientAddress.trim() !== "") return "ready";
     return "idle";
   }, [
-    transaction.isSubmitted,
-    transaction.isExecuting,
-    proof.proofError,
-    proof.isGenerating,
+    engine.executionResult,
+    engine.isExecuting,
+    engine.error,
+    engine.isPreparing,
     noteSelection.selectedNote,
     form.amountError,
     form.addressError,
@@ -192,73 +175,66 @@ export function useWithdrawController(
   ]);
 
   const status = getStatus();
-  const canWithdraw = status === "ready"; // Derived from status
+  const canWithdraw = status === "ready";
 
   // ============ ACTIONS ============
 
   /**
-   * Prepare withdrawal - generate ZK proof
+   * Prepare withdrawal using new engine
    */
   const prepareWithdrawal = useCallback(async () => {
-    if (!noteSelection.selectedNote || !canWithdraw) return;
+    if (!noteSelection.selectedNote || !canWithdraw || !accountKey) return;
 
     try {
-      await proof.generateProof(
-        noteSelection.selectedNote,
-        form.amount,
-        form.recipientAddress,
+      // Create withdrawal request
+      const request: WithdrawalRequest = {
+        note: noteSelection.selectedNote,
+        withdrawAmountWei: parseEther(form.amount),
+        recipient: form.recipientAddress as `0x${string}`,
         accountKey,
-        form.destinationChainId,
-        feeBreakdown.relayFeeBPS, // Pass calculated relayFeeBPS
-        feeBreakdown.solverFeeBPS // Pass solver fee BPS for cross-chain
-      );
+        destinationChainId: route.isCrossChain ? form.destinationChainId : undefined,
+      };
+
+      // Prepare using engine
+      await engine.prepare(request);
     } catch (err) {
-      // Error is already captured in proof hook state
       console.error("Withdrawal preparation failed:", err);
     }
   }, [
     noteSelection.selectedNote,
     canWithdraw,
-    proof,
+    accountKey,
     form.amount,
     form.recipientAddress,
-    accountKey,
     form.destinationChainId,
-    feeBreakdown.relayFeeBPS,
-    feeBreakdown.solverFeeBPS,
+    route.isCrossChain,
+    engine,
   ]);
 
   /**
-   * Execute withdrawal - submit transaction
+   * Execute withdrawal using engine
    */
   const executeWithdrawal = useCallback(async () => {
-    if (!proof.preparedWithdrawal) {
+    if (!engine.preparedUserOp) {
       console.error("No prepared withdrawal found");
       return;
     }
 
     try {
-      await transaction.executeWithdrawal(proof.preparedWithdrawal);
+      await engine.execute();
       onTransactionSuccess?.();
     } catch (err) {
-      // Error is already captured in transaction hook state
       console.error("Withdrawal execution failed:", err);
     }
-  }, [proof.preparedWithdrawal, transaction, onTransactionSuccess]);
+  }, [engine, onTransactionSuccess]);
 
   /**
    * Reset entire withdrawal flow
-   *
-   * Use cases:
-   * - onBack navigation to clear state
-   * - After transaction success to prepare for new withdrawal
-   * - Error recovery to start fresh
    */
   const reset = useCallback(() => {
     form.reset();
-    proof.reset();
-    transaction.reset();
-  }, [form, proof, transaction]);
+    engine.reset();
+  }, [form, engine]);
 
   // ============ RETURN CONTROLLER ============
 
@@ -280,7 +256,7 @@ export function useWithdrawController(
     availableNotes: noteSelection.availableNotes,
     isLoadingNotes: noteSelection.isLoadingNotes,
 
-    // Balance calculations (normalized numbers)
+    // Balance calculations
     noteBalance,
     remainingBalance,
 
@@ -291,11 +267,11 @@ export function useWithdrawController(
     isCrossChain: feeBreakdown.isCrossChain,
 
     // Transaction state
-    transactionHash: transaction.transactionHash,
-    isSubmitted: transaction.isSubmitted,
+    transactionHash: engine.executionResult?.transactionHash || null,
+    isSubmitted: !!engine.executionResult,
 
     // Proof state
-    isPreparing: proof.isGenerating,
+    isPreparing: engine.isPreparing,
 
     // Actions
     setAmount: form.setAmount,

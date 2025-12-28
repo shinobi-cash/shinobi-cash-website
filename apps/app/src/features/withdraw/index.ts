@@ -14,25 +14,8 @@ export { useWithdrawController } from "./controller/useWithdrawController";
 export type { WithdrawController } from "./controller/useWithdrawController";
 
 // Types (Public types only)
-export type { WithdrawStatus, WithdrawError } from "./types";
-export { WITHDRAW_STATUS_LABELS } from "./types";
-
-// Protocol (Chain logic - rarely needed outside feature)
-export {
-  resolveWithdrawRoute,
-  isWithdrawSupported,
-  getDefaultRelayFeeBps,
-  getDefaultSolverFeeBps,
-} from "./protocol/withdrawRoute";
-export type { WithdrawRoute, WithdrawCallData } from "./protocol/withdrawRoute";
-
-export {
-  calculateExecutionFee,
-  calculateSolverFee,
-  calculateReceiveAmount,
-  formatWithdrawAmountsForDisplay,
-} from "./protocol/withdrawFees";
-export type { WithdrawFeeBreakdown } from "./protocol/withdrawFees";
+export type { WithdrawStatus, WithdrawError } from "./types/withdrawStatus";
+export { WITHDRAW_STATUS_LABELS } from "./types/withdrawStatus";
 
 // Constants
 export { DISPLAY_DECIMALS, ETH_ASSET } from "./constants";
