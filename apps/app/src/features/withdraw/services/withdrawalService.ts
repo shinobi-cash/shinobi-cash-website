@@ -4,7 +4,6 @@
  */
 
 import {
-  WITHDRAWAL_FEES,
   SHINOBI_CASH_ETH_POOL,
   SHINOBI_CASH_RELAY_WITHDRAWAL_PAYMASTER,
   SHINOBI_CASH_CROSSCHAIN_WITHDRAWAL_PAYMASTER,
@@ -94,11 +93,11 @@ async function calculateWithdrawalContext(
   const { note, recipientAddress, accountKey } = request;
   const { stateTreeLeaves, aspData, poolScope } = withdrawalData;
 
-  // Create withdrawal data structure
+  // Create withdrawal data structure using calculated relayFeeBPS
   const withdrawalDataStruct = createWithdrawalData(
     recipientAddress,
     SHINOBI_CASH_RELAY_WITHDRAWAL_PAYMASTER.address,
-    BigInt(500)
+    BigInt(request.relayFeeBPS)
   );
 
   const poolAddress = SHINOBI_CASH_ETH_POOL.address;
@@ -198,12 +197,13 @@ async function calculateCrossChainWithdrawalContext(
   const { note, recipientAddress, accountKey } = request;
   const { stateTreeLeaves, aspData, poolScope } = withdrawalData;
 
-  // Create cross-chain withdrawal data structure
+  // Create cross-chain withdrawal data structure using calculated fees
   const withdrawalDataStruct = createCrossChainWithdrawalData(
     recipientAddress,
     request.destinationChainId!,
     SHINOBI_CASH_CROSSCHAIN_WITHDRAWAL_PAYMASTER.address,
-    WITHDRAWAL_FEES.DEFAULT_RELAY_FEE_BPS
+    BigInt(request.relayFeeBPS),
+    BigInt(request.solverFeeBPS)
   );
 
   const poolAddress = SHINOBI_CASH_ETH_POOL.address;
@@ -305,7 +305,7 @@ async function prepareCrossChainWithdrawalTransaction(
  */
 export async function processWithdrawal(request: WithdrawalRequest): Promise<PreparedWithdrawal> {
   // Check if this is a cross-chain withdrawal (defined outside try for error handling)
-  const isCrossChain = request.destinationChainId && request.destinationChainId !== POOL_CHAIN_ID;
+  const isCrossChain = !!(request.destinationChainId && request.destinationChainId !== POOL_CHAIN_ID);
 
   try {
     // Step 1: Fetch all required data
@@ -340,6 +340,7 @@ export async function processWithdrawal(request: WithdrawalRequest): Promise<Pre
       proofData,
       userOperation,
       smartAccountClient,
+      isCrossChain,
     };
   } catch (error) {
     // Log with context for debugging
@@ -385,9 +386,10 @@ export async function processWithdrawal(request: WithdrawalRequest): Promise<Pre
  */
 export async function executeWithdrawal(
   smartAccountClient: SmartAccountClient,
-  userOperation: UserOperation
+  userOperation: UserOperation,
+  isCrossChain: boolean = false
 ): Promise<string> {
-  return executeWithdrawalUserOperation(smartAccountClient, userOperation);
+  return executeWithdrawalUserOperation(smartAccountClient, userOperation, isCrossChain);
 }
 
 /**
@@ -396,5 +398,9 @@ export async function executeWithdrawal(
 export async function executePreparedWithdrawal(
   preparedWithdrawal: PreparedWithdrawal
 ): Promise<string> {
-  return executeWithdrawal(preparedWithdrawal.smartAccountClient, preparedWithdrawal.userOperation);
+  return executeWithdrawal(
+    preparedWithdrawal.smartAccountClient,
+    preparedWithdrawal.userOperation,
+    preparedWithdrawal.isCrossChain
+  );
 }

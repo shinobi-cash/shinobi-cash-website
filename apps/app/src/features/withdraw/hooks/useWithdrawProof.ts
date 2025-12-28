@@ -31,7 +31,9 @@ export function useWithdrawProof() {
       withdrawAmount: string,
       recipientAddress: string,
       accountKey: bigint,
-      destinationChainId?: number
+      destinationChainId: number | undefined,
+      relayFeeBPS: number,
+      solverFeeBPS: number
     ): Promise<PreparedWithdrawal> => {
       setState((prev) => ({
         ...prev,
@@ -47,6 +49,8 @@ export function useWithdrawProof() {
           recipientAddress,
           accountKey,
           destinationChainId,
+          relayFeeBPS, // Pass calculated relayFeeBPS
+          solverFeeBPS, // Pass solver fee BPS for cross-chain
         };
 
         const prepared = await processWithdrawal(withdrawalRequest);

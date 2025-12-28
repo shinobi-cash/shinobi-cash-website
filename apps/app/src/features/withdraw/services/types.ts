@@ -21,6 +21,8 @@ export interface WithdrawalRequest {
   recipientAddress: string;
   accountKey: bigint;
   destinationChainId?: number;
+  relayFeeBPS: number; // Calculated relay fee in basis points (gas costs)
+  solverFeeBPS: number; // Solver fee in basis points (cross-chain only)
 }
 
 export interface PreparedWithdrawal {
@@ -28,6 +30,7 @@ export interface PreparedWithdrawal {
   proofData: WithdrawalProofData;
   userOperation: UserOperation<"0.7">;
   smartAccountClient: SmartAccountClient;
+  isCrossChain: boolean;
 }
 
 // ============ CONTEXT TYPES ============

@@ -13,8 +13,8 @@ import { useNoteSelection } from "../hooks/useNoteSelection";
 import { useWithdrawFormState } from "../hooks/useWithdrawFormState";
 import { useWithdrawProof } from "../hooks/useWithdrawProof";
 import { useWithdrawTransaction } from "../hooks/useWithdrawTransaction";
+import { useWithdrawFeeEstimation } from "../hooks/useWithdrawFeeEstimation";
 import { resolveWithdrawRoute } from "../protocol/withdrawRoute";
-import { formatWithdrawAmountsForDisplay } from "../protocol/withdrawFees";
 import { formatEthAmount } from "@/utils/formatters";
 
 // ============ TYPES ============
@@ -86,13 +86,15 @@ export function useWithdrawController(
   const proof = useWithdrawProof();
   const transaction = useWithdrawTransaction();
 
-  // ============ DERIVED STATE ============
-
   // Calculate fee breakdown
   const route = useMemo(
     () => resolveWithdrawRoute(form.destinationChainId),
     [form.destinationChainId]
   );
+
+  const feeEstimation = useWithdrawFeeEstimation(form.amount, route.isCrossChain);
+
+  // ============ DERIVED STATE ============
 
   const feeBreakdown = useMemo(() => {
     if (!form.amount) {
@@ -101,10 +103,20 @@ export function useWithdrawController(
         solverFee: 0,
         youReceive: 0,
         isCrossChain: false,
+        relayFeeBPS: 500, // Default fallback
+        solverFeeBPS: 0,
       };
     }
-    return formatWithdrawAmountsForDisplay(form.amount, route);
-  }, [form.amount, route]);
+    // Use gas-based fee estimation with solver fees for cross-chain
+    return {
+      executionFee: parseFloat(feeEstimation.executionFeeEth) || 0,
+      solverFee: parseFloat(feeEstimation.solverFeeEth) || 0,
+      youReceive: parseFloat(feeEstimation.netAmountEth) || 0,
+      isCrossChain: route.isCrossChain,
+      relayFeeBPS: feeEstimation.relayFeeBPS,
+      solverFeeBPS: feeEstimation.solverFeeBPS,
+    };
+  }, [form.amount, route, feeEstimation]);
 
   // Balance calculations - normalized numbers (UI should render, not calculate)
   const noteBalance = useMemo(
@@ -171,7 +183,9 @@ export function useWithdrawController(
         form.amount,
         form.recipientAddress,
         accountKey,
-        form.destinationChainId
+        form.destinationChainId,
+        feeBreakdown.relayFeeBPS, // Pass calculated relayFeeBPS
+        feeBreakdown.solverFeeBPS // Pass solver fee BPS for cross-chain
       );
     } catch (err) {
       // Error is already captured in proof hook state
@@ -185,6 +199,8 @@ export function useWithdrawController(
     form.recipientAddress,
     accountKey,
     form.destinationChainId,
+    feeBreakdown.relayFeeBPS,
+    feeBreakdown.solverFeeBPS,
   ]);
 
   /**

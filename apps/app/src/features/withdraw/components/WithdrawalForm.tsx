@@ -86,7 +86,7 @@ export function WithdrawalForm({ onTransactionSuccess, onBack }: WithdrawalFormP
         solverFee={controller.solverFee}
         youReceive={controller.youReceive}
         remainingBalance={controller.remainingBalance}
-        isProcessing={controller.status === "submitting"}
+        isProcessing={controller.status === "preparing-proof" || controller.status === "submitting"}
         isCrossChain={controller.isCrossChain}
         steps={[]} // Timeline steps managed by timeline component
         showPreview={true}
