@@ -3,7 +3,17 @@
  * Maintains exact logic and data compatibility with current noteCache implementation
  */
 
-import { EncryptionService, type CachedNoteData, type DiscoveryResult, type EncryptedData, type NoteChain } from "@shinobi-cash/core";
+import {
+  EncryptionService,
+  type CachedNoteData,
+  type DiscoveryResult,
+  type DiscoveryOptions,
+  type EncryptedData,
+  type NoteChain,
+  NoteSyncEngine,
+  type ActivityFetcher,
+  type DiscoveryState,
+} from "@shinobi-cash/core";
 import type { IndexedDBAdapter } from "../adapters/IndexedDBAdapter";
 import type { StoredEncryptedData } from "../interfaces/IDataTypes";
 
@@ -152,5 +162,52 @@ export class NotesRepository {
     }
 
     return null;
+  }
+
+  /**
+   * Discover notes using NoteSyncEngine
+   *
+   * Clean stateful architecture with pure state transitions.
+   * Engine handles orchestration, primitives handle logic.
+   *
+   * @param publicKey - User's public key/address
+   * @param poolAddress - Pool contract address
+   * @param accountKey - Account key for cryptographic derivation
+   * @param fetchActivities - Function to fetch activities from indexer
+   * @param options - Discovery options (progress callback, abort signal)
+   * @returns Discovery result with found notes
+   */
+  async discoverNotes(
+    publicKey: string,
+    poolAddress: string,
+    accountKey: bigint,
+    fetchActivities: ActivityFetcher,
+    options?: DiscoveryOptions,
+  ): Promise<DiscoveryResult> {
+    // Create sync engine with persistence callbacks
+    const engine = new NoteSyncEngine(fetchActivities, {
+      loadState: async (pubKey: string, pool: string) => {
+        const cached = await this.getCachedNotes(pubKey, pool);
+        if (!cached) return null;
+
+        return {
+          notes: cached.notes,
+          lastUsedIndex: cached.lastUsedIndex,
+          cursor: cached.lastProcessedCursor,
+        };
+      },
+
+      saveState: async (pubKey: string, pool: string, state: DiscoveryState) => {
+        await this.storeDiscoveredNotes(
+          pubKey,
+          pool,
+          state.notes,
+          state.cursor,
+        );
+      },
+    });
+
+    // Run sync
+    return await engine.sync(publicKey, poolAddress, accountKey, options);
   }
 }

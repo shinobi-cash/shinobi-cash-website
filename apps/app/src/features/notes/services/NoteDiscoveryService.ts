@@ -1,39 +1,53 @@
 /**
  * Note Discovery Service
  *
- * Migrated to use @shinobi-cash/core SDK
- * Original implementation backed up to NoteDiscoveryService.ts.backup
- * Migrated: 2025-01-06
+ * Uses NotesRepository with core primitives for note discovery
  */
 
-import { NoteDiscoveryService, type ActivityFetcher } from "@shinobi-cash/core";
-import { StorageProviderAdapter } from "./adapters/StorageProviderAdapter";
+import { storageManager } from "@/lib/storage";
 import { fetchActivities } from "@/services/data/indexerService";
+import type { DiscoveryResult, DiscoveryOptions } from "@shinobi-cash/core";
 
 /**
- * Create adapter function to bridge mini-app's fetchActivities to SDK's ActivityFetcher interface
+ * Discover notes for an account
  *
- * The SDK expects an ActivityFetcher function with a specific signature.
- * This adapter converts our existing fetchActivities to match that interface.
+ * Now uses NoteSyncEngine for cleaner architecture.
+ *
+ * @param publicKey - User's public key/address
+ * @param poolAddress - Pool contract address
+ * @param accountKey - Account key for cryptographic derivation
+ * @param options - Discovery options (progress callback, abort signal)
+ * @returns Discovery result with found notes
  */
-const activityFetcher: ActivityFetcher = async (
+export async function discoverNotes(
+  publicKey: string,
   poolAddress: string,
-  limit: number,
-  cursor?: string,
-  orderDirection?: "asc" | "desc"
-) => {
-  const result = await fetchActivities(poolAddress, limit, cursor, orderDirection);
-  return {
-    items: result.items,
-    pageInfo: result.pageInfo,
-  };
+  accountKey: bigint,
+  options?: DiscoveryOptions
+): Promise<DiscoveryResult> {
+  console.log('[NoteDiscoveryService] Using NoteSyncEngine');
+
+  return storageManager.discoverNotes(
+    publicKey,
+    poolAddress,
+    accountKey,
+    async (poolAddress: string, limit: number, cursor?: string, orderDirection?: 'asc' | 'desc') => {
+      const result = await fetchActivities(poolAddress, limit, cursor, orderDirection);
+      return {
+        items: result.items,
+        pageInfo: result.pageInfo,
+      };
+    },
+    options
+  );
+}
+
+// Export wrapper object to maintain compatibility with existing hook
+export const noteDiscoveryService = {
+  discoverNotes,
 };
 
-/**
- * Create singleton service instance with storage adapter and activity fetcher
- */
-export const noteStorageProvider = new StorageProviderAdapter();
-export const noteDiscoveryService = new NoteDiscoveryService(noteStorageProvider, activityFetcher);
+// Also maintain compatibility with noteStorageProvider
+export const noteStorageProvider = storageManager;
 
-// Export singleton as default
 export default noteDiscoveryService;

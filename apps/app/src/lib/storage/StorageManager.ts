@@ -5,7 +5,8 @@
  */
 
 import { fetchActivities } from "@/services/data/indexerService";
-import type { DiscoveryResult, NoteChain } from "@shinobi-cash/core";
+import type { DiscoveryResult, DiscoveryOptions, NoteChain } from "@shinobi-cash/core";
+import type { Activity } from "@shinobi-cash/data";
 import { localStorageAdapter, sessionStorageAdapter } from "./adapters/BrowserStorageAdapter";
 import {
   accountStorageAdapter,
@@ -213,6 +214,27 @@ class StorageManager {
     depositIndex: number
   ): Promise<void> {
     return this.notesRepo.updateLastUsedDepositIndex(publicKey, poolAddress, depositIndex);
+  }
+
+  async discoverNotes(
+    publicKey: string,
+    poolAddress: string,
+    accountKey: bigint,
+    fetchActivitiesFn: (
+      poolAddress: string,
+      limit: number,
+      cursor?: string,
+      orderDirection?: 'asc' | 'desc'
+    ) => Promise<{ items: Activity[]; pageInfo: { hasNextPage: boolean; endCursor?: string } }>,
+    options?: DiscoveryOptions
+  ): Promise<DiscoveryResult> {
+    return this.notesRepo.discoverNotes(
+      publicKey,
+      poolAddress,
+      accountKey,
+      fetchActivitiesFn,
+      options
+    );
   }
 
   // ============ ACCOUNT OPERATIONS ============
