@@ -1,5 +1,6 @@
 /**
- * Withdrawal Service - Core Logic
+ * Withdrawal Service - used in the shinobi.cash app
+ * 
  */
 
 import {
@@ -9,19 +10,18 @@ import {
   SHINOBI_CASH_CROSSCHAIN_WITHDRAWAL_PAYMASTER,
 } from "@shinobi-cash/constants";
 import { POOL_CHAIN_ID } from "@/config/chains";
-import { WithdrawalProofGenerator } from "@/utils/WithdrawalProofGenerator";
 import { parseEther } from "viem";
 import {
   getCrosschainWithdrawalSmartAccountClient,
   getWithdrawalSmartAccountClient,
 } from "@/lib/clients";
 import {
-  deriveChangeNullifier,
-  deriveChangeSecret,
-  deriveRefundNullifier,
-  deriveRefundSecret,
-  derivedNoteCommitment,
+  deriveWithdrawalInputs,
+  deriveCrosschainWithdrawalInputs,
+  buildWithdrawalCircuitWitness,
+  buildCrosschainWithdrawalCircuitWitness,
 } from "@shinobi-cash/core";
+import { withdrawalProofGenerator } from "@/utils/WithdrawalProofGenerator";
 import type { SmartAccountClient } from "permissionless";
 import type { UserOperation } from "viem/account-abstraction";
 import {
@@ -57,8 +57,6 @@ interface ASPData {
   timestamp: string;
   approvalList: string[];
 }
-import { calculateContextHash } from "./types";
-import { deriveExistingNullifierAndSecret } from "./helpers";
 import {
   WithdrawalError,
   WITHDRAWAL_ERROR_CODES,
@@ -86,6 +84,8 @@ async function fetchWithdrawalData(poolAddress: string) {
 
 /**
  * Calculate withdrawal context for same-chain withdrawal
+ *
+ * Now uses pure primitives from core SDK
  */
 async function calculateWithdrawalContext(
   request: WithdrawalRequest,
@@ -99,77 +99,59 @@ async function calculateWithdrawalContext(
     recipientAddress,
     SHINOBI_CASH_RELAY_WITHDRAWAL_PAYMASTER.address,
     BigInt(500)
-    // WITHDRAWAL_FEES.DEFAULT_RELAY_FEE_BPS
   );
-
-  // Calculate context hash
-  const context = calculateContextHash(withdrawalDataStruct, poolScope);
 
   const poolAddress = SHINOBI_CASH_ETH_POOL.address;
 
-  // Generate new nullifier and secret for change note
-  const newNullifier = deriveChangeNullifier(
+  // Use pure derivation primitive from core
+  const derivation = deriveWithdrawalInputs(
+    note,
     accountKey,
     poolAddress,
-    note.depositIndex,
-    note.changeIndex + 1
+    BigInt(poolScope),
+    withdrawalDataStruct
   );
-  const newSecret = deriveChangeSecret(
-    accountKey,
-    poolAddress,
-    note.depositIndex,
-    note.changeIndex + 1
-  );
-
-  // Get existing nullifier and secret from note being spent
-  const { existingNullifier, existingSecret } = deriveExistingNullifierAndSecret(accountKey, note);
 
   return {
+    derivation,
     stateTreeLeaves,
     aspData,
     poolScope,
     withdrawalData: withdrawalDataStruct,
-    context,
-    newNullifier,
-    newSecret,
-    existingNullifier,
-    existingSecret,
+    context: BigInt(derivation.contextHash),
+    newNullifier: derivation.newNullifier,
+    newSecret: derivation.newSecret,
+    existingNullifier: derivation.existingNullifier,
+    existingSecret: derivation.existingSecret,
   };
 }
 
 /**
  * Generate ZK proof for same-chain withdrawal
+ *
+ * Now uses circuit inputs adapter from core SDK
  */
 async function generateWithdrawalProof(
   request: WithdrawalRequest,
   context: WithdrawalContext
 ): Promise<WithdrawalProofData> {
   const { note, withdrawAmount } = request;
-  const noteCommitment = derivedNoteCommitment(request.accountKey, note);
-  const {
-    stateTreeLeaves,
-    aspData,
-    context: contextHash,
-    existingNullifier,
-    existingSecret,
-    newNullifier,
-    newSecret,
-  } = context;
+  const { derivation, stateTreeLeaves, aspData } = context;
 
-  const prover = new WithdrawalProofGenerator();
-  const withdrawalProof = await prover.generateWithdrawalProof({
-    existingCommitmentHash: noteCommitment,
-    existingValue: BigInt(note.amount),
-    existingNullifier: BigInt(existingNullifier),
-    existingSecret: BigInt(existingSecret),
-    withdrawalValue: parseEther(withdrawAmount),
-    context: contextHash,
-    label: BigInt(note.label),
-    newNullifier: BigInt(newNullifier),
-    newSecret: BigInt(newSecret),
-    stateTreeCommitments: stateTreeLeaves.map((leaf) => BigInt(leaf.leafValue)),
-    aspTreeLabels: aspData.approvalList.map((label: string) => BigInt(label)),
-  });
+  // Step 1: Build circuit witness (derivation already computed in context)
+  const witness = buildWithdrawalCircuitWitness(
+    derivation,
+    stateTreeLeaves.map((leaf) => BigInt(leaf.leafValue)),
+    aspData.approvalList.map((label: string) => BigInt(label)),
+    {
+      withdrawAmount: parseEther(withdrawAmount),
+      noteAmount: BigInt(note.amount),
+      label: BigInt(note.label),
+    }
+  );
+
+  // Step 2: Generate proof
+  const withdrawalProof = await withdrawalProofGenerator.generateWithdrawalProof(witness);
 
   return withdrawalProof;
 }
@@ -206,6 +188,8 @@ async function prepareWithdrawalTransaction(
 
 /**
  * Calculate withdrawal context for cross-chain withdrawal
+ *
+ * Now uses pure primitives from core SDK
  */
 async function calculateCrossChainWithdrawalContext(
   request: WithdrawalRequest,
@@ -222,94 +206,59 @@ async function calculateCrossChainWithdrawalContext(
     WITHDRAWAL_FEES.DEFAULT_RELAY_FEE_BPS
   );
 
-  // Calculate context hash
-  const context = calculateContextHash(withdrawalDataStruct, poolScope);
-
   const poolAddress = SHINOBI_CASH_ETH_POOL.address;
 
-  // Generate new nullifier and secret for change note
-  const newNullifier = deriveChangeNullifier(
+  // Use pure cross-chain derivation primitive from core
+  const derivation = deriveCrosschainWithdrawalInputs(
+    note,
     accountKey,
     poolAddress,
-    note.depositIndex,
-    note.changeIndex + 1
+    BigInt(poolScope),
+    withdrawalDataStruct
   );
-  const newSecret = deriveChangeSecret(
-    accountKey,
-    poolAddress,
-    note.depositIndex,
-    note.changeIndex + 1
-  );
-
-  // Generate refund nullifier and secret for cross-chain withdrawal
-  const refundNullifier = deriveRefundNullifier(
-    accountKey,
-    poolAddress,
-    note.depositIndex,
-    note.changeIndex + 1
-  );
-  const refundSecret = deriveRefundSecret(
-    accountKey,
-    poolAddress,
-    note.depositIndex,
-    note.changeIndex + 1
-  );
-
-  // Get existing nullifier and secret from note being spent
-  const { existingNullifier, existingSecret } = deriveExistingNullifierAndSecret(accountKey, note);
 
   return {
+    derivation,
     stateTreeLeaves,
     aspData,
     poolScope,
     withdrawalData: withdrawalDataStruct,
-    context,
-    newNullifier,
-    newSecret,
-    refundNullifier,
-    refundSecret,
-    existingNullifier,
-    existingSecret,
+    context: BigInt(derivation.contextHash),
+    newNullifier: derivation.newNullifier,
+    newSecret: derivation.newSecret,
+    refundNullifier: derivation.refundNullifier,
+    refundSecret: derivation.refundSecret,
+    existingNullifier: derivation.existingNullifier,
+    existingSecret: derivation.existingSecret,
   };
 }
 
 /**
  * Generate ZK proof for cross-chain withdrawal
+ *
+ * Now uses circuit inputs adapter from core SDK
  */
 async function generateCrossChainWithdrawalProof(
   request: WithdrawalRequest,
   context: CrosschainWithdrawalContext
 ): Promise<WithdrawalProofData> {
   const { note, withdrawAmount } = request;
-  const noteCommitment = derivedNoteCommitment(request.accountKey, note);
-  const {
-    stateTreeLeaves,
-    aspData,
-    context: contextHash,
-    existingNullifier,
-    existingSecret,
-    newNullifier,
-    newSecret,
-    refundNullifier,
-    refundSecret,
-  } = context;
+  const { derivation, stateTreeLeaves, aspData } = context;
 
-  const prover = new WithdrawalProofGenerator();
-  const withdrawalProof = await prover.generateCrosschainWithdrawalProof({
-    existingCommitmentHash: noteCommitment,
-    existingValue: BigInt(note.amount),
-    existingNullifier: BigInt(existingNullifier),
-    existingSecret: BigInt(existingSecret),
-    withdrawalValue: parseEther(withdrawAmount),
-    context: contextHash,
-    label: BigInt(note.label),
-    newNullifier: BigInt(newNullifier),
-    newSecret: BigInt(newSecret),
-    refundNullifier: BigInt(refundNullifier),
-    refundSecret: BigInt(refundSecret),
-    stateTreeCommitments: stateTreeLeaves.map((leaf) => BigInt(leaf.leafValue)),
-    aspTreeLabels: aspData.approvalList.map((label: string) => BigInt(label)),
-  });
+  // Step 1: Build circuit witness (derivation already computed in context)
+  const witness = buildCrosschainWithdrawalCircuitWitness(
+    derivation,
+    stateTreeLeaves.map((leaf) => BigInt(leaf.leafValue)),
+    aspData.approvalList.map((label: string) => BigInt(label)),
+    {
+      withdrawAmount: parseEther(withdrawAmount),
+      noteAmount: BigInt(note.amount),
+      label: BigInt(note.label),
+    }
+  );
+
+  // Step 2: Generate proof
+  const withdrawalProof = await withdrawalProofGenerator.generateCrosschainWithdrawalProof(witness);
 
   return withdrawalProof;
 }

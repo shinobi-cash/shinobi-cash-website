@@ -5,7 +5,11 @@
 import type { StateTreeLeaf } from "@shinobi-cash/data";
 import type { SmartAccountClient } from "permissionless";
 import type { UserOperation } from "viem/account-abstraction";
-import type { Note } from "@shinobi-cash/core";
+import type {
+  Note,
+  WithdrawalDerivation,
+  CrosschainWithdrawalDerivation,
+} from "@shinobi-cash/core";
 import { SNARK_SCALAR_FIELD } from "@shinobi-cash/constants";
 import { encodeAbiParameters, keccak256 } from "viem";
 
@@ -29,6 +33,7 @@ export interface PreparedWithdrawal {
 // ============ CONTEXT TYPES ============
 
 export interface WithdrawalContext {
+  derivation: WithdrawalDerivation;
   stateTreeLeaves: StateTreeLeaf[];
   aspData: ASPData;
   poolScope: string;
@@ -41,6 +46,7 @@ export interface WithdrawalContext {
 }
 
 export interface CrosschainWithdrawalContext {
+  derivation: CrosschainWithdrawalDerivation;
   stateTreeLeaves: StateTreeLeaf[];
   aspData: ASPData;
   poolScope: string;
