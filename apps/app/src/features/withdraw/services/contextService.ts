@@ -4,7 +4,7 @@
  * Builds withdrawal context with derivations and withdrawal data.
  */
 
-import type { WithdrawalRequest, FeeQuote, WithdrawalContext } from "../domain/types";
+import type { WithdrawalRequest, FeeQuote, WithdrawalPipelineContext } from "../domain/types";
 import { validateWithdrawalContext } from "../domain/invariants";
 import {
   deriveWithdrawalInputs,
@@ -32,7 +32,7 @@ import {
 export async function buildWithdrawalContext(
   request: WithdrawalRequest,
   feeQuote: FeeQuote
-): Promise<WithdrawalContext> {
+): Promise<WithdrawalPipelineContext> {
   // 1. Fetch pool scope from contract
   const poolScopeString = await fetchPoolScope();
   const poolScope = BigInt(poolScopeString);
@@ -72,7 +72,7 @@ export async function buildWithdrawalContext(
         );
 
   // 4. Create context
-  const context: WithdrawalContext = {
+  const context: WithdrawalPipelineContext = {
     kind: feeQuote.kind,
     request,
     feeQuote,

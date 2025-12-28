@@ -24,16 +24,36 @@ import { SAME_CHAIN_GAS_LIMITS, CROSS_CHAIN_GAS_LIMITS } from "@/features/withdr
 
 // ============ TYPES ============
 
+/**
+ * Same-chain withdrawal data structure
+ *
+ * Note: "processooor" spelling is intentional - it matches the contract ABI.
+ * The contract uses this creative spelling throughout.
+ */
 export interface WithdrawalData {
   processooor: `0x${string}`;
   data: `0x${string}`;
 }
 
+/**
+ * Cross-chain withdrawal data structure
+ *
+ * Note: "processooor" spelling is intentional - it matches the contract ABI.
+ */
 export interface CrossChainWithdrawalData {
   processooor: `0x${string}`;
   data: `0x${string}`; // Encoded CrossChainRelayData
 }
 
+/**
+ * Same-chain withdrawal proof structure
+ *
+ * Note: pubSignals array has exactly 8 elements in this specific order:
+ * [0] nullifier, [1] newNoteCommitment, [2] newAmount, [3] newLabel,
+ * [4] recipient, [5] relayData, [6] aspRoot, [7] scope
+ *
+ * This ordering is critical and must match the circuit output exactly.
+ */
 export interface WithdrawalProof {
   pA: [bigint, bigint];
   pB: [[bigint, bigint], [bigint, bigint]];
@@ -41,11 +61,21 @@ export interface WithdrawalProof {
   pubSignals: [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint];
 }
 
+/**
+ * Cross-chain withdrawal proof structure
+ *
+ * Note: pubSignals array has exactly 9 elements (one more than same-chain):
+ * [0] nullifier, [1] newNoteCommitment, [2] newAmount, [3] newLabel,
+ * [4] recipient, [5] relayData, [6] aspRoot, [7] scope, [8] refundNullifier
+ *
+ * The extra refundNullifier signal is unique to cross-chain withdrawals.
+ * This ordering is critical and must match the circuit output exactly.
+ */
 export interface CrossChainWithdrawalProof {
   pA: [bigint, bigint];
   pB: [[bigint, bigint], [bigint, bigint]];
   pC: [bigint, bigint];
-  pubSignals: [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint]; // 9 signals
+  pubSignals: [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint];
 }
 
 export interface SmartAccountConfig {

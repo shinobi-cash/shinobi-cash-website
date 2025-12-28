@@ -5,7 +5,7 @@
  */
 
 import type {
-  WithdrawalContext,
+  WithdrawalPipelineContext,
   WithdrawalProof,
   PreparedUserOperation,
   ExecutionResult,
@@ -36,7 +36,7 @@ import {
  * @returns Prepared UserOperation ready for execution
  */
 export async function prepareUserOperation(
-  context: WithdrawalContext,
+  context: WithdrawalPipelineContext,
   proof: WithdrawalProof
 ): Promise<PreparedUserOperation> {
   // 1. Format proof for contract

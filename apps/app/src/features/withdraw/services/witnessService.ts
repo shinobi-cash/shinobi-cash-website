@@ -4,25 +4,26 @@
  * Builds ZK circuit witness from withdrawal context and external data.
  */
 
-import type { WithdrawalContext, WithdrawalWitness, ExternalData } from "../domain/types";
+import type { WithdrawalPipelineContext, WithdrawalWitness, ExternalData } from "../domain/types";
 import { fetchASPData, fetchStateTreeLeaves } from "@/services/data/indexerService";
 
 // ============ EXTERNAL DATA FETCHING ============
 
 /**
  * Fetch all external data required for witness building
+ *
+ * Note: poolScope is NOT fetched here - it comes from context.poolScope
+ * which is the single source of truth.
  */
 async function fetchExternalData(poolAddress: string): Promise<ExternalData> {
-  const [stateTreeLeaves, aspData, poolScope] = await Promise.all([
+  const [stateTreeLeaves, aspData] = await Promise.all([
     fetchStateTreeLeaves(poolAddress),
     fetchASPData(),
-    Promise.resolve("0"), // Pool scope already fetched in context service
   ]);
 
   return {
     stateTreeLeaves,
     aspData,
-    poolScope,
   };
 }
 
@@ -34,7 +35,7 @@ async function fetchExternalData(poolAddress: string): Promise<ExternalData> {
  * @param context - Withdrawal context with derivations
  * @returns Complete witness ready for proof generation
  */
-export async function buildWitness(context: WithdrawalContext): Promise<WithdrawalWitness> {
+export async function buildWitness(context: WithdrawalPipelineContext): Promise<WithdrawalWitness> {
   // 1. Fetch external data
   const externalData = await fetchExternalData(
     context.request.note.poolAddress.toLowerCase()

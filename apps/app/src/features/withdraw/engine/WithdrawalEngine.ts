@@ -8,7 +8,7 @@
 import type {
   WithdrawalRequest,
   FeeQuote,
-  WithdrawalContext,
+  WithdrawalPipelineContext,
   WithdrawalWitness,
   WithdrawalProof,
   PreparedUserOperation,
@@ -24,10 +24,26 @@ import { POOL_CHAIN_ID } from "@/config/chains";
 
 // ============ ENGINE STATE ============
 
+/**
+ * Engine lifecycle phases
+ *
+ * Explicit state machine for withdrawal pipeline progression.
+ * Provides guardrails against invalid transitions and better debugging.
+ */
+export type EnginePhase =
+  | "idle"
+  | "quoted"
+  | "context-built"
+  | "witness-built"
+  | "proof-generated"
+  | "prepared"
+  | "executed";
+
 interface EngineState {
+  phase: EnginePhase;
   request: WithdrawalRequest | null;
   feeQuote: FeeQuote | null;
-  context: WithdrawalContext | null;
+  context: WithdrawalPipelineContext | null;
   witness: WithdrawalWitness | null;
   proof: WithdrawalProof | null;
   preparedUserOp: PreparedUserOperation | null;
@@ -44,6 +60,7 @@ interface EngineState {
  */
 export class WithdrawalEngine {
   private state: EngineState = {
+    phase: "idle",
     request: null,
     feeQuote: null,
     context: null,
@@ -65,6 +82,7 @@ export class WithdrawalEngine {
    */
   reset(): void {
     this.state = {
+      phase: "idle",
       request: null,
       feeQuote: null,
       context: null,
@@ -91,6 +109,7 @@ export class WithdrawalEngine {
     // Generate fee quote
     const feeQuote = await quoteFees(request, POOL_CHAIN_ID);
     this.state.feeQuote = feeQuote;
+    this.state.phase = "quoted";
 
     return feeQuote;
   }
@@ -112,22 +131,27 @@ export class WithdrawalEngine {
     // Stage 2: Quote fees
     const feeQuote = await quoteFees(request, POOL_CHAIN_ID);
     this.state.feeQuote = feeQuote;
+    this.state.phase = "quoted";
 
     // Stage 3: Build context
     const context = await buildWithdrawalContext(request, feeQuote);
     this.state.context = context;
+    this.state.phase = "context-built";
 
     // Stage 4: Build witness
     const witness = await buildWitness(context);
     this.state.witness = witness;
+    this.state.phase = "witness-built";
 
     // Stage 5: Generate proof
     const proof = await generateProof(witness);
     this.state.proof = proof;
+    this.state.phase = "proof-generated";
 
     // Stage 6: Prepare UserOperation
     const preparedUserOp = await prepareUserOperation(context, proof);
     this.state.preparedUserOp = preparedUserOp;
+    this.state.phase = "prepared";
 
     return preparedUserOp;
   }
@@ -145,6 +169,7 @@ export class WithdrawalEngine {
 
     const result = await executeUserOperation(this.state.preparedUserOp);
     this.state.executionResult = result;
+    this.state.phase = "executed";
 
     return result;
   }

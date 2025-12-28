@@ -6,7 +6,7 @@
  */
 
 import { useState, useMemo, useCallback } from "react";
-import { WithdrawalEngine } from "../engine/WithdrawalEngine";
+import { WithdrawalEngine, type EnginePhase } from "../engine/WithdrawalEngine";
 import type {
   WithdrawalRequest,
   FeeQuote,
@@ -17,6 +17,7 @@ import type {
 // ============ HOOK STATE ============
 
 interface EngineHookState {
+  phase: EnginePhase;
   isPreparing: boolean;
   isExecuting: boolean;
   error: Error | null;
@@ -38,6 +39,7 @@ export function useWithdrawalEngine() {
 
   // Hook state for UI reactivity
   const [state, setState] = useState<EngineHookState>({
+    phase: "idle",
     isPreparing: false,
     isExecuting: false,
     error: null,
@@ -54,7 +56,7 @@ export function useWithdrawalEngine() {
       try {
         setState((prev) => ({ ...prev, error: null }));
         const feeQuote = await engine.quoteFees(request);
-        setState((prev) => ({ ...prev, feeQuote }));
+        setState((prev) => ({ ...prev, feeQuote, phase: engine.getState().phase }));
         return feeQuote;
       } catch (error) {
         const err = error instanceof Error ? error : new Error("Failed to quote fees");
@@ -84,6 +86,7 @@ export function useWithdrawalEngine() {
           isPreparing: false,
           preparedUserOp,
           feeQuote: engine.getState().feeQuote,
+          phase: engine.getState().phase,
         }));
         return preparedUserOp;
       } catch (error) {
@@ -115,6 +118,7 @@ export function useWithdrawalEngine() {
         ...prev,
         isExecuting: false,
         executionResult: result,
+        phase: engine.getState().phase,
       }));
       return result;
     } catch (error) {
@@ -134,6 +138,7 @@ export function useWithdrawalEngine() {
   const reset = useCallback(() => {
     engine.reset();
     setState({
+      phase: "idle",
       isPreparing: false,
       isExecuting: false,
       error: null,
@@ -151,6 +156,7 @@ export function useWithdrawalEngine() {
     reset,
 
     // State
+    phase: state.phase,
     isPreparing: state.isPreparing,
     isExecuting: state.isExecuting,
     error: state.error,

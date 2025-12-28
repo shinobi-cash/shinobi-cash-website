@@ -4,7 +4,7 @@
  * Runtime assertions and validation logic to ensure withdrawal correctness.
  */
 
-import type { WithdrawalRequest, FeeQuote, WithdrawalContext } from "./types";
+import type { WithdrawalRequest, FeeQuote, WithdrawalPipelineContext } from "./types";
 import { WITHDRAWAL_CONFIG } from "../constants";
 
 // ============ VALIDATION ERRORS ============
@@ -117,7 +117,7 @@ export function validateFeeQuote(feeQuote: FeeQuote): void {
  * @param context - Withdrawal context to validate
  * @throws WithdrawalValidationError if invalid
  */
-export function validateWithdrawalContext(context: WithdrawalContext): void {
+export function validateWithdrawalContext(context: WithdrawalPipelineContext): void {
   // Pool scope must be positive
   if (context.poolScope <= BigInt(0)) {
     throw new WithdrawalValidationError(

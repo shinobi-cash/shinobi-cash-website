@@ -51,9 +51,13 @@ export interface FeeQuote {
 }
 
 /**
- * Stage 3: Withdrawal context with derivations
+ * Stage 3: Withdrawal pipeline context with derivations
+ *
+ * Note: Renamed from WithdrawalContext to avoid confusion with:
+ * - Core crypto WithdrawalDerivation (cryptographic context)
+ * - UI-level view models
  */
-export interface WithdrawalContext {
+export interface WithdrawalPipelineContext {
   kind: WithdrawalKind;
   request: WithdrawalRequest;
   feeQuote: FeeQuote;
@@ -66,7 +70,7 @@ export interface WithdrawalContext {
  * Stage 4: Complete witness for ZK proof generation
  */
 export interface WithdrawalWitness {
-  context: WithdrawalContext;
+  context: WithdrawalPipelineContext;
   stateTreeLeaves: bigint[];
   aspTreeLeaves: bigint[];
   circuitInputs: {
@@ -93,7 +97,7 @@ export interface WithdrawalProof {
  * Stage 6: Prepared UserOperation ready for execution
  */
 export interface PreparedUserOperation {
-  context: WithdrawalContext;
+  context: WithdrawalPipelineContext;
   proof: WithdrawalProof;
   userOperation: UserOperation<"0.7">;
   smartAccountClient: SmartAccountClient;
@@ -111,6 +115,9 @@ export interface ExecutionResult {
 
 /**
  * External data dependencies
+ *
+ * Note: poolScope is NOT included here - it's fetched separately in
+ * contextService as the single source of truth.
  */
 export interface ExternalData {
   stateTreeLeaves: { leafValue: string }[];
@@ -120,5 +127,4 @@ export interface ExternalData {
     timestamp: string;
     approvalList: string[];
   };
-  poolScope: string;
 }

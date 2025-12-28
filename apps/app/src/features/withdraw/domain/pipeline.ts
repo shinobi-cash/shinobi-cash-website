@@ -6,6 +6,8 @@
  */
 
 import type { WithdrawalRequest, WithdrawalKind, FeeQuote } from "./types";
+import type { WithdrawStatus } from "../types/withdrawStatus";
+import type { Note } from "@shinobi-cash/core";
 import { formatEther } from "viem";
 
 // ============ STAGE TRANSITIONS ============
@@ -83,4 +85,55 @@ export function formatFeeQuote(feeQuote: FeeQuote): {
     totalFeeEth: formatEther(feeQuote.totalFeeWei),
     netAmountEth: formatEther(feeQuote.netAmountWei),
   };
+}
+
+// ============ STATUS DERIVATION ============
+
+/**
+ * Derive withdrawal status from current state
+ *
+ * Pure function that determines the withdrawal status based on engine,
+ * form, and note selection state. Testable in isolation.
+ *
+ * @param input - Current state snapshot
+ * @returns Current withdrawal status
+ */
+export function deriveWithdrawStatus(input: {
+  hasExecutionResult: boolean;
+  isExecuting: boolean;
+  hasEngineError: boolean;
+  isPreparing: boolean;
+  selectedNote: Note | null;
+  amountError: string | null;
+  addressError: string | null;
+  amount: string;
+  recipientAddress: string;
+}): WithdrawStatus {
+  // Priority order (highest to lowest):
+  // 1. Execution complete
+  if (input.hasExecutionResult) return "submitted";
+
+  // 2. Currently executing
+  if (input.isExecuting) return "submitting";
+
+  // 3. Proof generation failed
+  if (input.hasEngineError) return "proof-failed";
+
+  // 4. Currently preparing proof
+  if (input.isPreparing) return "preparing-proof";
+
+  // 5. No note selected
+  if (!input.selectedNote) return "no-note-selected";
+
+  // 6. Form validation errors
+  if (input.amountError) return "invalid-amount";
+  if (input.addressError) return "invalid-address";
+
+  // 7. Ready to withdraw
+  if (input.amount.trim() !== "" && input.recipientAddress.trim() !== "") {
+    return "ready";
+  }
+
+  // 8. Default idle state
+  return "idle";
 }

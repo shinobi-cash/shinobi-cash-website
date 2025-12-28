@@ -10,11 +10,11 @@ import type { WithdrawStatus, WithdrawError } from "../types/withdrawStatus";
 import { useNoteSelection } from "../hooks/useNoteSelection";
 import { useWithdrawFormState } from "../hooks/useWithdrawFormState";
 import { useWithdrawalEngine } from "../hooks/useWithdrawalEngine";
-import { useReactiveFeeQuote } from "../hooks/useReactiveFeeQuote";
+import { usePreviewFeeQuote } from "../hooks/usePreviewFeeQuote";
 import { resolveWithdrawRoute } from "../protocol/withdrawRoute";
 import { parseEther, formatEther } from "viem";
 import type { WithdrawalRequest } from "../domain/types";
-import { formatFeeQuote } from "../domain/pipeline";
+import { formatFeeQuote, deriveWithdrawStatus } from "../domain/pipeline";
 
 // ============ TYPES ============
 
@@ -90,8 +90,8 @@ export function useWithdrawController(
     [form.destinationChainId]
   );
 
-  // Reactively fetch fee quotes as user types
-  const { feeQuote } = useReactiveFeeQuote(
+  // Preview fee quotes as user types (for UI display only)
+  const { feeQuote } = usePreviewFeeQuote(
     noteSelection.selectedNote,
     form.amount,
     form.recipientAddress,
@@ -151,30 +151,19 @@ export function useWithdrawController(
         ? { type: "validation", message: form.addressError }
         : null;
 
-  // Status state machine
-  const getStatus = useCallback((): WithdrawStatus => {
-    if (engine.executionResult) return "submitted";
-    if (engine.isExecuting) return "submitting";
-    if (engine.error) return "proof-failed";
-    if (engine.isPreparing) return "preparing-proof";
-    if (!noteSelection.selectedNote) return "no-note-selected";
-    if (form.amountError) return "invalid-amount";
-    if (form.addressError) return "invalid-address";
-    if (form.amount.trim() !== "" && form.recipientAddress.trim() !== "") return "ready";
-    return "idle";
-  }, [
-    engine.executionResult,
-    engine.isExecuting,
-    engine.error,
-    engine.isPreparing,
-    noteSelection.selectedNote,
-    form.amountError,
-    form.addressError,
-    form.amount,
-    form.recipientAddress,
-  ]);
+  // Status state machine (pure derivation)
+  const status = deriveWithdrawStatus({
+    hasExecutionResult: !!engine.executionResult,
+    isExecuting: engine.isExecuting,
+    hasEngineError: !!engine.error,
+    isPreparing: engine.isPreparing,
+    selectedNote: noteSelection.selectedNote,
+    amountError: form.amountError,
+    addressError: form.addressError,
+    amount: form.amount,
+    recipientAddress: form.recipientAddress,
+  });
 
-  const status = getStatus();
   const canWithdraw = status === "ready";
 
   // ============ ACTIONS ============
