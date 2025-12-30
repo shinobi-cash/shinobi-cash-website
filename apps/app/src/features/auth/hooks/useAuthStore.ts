@@ -49,6 +49,7 @@ export function useAuthActions() {
   const startAccountCreation = useStore((state) => state.startAccountCreation);
   const completeAccountCreation = useStore((state) => state.completeAccountCreation);
   const selectAccount = useStore((state) => state.selectAccount);
+  const authenticateWithWallet = useStore((state) => state.authenticateWithWallet);
   const authenticate = useStore((state) => state.authenticate);
   const logout = useStore((state) => state.logout);
   const clearError = useStore((state) => state.clearError);
@@ -60,12 +61,13 @@ export function useAuthActions() {
       startAccountCreation,
       completeAccountCreation,
       selectAccount,
+      authenticateWithWallet,
       authenticate,
       logout,
       clearError,
       setError,
     }),
-    [bootstrap, startAccountCreation, completeAccountCreation, selectAccount, authenticate, logout, clearError, setError]
+    [bootstrap, startAccountCreation, completeAccountCreation, selectAccount, authenticateWithWallet, authenticate, logout, clearError, setError]
   );
 }
 

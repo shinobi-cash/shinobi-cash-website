@@ -31,6 +31,9 @@ interface AuthStore {
   /** Select an existing account to authenticate */
   selectAccount: (accountId: string, method: AuthMethod) => void;
 
+  /** Authenticate with wallet (requires signature, address, chainId) */
+  authenticateWithWallet: (accountId: string, signature: string, walletAddress: string, chainId: number) => Promise<void>;
+
   /** Complete authentication with session */
   authenticate: (session: AuthSession) => void;
 
@@ -112,13 +115,59 @@ export const useAuthStore = create<AuthStore>()(
 
       /**
        * Select account to authenticate
-       * Transitions to authenticating state
+       * For passkey: triggers authentication immediately
+       * For wallet: shows authenticating UI, actual auth happens when wallet provides signature
        */
-      selectAccount: (accountId, method) => {
+      selectAccount: async (accountId, method) => {
         set({ state: { status: "authenticating", method, accountId } });
 
-        // Phase 2: Trigger authentication
-        // get().authenticate() will be called by auth service
+        // For passkey, authenticate immediately
+        if (method === "passkey") {
+          try {
+            const { authenticate: authService } = await import("../services/authService");
+            const session = await authService(accountId, method);
+            get().authenticate(session);
+          } catch (error) {
+            get().setError(
+              {
+                code: "PASSKEY_AUTH_FAILED" as AuthErrorCode,
+                message: error instanceof Error ? error.message : "Passkey authentication failed",
+                timestamp: Date.now(),
+                originalError: error,
+              },
+              () => get().selectAccount(accountId, method)
+            );
+          }
+        }
+        // For wallet auth, UI needs to trigger wallet signing and call authenticateWithWallet
+      },
+
+      /**
+       * Authenticate with wallet signature
+       * Called by UI after wallet provides signature
+       */
+      authenticateWithWallet: async (accountId, signature, walletAddress, chainId) => {
+        set({ state: { status: "authenticating", method: "wallet", accountId } });
+
+        try {
+          const { authenticate: authService } = await import("../services/authService");
+          const session = await authService(accountId, "wallet", {
+            signature,
+            walletAddress,
+            chainId,
+          });
+          get().authenticate(session);
+        } catch (error) {
+          get().setError(
+            {
+              code: "WALLET_SIGNATURE_FAILED" as AuthErrorCode,
+              message: error instanceof Error ? error.message : "Wallet authentication failed",
+              timestamp: Date.now(),
+              originalError: error,
+            },
+            () => get().authenticateWithWallet(accountId, signature, walletAddress, chainId)
+          );
+        }
       },
 
       /**
