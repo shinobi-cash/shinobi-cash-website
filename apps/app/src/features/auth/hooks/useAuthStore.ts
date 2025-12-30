@@ -4,6 +4,7 @@
  */
 
 import { useAuthStore as useStore } from "../domain/authStore";
+import { useMemo } from "react";
 import type { AuthSession, AuthMethod, AccountIndex } from "../domain/types";
 import type { AuthState } from "../domain/state";
 
@@ -40,21 +41,32 @@ export function useAuthState(): AuthState {
 
 /**
  * Get auth actions
- * Returns all action methods from the store
- *
- * @returns Object with action methods
+ * Returns stable action methods from the store
+ * Memoized to prevent infinite re-renders
  */
 export function useAuthActions() {
-  return useStore((state) => ({
-    bootstrap: state.bootstrap,
-    startAccountCreation: state.startAccountCreation,
-    completeAccountCreation: state.completeAccountCreation,
-    selectAccount: state.selectAccount,
-    authenticate: state.authenticate,
-    logout: state.logout,
-    clearError: state.clearError,
-    setError: state.setError,
-  }));
+  const bootstrap = useStore((state) => state.bootstrap);
+  const startAccountCreation = useStore((state) => state.startAccountCreation);
+  const completeAccountCreation = useStore((state) => state.completeAccountCreation);
+  const selectAccount = useStore((state) => state.selectAccount);
+  const authenticate = useStore((state) => state.authenticate);
+  const logout = useStore((state) => state.logout);
+  const clearError = useStore((state) => state.clearError);
+  const setError = useStore((state) => state.setError);
+
+  return useMemo(
+    () => ({
+      bootstrap,
+      startAccountCreation,
+      completeAccountCreation,
+      selectAccount,
+      authenticate,
+      logout,
+      clearError,
+      setError,
+    }),
+    [bootstrap, startAccountCreation, completeAccountCreation, selectAccount, authenticate, logout, clearError, setError]
+  );
 }
 
 /**
