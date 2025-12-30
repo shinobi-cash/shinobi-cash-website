@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { AnimatedCircularProgressBar } from "@workspace/ui/components/animated-circular-progress-bar";
 import { RotateCw } from "lucide-react";
+import { useAutoSync } from "@/hooks/useAutoSync";
 
 interface SyncIndicatorProps {
   onSync: () => void | Promise<void>;
@@ -12,8 +13,9 @@ interface SyncIndicatorProps {
 export function SyncIndicator({ onSync, autoSyncInterval = 10 }: SyncIndicatorProps) {
   const [timeLeft, setTimeLeft] = useState(autoSyncInterval);
   const [isSyncing, setIsSyncing] = useState(false);
+  const { autoSyncEnabled } = useAutoSync();
 
-  const handleSync = async () => {
+  const handleSync = useCallback(async () => {
     if (isSyncing) return;
 
     setIsSyncing(true);
@@ -25,11 +27,16 @@ export function SyncIndicator({ onSync, autoSyncInterval = 10 }: SyncIndicatorPr
       setIsSyncing(false);
       setTimeLeft(autoSyncInterval);
     }
-  };
+  }, [isSyncing, onSync, autoSyncInterval]);
 
-    // Countdown timer
+  // Reset timer when auto-sync is toggled
   useEffect(() => {
-    if (isSyncing) return;
+    setTimeLeft(autoSyncInterval);
+  }, [autoSyncEnabled, autoSyncInterval]);
+
+  // Countdown timer - only run if auto-sync is enabled
+  useEffect(() => {
+    if (!autoSyncEnabled || isSyncing) return;
 
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
@@ -43,12 +50,30 @@ export function SyncIndicator({ onSync, autoSyncInterval = 10 }: SyncIndicatorPr
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [isSyncing, autoSyncInterval]);
+  }, [autoSyncEnabled, isSyncing, autoSyncInterval, handleSync]);
 
 
   // Calculate progress (countdown from 100% to 0%)
   const progress = (timeLeft / autoSyncInterval) * 100;
 
+  // When auto-sync is disabled, show simple refresh button
+  if (!autoSyncEnabled) {
+    return (
+      <button
+        onClick={handleSync}
+        disabled={isSyncing}
+        className="group relative cursor-pointer rounded-lg p-2 transition-colors hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+        aria-label={isSyncing ? "Syncing..." : "Sync now"}
+        title="Manual sync only (auto-sync disabled)"
+      >
+        <RotateCw
+          className={`h-4 w-4 text-gray-400 ${isSyncing ? "animate-spin" : "group-hover:text-white"}`}
+        />
+      </button>
+    );
+  }
+
+  // When auto-sync is enabled, show countdown progress
   return (
     <button
       onClick={handleSync}
@@ -61,8 +86,6 @@ export function SyncIndicator({ onSync, autoSyncInterval = 10 }: SyncIndicatorPr
         max={100}
         min={0}
         value={progress}
-        // gaugePrimaryColor="hsl(var(--primary))"
-        // gaugeSecondaryColor="hsl(var(--muted))"
         gaugePrimaryColor="oklch(0.627 0.265 303.9)" // Primary accent color
         gaugeSecondaryColor="oklch(0.269 0 0)" // Muted border color
         className="size-8 transition-opacity group-hover:opacity-80"

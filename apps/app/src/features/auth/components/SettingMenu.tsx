@@ -1,33 +1,36 @@
 /**
- * Account Management Menu
- * Provides logout, disconnect wallet, and add passkey options
- * @file features/auth/components/AccountMenu.tsx
+ * Setting Menu
+ * @file features/auth/components/SettingMenu.tsx
  */
 
 import { storageManager } from "@/lib/storage";
 import { isPasskeySupported } from "@/utils/environment";
-import { Fingerprint, LogOut, WalletIcon } from "lucide-react";
+import { Fingerprint, LogOut, WalletIcon, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useAccount, useDisconnect } from "wagmi";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu";
+import { Switch } from "@workspace/ui/components/switch";
 import { useAuthController } from "../controller/useAuthController";
+import { useAutoSync } from "@/hooks/useAutoSync";
 
-interface AccountMenuProps {
+interface SettingMenuProps {
   children: React.ReactNode;
   onAddPasskey?: () => void;
 }
 
-export function AccountMenu({ children, onAddPasskey }: AccountMenuProps) {
+export function SettingMenu({ children, onAddPasskey }: SettingMenuProps) {
   const { isAuthenticated, logout } = useAuthController();
   const { isConnected } = useAccount();
   const { disconnect } = useDisconnect();
   const [canAddPasskey, setCanAddPasskey] = useState(false);
+  const { autoSyncEnabled, setAutoSyncEnabled } = useAutoSync();
 
   // Check if user can add passkey (wallet-based account without passkey)
   useEffect(() => {
@@ -95,7 +98,31 @@ export function AccountMenu({ children, onAddPasskey }: AccountMenuProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48 border-gray-700 bg-gray-900 p-1">
+      <DropdownMenuContent align="end" className="w-56 border-gray-700 bg-gray-900 p-1">
+        {/* Notes Section */}
+        <DropdownMenuLabel className="px-2 text-xs font-semibold text-gray-500">
+          Notes
+        </DropdownMenuLabel>
+
+        {/* Auto-sync toggle */}
+        <div className="flex items-center justify-between gap-4 px-2 py-2">
+          <div className="flex items-center gap-2">
+            <RefreshCw className="h-4 w-4 text-gray-400" />
+            <span className="text-sm text-gray-300">Auto Sync</span>
+          </div>
+          <Switch
+            checked={autoSyncEnabled}
+            onCheckedChange={setAutoSyncEnabled}
+            className="data-[state=checked]:bg-purple-600"
+          />
+        </div>
+        <DropdownMenuSeparator className="bg-gray-800" />
+
+       {/* Notes Section */}
+        <DropdownMenuLabel className="px-2 text-xs font-semibold text-gray-500">
+          Account
+        </DropdownMenuLabel>
+
         {canAddPasskey && (
           <>
             <DropdownMenuItem

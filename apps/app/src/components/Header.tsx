@@ -14,7 +14,7 @@ import {
 } from "@workspace/ui/components/select";
 import { useState } from "react";
 import { AddPasskeyModal } from "@/features/auth/components/AddPasskeyModal";
-import { AccountMenu } from "@/features/auth/components/AccountMenu";
+import { SettingMenu } from "@/features/auth/components/SettingMenu";
 
 export function Header() {
   const { isConnected } = useAccount();
@@ -129,14 +129,14 @@ export function Header() {
           )}
 
           {/* Account Menu */}
-          <AccountMenu onAddPasskey={handleAddPasskey}>
+          <SettingMenu onAddPasskey={handleAddPasskey}>
             <button
               className="rounded-lg p-2 transition-colors hover:bg-gray-800"
               aria-label="Account Menu"
             >
               <Settings className="h-5 w-5 text-gray-400 hover:text-white" />
             </button>
-          </AccountMenu>
+          </SettingMenu>
 
           {/* Mobile: Menu Icon */}
           <button
