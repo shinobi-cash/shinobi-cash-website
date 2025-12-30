@@ -128,7 +128,7 @@ export async function hasStoredSession(): Promise<boolean> {
   try {
     const sessionInfo = await KDF.getStoredSessionInfo();
     return sessionInfo !== null;
-  } catch (error) {
+  } catch {
     // Best-effort check
     return false;
   }

@@ -1,4 +1,4 @@
-import { useAuth } from "@/contexts/AuthContext";
+import { usePublicKey, useAccountKey } from "@/features/auth/hooks/useAuthStore";
 import { getPublicClient } from "@/lib/clients";
 import { noteDiscoveryService } from "@/features/notes/services/NoteDiscoveryService";
 import { showToast } from "@/lib/toast";
@@ -42,7 +42,8 @@ export function TransactionTrackingProvider({ children }: { children: React.Reac
   const eventTargetRef = useRef(new EventTarget());
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const { publicKey, accountKey } = useAuth();
+  const publicKey = usePublicKey();
+  const accountKey = useAccountKey();
 
   /**
    * Clears tracking immediately and cancels timers

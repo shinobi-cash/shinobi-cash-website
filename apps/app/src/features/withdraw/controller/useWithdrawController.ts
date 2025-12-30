@@ -3,7 +3,7 @@
  */
 
 import { useCallback, useMemo } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+import { usePublicKey, useAccountKey } from "@/features/auth/hooks/useAuthStore";
 import type { Note } from "@shinobi-cash/core";
 import { SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
 import type { WithdrawStatus, WithdrawError } from "../types/withdrawStatus";
@@ -70,7 +70,8 @@ export function useWithdrawController(
   asset: { symbol: string; name: string; icon: string },
   onTransactionSuccess?: () => void
 ): WithdrawController {
-  const { publicKey, accountKey } = useAuth();
+  const publicKey = usePublicKey();
+  const accountKey = useAccountKey();
   const poolAddress = SHINOBI_CASH_ETH_POOL.address;
 
   if (!publicKey || !accountKey) {

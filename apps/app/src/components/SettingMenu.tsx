@@ -17,7 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu";
 import { Switch } from "@workspace/ui/components/switch";
-import { useAuthController } from "../features/auth/controller/useAuthController";
+import { useIsAuthenticated, useAuthActions } from "@/features/auth/hooks/useAuthStore";
 import { useAutoSync } from "@/hooks/useAutoSync";
 
 interface SettingMenuProps {
@@ -26,7 +26,8 @@ interface SettingMenuProps {
 }
 
 export function SettingMenu({ children, onAddPasskey }: SettingMenuProps) {
-  const { isAuthenticated, logout } = useAuthController();
+  const isAuthenticated = useIsAuthenticated();
+  const { logout } = useAuthActions();
   const { isConnected } = useAccount();
   const { disconnect } = useDisconnect();
   const [canAddPasskey, setCanAddPasskey] = useState(false);

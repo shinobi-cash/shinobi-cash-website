@@ -1,15 +1,17 @@
 "use client";
 
-import { useAuth } from "@/contexts/AuthContext";
+import { useIsAuthenticated, usePublicKey, useAccountKey } from "@/features/auth/hooks/useAuthStore";
 import { useNotesController } from "@/features/notes";
 import { SyncIndicator } from "@/components/SyncIndicator";
 import { DashboardTabs } from "@/components/DashboardTabs";
-import { AuthScreen } from "@/components/AuthScreen";
+import { AuthScreen } from "@/features/auth/ui/AuthScreen";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, publicKey, accountKey } = useAuth();
+  const isAuthenticated = useIsAuthenticated();
+  const publicKey = usePublicKey();
+  const accountKey = useAccountKey();
   const notesController = useNotesController();
 
   // Auth guard - show auth screen if not authenticated

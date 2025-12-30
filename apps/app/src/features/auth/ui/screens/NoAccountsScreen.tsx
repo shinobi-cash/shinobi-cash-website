@@ -66,7 +66,7 @@ export function NoAccountsScreen({ onCreateAccount }: NoAccountsScreenProps) {
             <span className="font-medium text-white">Create with Wallet</span>
           </div>
           <p className="text-xs text-gray-400">
-            Sign with your connected wallet. You'll need to sign each time you access.
+            Sign with your connected wallet. You&apos;ll need to sign each time you access.
           </p>
         </button>
       </div>

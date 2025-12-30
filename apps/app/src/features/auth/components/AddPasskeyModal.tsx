@@ -4,7 +4,7 @@
  * @file features/auth/components/AddPasskeyModal.tsx
  */
 
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuthSession } from "@/features/auth/hooks/useAuthStore";
 import { useAccountNameValidation } from "@/hooks/useAccountNameValidation";
 import { AlertCircle, Fingerprint } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
@@ -29,7 +29,17 @@ export function AddPasskeyModal({ open, onOpenChange }: AddPasskeyModalProps) {
   const [accountName, setAccountName] = useState("");
   const { accountNameError, onAccountNameChange, setAccountNameError } = useAccountNameValidation();
   const [setupError, setSetupError] = useState("");
-  const { getFullKeys } = useAuth();
+  const session = useAuthSession();
+
+  // Get full keys from session
+  const getFullKeys = useCallback(() => {
+    if (!session) return null;
+    return {
+      publicKey: session.publicKey,
+      privateKey: session.privateKey,
+      address: session.address,
+    };
+  }, [session]);
 
   // Use shared passkey flow (handles setup, sync baseline, toast)
   // setAuthKeys: false because account is already authenticated

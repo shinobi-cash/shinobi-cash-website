@@ -5,7 +5,7 @@
  */
 
 import { useMemo, useCallback, useEffect } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+import { usePublicKey, useAccountKey } from "@/features/auth/hooks/useAuthStore";
 import { useTransactionTracking } from "@/hooks/transactions/useTransactionTracking";
 import { SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
 import type { Note } from "@shinobi-cash/core";
@@ -54,7 +54,8 @@ export interface NotesController {
 // ============ CONTROLLER ============
 
 export function useNotesController(): NotesController {
-  const { publicKey, accountKey } = useAuth();
+  const publicKey = usePublicKey();
+  const accountKey = useAccountKey();
   const { onTransactionIndexed } = useTransactionTracking();
   const poolAddress = SHINOBI_CASH_ETH_POOL.address;
 

@@ -7,7 +7,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useAuthState, useAuthActions, useAuthError } from "../hooks/useAuthStore";
+import { useAuthState, useAuthActions } from "../hooks/useAuthStore";
 import { BootingScreen } from "./screens/BootingScreen";
 import { NoAccountsScreen } from "./screens/NoAccountsScreen";
 import { AccountsDetectedScreen } from "./screens/AccountsDetectedScreen";
@@ -18,7 +18,6 @@ import { ErrorScreen } from "./screens/ErrorScreen";
 export function AuthScreen() {
   const state = useAuthState();
   const actions = useAuthActions();
-  const errorState = useAuthError();
 
   // Bootstrap on mount
   useEffect(() => {
@@ -77,10 +76,8 @@ export function AuthScreen() {
           onClear={actions.clearError}
         />
       );
-
-    default:
-      // Exhaustiveness check - TypeScript will error if we miss a state
-      const _exhaustive: never = state;
-      return <BootingScreen />;
   }
+
+  // Exhaustiveness check - should never reach here
+  return <BootingScreen />;
 }

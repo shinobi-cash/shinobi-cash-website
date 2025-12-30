@@ -6,7 +6,7 @@
  * - Provides simple API to UI
  */
 
-import { useAuth } from "@/contexts/AuthContext";
+import { usePublicKey, useAccountKey } from "@/features/auth/hooks/useAuthStore";
 import { useAccount, useBalance, useChainId } from "wagmi";
 import { useDepositFormState } from "../hooks/useDepositFormState";
 import { useDepositCommitment } from "../hooks/useDepositCommitment";
@@ -77,7 +77,8 @@ export function useDepositController(
   // Wallet & Auth
   const { isConnected, address } = useAccount();
   const chainId = useChainId();
-  const { publicKey, accountKey } = useAuth();
+  const publicKey = usePublicKey();
+  const accountKey = useAccountKey();
   const { data: balance } = useBalance({ address });
   const { trackTransaction } = useTransactionTracking();
 
