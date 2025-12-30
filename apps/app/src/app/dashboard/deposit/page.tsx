@@ -15,15 +15,12 @@ export default function DepositPage() {
     router.push("/dashboard");
   };
 
-  const handleBack = () => {
-    router.push("/dashboard");
-  };
-
   return (
-    <DepositForm
-      asset={{ symbol: "ETH", name: "Ethereum", icon: "/ethereum.svg" }}
-      onTransactionSuccess={handleTransactionSuccess}
-      onBack={handleBack}
-    />
+    <div className="h-full overflow-y-auto">
+      <DepositForm
+        asset={{ symbol: "ETH", name: "Ethereum", icon: "/ethereum.svg" }}
+        onTransactionSuccess={handleTransactionSuccess}
+      />
+    </div>
   );
 }

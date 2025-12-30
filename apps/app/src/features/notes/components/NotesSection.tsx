@@ -104,7 +104,7 @@ export function NotesSection({ controller, onNoteChainClick }: NotesSectionProps
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="bg-app-surface border-app flex-shrink-0 rounded-t-xl border">
+      <div className="flex-shrink-0 border-b border-gray-800">
         <div className="flex">
           {renderFilterButton("available", controller.availableCount, "border-green-500")}
           {renderFilterButton("pending", controller.pendingCount, "border-yellow-500")}
@@ -112,7 +112,7 @@ export function NotesSection({ controller, onNoteChainClick }: NotesSectionProps
         </div>
       </div>
 
-      <div className="bg-app-surface border-app flex-1 overflow-hidden rounded-b-xl border-x border-b">
+      <div className="flex-1 overflow-hidden">
         <div className="h-full overflow-y-auto">
           {renderEmptyState()}
 

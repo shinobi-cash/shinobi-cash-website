@@ -3,11 +3,10 @@
  * Pure UI component that delegates all logic to useWithdrawController
  */
 
-import { Loader2, ChevronDown } from "lucide-react";
+import { Loader2, ChevronDown, ChevronLeft } from "lucide-react";
 import { useState, useCallback, useEffect, useRef } from "react";
 import { Button } from "@workspace/ui/components/button";
 import { POOL_CHAIN } from "@shinobi-cash/constants";
-import { BackButton } from "@/components/ui/back-button";
 import { TokenAmountInput } from "@/components/shared/TokenAmountInput";
 import { TokenAmountInputWithBalance } from "@/components/shared/TokenAmountInputWithBalance";
 import { InputLabel } from "@/components/shared/InputLabel";
@@ -26,10 +25,9 @@ import { getUserMessage } from "@/lib/errors/errorHandler";
 
 interface WithdrawalFormProps {
   onTransactionSuccess?: () => void;
-  onBack?: () => void;
 }
 
-export function WithdrawalForm({ onTransactionSuccess, onBack }: WithdrawalFormProps) {
+export function WithdrawalForm({ onTransactionSuccess }: WithdrawalFormProps) {
   const asset = ETH_ASSET;
   const [isNoteSelectionOpen, setIsNoteSelectionOpen] = useState(false);
   const [isDestinationSelectionOpen, setIsDestinationSelectionOpen] = useState(false);
@@ -127,7 +125,14 @@ export function WithdrawalForm({ onTransactionSuccess, onBack }: WithdrawalFormP
     return (
       <div className="flex h-full flex-col">
         <div className="flex items-center gap-3 border-b border-gray-800 px-4 py-4">
-          <BackButton onClick={() => setIsDestinationSelectionOpen(false)} />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsDestinationSelectionOpen(false)}
+            className="h-8 w-8"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
           <h2 className="text-lg font-semibold text-white">Select Asset & Chain</h2>
         </div>
 
@@ -147,14 +152,6 @@ export function WithdrawalForm({ onTransactionSuccess, onBack }: WithdrawalFormP
   // Main Withdrawal Form
   return (
     <div className="mx-auto flex h-full w-full max-w-md flex-col overflow-x-hidden lg:max-w-lg">
-      {/* Header with Back Button */}
-      {onBack && (
-        <div className="flex items-center gap-3 border-b border-gray-800 px-4 py-4">
-          <BackButton onClick={onBack} />
-          <h2 className="text-lg font-semibold text-white">Withdraw</h2>
-        </div>
-      )}
-
       <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6">
         {/* You Pay Section - From Note (Pool Chain) */}
         <InputLabel

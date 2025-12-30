@@ -42,8 +42,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <SyncIndicator onSync={notesController.refresh} />
         </div>
 
-        {/* Card Content - Route-specific content */}
-        <div className="px-4 pb-4">
+        {/* Card Content - Route-specific content with fixed height */}
+        <div className="h-[600px]">
           {children}
         </div>
       </div>

@@ -40,9 +40,9 @@ export default function NotesPage() {
   }
 
   return (
-    <div className="h-full w-full">
-      {/* Balance Section */}
-      <div className="flex flex-col gap-4 p-4 sm:p-6">
+    <div className="flex h-full w-full flex-col">
+      {/* Balance Section - Fixed */}
+      <div className="shrink-0 border-b border-gray-800 px-4 pb-4 pt-4 sm:px-6 sm:pt-6">
         <AmountDisplay
           amount={totalBalance}
           layout="stacked"
@@ -52,8 +52,10 @@ export default function NotesPage() {
         />
       </div>
 
-      {/* Notes Section */}
-      <NotesSection controller={notesController} onNoteChainClick={noteChainModal.openWith} />
+      {/* Notes Section - Scrollable */}
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <NotesSection controller={notesController} onNoteChainClick={noteChainModal.openWith} />
+      </div>
     </div>
   );
 }

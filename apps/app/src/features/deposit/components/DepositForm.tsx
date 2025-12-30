@@ -16,7 +16,6 @@ import { SectionDivider } from "@/components/shared/SectionDivider";
 import { FeeBreakdown } from "@/components/shared/FeeBreakdown";
 import { TokenChainSelector } from "@/components/shared/TokenChainSelector";
 import { AssetChainSelectorScreen } from "@/components/shared/AssetChainSelectorScreen";
-import { BackButton } from "@/components/ui/back-button";
 import { CircleQuestionMarkIcon } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { modal } from "@/context";
@@ -41,10 +40,9 @@ function DepositNoteInfo() {
 interface DepositFormProps {
   asset: { symbol: string; name: string; icon: string };
   onTransactionSuccess?: () => void;
-  onBack?: () => void;
 }
 
-export function DepositForm({ asset, onTransactionSuccess, onBack }: DepositFormProps) {
+export function DepositForm({ asset, onTransactionSuccess }: DepositFormProps) {
   const chainId = useChainId();
   const { switchChain } = useSwitchChain();
   const [isAssetSelectorOpen, setIsAssetSelectorOpen] = useState(false);
@@ -139,14 +137,6 @@ export function DepositForm({ asset, onTransactionSuccess, onBack }: DepositForm
   // Main Deposit Form
   return (
     <div className="mx-auto flex h-full w-full max-w-md flex-col overflow-x-hidden lg:max-w-lg">
-      {/* Header with Back Button */}
-      {onBack && (
-        <div className="flex items-center gap-3 border-b border-gray-800 px-4 py-4">
-          <BackButton onClick={onBack} />
-          <h2 className="text-lg font-semibold text-white">Deposit</h2>
-        </div>
-      )}
-
       <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6">
         {/* Unsupported Network Warning */}
         {!controller.isOnSupportedChain && (

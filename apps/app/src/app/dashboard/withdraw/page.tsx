@@ -15,14 +15,11 @@ export default function WithdrawPage() {
     router.push("/dashboard");
   };
 
-  const handleBack = () => {
-    router.push("/dashboard");
-  };
-
   return (
-    <WithdrawalForm
-      onTransactionSuccess={handleTransactionSuccess}
-      onBack={handleBack}
-    />
+    <div className="h-full overflow-y-auto">
+      <WithdrawalForm
+        onTransactionSuccess={handleTransactionSuccess}
+      />
+    </div>
   );
 }
