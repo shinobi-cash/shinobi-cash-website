@@ -44,7 +44,8 @@
     "tailwindcss": "^4.1.11",
     "vaul": "^1.1.2",
     "viem": "^2.31.3",
-    "wagmi": "^2.12.31"
+    "wagmi": "^2.12.31",
+    "zustand": "^5.0.9"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.18",
