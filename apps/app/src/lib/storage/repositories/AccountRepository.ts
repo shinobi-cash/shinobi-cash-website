@@ -26,10 +26,11 @@ function deriveKeysFromPrivateKey(privateKey: string): { publicKey: string; addr
 }
 
 /**
- * Account metadata (unencrypted)
- * Used for discovery and UX decisions before authentication
+ * AccountIndex (renamed from AccountMetadata)
+ * Canonical unencrypted account index for pre-auth discovery
+ * Used for account listing and UX decisions before authentication
  */
-export type AccountMetadata = {
+export type AccountIndex = {
   id: string;
   type: "passkey" | "wallet";
   publicKeyHash: string;
@@ -37,9 +38,15 @@ export type AccountMetadata = {
 };
 
 /**
+ * @deprecated Use AccountIndex instead
+ * Kept temporarily for backward compatibility during migration
+ */
+export type AccountMetadata = AccountIndex;
+
+/**
  * Full storage record with encrypted payload
  */
-type StorageRecord = AccountMetadata & {
+type StorageRecord = AccountIndex & {
   encryptedPayload: { iv: string; data: string; salt: string };
 };
 
@@ -257,17 +264,17 @@ export class AccountRepository {
   }
 
   /**
-   * List account metadata without decryption
+   * List account index (unencrypted account metadata)
    * Safe to call before session initialization
    */
-  async listAccountMetadata(): Promise<AccountMetadata[]> {
+  async listAccountIndex(): Promise<AccountIndex[]> {
     const names = await this.listAccountNames();
-    const metadata: AccountMetadata[] = [];
+    const index: AccountIndex[] = [];
 
     for (const name of names) {
       const record = await this.getEncryptedAccountRecord(name);
       if (record) {
-        metadata.push({
+        index.push({
           id: record.id,
           type: record.type,
           publicKeyHash: record.publicKeyHash,
@@ -276,6 +283,14 @@ export class AccountRepository {
       }
     }
 
-    return metadata;
+    return index;
+  }
+
+  /**
+   * @deprecated Use listAccountIndex() instead
+   * Kept temporarily for backward compatibility during migration
+   */
+  async listAccountMetadata(): Promise<AccountMetadata[]> {
+    return this.listAccountIndex();
   }
 }

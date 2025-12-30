@@ -5,7 +5,6 @@ import { wagmiAdapter, projectId, networks } from "@/config";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createAppKit } from "@reown/appkit/react";
 import { ThemeProvider } from "@/contexts/ThemeContext";
-import { AuthProvider } from "@/contexts/AuthContext";
 import { SettingsProvider } from "@/contexts/SettingsContext";
 import { TransactionTrackingProvider } from "@/hooks/transactions/useTransactionTracking";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -49,19 +48,17 @@ function ContextProvider({ children, cookies }: { children: ReactNode; cookies: 
         <SettingsProvider>
           <WagmiProvider config={wagmiAdapter.wagmiConfig as Config} initialState={initialState}>
             <QueryClientProvider client={queryClient}>
-              <AuthProvider>
-                <TransactionTrackingProvider>
-                  <Particles
-                    className="pointer-events-none fixed inset-0"
-                    quantity={100}
-                    ease={80}
-                    color="#f97316"
-                    refresh={true}
-                  />
-                  {children}
-                  <Toaster />
-                </TransactionTrackingProvider>
-              </AuthProvider>
+              <TransactionTrackingProvider>
+                <Particles
+                  className="pointer-events-none fixed inset-0"
+                  quantity={100}
+                  ease={80}
+                  color="#f97316"
+                  refresh={true}
+                />
+                {children}
+                <Toaster />
+              </TransactionTrackingProvider>
             </QueryClientProvider>
           </WagmiProvider>
         </SettingsProvider>
