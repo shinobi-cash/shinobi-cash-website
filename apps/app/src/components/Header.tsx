@@ -4,8 +4,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { Settings, Menu } from "lucide-react";
 import { useAccount, useChainId, useSwitchChain } from "wagmi";
-import { modal } from "@/context";
-import { Button } from "@workspace/ui/components/button";
 import { SHINOBI_CASH_SUPPORTED_CHAINS } from "@shinobi-cash/constants";
 import {
   Select,
@@ -19,21 +17,13 @@ import { AddPasskeyModal } from "@/features/auth/components/AddPasskeyModal";
 import { AccountMenu } from "@/features/auth/components/AccountMenu";
 
 export function Header() {
-  const { isConnected, address } = useAccount();
+  const { isConnected } = useAccount();
   const chainId = useChainId();
   const { switchChain } = useSwitchChain();
   const [showAddPasskeyModal, setShowAddPasskeyModal] = useState(false);
 
-  const handleConnectWallet = () => {
-    modal.open();
-  };
-
   const handleAddPasskey = () => {
     setShowAddPasskeyModal(true);
-  };
-
-  const shortenAddress = (addr: string) => {
-    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
   };
 
   const getCurrentChain = () => {
@@ -136,27 +126,6 @@ export function Header() {
                 ))}
               </SelectContent>
             </Select>
-          )}
-
-          {/* Desktop: Connect Wallet Button */}
-          {isConnected ? (
-            <Button
-              onClick={handleConnectWallet}
-              variant="outline"
-              size="default"
-              className="hidden h-9 text-xs font-medium sm:h-10 sm:text-sm md:flex lg:h-11 lg:text-base"
-            >
-              {address && shortenAddress(address)}
-            </Button>
-          ) : (
-            <Button
-              onClick={handleConnectWallet}
-              variant="default"
-              size="default"
-              className="hidden h-9 text-xs font-medium sm:h-10 sm:text-sm md:flex lg:h-11 lg:text-base"
-            >
-              Connect Wallet
-            </Button>
           )}
 
           {/* Account Menu */}
