@@ -1,6 +1,6 @@
 /**
  * Setting Menu
- * @file features/auth/components/SettingMenu.tsx
+ * @file src/components/SettingMenu.tsx
  */
 
 import { storageManager } from "@/lib/storage";
@@ -17,7 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu";
 import { Switch } from "@workspace/ui/components/switch";
-import { useAuthController } from "../controller/useAuthController";
+import { useAuthController } from "../features/auth/controller/useAuthController";
 import { useAutoSync } from "@/hooks/useAutoSync";
 
 interface SettingMenuProps {

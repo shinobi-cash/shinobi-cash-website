@@ -14,7 +14,7 @@ import {
 } from "@workspace/ui/components/select";
 import { useState } from "react";
 import { AddPasskeyModal } from "@/features/auth/components/AddPasskeyModal";
-import { SettingMenu } from "@/features/auth/components/SettingMenu";
+import { SettingMenu } from "@/components/SettingMenu";
 
 export function Header() {
   const { isConnected } = useAccount();
