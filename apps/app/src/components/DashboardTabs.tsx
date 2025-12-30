@@ -8,6 +8,7 @@ const tabs = [
   { label: "Notes", href: "/dashboard" },
   { label: "Deposit", href: "/dashboard/deposit" },
   { label: "Withdraw", href: "/dashboard/withdraw" },
+  { label: "Activity", href: "/dashboard/activity" },
 ] as const;
 
 export function DashboardTabs() {
