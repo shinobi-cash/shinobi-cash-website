@@ -297,6 +297,32 @@ class StorageManager {
     );
   }
 
+  /**
+   * List account metadata without decryption
+   * Safe to call before session initialization
+   */
+  async listAccountMetadata() {
+    return this.accountRepo.listAccountMetadata();
+  }
+
+  /**
+   * List passkey account metadata without decryption
+   * Safe to call before session initialization
+   */
+  async listPasskeyAccountsMetadata() {
+    const all = await this.listAccountMetadata();
+    return all.filter((acc) => acc.type === "passkey");
+  }
+
+  /**
+   * List wallet account metadata without decryption
+   * Safe to call before session initialization
+   */
+  async listWalletAccountsMetadata() {
+    const all = await this.listAccountMetadata();
+    return all.filter((acc) => acc.type === "wallet");
+  }
+
   async accountExists(accountName: string): Promise<boolean> {
     return this.accountRepo.accountExists(accountName);
   }

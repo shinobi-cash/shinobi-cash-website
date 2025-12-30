@@ -109,6 +109,30 @@ export async function hasAccounts(): Promise<boolean> {
 }
 
 /**
+ * List account metadata without decryption
+ * Safe to call before session initialization
+ */
+export async function listAccountMetadata() {
+  return await storageManager.listAccountMetadata();
+}
+
+/**
+ * List passkey account metadata without decryption
+ * Safe to call before session initialization
+ */
+export async function listPasskeyAccountsMetadata() {
+  return await storageManager.listPasskeyAccountsMetadata();
+}
+
+/**
+ * List wallet account metadata without decryption
+ * Safe to call before session initialization
+ */
+export async function listWalletAccountsMetadata() {
+  return await storageManager.listWalletAccountsMetadata();
+}
+
+/**
  * Check if an account exists
  */
 export async function accountExists(accountId: string): Promise<boolean> {

@@ -16,7 +16,7 @@ import { showToast } from "@/lib/toast";
 import type { AuthStep, AuthStatus } from "../types";
 import type { AuthError } from "@/lib/errors/AuthError";
 import type { KeyGenerationResult } from "@shinobi-cash/core";
-import { listAccounts, listPasskeyAccounts } from "../session/sessionManagement";
+import { listAccounts, listPasskeyAccountsMetadata } from "../session/sessionManagement";
 
 // ============ TYPES ============
 
@@ -106,11 +106,11 @@ export function useAuthFlowController(options: AuthFlowOptions = {}): AuthFlowCo
         const hasAccounts = accounts.length > 0;
         setHasExistingAccounts(hasAccounts);
 
-        // Check if there are any passkey-based accounts (efficient with discriminated union)
+        // Check if there are any passkey-based accounts using metadata (no session required)
         let hasPasskeys = false;
         if (supported && hasAccounts) {
-          const passkeyAccounts = await listPasskeyAccounts();
-          hasPasskeys = passkeyAccounts.length > 0;
+          const passkeyAccountsMetadata = await listPasskeyAccountsMetadata();
+          hasPasskeys = passkeyAccountsMetadata.length > 0;
         }
         setHasPasskeyAccounts(hasPasskeys);
 

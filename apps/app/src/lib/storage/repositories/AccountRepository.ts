@@ -25,12 +25,49 @@ function deriveKeysFromPrivateKey(privateKey: string): { publicKey: string; addr
   };
 }
 
-type StorageRecord = {
+/**
+ * Account metadata (unencrypted)
+ * Used for discovery and UX decisions before authentication
+ */
+export type AccountMetadata = {
+  id: string;
+  type: "passkey" | "wallet";
+  publicKeyHash: string;
+  createdAt: number;
+};
+
+/**
+ * Full storage record with encrypted payload
+ */
+type StorageRecord = AccountMetadata & {
+  encryptedPayload: { iv: string; data: string; salt: string };
+};
+
+/**
+ * Legacy storage record (before type field was added)
+ */
+type LegacyStorageRecord = {
   id: string;
   publicKeyHash: string;
   encryptedPayload: { iv: string; data: string; salt: string };
   createdAt: number;
 };
+
+function isLegacyStorageRecord(value: unknown): value is LegacyStorageRecord {
+  if (!value || typeof value !== "object") return false;
+  const v = value as Record<string, unknown>;
+  const payload = v.encryptedPayload as Record<string, unknown> | undefined;
+  return (
+    typeof v.id === "string" &&
+    typeof v.publicKeyHash === "string" &&
+    !!payload &&
+    typeof payload.iv === "string" &&
+    typeof payload.data === "string" &&
+    typeof payload.salt === "string" &&
+    typeof v.createdAt === "number" &&
+    !v.type // Legacy records don't have type field
+  );
+}
 
 function isStorageRecord(value: unknown): value is StorageRecord {
   if (!value || typeof value !== "object") return false;
@@ -38,6 +75,8 @@ function isStorageRecord(value: unknown): value is StorageRecord {
   const payload = v.encryptedPayload as Record<string, unknown> | undefined;
   return (
     typeof v.id === "string" &&
+    typeof v.type === "string" &&
+    (v.type === "passkey" || v.type === "wallet") &&
     typeof v.publicKeyHash === "string" &&
     !!payload &&
     typeof payload.iv === "string" &&
@@ -73,8 +112,9 @@ export class AccountRepository {
     // Determine storage key based on account type
     const storageKey = accountData.type === "passkey" ? accountData.accountName : accountData.accountId;
 
-    const storageData = {
+    const storageData: StorageRecord = {
       id: storageKey, // Use accountName for passkey, accountId for wallet
+      type: accountData.type, // Store type as unencrypted metadata
       publicKeyHash,
       encryptedPayload: {
         iv: this.encryptionService.arrayBufferToBase64(encrypted.iv),
@@ -88,14 +128,70 @@ export class AccountRepository {
   }
 
   /**
+   * Migrate legacy record to new format with type field
+   * Infers type from account data structure
+   */
+  private async migrateLegacyRecord(legacy: LegacyStorageRecord): Promise<StorageRecord> {
+    // Decrypt to determine type (requires session)
+    if (!this.encryptionService.isKeyAvailable()) {
+      // Cannot migrate without session - return best guess
+      // Passkeys typically use account names, wallets use hashed IDs
+      const type: "passkey" | "wallet" = legacy.id.length < 50 ? "passkey" : "wallet";
+      const migrated: StorageRecord = {
+        ...legacy,
+        type,
+      };
+      // Save migrated record
+      await this.storageAdapter.set(migrated);
+      return migrated;
+    }
+
+    try {
+      const encryptedData: EncryptedData = {
+        iv: this.encryptionService.base64ToArrayBuffer(legacy.encryptedPayload.iv),
+        data: this.encryptionService.base64ToArrayBuffer(legacy.encryptedPayload.data),
+        salt: this.encryptionService.base64ToArrayBuffer(legacy.encryptedPayload.salt),
+      };
+      const storedData = await this.encryptionService.decrypt<StoredAccountData>(encryptedData);
+
+      const migrated: StorageRecord = {
+        ...legacy,
+        type: storedData.type,
+      };
+
+      // Save migrated record
+      await this.storageAdapter.set(migrated);
+      return migrated;
+    } catch (error) {
+      console.warn("Failed to migrate legacy record, using heuristic:", error);
+      // Fallback to heuristic
+      const type: "passkey" | "wallet" = legacy.id.length < 50 ? "passkey" : "wallet";
+      const migrated: StorageRecord = {
+        ...legacy,
+        type,
+      };
+      await this.storageAdapter.set(migrated);
+      return migrated;
+    }
+  }
+
+  /**
    * Get encrypted account record by name
    * Returns raw encrypted storage record without decryption
+   * Automatically migrates legacy records
    */
   async getEncryptedAccountRecord(accountName: string): Promise<StorageRecord | null> {
     const result = (await this.storageAdapter.get(accountName)) as unknown;
+
     if (isStorageRecord(result)) {
       return result;
     }
+
+    if (isLegacyStorageRecord(result)) {
+      // Migrate legacy record
+      return await this.migrateLegacyRecord(result);
+    }
+
     return null;
   }
 
@@ -158,5 +254,28 @@ export class AccountRepository {
       console.warn("Failed to check account existence:", error);
       return false;
     }
+  }
+
+  /**
+   * List account metadata without decryption
+   * Safe to call before session initialization
+   */
+  async listAccountMetadata(): Promise<AccountMetadata[]> {
+    const names = await this.listAccountNames();
+    const metadata: AccountMetadata[] = [];
+
+    for (const name of names) {
+      const record = await this.getEncryptedAccountRecord(name);
+      if (record) {
+        metadata.push({
+          id: record.id,
+          type: record.type,
+          publicKeyHash: record.publicKeyHash,
+          createdAt: record.createdAt,
+        });
+      }
+    }
+
+    return metadata;
   }
 }
