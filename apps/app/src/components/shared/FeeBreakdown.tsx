@@ -36,7 +36,12 @@ export function FeeBreakdown({ gasCost, assetSymbol, isEstimatingGas = false }: 
               stroke="currentColor"
               viewBox="0 0 24 24"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 9l-7 7-7-7"
+              />
             </svg>
           </div>
         </summary>
@@ -48,7 +53,9 @@ export function FeeBreakdown({ gasCost, assetSymbol, isEstimatingGas = false }: 
             </div>
             <div className="flex flex-col items-end gap-0.5">
               <span className="text-gray-300">
-                {isEstimatingGas ? "Estimating..." : `~${Number(gasCost).toFixed(6)} ${assetSymbol}`}
+                {isEstimatingGas
+                  ? "Estimating..."
+                  : `~${Number(gasCost).toFixed(6)} ${assetSymbol}`}
               </span>
               {!isEstimatingGas && usdValue !== null && (
                 <span className="text-xs text-gray-500">≈ {formatUsdAmount(usdValue, 4)}</span>

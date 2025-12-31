@@ -76,8 +76,8 @@ export function AccountsDetectedScreen({
             className="flex w-full items-center gap-3 rounded-lg border border-gray-700 bg-gray-900/50 p-4 text-left hover:bg-gray-800"
           >
             <div className="flex-shrink-0">{getMethodIcon(account.type)}</div>
-            <div className="flex-1 min-w-0">
-              <p className="font-medium text-white truncate">{account.id}</p>
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-medium text-white">{account.id}</p>
               <p className="text-xs text-gray-400">
                 {account.type === "passkey" ? "Passkey" : "Wallet"} • Created{" "}
                 {formatDate(account.createdAt)}
@@ -89,12 +89,7 @@ export function AccountsDetectedScreen({
               stroke="currentColor"
               viewBox="0 0 24 24"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 5l7 7-7 7"
-              />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
           </button>
         ))}

@@ -52,7 +52,6 @@ export function SyncIndicator({ onSync, autoSyncInterval = 10 }: SyncIndicatorPr
     return () => clearInterval(timer);
   }, [autoSyncEnabled, isSyncing, autoSyncInterval, handleSync]);
 
-
   // Calculate progress (countdown from 100% to 0%)
   const progress = (timeLeft / autoSyncInterval) * 100;
 
@@ -92,9 +91,9 @@ export function SyncIndicator({ onSync, autoSyncInterval = 10 }: SyncIndicatorPr
       >
         <div className="flex flex-col items-center justify-center">
           {isSyncing ? (
-            <RotateCw className="size-4 animate-spin text-primary" />
+            <RotateCw className="text-primary size-4 animate-spin" />
           ) : (
-            <span className="text-sm font-semibold tabular-nums text-primary">{timeLeft}</span>
+            <span className="text-primary text-sm font-semibold tabular-nums">{timeLeft}</span>
           )}
         </div>
       </AnimatedCircularProgressBar>

@@ -106,11 +106,7 @@ export function useWithdrawController(
 
   // ============ CHILD HOOKS ============
 
-  const noteSelection = useNoteSelection(
-    publicKey ?? "",
-    poolAddress,
-    null
-  );
+  const noteSelection = useNoteSelection(publicKey ?? "", poolAddress, null);
 
   const form = useWithdrawFormState(noteSelection.selectedNote, asset.symbol);
   const engine = useWithdrawalEngine();

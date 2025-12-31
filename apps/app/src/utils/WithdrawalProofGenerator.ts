@@ -22,7 +22,6 @@ export type { WithdrawalProofData };
  * Loads circuit files from the /circuits/ public directory using fetch
  */
 const loadWithdrawalCircuits: CircuitFileLoader = async () => {
-
   const [wasmResponse, zkeyResponse, vkeyResponse] = await Promise.all([
     fetch("/circuits/build/withdraw/withdraw.wasm"),
     fetch("/circuits/keys/withdraw.zkey"),
@@ -51,7 +50,6 @@ const loadWithdrawalCircuits: CircuitFileLoader = async () => {
  * Loads circuit files from the /circuits/ public directory using fetch
  */
 const loadCrosschainCircuits: CircuitFileLoader = async () => {
-
   const [wasmResponse, zkeyResponse, vkeyResponse] = await Promise.all([
     fetch("/circuits/build/crosschain_withdraw/crosschain_withdrawal.wasm"),
     fetch("/circuits/keys/crosschain_withdrawal.zkey"),

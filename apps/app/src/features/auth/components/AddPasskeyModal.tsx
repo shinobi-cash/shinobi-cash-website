@@ -29,16 +29,19 @@ interface AddPasskeyModalProps {
 
 export function AddPasskeyModal({ open, onOpenChange }: AddPasskeyModalProps) {
   const [accountName, setAccountName] = useState("");
-  const { accountNameError, onAccountNameChange, setAccountNameError } =
-    useAccountNameValidation();
+  const { accountNameError, onAccountNameChange, setAccountNameError } = useAccountNameValidation();
   const [setupError, setSetupError] = useState("");
 
   // Shared passkey flow
-  const { isProcessing, error: passkeyError, addPasskey, clearError } =
-    useAddPasskeyFlow({
-      onSuccess: () => onOpenChange(false),
-      setAuthKeys: false, // already authenticated
-    });
+  const {
+    isProcessing,
+    error: passkeyError,
+    addPasskey,
+    clearError,
+  } = useAddPasskeyFlow({
+    onSuccess: () => onOpenChange(false),
+    setAuthKeys: false, // already authenticated
+  });
 
   // Reset form on close
   useEffect(() => {
@@ -75,16 +78,13 @@ export function AddPasskeyModal({ open, onOpenChange }: AddPasskeyModalProps) {
           setSetupError(passkeyError.message);
         }
       } catch (err) {
-        setSetupError(
-          err instanceof Error ? err.message : "Failed to add passkey"
-        );
+        setSetupError(err instanceof Error ? err.message : "Failed to add passkey");
       }
     },
     [accountName, accountNameError, addPasskey, passkeyError]
   );
 
-  const canSubmit =
-    !isProcessing && !accountNameError && accountName.trim().length > 0;
+  const canSubmit = !isProcessing && !accountNameError && accountName.trim().length > 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -95,8 +95,8 @@ export function AddPasskeyModal({ open, onOpenChange }: AddPasskeyModalProps) {
             Add Passkey
           </DialogTitle>
           <DialogDescription className="text-gray-400">
-            Add a passkey to your account for convenient sign-in without needing
-            to connect your wallet each time.
+            Add a passkey to your account for convenient sign-in without needing to connect your
+            wallet each time.
           </DialogDescription>
         </DialogHeader>
 
@@ -117,9 +117,7 @@ export function AddPasskeyModal({ open, onOpenChange }: AddPasskeyModalProps) {
               aria-invalid={!!accountNameError}
               disabled={isProcessing}
             />
-            {accountNameError && (
-              <p className="text-xs text-red-400">{accountNameError}</p>
-            )}
+            {accountNameError && <p className="text-xs text-red-400">{accountNameError}</p>}
           </div>
 
           {setupError && (

@@ -8,11 +8,7 @@ import type { WithdrawalRequest, FeeQuote, WithdrawalKind } from "../domain/type
 import { classifyWithdrawal, calculateFeesFromBPS } from "../domain/pipeline";
 import { validateFeeQuote } from "../domain/invariants";
 import { pimlicoClient } from "@/lib/clients";
-import {
-  SAME_CHAIN_GAS_LIMITS,
-  CROSS_CHAIN_GAS_LIMITS,
-  WITHDRAWAL_CONFIG,
-} from "../constants";
+import { SAME_CHAIN_GAS_LIMITS, CROSS_CHAIN_GAS_LIMITS, WITHDRAWAL_CONFIG } from "../constants";
 
 // ============ GAS ESTIMATION ============
 
@@ -34,10 +30,7 @@ function calculateTotalGas(kind: WithdrawalKind): bigint {
 /**
  * Calculate relay fee BPS based on gas cost
  */
-function calculateRelayFeeBPS(
-  withdrawAmountWei: bigint,
-  estimatedGasCostWei: bigint
-): number {
+function calculateRelayFeeBPS(withdrawAmountWei: bigint, estimatedGasCostWei: bigint): number {
   const maxBPS = WITHDRAWAL_CONFIG.MAX_RELAY_FEE_BPS;
 
   // Formula: BPS = (gasCost / withdrawAmount) * 10000
@@ -99,9 +92,7 @@ export async function quoteFees(
 
   // 7. Calculate net amount
   const netAmountWei =
-    request.withdrawAmountWei > totalFeeWei
-      ? request.withdrawAmountWei - totalFeeWei
-      : BigInt(0);
+    request.withdrawAmountWei > totalFeeWei ? request.withdrawAmountWei - totalFeeWei : BigInt(0);
 
   // 8. Create fee quote
   const feeQuote: FeeQuote = {

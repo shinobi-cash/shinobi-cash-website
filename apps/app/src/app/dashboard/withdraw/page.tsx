@@ -17,9 +17,7 @@ export default function WithdrawPage() {
 
   return (
     <div className="h-full overflow-y-auto">
-      <WithdrawalForm
-        onTransactionSuccess={handleTransactionSuccess}
-      />
+      <WithdrawalForm onTransactionSuccess={handleTransactionSuccess} />
     </div>
   );
 }

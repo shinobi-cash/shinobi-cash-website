@@ -25,8 +25,8 @@ export function useNoteSelection(
         ?.map((noteChain) => {
           const lastNote = noteChain[noteChain.length - 1];
           return lastNote.status === "unspent" &&
-                 lastNote.isActivated &&
-                 lastNote.aspStatus === "approved"
+            lastNote.isActivated &&
+            lastNote.aspStatus === "approved"
             ? lastNote
             : null;
         })

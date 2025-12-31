@@ -86,9 +86,7 @@ export function useAuthActions() {
  */
 export function useAvailableAccounts(): AccountIndex[] {
   return useStore((store) =>
-    store.state.status === "accounts-detected"
-      ? store.state.accounts
-      : []
+    store.state.status === "accounts-detected" ? store.state.accounts : []
   );
 }
 
@@ -113,11 +111,7 @@ export function useCurrentAuthMethod(): AuthMethod | null {
 export function useIsAuthInProgress(): boolean {
   return useStore((store) => {
     const status = store.state.status;
-    return (
-      status === "booting" ||
-      status === "creating-account" ||
-      status === "authenticating"
-    );
+    return status === "booting" || status === "creating-account" || status === "authenticating";
   });
 }
 
@@ -126,8 +120,6 @@ export function useIsAuthInProgress(): boolean {
  */
 export function useAuthError() {
   return useStore((store) =>
-    store.state.status === "error"
-      ? { error: store.state.error, retry: store.state.retry }
-      : null
+    store.state.status === "error" ? { error: store.state.error, retry: store.state.retry } : null
   );
 }

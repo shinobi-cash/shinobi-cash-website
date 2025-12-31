@@ -25,9 +25,7 @@ export async function hasAccounts(): Promise<boolean> {
 /**
  * Get account index by ID
  */
-export async function getAccountIndexById(
-  accountId: string
-): Promise<AccountIndex | null> {
+export async function getAccountIndexById(accountId: string): Promise<AccountIndex | null> {
   const accounts = await listAccountIndexes();
   return accounts.find((acc) => acc.id === accountId) ?? null;
 }

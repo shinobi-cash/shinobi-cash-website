@@ -134,14 +134,13 @@ export function useDepositController(
 
   const shownTxsRef = useRef(new Set<string>());
 
-  const lastError: DepositError =
-    tx.error
-      ? { type: "transaction", message: tx.error }
-      : gas.error
-        ? { type: "gas", message: gas.error }
-        : commitment.error
-          ? { type: "commitment", message: commitment.error }
-          : null;
+  const lastError: DepositError = tx.error
+    ? { type: "transaction", message: tx.error }
+    : gas.error
+      ? { type: "gas", message: gas.error }
+      : commitment.error
+        ? { type: "commitment", message: commitment.error }
+        : null;
 
   // ---------- EFFECTS ----------
   useEffect(() => {
@@ -151,11 +150,7 @@ export function useDepositController(
   }, [commitment.error, commitment.regenerateNote]);
 
   useEffect(() => {
-    if (
-      tx.isSubmitted &&
-      tx.transactionHash &&
-      !shownTxsRef.current.has(tx.transactionHash)
-    ) {
+    if (tx.isSubmitted && tx.transactionHash && !shownTxsRef.current.has(tx.transactionHash)) {
       shownTxsRef.current.add(tx.transactionHash);
       trackTransaction(tx.transactionHash, chainId);
 

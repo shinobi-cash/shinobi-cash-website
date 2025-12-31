@@ -49,10 +49,7 @@ export function WalletAccountCreationHandler() {
           setError(
             {
               code: AuthErrorCode.WALLET_NOT_CONNECTED,
-              message:
-                error instanceof Error
-                  ? error.message
-                  : "Failed to connect wallet",
+              message: error instanceof Error ? error.message : "Failed to connect wallet",
               timestamp: Date.now(),
               originalError: error,
             },
@@ -68,19 +65,13 @@ export function WalletAccountCreationHandler() {
       setIsConnecting(false);
 
       try {
-        const message = getEIP712Message(
-          address as `0x${string}`,
-          chainId,
-          { deterministic: true }
-        );
+        const message = getEIP712Message(address as `0x${string}`, chainId, {
+          deterministic: true,
+        });
 
         const signature = await signTypedDataAsync(message);
 
-        const keys = await generateKeysFromWalletSignature(
-          signature,
-          chainId,
-          address
-        );
+        const keys = await generateKeysFromWalletSignature(signature, chainId, address);
 
         const { createAccount } = await import("../../services/walletService");
         await createAccount(address, signature, chainId, keys);
@@ -98,10 +89,7 @@ export function WalletAccountCreationHandler() {
         setError(
           {
             code: AuthErrorCode.WALLET_SIGNATURE_FAILED,
-            message:
-              error instanceof Error
-                ? error.message
-                : "Failed to create wallet account",
+            message: error instanceof Error ? error.message : "Failed to create wallet account",
             timestamp: Date.now(),
             originalError: error,
           },

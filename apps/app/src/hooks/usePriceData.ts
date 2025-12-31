@@ -12,9 +12,9 @@
  * @file hooks/usePriceData.ts
  */
 
-import { useQuery } from '@tanstack/react-query';
-import { fetchTokenPrice } from '@/lib/prices/priceService';
-import type { TokenSymbol } from '@/lib/prices/types';
+import { useQuery } from "@tanstack/react-query";
+import { fetchTokenPrice } from "@/lib/prices/priceService";
+import type { TokenSymbol } from "@/lib/prices/types";
 
 export interface UsePriceDataResult {
   /** Current USD price for the token (null if loading or error) */
@@ -55,14 +55,8 @@ export function usePriceData(
     refreshInterval?: number;
   }
 ): UsePriceDataResult {
-  const {
-    data,
-    isLoading,
-    isRefetching,
-    error,
-    dataUpdatedAt,
-  } = useQuery({
-    queryKey: ['price', symbol],
+  const { data, isLoading, isRefetching, error, dataUpdatedAt } = useQuery({
+    queryKey: ["price", symbol],
     queryFn: () => fetchTokenPrice(symbol),
 
     // Caching configuration
@@ -70,9 +64,7 @@ export function usePriceData(
     gcTime: 5 * 60_000, // Keep in cache for 5 minutes after last use
 
     // Background refresh
-    refetchInterval: options?.disableRefresh
-      ? false
-      : (options?.refreshInterval ?? 60_000),
+    refetchInterval: options?.disableRefresh ? false : (options?.refreshInterval ?? 60_000),
 
     // Retry configuration
     retry: 2,

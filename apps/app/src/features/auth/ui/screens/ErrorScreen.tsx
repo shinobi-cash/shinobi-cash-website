@@ -23,12 +23,7 @@ export function ErrorScreen({ error, retry, onClear }: ErrorScreenProps) {
   return (
     <div className="flex flex-col items-center justify-center p-8">
       <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-900/20">
-        <svg
-          className="h-6 w-6 text-red-500"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
+        <svg className="h-6 w-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -41,9 +36,7 @@ export function ErrorScreen({ error, retry, onClear }: ErrorScreenProps) {
       <h2 className="text-lg font-semibold text-white">Authentication Error</h2>
       <p className="mt-2 max-w-md text-center text-sm text-gray-400">{error.message}</p>
 
-      {error.code && (
-        <p className="mt-1 text-xs text-gray-500">Error code: {error.code}</p>
-      )}
+      {error.code && <p className="mt-1 text-xs text-gray-500">Error code: {error.code}</p>}
 
       <div className="mt-6 flex gap-3">
         {retry && (

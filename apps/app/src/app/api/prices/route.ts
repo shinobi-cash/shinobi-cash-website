@@ -12,9 +12,7 @@ import { NextResponse } from "next/server";
 const ALCHEMY_API_KEY = process.env.ALCHEMY_API_KEY;
 
 if (!ALCHEMY_API_KEY) {
-  console.warn(
-    "[Prices API] ALCHEMY_API_KEY not configured - price fetching will be disabled"
-  );
+  console.warn("[Prices API] ALCHEMY_API_KEY not configured - price fetching will be disabled");
 }
 
 // Cache TTL for price data (60 seconds)
@@ -49,7 +47,7 @@ export async function GET(request: Request) {
       return NextResponse.json(
         {
           success: false,
-          error: "Price API not configured"
+          error: "Price API not configured",
         },
         { status: 503 }
       );
@@ -65,7 +63,7 @@ export async function GET(request: Request) {
       return NextResponse.json(
         {
           success: false,
-          error: "symbols parameter must contain 1-25 token symbols"
+          error: "symbols parameter must contain 1-25 token symbols",
         },
         { status: 400 }
       );

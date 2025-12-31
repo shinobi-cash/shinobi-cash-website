@@ -33,9 +33,8 @@ export async function generateProof(witness: WithdrawalWitness): Promise<Withdra
     );
 
     // 2. Generate cross-chain proof
-    const proofData = await withdrawalProofGenerator.generateCrosschainWithdrawalProof(
-      circuitWitness
-    );
+    const proofData =
+      await withdrawalProofGenerator.generateCrosschainWithdrawalProof(circuitWitness);
 
     // 3. Return proof artifact
     return {

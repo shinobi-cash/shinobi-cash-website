@@ -25,4 +25,4 @@ export interface PricesApiResponse {
   timestamp?: string;
 }
 
-export type TokenSymbol = 'ETH'; // Extensible for future tokens (USDC, DAI, etc.)
+export type TokenSymbol = "ETH"; // Extensible for future tokens (USDC, DAI, etc.)

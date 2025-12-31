@@ -112,9 +112,7 @@ export function WalletAuthHandler({ accountId }: WalletAuthHandlerProps) {
           {
             code: AuthErrorCode.WALLET_SIGNATURE_FAILED,
             message:
-              error instanceof Error
-                ? error.message
-                : "Failed to sign message. Please try again.",
+              error instanceof Error ? error.message : "Failed to sign message. Please try again.",
             timestamp: Date.now(),
             originalError: error,
           },
@@ -124,7 +122,19 @@ export function WalletAuthHandler({ accountId }: WalletAuthHandlerProps) {
     };
 
     triggerAuth();
-  }, [accountId, address, chainId, isConnected, connectors, connect, authenticateWithWallet, signTypedDataAsync, setError, isConnecting, targetWalletAddress]);
+  }, [
+    accountId,
+    address,
+    chainId,
+    isConnected,
+    connectors,
+    connect,
+    authenticateWithWallet,
+    signTypedDataAsync,
+    setError,
+    isConnecting,
+    targetWalletAddress,
+  ]);
 
   return (
     <div className="flex flex-col items-center justify-center p-8">

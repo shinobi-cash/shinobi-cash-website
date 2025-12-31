@@ -5,14 +5,7 @@ import { fetchLatestIndexedBlock } from "@/services/data/indexerService";
 import { storageManager } from "@/lib/storage";
 import { parseUserKey } from "@shinobi-cash/core";
 import type React from "react";
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
 import { logError } from "@/lib/errors";
 
@@ -31,15 +24,12 @@ interface TransactionTrackingContextType {
   trackedTxHash: string | null;
 }
 
-const TransactionTrackingContext =
-  createContext<TransactionTrackingContextType | null>(null);
+const TransactionTrackingContext = createContext<TransactionTrackingContextType | null>(null);
 
 export function useTransactionTracking() {
   const context = useContext(TransactionTrackingContext);
   if (!context) {
-    throw new Error(
-      "useTransactionTracking must be used within TransactionTrackingProvider"
-    );
+    throw new Error("useTransactionTracking must be used within TransactionTrackingProvider");
   }
   return context;
 }
@@ -47,15 +37,9 @@ export function useTransactionTracking() {
 // Singleton discovery service
 const discoveryService = noteDiscoveryService;
 
-export function TransactionTrackingProvider({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const [trackingStatus, setTrackingStatus] =
-    useState<TrackingStatus>("idle");
-  const [trackedTransaction, setTrackedTransaction] =
-    useState<TransactionInfo | null>(null);
+export function TransactionTrackingProvider({ children }: { children: React.ReactNode }) {
+  const [trackingStatus, setTrackingStatus] = useState<TrackingStatus>("idle");
+  const [trackedTransaction, setTrackedTransaction] = useState<TransactionInfo | null>(null);
 
   const eventTargetRef = useRef(new EventTarget());
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -146,10 +130,7 @@ export function TransactionTrackingProvider({
   // ---- WAIT FOR RECEIPT ----
 
   useEffect(() => {
-    if (
-      !trackedTransaction?.hash ||
-      trackingStatus !== "pending"
-    ) {
+    if (!trackedTransaction?.hash || trackingStatus !== "pending") {
       return;
     }
 
@@ -167,10 +148,9 @@ export function TransactionTrackingProvider({
         )}...${trackedTransaction.hash.slice(-4)}`;
 
         if (receipt.status === "success") {
-          showToast.success(
-            `${shortHash} • Transaction successful! Indexing...`,
-            { duration: 4000 }
-          );
+          showToast.success(`${shortHash} • Transaction successful! Indexing...`, {
+            duration: 4000,
+          });
 
           setTrackedTransaction((prev) =>
             prev
@@ -199,30 +179,19 @@ export function TransactionTrackingProvider({
     };
 
     waitForReceipt();
-  }, [
-    trackedTransaction?.hash,
-    trackedTransaction?.chainId,
-    trackingStatus,
-    scheduleAutoClear,
-  ]);
+  }, [trackedTransaction?.hash, trackedTransaction?.chainId, trackingStatus, scheduleAutoClear]);
 
   // ---- POLL FOR INDEXING ----
 
   useEffect(() => {
-    if (
-      trackingStatus !== "waiting" ||
-      trackedTransaction?.blockNumber == null
-    ) {
+    if (trackingStatus !== "waiting" || trackedTransaction?.blockNumber == null) {
       return;
     }
 
     const poll = async () => {
       try {
         const indexed = await fetchLatestIndexedBlock();
-        if (
-          indexed &&
-          Number(indexed.blockNumber) >= trackedTransaction.blockNumber!
-        ) {
+        if (indexed && Number(indexed.blockNumber) >= trackedTransaction.blockNumber!) {
           showToast.success("Transaction indexed!", { duration: 3000 });
           setTrackingStatus("synced");
 
@@ -230,11 +199,7 @@ export function TransactionTrackingProvider({
 
           if (publicKey && accountKey) {
             discoveryService
-              .discoverNotes(
-                publicKey,
-                SHINOBI_CASH_ETH_POOL.address,
-                accountKey
-              )
+              .discoverNotes(publicKey, SHINOBI_CASH_ETH_POOL.address, accountKey)
               .catch((err) =>
                 logError(err, {
                   action: "autoSyncNotes",
@@ -243,9 +208,7 @@ export function TransactionTrackingProvider({
               );
           }
 
-          eventTargetRef.current.dispatchEvent(
-            new CustomEvent("indexed")
-          );
+          eventTargetRef.current.dispatchEvent(new CustomEvent("indexed"));
 
           scheduleAutoClear(10_000);
         }
@@ -266,11 +229,7 @@ export function TransactionTrackingProvider({
         intervalRef.current = null;
       }
     };
-  }, [
-    trackedTransaction?.blockNumber,
-    trackingStatus,
-    scheduleAutoClear,
-  ]);
+  }, [trackedTransaction?.blockNumber, trackingStatus, scheduleAutoClear]);
 
   // ---- CLEANUP ----
 

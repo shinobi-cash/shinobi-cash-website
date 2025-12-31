@@ -158,7 +158,9 @@ export class NotesRepository {
         return decryptedData;
       } catch (decryptionError) {
         console.error("[NotesRepository] ❌ Failed to decrypt cached notes:", decryptionError);
-        console.error("[NotesRepository] This likely means notes were encrypted with a different KEK");
+        console.error(
+          "[NotesRepository] This likely means notes were encrypted with a different KEK"
+        );
         return null; // Return null if decryption fails (wrong password)
       }
     }
@@ -184,7 +186,7 @@ export class NotesRepository {
     poolAddress: string,
     accountKey: bigint,
     fetchActivities: ActivityFetcher,
-    options?: DiscoveryOptions,
+    options?: DiscoveryOptions
   ): Promise<DiscoveryResult> {
     // Create sync engine with persistence callbacks
     const engine = new NoteSyncEngine(fetchActivities, {
@@ -200,12 +202,7 @@ export class NotesRepository {
       },
 
       saveState: async (pubKey: string, pool: string, state: DiscoveryState) => {
-        await this.storeDiscoveredNotes(
-          pubKey,
-          pool,
-          state.notes,
-          state.cursor,
-        );
+        await this.storeDiscoveredNotes(pubKey, pool, state.notes, state.cursor);
       },
     });
 

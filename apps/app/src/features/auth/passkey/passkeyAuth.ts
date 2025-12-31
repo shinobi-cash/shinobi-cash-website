@@ -30,7 +30,10 @@ export async function performPasskeyLogin(accountName: string): Promise<KeyGener
   // Derive symmetric key from passkey (this is the KEK)
   let passkeyKEK: CryptoKey;
   try {
-    ({ symmetricKey: passkeyKEK } = await KDF.deriveKeyFromPasskey(trimmed, passkeyData.credentialId));
+    ({ symmetricKey: passkeyKEK } = await KDF.deriveKeyFromPasskey(
+      trimmed,
+      passkeyData.credentialId
+    ));
   } catch (err) {
     throw mapPasskeyError(err);
   }
@@ -38,26 +41,19 @@ export async function performPasskeyLogin(accountName: string): Promise<KeyGener
   // Existing passkey account MUST either fully restore or fail loudly.
   // No fallback to account creation is allowed here.
   // Step 1: Unlock account data only (KEK)
-  await storageManager.initializeAccountUnlockOnly(
-    trimmed,
-    passkeyKEK
-  );
+  await storageManager.initializeAccountUnlockOnly(trimmed, passkeyKEK);
 
   // Step 2: Load decrypted account data (contains AMK)
   const accountData = await storageManager.getAccountData();
   if (!accountData) {
-      throw new AuthError(
+    throw new AuthError(
       AuthErrorCode.DECRYPTION_FAILED,
       "Failed to decrypt account data with passkey"
     );
   }
 
   // Step 3: Finalize session with AMK → DEK
-  await storageManager.initializeAccountSession(
-    trimmed,
-    passkeyKEK,
-    accountData.privateKey
-  );
+  await storageManager.initializeAccountSession(trimmed, passkeyKEK, accountData.privateKey);
 
   // Return keys
   return {
@@ -131,10 +127,9 @@ export async function performPasskeySetup(
       created: Date.now(),
     });
   } catch (e) {
-    storageManager.clearInMemorySession()
-    throw e
+    storageManager.clearInMemorySession();
+    throw e;
   }
-
 }
 
 // ============ PASSKEY CHECK ============

@@ -35,10 +35,7 @@ export function classifyWithdrawal(
  * @param feeQuote - Fee quote with all fees
  * @returns Net amount user will receive
  */
-export function calculateNetAmount(
-  withdrawAmountWei: bigint,
-  feeQuote: FeeQuote
-): bigint {
+export function calculateNetAmount(withdrawAmountWei: bigint, feeQuote: FeeQuote): bigint {
   const totalFees = feeQuote.executionFeeWei + feeQuote.solverFeeWei;
   return withdrawAmountWei > totalFees ? withdrawAmountWei - totalFees : BigInt(0);
 }

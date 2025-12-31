@@ -6,10 +6,7 @@
 
 import type { WithdrawalRequest, FeeQuote, WithdrawalPipelineContext } from "../domain/types";
 import { validateWithdrawalContext } from "../domain/invariants";
-import {
-  deriveWithdrawalInputs,
-  deriveCrosschainWithdrawalInputs,
-} from "@shinobi-cash/core";
+import { deriveWithdrawalInputs, deriveCrosschainWithdrawalInputs } from "@shinobi-cash/core";
 import {
   createWithdrawalData,
   createCrossChainWithdrawalData,

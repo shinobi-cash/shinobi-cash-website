@@ -14,10 +14,7 @@ import {
   passkeyStorageAdapter,
   sharedEncryptionService,
 } from "./adapters/IndexedDBAdapter";
-import type {
-  CachedAccountData,
-  NamedPasskeyData,
-} from "./interfaces/IDataTypes";
+import type { CachedAccountData, NamedPasskeyData } from "./interfaces/IDataTypes";
 import { AccountRepository } from "./repositories/AccountRepository";
 import { NotesRepository } from "./repositories/NotesRepository";
 import { PasskeyRepository } from "./repositories/PasskeyRepository";
@@ -43,13 +40,10 @@ class StorageManager {
 
   async importWalletKEK(encryptionKey: Uint8Array): Promise<CryptoKey> {
     const keyBytes = new Uint8Array(encryptionKey);
-    return await crypto.subtle.importKey(
-      "raw",
-      keyBytes,
-      { name: "AES-GCM" },
-      false,
-      ["encrypt", "decrypt"]
-    );
+    return await crypto.subtle.importKey("raw", keyBytes, { name: "AES-GCM" }, false, [
+      "encrypt",
+      "decrypt",
+    ]);
   }
 
   // ============ SESSION MANAGEMENT ============
@@ -67,69 +61,52 @@ class StorageManager {
    * @param kek - Key Encryption Key from auth method (passkey KEK or wallet KEK)
    * @param amkPrivateKey - Account Master Key (decrypted with KEK)
    */
-   async initializeAccountSession(
-      accountName: string,
-      kek: CryptoKey,
-      amkPrivateKey: string
-    ): Promise<void> {
-      // 1️⃣ Entry + invariant check
-      if (!amkPrivateKey || amkPrivateKey.length !== 66) {
-        throw new Error(
-          "CRITICAL: initializeAccountSession called without valid AMK"
-        );
-      }
-
-      console.debug(
-        "[StorageManager][Session] Finalizing session",
-        { accountName }
-      );
-
-      this.currentAccountName = accountName;
-
-      // 2️⃣ Derive DEK from AMK
-      console.debug(
-        "[StorageManager][Session] Deriving DEK from AMK"
-      );
-
-      const { KDF } = await import("./services/KeyDerivationService");
-      const dek = await KDF.deriveDataEncryptionKey(amkPrivateKey);
-
-      // 3️⃣ Activate DEK (notes layer)
-      sharedEncryptionService.setEncryptionKey(dek);
-      await notesStorageAdapter.initializeSession(dek);
-
-      console.debug(
-        "[StorageManager][Session] Notes encryption initialized (DEK active)",
-        { dekReady: sharedEncryptionService.isKeyAvailable() }
-      );
-
-      // 4️⃣ Activate KEK (account layer)
-      await accountStorageAdapter.initializeSession(kek);
-
-      console.debug(
-        "[StorageManager][Session] Account encryption initialized (KEK active)",
-        { kekReady: accountStorageAdapter.isSessionActive() }
-      );
-
-      // 5️⃣ Final invariant check before marking session
-      if (
-        !sharedEncryptionService.isKeyAvailable() ||
-        !accountStorageAdapter.isSessionActive()
-      ) {
-        throw new Error(
-          "CRITICAL: Session initialization incomplete (KEK or DEK missing)"
-        );
-      }
-
-      console.debug(
-        "[StorageManager][Session] Session fully initialized",
-        {
-          accountName,
-          kek: "active",
-          dek: "active",
-        }
-      );
+  async initializeAccountSession(
+    accountName: string,
+    kek: CryptoKey,
+    amkPrivateKey: string
+  ): Promise<void> {
+    // 1️⃣ Entry + invariant check
+    if (!amkPrivateKey || amkPrivateKey.length !== 66) {
+      throw new Error("CRITICAL: initializeAccountSession called without valid AMK");
     }
+
+    console.debug("[StorageManager][Session] Finalizing session", { accountName });
+
+    this.currentAccountName = accountName;
+
+    // 2️⃣ Derive DEK from AMK
+    console.debug("[StorageManager][Session] Deriving DEK from AMK");
+
+    const { KDF } = await import("./services/KeyDerivationService");
+    const dek = await KDF.deriveDataEncryptionKey(amkPrivateKey);
+
+    // 3️⃣ Activate DEK (notes layer)
+    sharedEncryptionService.setEncryptionKey(dek);
+    await notesStorageAdapter.initializeSession(dek);
+
+    console.debug("[StorageManager][Session] Notes encryption initialized (DEK active)", {
+      dekReady: sharedEncryptionService.isKeyAvailable(),
+    });
+
+    // 4️⃣ Activate KEK (account layer)
+    await accountStorageAdapter.initializeSession(kek);
+
+    console.debug("[StorageManager][Session] Account encryption initialized (KEK active)", {
+      kekReady: accountStorageAdapter.isSessionActive(),
+    });
+
+    // 5️⃣ Final invariant check before marking session
+    if (!sharedEncryptionService.isKeyAvailable() || !accountStorageAdapter.isSessionActive()) {
+      throw new Error("CRITICAL: Session initialization incomplete (KEK or DEK missing)");
+    }
+
+    console.debug("[StorageManager][Session] Session fully initialized", {
+      accountName,
+      kek: "active",
+      dek: "active",
+    });
+  }
 
   /**
    * Initialize wallet-based account session
@@ -140,11 +117,7 @@ class StorageManager {
    * @param kek - Wallet KEK (derived from signature)
    * @param amkPrivateKey - Account Master Key (to derive DEK)
    */
-  async loginWithWallet(
-    accountId: string,
-    kek: Uint8Array,
-    amkPrivateKey: string
-  ): Promise<void> {
+  async loginWithWallet(accountId: string, kek: Uint8Array, amkPrivateKey: string): Promise<void> {
     // Convert Uint8Array KEK to CryptoKey
     const keyBuffer = kek.buffer.slice(
       kek.byteOffset,
@@ -199,10 +172,7 @@ class StorageManager {
    * ❌ Does NOT derive DEK
    * ❌ Does NOT initialize notes
    */
-  async initializeAccountUnlockOnly(
-    accountName: string,
-    kek: CryptoKey
-  ): Promise<void> {
+  async initializeAccountUnlockOnly(accountName: string, kek: CryptoKey): Promise<void> {
     this.currentAccountName = accountName;
 
     // Account data is encrypted with KEK
@@ -259,7 +229,7 @@ class StorageManager {
    */
   clearInMemorySession(): void {
     sharedEncryptionService.clearEncryptionKey(); // DEK
-    accountStorageAdapter.clearSession();         // KEK
+    accountStorageAdapter.clearSession(); // KEK
     this.currentAccountName = null;
   }
 
@@ -298,7 +268,7 @@ class StorageManager {
       poolAddress: string,
       limit: number,
       cursor?: string,
-      orderDirection?: 'asc' | 'desc'
+      orderDirection?: "asc" | "desc"
     ) => Promise<{ items: Activity[]; pageInfo: { hasNextPage: boolean; endCursor?: string } }>,
     options?: DiscoveryOptions
   ): Promise<DiscoveryResult> {
@@ -352,8 +322,8 @@ class StorageManager {
    */
   async listPasskeyAccounts(): Promise<CachedAccountData[]> {
     const all = await this.listAllAccounts();
-    return all.filter((acc): acc is CachedAccountData & { type: "passkey" } =>
-      acc.type === "passkey"
+    return all.filter(
+      (acc): acc is CachedAccountData & { type: "passkey" } => acc.type === "passkey"
     );
   }
 
@@ -362,8 +332,8 @@ class StorageManager {
    */
   async listWalletAccounts(): Promise<CachedAccountData[]> {
     const all = await this.listAllAccounts();
-    return all.filter((acc): acc is CachedAccountData & { type: "wallet" } =>
-      acc.type === "wallet"
+    return all.filter(
+      (acc): acc is CachedAccountData & { type: "wallet" } => acc.type === "wallet"
     );
   }
 
@@ -437,13 +407,12 @@ class StorageManager {
         baselineData.lastUsedDepositIndex,
         baselineData.lastProcessedCursor
       );
-
     } catch (error) {
       console.warn("Failed to initialize sync baseline, will fall back to full scan:", error);
       // Don't throw - if this fails, the sync will just do a full scan
     }
   }
-    async listAccountIndex() {
+  async listAccountIndex() {
     return this.accountRepo.listAccountIndex();
   }
 }

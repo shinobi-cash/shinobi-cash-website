@@ -84,7 +84,8 @@ export class AccountRepository {
     const encrypted = await this.encryptionService.encrypt(storedData as StoredAccountData);
 
     // Determine storage key based on account type
-    const storageKey = accountData.type === "passkey" ? accountData.accountName : accountData.accountId;
+    const storageKey =
+      accountData.type === "passkey" ? accountData.accountName : accountData.accountId;
 
     const storageData: StorageRecord = {
       id: storageKey, // Use accountName for passkey, accountId for wallet
@@ -184,5 +185,4 @@ export class AccountRepository {
 
     return index;
   }
- 
 }

@@ -119,7 +119,7 @@ export function SettingMenu({ children, onAddPasskey }: SettingMenuProps) {
         </div>
         <DropdownMenuSeparator className="bg-gray-800" />
 
-       {/* Notes Section */}
+        {/* Notes Section */}
         <DropdownMenuLabel className="px-2 text-xs font-semibold text-gray-500">
           Account
         </DropdownMenuLabel>

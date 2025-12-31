@@ -38,9 +38,10 @@ export function usePasskeyAuth() {
     } catch (error) {
       console.error("Passkey login failed:", error);
 
-      const authError = error instanceof AuthError
-        ? error
-        : new AuthError(AuthErrorCode.PASSKEY_FAILED, "Passkey login failed. Please try again.");
+      const authError =
+        error instanceof AuthError
+          ? error
+          : new AuthError(AuthErrorCode.PASSKEY_FAILED, "Passkey login failed. Please try again.");
 
       setState({ isProcessing: false, error: authError });
       return null;
@@ -61,9 +62,13 @@ export function usePasskeyAuth() {
       } catch (error) {
         console.error("Passkey setup failed:", error);
 
-        const authError = error instanceof AuthError
-          ? error
-          : new AuthError(AuthErrorCode.PASSKEY_FAILED, "Passkey setup failed. Please try again.");
+        const authError =
+          error instanceof AuthError
+            ? error
+            : new AuthError(
+                AuthErrorCode.PASSKEY_FAILED,
+                "Passkey setup failed. Please try again."
+              );
 
         setState({ isProcessing: false, error: authError });
         return false;
@@ -154,9 +159,13 @@ export function useAddPasskeyFlow(options: AddPasskeyFlowOptions = {}) {
       } catch (error) {
         console.error("Add passkey flow failed:", error);
 
-        const authError = error instanceof AuthError
-          ? error
-          : new AuthError(AuthErrorCode.PASSKEY_FAILED, "Failed to add passkey. Please try again.");
+        const authError =
+          error instanceof AuthError
+            ? error
+            : new AuthError(
+                AuthErrorCode.PASSKEY_FAILED,
+                "Failed to add passkey. Please try again."
+              );
 
         setState({ isProcessing: false, error: authError });
         return false;

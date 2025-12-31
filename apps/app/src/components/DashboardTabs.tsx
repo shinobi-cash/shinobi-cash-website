@@ -23,10 +23,10 @@ export function DashboardTabs() {
             key={tab.href}
             href={tab.href}
             className={cn(
-              "flex-1 rounded-md px-3 py-1.5 text-sm font-medium text-center transition-all",
+              "flex-1 rounded-md px-3 py-1.5 text-center text-sm font-medium transition-all",
               isActive
                 ? "bg-gray-700 text-white shadow-sm"
-                : "text-gray-400 hover:text-white hover:bg-gray-800/50"
+                : "text-gray-400 hover:bg-gray-800/50 hover:text-white"
             )}
           >
             {tab.label}

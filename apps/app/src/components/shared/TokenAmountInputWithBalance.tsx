@@ -67,7 +67,8 @@ export function TokenAmountInputWithBalance({
         <div className="flex items-center justify-between text-sm">
           {/* USD Value */}
           <span className="text-gray-400">
-            {hasValidAmount && (isLoading ? "Loading price..." : amountUsd ? `≈ ${formatUsdAmount(amountUsd)}` : "")}
+            {hasValidAmount &&
+              (isLoading ? "Loading price..." : amountUsd ? `≈ ${formatUsdAmount(amountUsd)}` : "")}
           </span>
 
           {/* Balance and Max Button */}

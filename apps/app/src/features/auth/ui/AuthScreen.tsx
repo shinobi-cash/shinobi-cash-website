@@ -81,12 +81,6 @@ export function AuthScreen() {
       return null;
 
     case "error":
-      return (
-        <ErrorScreen
-          error={state.error}
-          retry={state.retry}
-          onClear={actions.clearError}
-        />
-      );
+      return <ErrorScreen error={state.error} retry={state.retry} onClear={actions.clearError} />;
   }
 }

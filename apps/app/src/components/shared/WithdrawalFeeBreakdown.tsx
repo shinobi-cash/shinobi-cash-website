@@ -34,9 +34,10 @@ export function WithdrawalFeeBreakdown({
   const youReceiveUsd = usdPrice ? youReceive * usdPrice : null;
 
   // Calculate total fees USD
-  const totalFeesUsd = executionFeeUsd !== null && (solverFeeUsd !== null || !isCrossChain)
-    ? executionFeeUsd + (solverFeeUsd || 0)
-    : null;
+  const totalFeesUsd =
+    executionFeeUsd !== null && (solverFeeUsd !== null || !isCrossChain)
+      ? executionFeeUsd + (solverFeeUsd || 0)
+      : null;
 
   return (
     <div className="mb-2">
@@ -53,7 +54,12 @@ export function WithdrawalFeeBreakdown({
               stroke="currentColor"
               viewBox="0 0 24 24"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 9l-7 7-7-7"
+              />
             </svg>
           </div>
         </summary>

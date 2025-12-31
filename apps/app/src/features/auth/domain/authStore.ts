@@ -34,10 +34,7 @@ interface AuthStore {
   logout: () => Promise<void>;
   clearError: () => void;
 
-  setError: (
-    error: import("./types").AuthError,
-    retry?: () => void | Promise<void>
-  ) => void;
+  setError: (error: import("./types").AuthError, retry?: () => void | Promise<void>) => void;
 }
 
 // ============ STORE IMPLEMENTATION ============
@@ -128,12 +125,7 @@ export const useAuthStore = create<AuthStore>()(
       /**
        * Authenticate with wallet signature
        */
-      authenticateWithWallet: async (
-        accountId,
-        signature,
-        walletAddress,
-        chainId
-      ) => {
+      authenticateWithWallet: async (accountId, signature, walletAddress, chainId) => {
         set({ state: { status: "authenticating", method: "wallet", accountId } });
 
         try {

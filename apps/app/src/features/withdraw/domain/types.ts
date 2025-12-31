@@ -6,10 +6,7 @@
  */
 
 import type { Note } from "@shinobi-cash/core";
-import type {
-  WithdrawalDerivation,
-  CrosschainWithdrawalDerivation
-} from "@shinobi-cash/core";
+import type { WithdrawalDerivation, CrosschainWithdrawalDerivation } from "@shinobi-cash/core";
 import type { SmartAccountClient } from "permissionless";
 import type { UserOperation } from "viem/account-abstraction";
 

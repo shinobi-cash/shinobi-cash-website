@@ -37,9 +37,7 @@ async function fetchExternalData(poolAddress: string): Promise<ExternalData> {
  */
 export async function buildWitness(context: WithdrawalPipelineContext): Promise<WithdrawalWitness> {
   // 1. Fetch external data
-  const externalData = await fetchExternalData(
-    context.request.note.poolAddress.toLowerCase()
-  );
+  const externalData = await fetchExternalData(context.request.note.poolAddress.toLowerCase());
 
   // 2. Convert state tree and ASP tree to bigint arrays
   const stateTreeLeaves = externalData.stateTreeLeaves.map((leaf) => BigInt(leaf.leafValue));

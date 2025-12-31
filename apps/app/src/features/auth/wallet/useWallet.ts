@@ -9,11 +9,7 @@ import { useState, useCallback } from "react";
 import { useAccount, useSignTypedData, useChainId } from "wagmi";
 import { getEIP712Message } from "./eip712";
 import { generateKeysFromWalletSignature } from "../shared";
-import {
-  loginWithWalletIfExists,
-  setupWalletAccount,
-  deriveEncryptionKey,
-} from "./walletAuth";
+import { loginWithWalletIfExists, setupWalletAccount, deriveEncryptionKey } from "./walletAuth";
 import type { KeyGenerationResult } from "@shinobi-cash/core";
 import { AuthError, AuthErrorCode } from "@/lib/errors/AuthError";
 
@@ -46,7 +42,7 @@ export function useWalletAuth() {
     if (!address) {
       setState({
         isProcessing: false,
-        error: new AuthError(AuthErrorCode.INVALID_CREDENTIALS, "No wallet connected")
+        error: new AuthError(AuthErrorCode.INVALID_CREDENTIALS, "No wallet connected"),
       });
       return null;
     }
@@ -72,9 +68,10 @@ export function useWalletAuth() {
     } catch (error) {
       console.error("Key generation failed:", error);
 
-      const authError = error instanceof AuthError
-        ? error
-        : new AuthError(AuthErrorCode.UNKNOWN, "Key generation failed. Please try again.");
+      const authError =
+        error instanceof AuthError
+          ? error
+          : new AuthError(AuthErrorCode.UNKNOWN, "Key generation failed. Please try again.");
 
       setState({ isProcessing: false, error: authError });
       return null;
@@ -89,7 +86,7 @@ export function useWalletAuth() {
     if (!address) {
       setState({
         isProcessing: false,
-        error: new AuthError(AuthErrorCode.INVALID_CREDENTIALS, "No wallet connected")
+        error: new AuthError(AuthErrorCode.INVALID_CREDENTIALS, "No wallet connected"),
       });
       return null;
     }
@@ -109,9 +106,10 @@ export function useWalletAuth() {
     } catch (error) {
       console.error("Wallet login failed:", error);
 
-      const authError = error instanceof AuthError
-        ? error
-        : new AuthError(AuthErrorCode.UNKNOWN, "Wallet login failed. Please try again.");
+      const authError =
+        error instanceof AuthError
+          ? error
+          : new AuthError(AuthErrorCode.UNKNOWN, "Wallet login failed. Please try again.");
 
       setState({ isProcessing: false, error: authError });
       return null;
@@ -136,9 +134,13 @@ export function useWalletAuth() {
       } catch (error) {
         console.error("Wallet account setup failed:", error);
 
-        const authError = error instanceof AuthError
-          ? error
-          : new AuthError(AuthErrorCode.UNKNOWN, "Wallet account setup failed. Please try again.");
+        const authError =
+          error instanceof AuthError
+            ? error
+            : new AuthError(
+                AuthErrorCode.UNKNOWN,
+                "Wallet account setup failed. Please try again."
+              );
 
         setState({ isProcessing: false, error: authError });
         return false;

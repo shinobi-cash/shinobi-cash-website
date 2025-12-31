@@ -10,11 +10,7 @@ import { useNotesController } from "@/features/notes";
 
 // ============ ROOT LAYOUT ============
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useIsAuthenticated();
 
   return isAuthenticated ? (

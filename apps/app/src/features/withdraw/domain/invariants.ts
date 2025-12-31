@@ -31,11 +31,9 @@ export class WithdrawalValidationError extends Error {
 export function validateWithdrawalRequest(request: WithdrawalRequest): void {
   // Amount must be positive
   if (request.withdrawAmountWei <= BigInt(0)) {
-    throw new WithdrawalValidationError(
-      "Withdrawal amount must be positive",
-      "INVALID_AMOUNT",
-      { amount: request.withdrawAmountWei.toString() }
-    );
+    throw new WithdrawalValidationError("Withdrawal amount must be positive", "INVALID_AMOUNT", {
+      amount: request.withdrawAmountWei.toString(),
+    });
   }
 
   // Amount must not exceed note balance
@@ -53,20 +51,16 @@ export function validateWithdrawalRequest(request: WithdrawalRequest): void {
 
   // Recipient must be valid address
   if (!request.recipient || request.recipient.length !== 42) {
-    throw new WithdrawalValidationError(
-      "Invalid recipient address",
-      "INVALID_RECIPIENT",
-      { recipient: request.recipient }
-    );
+    throw new WithdrawalValidationError("Invalid recipient address", "INVALID_RECIPIENT", {
+      recipient: request.recipient,
+    });
   }
 
   // Cross-chain must have destination chain
   if (request.destinationChainId !== undefined && request.destinationChainId <= 0) {
-    throw new WithdrawalValidationError(
-      "Invalid destination chain ID",
-      "INVALID_CHAIN_ID",
-      { chainId: request.destinationChainId }
-    );
+    throw new WithdrawalValidationError("Invalid destination chain ID", "INVALID_CHAIN_ID", {
+      chainId: request.destinationChainId,
+    });
   }
 }
 
@@ -79,23 +73,17 @@ export function validateWithdrawalRequest(request: WithdrawalRequest): void {
 export function validateFeeQuote(feeQuote: FeeQuote): void {
   // Relay fee must not exceed maximum
   if (feeQuote.relayFeeBPS > WITHDRAWAL_CONFIG.MAX_RELAY_FEE_BPS) {
-    throw new WithdrawalValidationError(
-      "Relay fee exceeds maximum allowed",
-      "FEE_TOO_HIGH",
-      {
-        relayFeeBPS: feeQuote.relayFeeBPS,
-        maxBPS: WITHDRAWAL_CONFIG.MAX_RELAY_FEE_BPS,
-      }
-    );
+    throw new WithdrawalValidationError("Relay fee exceeds maximum allowed", "FEE_TOO_HIGH", {
+      relayFeeBPS: feeQuote.relayFeeBPS,
+      maxBPS: WITHDRAWAL_CONFIG.MAX_RELAY_FEE_BPS,
+    });
   }
 
   // Relay fee must be positive (zero not allowed by contract)
   if (feeQuote.relayFeeBPS <= 0) {
-    throw new WithdrawalValidationError(
-      "Relay fee must be positive",
-      "ZERO_FEE_NOT_ALLOWED",
-      { relayFeeBPS: feeQuote.relayFeeBPS }
-    );
+    throw new WithdrawalValidationError("Relay fee must be positive", "ZERO_FEE_NOT_ALLOWED", {
+      relayFeeBPS: feeQuote.relayFeeBPS,
+    });
   }
 
   // Net amount must be positive
@@ -120,11 +108,9 @@ export function validateFeeQuote(feeQuote: FeeQuote): void {
 export function validateWithdrawalContext(context: WithdrawalPipelineContext): void {
   // Pool scope must be positive
   if (context.poolScope <= BigInt(0)) {
-    throw new WithdrawalValidationError(
-      "Invalid pool scope",
-      "INVALID_POOL_SCOPE",
-      { poolScope: context.poolScope.toString() }
-    );
+    throw new WithdrawalValidationError("Invalid pool scope", "INVALID_POOL_SCOPE", {
+      poolScope: context.poolScope.toString(),
+    });
   }
 
   // Withdrawal data must be valid
@@ -146,18 +132,14 @@ export function validateWithdrawalContext(context: WithdrawalPipelineContext): v
  */
 export function assertFeeReadiness(isLoading: boolean, error: string | null): void {
   if (isLoading) {
-    throw new WithdrawalValidationError(
-      "Fee estimation is still loading",
-      "FEES_NOT_READY",
-      { isLoading }
-    );
+    throw new WithdrawalValidationError("Fee estimation is still loading", "FEES_NOT_READY", {
+      isLoading,
+    });
   }
 
   if (error) {
-    throw new WithdrawalValidationError(
-      "Fee estimation failed",
-      "FEE_ESTIMATION_FAILED",
-      { error }
-    );
+    throw new WithdrawalValidationError("Fee estimation failed", "FEE_ESTIMATION_FAILED", {
+      error,
+    });
   }
 }

@@ -36,10 +36,7 @@ export async function login(accountName: string): Promise<KeyGenerationResult> {
  * @param keys - Generated cryptographic keys
  * @throws AuthError if setup fails
  */
-export async function createAccount(
-  accountName: string,
-  keys: KeyGenerationResult
-): Promise<void> {
+export async function createAccount(accountName: string, keys: KeyGenerationResult): Promise<void> {
   try {
     await performPasskeySetup(accountName, keys);
   } catch (error) {

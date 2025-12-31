@@ -6,31 +6,29 @@
  */
 
 // Account data discriminated by type for type-safe handling
-export type CachedAccountData =
-  | PasskeyAccountData
-  | WalletAccountData;
+export type CachedAccountData = PasskeyAccountData | WalletAccountData;
 
 // Passkey account with human-readable name
 export interface PasskeyAccountData {
   type: "passkey";
-  accountName: string;     // User-chosen name (e.g., "my-wallet")
-  displayName: string;     // Same as accountName for passkeys
-  privateKey: string;      // Stored (source of truth)
-  publicKey: string;       // Derived from privateKey (not persisted)
-  address: string;         // Derived from publicKey (not persisted)
+  accountName: string; // User-chosen name (e.g., "my-wallet")
+  displayName: string; // Same as accountName for passkeys
+  privateKey: string; // Stored (source of truth)
+  publicKey: string; // Derived from privateKey (not persisted)
+  address: string; // Derived from publicKey (not persisted)
   createdAt: number;
 }
 
 // Wallet-only account identified by address + chain
 export interface WalletAccountData {
   type: "wallet";
-  accountId: string;       // Technical ID: "0xabc:chain-1"
-  displayName: string;     // User-friendly: "Account 1"
-  walletAddress: string;   // External wallet address (MetaMask, etc.)
-  chainId: number;         // 1, 137, etc.
-  privateKey: string;      // Stored (source of truth)
-  publicKey: string;       // Derived from privateKey (not persisted)
-  address: string;         // Derived from publicKey (not persisted)
+  accountId: string; // Technical ID: "0xabc:chain-1"
+  displayName: string; // User-friendly: "Account 1"
+  walletAddress: string; // External wallet address (MetaMask, etc.)
+  chainId: number; // 1, 137, etc.
+  privateKey: string; // Stored (source of truth)
+  publicKey: string; // Derived from privateKey (not persisted)
+  address: string; // Derived from publicKey (not persisted)
   createdAt: number;
 }
 

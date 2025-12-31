@@ -5,7 +5,11 @@
 
 // ============ CRYPTOGRAPHY ============
 
-export { deriveKeysFromSignature, generateKeysFromWalletSignature, EncryptionService } from "@shinobi-cash/core";
+export {
+  deriveKeysFromSignature,
+  generateKeysFromWalletSignature,
+  EncryptionService,
+} from "@shinobi-cash/core";
 
 // ============ ACCOUNT ID ============
 

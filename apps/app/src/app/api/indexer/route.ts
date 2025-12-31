@@ -43,12 +43,7 @@ const CACHE_CONFIG = {
 
 // Request body types
 interface IndexerRequest {
-  endpoint:
-    | "activities"
-    | "stateTree"
-    | "aspRoot"
-    | "health"
-    | "latestBlock";
+  endpoint: "activities" | "stateTree" | "aspRoot" | "health" | "latestBlock";
   params?: {
     poolAddress?: string;
     poolId?: string;

@@ -32,7 +32,7 @@ export async function loginWithWalletIfExists(
     return null;
   }
 
- const kek = await storageManager.importWalletKEK(encryptionKey);
+  const kek = await storageManager.importWalletKEK(encryptionKey);
 
   // 1. Unlock account data
   await storageManager.initializeAccountUnlockOnly(accountId, kek);
@@ -42,11 +42,7 @@ export async function loginWithWalletIfExists(
   if (!accountData) throw new Error("Failed to decrypt account");
 
   // 3. Finalize session (derive DEK)
-  await storageManager.initializeAccountSession(
-    accountId,
-    kek,
-    accountData.privateKey
-  );
+  await storageManager.initializeAccountSession(accountId, kek, accountData.privateKey);
 
   return {
     publicKey: accountData.publicKey,

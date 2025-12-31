@@ -95,8 +95,7 @@ export async function createAccount(
  * - No keys are returned or stored here
  */
 export async function bootstrap(): Promise<
-  | { type: "session-restored" }
-  | { type: "no-session"; hasAccounts: boolean }
+  { type: "session-restored" } | { type: "no-session"; hasAccounts: boolean }
 > {
   try {
     const resume = await KDF.resumeAuth();

@@ -99,17 +99,12 @@ export class KeyDerivationService {
    * @returns CryptoKey suitable for AES-GCM encryption/decryption
    */
   async deriveDataEncryptionKey(amkPrivateKey: string): Promise<CryptoKey> {
-
     if (amkPrivateKey.length !== 66) {
-      throw new Error(
-        "SECURITY ERROR: Attempted to derive DEK from invalid AMK"
-      );
+      throw new Error("SECURITY ERROR: Attempted to derive DEK from invalid AMK");
     }
 
     // Convert hex private key to bytes
-    const privateKeyHex = amkPrivateKey.startsWith("0x")
-      ? amkPrivateKey.slice(2)
-      : amkPrivateKey;
+    const privateKeyHex = amkPrivateKey.startsWith("0x") ? amkPrivateKey.slice(2) : amkPrivateKey;
     const privateKeyBytes = new Uint8Array(
       privateKeyHex.match(/.{1,2}/g)?.map((byte) => parseInt(byte, 16)) || []
     );
@@ -119,13 +114,9 @@ export class KeyDerivationService {
     }
 
     // Import AMK as HKDF key material
-    const keyMaterial = await crypto.subtle.importKey(
-      "raw",
-      privateKeyBytes,
-      "HKDF",
-      false,
-      ["deriveKey"]
-    );
+    const keyMaterial = await crypto.subtle.importKey("raw", privateKeyBytes, "HKDF", false, [
+      "deriveKey",
+    ]);
 
     // Derive DEK using HKDF with notes-specific salt and info
     const salt = new TextEncoder().encode("shinobi-notes-salt");
@@ -238,8 +229,7 @@ export class KeyDerivationService {
    * Resume authentication - exact implementation from keyDerivation.ts
    */
   async resumeAuth(): Promise<
-    | { status: "passkey-ready"; result: DerivedKeyResult; accountName: string }
-    | { status: "none" }
+    { status: "passkey-ready"; result: DerivedKeyResult; accountName: string } | { status: "none" }
   > {
     const session = await this.sessionRepo.getStoredSessionInfo();
     if (!session) return { status: "none" };

@@ -6,8 +6,4 @@
  */
 
 // Re-export app-specific types only
-export type {
-  CachedAccountData,
-  NamedPasskeyData,
-  SessionInfo,
-} from "./interfaces/IDataTypes";
+export type { CachedAccountData, NamedPasskeyData, SessionInfo } from "./interfaces/IDataTypes";
