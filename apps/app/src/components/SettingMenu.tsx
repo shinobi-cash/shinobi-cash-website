@@ -114,7 +114,7 @@ export function SettingMenu({ children, onAddPasskey }: SettingMenuProps) {
           <Switch
             checked={autoSyncEnabled}
             onCheckedChange={setAutoSyncEnabled}
-            className="data-[state=checked]:bg-purple-600"
+            className="data-[state=checked]:bg-orange-500"
           />
         </div>
         <DropdownMenuSeparator className="bg-gray-800" />

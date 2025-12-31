@@ -86,7 +86,7 @@ export function SyncIndicator({ onSync, autoSyncInterval = 10 }: SyncIndicatorPr
         max={100}
         min={0}
         value={progress}
-        gaugePrimaryColor="oklch(0.627 0.265 303.9)" // Primary accent color
+        gaugePrimaryColor="oklch(0.705 0.213 47.604)" // Primary accent color
         gaugeSecondaryColor="oklch(0.269 0 0)" // Muted border color
         className="size-8 transition-opacity group-hover:opacity-80"
       >

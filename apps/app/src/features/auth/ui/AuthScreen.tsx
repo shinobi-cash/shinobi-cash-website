@@ -13,6 +13,7 @@ import { NoAccountsScreen } from "./screens/NoAccountsScreen";
 import { AccountsDetectedScreen } from "./screens/AccountsDetectedScreen";
 import { CreatingAccountScreen } from "./screens/CreatingAccountScreen";
 import { AuthenticatingScreen } from "./screens/AuthenticatingScreen";
+import { WalletAuthHandler } from "./screens/WalletAuthHandler";
 import { ErrorScreen } from "./screens/ErrorScreen";
 
 export function AuthScreen() {
@@ -61,6 +62,11 @@ export function AuthScreen() {
       return <CreatingAccountScreen method={state.method} />;
 
     case "authenticating":
+      // For wallet, use WalletAuthHandler to trigger signing
+      if (state.method === "wallet") {
+        return <WalletAuthHandler accountId={state.accountId} />;
+      }
+      // For passkey, just show loading (auth happens in store)
       return <AuthenticatingScreen method={state.method} accountId={state.accountId} />;
 
     case "authenticated":

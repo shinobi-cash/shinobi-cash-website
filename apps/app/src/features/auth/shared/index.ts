@@ -9,4 +9,4 @@ export { deriveKeysFromSignature, generateKeysFromWalletSignature, EncryptionSer
 
 // ============ ACCOUNT ID ============
 
-export { getWalletAccountId } from "./accountId";
+export { getWalletAccountId, parseWalletAccountId } from "./accountId";
