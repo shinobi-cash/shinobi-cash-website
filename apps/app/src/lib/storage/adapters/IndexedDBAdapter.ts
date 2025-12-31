@@ -50,12 +50,9 @@ export class IndexedDBAdapter<T = unknown> implements IEncryptedStorageAdapter<T
         const db = (event.target as IDBOpenDBRequest).result;
         const oldVersion = event.oldVersion;
 
-        console.log(`Upgrading database from version ${oldVersion} to ${DB_VERSION}`);
-
         // Handle migration - exact implementation from noteCache
         if (oldVersion < 1) {
           if (!db.objectStoreNames.contains(STORE_NAME)) {
-            console.log("Creating notes store");
             const notesStore = db.createObjectStore(STORE_NAME, { keyPath: "id" });
             notesStore.createIndex("publicKeyHash", "publicKeyHash", { unique: false });
             notesStore.createIndex("poolAddressHash", "poolAddressHash", { unique: false });
@@ -64,7 +61,6 @@ export class IndexedDBAdapter<T = unknown> implements IEncryptedStorageAdapter<T
 
         if (oldVersion < 2) {
           if (!db.objectStoreNames.contains(ACCOUNT_STORE_NAME)) {
-            console.log("Creating account store");
             const accountStore = db.createObjectStore(ACCOUNT_STORE_NAME, { keyPath: "id" });
             accountStore.createIndex("publicKeyHash", "publicKeyHash", { unique: false });
           }
@@ -72,7 +68,6 @@ export class IndexedDBAdapter<T = unknown> implements IEncryptedStorageAdapter<T
 
         if (oldVersion < 3) {
           if (!db.objectStoreNames.contains(PASSKEY_STORE_NAME)) {
-            console.log("Creating passkey store");
             const passkeyStore = db.createObjectStore(PASSKEY_STORE_NAME, {
               keyPath: "accountName",
             });
@@ -80,8 +75,6 @@ export class IndexedDBAdapter<T = unknown> implements IEncryptedStorageAdapter<T
             passkeyStore.createIndex("credentialId", "credentialId", { unique: false });
           }
         }
-
-        console.log("Database upgrade completed");
       };
     });
   }
@@ -100,7 +93,6 @@ export class IndexedDBAdapter<T = unknown> implements IEncryptedStorageAdapter<T
 
       deleteReq.onerror = () => reject(deleteReq.error);
       deleteReq.onsuccess = () => {
-        console.log("Database deleted successfully");
         this.init().then(resolve).catch(reject);
       };
       deleteReq.onblocked = () => {
@@ -305,21 +297,28 @@ export class IndexedDBAdapter<T = unknown> implements IEncryptedStorageAdapter<T
       passkeyRequest.onsuccess = checkComplete;
     });
   }
+
+  getEncryptionService(): EncryptionService {
+    return this.encryptionService;
+  }
 }
 
-// Create shared encryption service
-const sharedEncryptionService = new EncryptionService();
+// CRITICAL FIX: Create SEPARATE encryption services for different data types
+// Notes use DEK (derived from AMK), account data uses KEK
+const notesEncryptionService = new EncryptionService(); // For DEK
+const accountEncryptionService = new EncryptionService(); // For KEK
+const passkeyEncryptionService = new EncryptionService(); // For KEK
 
-// Create store-specific adapters
-export const notesStorageAdapter = new IndexedDBAdapter(STORE_NAME, sharedEncryptionService);
+// Create store-specific adapters with their own encryption services
+export const notesStorageAdapter = new IndexedDBAdapter(STORE_NAME, notesEncryptionService);
 export const accountStorageAdapter = new IndexedDBAdapter(
   ACCOUNT_STORE_NAME,
-  sharedEncryptionService
+  accountEncryptionService
 );
 export const passkeyStorageAdapter = new IndexedDBAdapter(
   PASSKEY_STORE_NAME,
-  sharedEncryptionService
+  passkeyEncryptionService
 );
 
-// Export shared encryption service for repositories
-export { sharedEncryptionService };
+// Export notes encryption service for repositories (they need to access it directly)
+export const sharedEncryptionService = notesEncryptionService;

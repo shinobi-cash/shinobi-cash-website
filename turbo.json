@@ -7,6 +7,7 @@
     "INDEXER_URL_PROD",
     "INDEXER_TOKEN_DEV",
     "INDEXER_TOKEN_PROD",
+    "ALCHEMY_API_KEY",
     "NEXT_PUBLIC_SENTRY_ENABLED"
   ],
   "globalDependencies": [
@@ -15,23 +16,36 @@
   ],
   "tasks": {
     "build": {
-      "dependsOn": ["^build"],
-      "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": [".next/**", "!.next/cache/**"],
+      "dependsOn": [
+        "^build"
+      ],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        ".env*"
+      ],
+      "outputs": [
+        ".next/**",
+        "!.next/cache/**"
+      ],
       "env": [
         "NODE_ENV",
         "INDEXER_URL_DEV",
         "INDEXER_URL_PROD",
         "INDEXER_TOKEN_DEV",
         "INDEXER_TOKEN_PROD",
+        "ALCHEMY_API_KEY",
         "NEXT_PUBLIC_SENTRY_ENABLED"
       ]
     },
     "lint": {
-      "dependsOn": ["^lint"]
+      "dependsOn": [
+        "^lint"
+      ]
     },
     "check-types": {
-      "dependsOn": ["^check-types"]
+      "dependsOn": [
+        "^check-types"
+      ]
     },
     "dev": {
       "cache": false,

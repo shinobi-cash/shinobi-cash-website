@@ -22,7 +22,6 @@ export type { WithdrawalProofData };
  * Loads circuit files from the /circuits/ public directory using fetch
  */
 const loadWithdrawalCircuits: CircuitFileLoader = async () => {
-  console.log("📥 Loading withdrawal circuit files...");
 
   const [wasmResponse, zkeyResponse, vkeyResponse] = await Promise.all([
     fetch("/circuits/build/withdraw/withdraw.wasm"),
@@ -40,8 +39,6 @@ const loadWithdrawalCircuits: CircuitFileLoader = async () => {
     vkeyResponse.json(),
   ]);
 
-  console.log("✅ Withdrawal circuit files loaded successfully");
-
   return {
     wasmFile: new Uint8Array(wasmBuffer),
     zkeyFile: new Uint8Array(zkeyBuffer),
@@ -54,7 +51,6 @@ const loadWithdrawalCircuits: CircuitFileLoader = async () => {
  * Loads circuit files from the /circuits/ public directory using fetch
  */
 const loadCrosschainCircuits: CircuitFileLoader = async () => {
-  console.log("📥 Loading crosschain withdrawal circuit files...");
 
   const [wasmResponse, zkeyResponse, vkeyResponse] = await Promise.all([
     fetch("/circuits/build/crosschain_withdraw/crosschain_withdrawal.wasm"),
@@ -71,8 +67,6 @@ const loadCrosschainCircuits: CircuitFileLoader = async () => {
     zkeyResponse.arrayBuffer(),
     vkeyResponse.json(),
   ]);
-
-  console.log("✅ Crosschain circuit files loaded successfully");
 
   return {
     wasmFile: new Uint8Array(wasmBuffer),

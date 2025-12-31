@@ -9,7 +9,6 @@ import type { IBrowserStorageAdapter } from "../interfaces/IStorageAdapter";
 // Session constants - exact match to keyDerivation.ts
 const SESSION_KEY = "shinobi_session";
 const SESSION_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 24h
-const STORAGE_KEY = "shinobi.encrypted.session";
 
 export class SessionRepository {
   constructor(
@@ -126,47 +125,6 @@ export class SessionRepository {
     crypto.getRandomValues(salt);
     await this.storeUserSalt(accountName, salt);
     return salt;
-  }
-
-  /**
-   * Mark session as initialized - exact implementation from noteCache.initializeAccountSession
-   */
-  async markSessionInitialized(accountName: string): Promise<void> {
-    try {
-      await this.localStorageAdapter.set(`${STORAGE_KEY}_${accountName}`, "initialized");
-    } catch (error) {
-      console.warn("Failed to set session marker:", error);
-    }
-  }
-
-  /**
-   * Check if has encrypted data - exact implementation from noteCache.hasEncryptedData
-   */
-  hasEncryptedData(accountName?: string): boolean {
-    try {
-      if (accountName) {
-        const keys = this.localStorageAdapter.getAllKeys();
-        return keys.includes(`${STORAGE_KEY}_${accountName}`);
-      }
-
-      // Check for any account session
-      const keys = this.localStorageAdapter.getAllKeys();
-      return keys.some((key) => key.startsWith(STORAGE_KEY));
-    } catch (error) {
-      console.warn("Failed to check encrypted data:", error);
-      return false;
-    }
-  }
-
-  /**
-   * Clear all session markers - from noteCache.clearAllData
-   */
-  async clearAllSessionMarkers(): Promise<void> {
-    try {
-      this.localStorageAdapter.removeByPrefix(STORAGE_KEY);
-    } catch (error) {
-      console.warn("Failed to clear session markers:", error);
-    }
   }
 
   /**

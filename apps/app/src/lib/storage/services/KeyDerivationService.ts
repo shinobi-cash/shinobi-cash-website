@@ -17,6 +17,19 @@ const CONFIG = {
   SESSION_TIMEOUT_MS: 24 * 60 * 60 * 1000, // 24h
 };
 
+/**
+ * CRITICAL INVARIANT:
+ *
+ * "KEKs unlock AMKs.
+ *  AMKs derive data keys.
+ *  Data is never encrypted with KEKs."
+ *
+ * This ensures:
+ * - User data is portable across authentication methods
+ * - Same account identity = same encrypted data
+ * - New auth method ≠ new encryption universe
+ */
+
 export interface DerivedKeyResult {
   symmetricKey: CryptoKey;
   salt: Uint8Array;
@@ -69,6 +82,68 @@ export class KeyDerivationService {
     );
 
     return { symmetricKey, salt: accountSalt };
+  }
+
+  /**
+   * Derive Data Encryption Key (DEK) from Account Master Key (AMK)
+   *
+   * CRITICAL: This implements the correct encryption hierarchy:
+   * - KEK (from auth method) unlocks AMK
+   * - AMK derives DEK
+   * - DEK encrypts user data (notes, etc.)
+   *
+   * This ensures data is portable across authentication methods.
+   * Same AMK = same DEK = same encrypted data, regardless of auth method.
+   *
+   * @param amkPrivateKey - The Account Master Key (privateKey from session)
+   * @returns CryptoKey suitable for AES-GCM encryption/decryption
+   */
+  async deriveDataEncryptionKey(amkPrivateKey: string): Promise<CryptoKey> {
+
+    if (amkPrivateKey.length !== 66) {
+      throw new Error(
+        "SECURITY ERROR: Attempted to derive DEK from invalid AMK"
+      );
+    }
+
+    // Convert hex private key to bytes
+    const privateKeyHex = amkPrivateKey.startsWith("0x")
+      ? amkPrivateKey.slice(2)
+      : amkPrivateKey;
+    const privateKeyBytes = new Uint8Array(
+      privateKeyHex.match(/.{1,2}/g)?.map((byte) => parseInt(byte, 16)) || []
+    );
+
+    if (privateKeyBytes.length !== 32) {
+      console.warn("[KDF] WARNING: AMK is not 32 bytes, got", privateKeyBytes.length);
+    }
+
+    // Import AMK as HKDF key material
+    const keyMaterial = await crypto.subtle.importKey(
+      "raw",
+      privateKeyBytes,
+      "HKDF",
+      false,
+      ["deriveKey"]
+    );
+
+    // Derive DEK using HKDF with notes-specific salt and info
+    const salt = new TextEncoder().encode("shinobi-notes-salt");
+    const info = new TextEncoder().encode("shinobi-notes-encryption");
+    const dek = await crypto.subtle.deriveKey(
+      {
+        name: "HKDF",
+        salt: salt,
+        info: info,
+        hash: CONFIG.HASH_ALGORITHM,
+      },
+      keyMaterial,
+      { name: "AES-GCM", length: CONFIG.KEY_LENGTH },
+      false, // Non-extractable for security
+      ["encrypt", "decrypt"]
+    );
+
+    return dek;
   }
 
   /**
@@ -222,6 +297,7 @@ export const keyDerivationService = new KeyDerivationService();
 // Export public API that matches current KDF export from keyDerivation.ts
 export const KDF = {
   deriveKeyFromPasskey: keyDerivationService.deriveKeyFromPasskey.bind(keyDerivationService),
+  deriveDataEncryptionKey: keyDerivationService.deriveDataEncryptionKey.bind(keyDerivationService),
   createPasskeyCredential: keyDerivationService.createPasskeyCredential.bind(keyDerivationService),
   storeSessionInfo: keyDerivationService.storeSessionInfo.bind(keyDerivationService),
   getStoredSessionInfo: keyDerivationService.getStoredSessionInfo.bind(keyDerivationService),

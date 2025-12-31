@@ -7,7 +7,6 @@
 
 /**
  * AccountIndex - Unencrypted account metadata for pre-auth discovery
- * Renamed from AccountMetadata to reflect its role as the canonical index
  */
 export type AccountIndex = {
   id: string;

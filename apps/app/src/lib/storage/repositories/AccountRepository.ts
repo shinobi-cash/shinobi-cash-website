@@ -1,6 +1,5 @@
 /**
  * Account Repository - Account data storage operations
- * Maintains exact logic and data compatibility with current noteCache account methods
  */
 
 import { ethers } from "ethers";
@@ -38,43 +37,11 @@ export type AccountIndex = {
 };
 
 /**
- * @deprecated Use AccountIndex instead
- * Kept temporarily for backward compatibility during migration
- */
-export type AccountMetadata = AccountIndex;
-
-/**
  * Full storage record with encrypted payload
  */
 type StorageRecord = AccountIndex & {
   encryptedPayload: { iv: string; data: string; salt: string };
 };
-
-/**
- * Legacy storage record (before type field was added)
- */
-type LegacyStorageRecord = {
-  id: string;
-  publicKeyHash: string;
-  encryptedPayload: { iv: string; data: string; salt: string };
-  createdAt: number;
-};
-
-function isLegacyStorageRecord(value: unknown): value is LegacyStorageRecord {
-  if (!value || typeof value !== "object") return false;
-  const v = value as Record<string, unknown>;
-  const payload = v.encryptedPayload as Record<string, unknown> | undefined;
-  return (
-    typeof v.id === "string" &&
-    typeof v.publicKeyHash === "string" &&
-    !!payload &&
-    typeof payload.iv === "string" &&
-    typeof payload.data === "string" &&
-    typeof payload.salt === "string" &&
-    typeof v.createdAt === "number" &&
-    !v.type // Legacy records don't have type field
-  );
-}
 
 function isStorageRecord(value: unknown): value is StorageRecord {
   if (!value || typeof value !== "object") return false;
@@ -135,86 +102,31 @@ export class AccountRepository {
   }
 
   /**
-   * Migrate legacy record to new format with type field
-   * Infers type from account data structure
-   */
-  private async migrateLegacyRecord(legacy: LegacyStorageRecord): Promise<StorageRecord> {
-    // Decrypt to determine type (requires session)
-    if (!this.encryptionService.isKeyAvailable()) {
-      // Cannot migrate without session - return best guess
-      // Passkeys typically use account names, wallets use hashed IDs
-      const type: "passkey" | "wallet" = legacy.id.length < 50 ? "passkey" : "wallet";
-      const migrated: StorageRecord = {
-        ...legacy,
-        type,
-      };
-      // Save migrated record
-      await this.storageAdapter.set(migrated);
-      return migrated;
-    }
-
-    try {
-      const encryptedData: EncryptedData = {
-        iv: this.encryptionService.base64ToArrayBuffer(legacy.encryptedPayload.iv),
-        data: this.encryptionService.base64ToArrayBuffer(legacy.encryptedPayload.data),
-        salt: this.encryptionService.base64ToArrayBuffer(legacy.encryptedPayload.salt),
-      };
-      const storedData = await this.encryptionService.decrypt<StoredAccountData>(encryptedData);
-
-      const migrated: StorageRecord = {
-        ...legacy,
-        type: storedData.type,
-      };
-
-      // Save migrated record
-      await this.storageAdapter.set(migrated);
-      return migrated;
-    } catch (error) {
-      console.warn("Failed to migrate legacy record, using heuristic:", error);
-      // Fallback to heuristic
-      const type: "passkey" | "wallet" = legacy.id.length < 50 ? "passkey" : "wallet";
-      const migrated: StorageRecord = {
-        ...legacy,
-        type,
-      };
-      await this.storageAdapter.set(migrated);
-      return migrated;
-    }
-  }
-
-  /**
    * Get encrypted account record by name
    * Returns raw encrypted storage record without decryption
-   * Automatically migrates legacy records
    */
   async getEncryptedAccountRecord(accountName: string): Promise<StorageRecord | null> {
     const result = (await this.storageAdapter.get(accountName)) as unknown;
 
-    if (isStorageRecord(result)) {
-      return result;
+    if (!isStorageRecord(result)) {
+      return null;
     }
-
-    if (isLegacyStorageRecord(result)) {
-      // Migrate legacy record
-      return await this.migrateLegacyRecord(result);
-    }
-
-    return null;
+    return result;
   }
 
   /**
    * Get decrypted account data by name
    * Decrypts storage record and derives publicKey/address from privateKey
    */
-  async getDecryptedAccountData(currentAccountName: string): Promise<CachedAccountData | null> {
-    if (!this.encryptionService.isKeyAvailable()) {
-      throw new Error("Session not initialized");
+  async getDecryptedAccountData(accountName: string): Promise<CachedAccountData | null> {
+    if (!this.storageAdapter.isSessionActive()) {
+      throw new Error("Account session not initialized (KEK missing)");
     }
-    if (!currentAccountName) {
+    if (!accountName) {
       throw new Error("No current account context");
     }
 
-    const result = (await this.storageAdapter.get(currentAccountName)) as unknown;
+    const result = (await this.storageAdapter.get(accountName)) as unknown;
     if (isStorageRecord(result)) {
       try {
         const encryptedData: EncryptedData = {
@@ -244,23 +156,10 @@ export class AccountRepository {
   }
 
   /**
-   * List all account names - exact implementation from noteCache.listAccountNames
-   */
-  async listAccountNames(): Promise<string[]> {
-    return this.storageAdapter.keys();
-  }
-
-  /**
    * Check if account exists - exact implementation from noteCache.accountExists
    */
   async accountExists(accountName: string): Promise<boolean> {
-    try {
-      const accountData = await this.getEncryptedAccountRecord(accountName);
-      return accountData !== null;
-    } catch (error) {
-      console.warn("Failed to check account existence:", error);
-      return false;
-    }
+    return (await this.getEncryptedAccountRecord(accountName)) !== null;
   }
 
   /**
@@ -268,7 +167,7 @@ export class AccountRepository {
    * Safe to call before session initialization
    */
   async listAccountIndex(): Promise<AccountIndex[]> {
-    const names = await this.listAccountNames();
+    const names = await this.storageAdapter.keys();
     const index: AccountIndex[] = [];
 
     for (const name of names) {
@@ -285,12 +184,5 @@ export class AccountRepository {
 
     return index;
   }
-
-  /**
-   * @deprecated Use listAccountIndex() instead
-   * Kept temporarily for backward compatibility during migration
-   */
-  async listAccountMetadata(): Promise<AccountMetadata[]> {
-    return this.listAccountIndex();
-  }
+ 
 }

@@ -1,10 +1,18 @@
-import { usePublicKey, useAccountKey } from "@/features/auth/hooks/useAuthStore";
 import { getPublicClient } from "@/lib/clients";
 import { noteDiscoveryService } from "@/features/notes/services/NoteDiscoveryService";
 import { showToast } from "@/lib/toast";
 import { fetchLatestIndexedBlock } from "@/services/data/indexerService";
+import { storageManager } from "@/lib/storage";
+import { parseUserKey } from "@shinobi-cash/core";
 import type React from "react";
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
 import { logError } from "@/lib/errors";
 
@@ -23,31 +31,70 @@ interface TransactionTrackingContextType {
   trackedTxHash: string | null;
 }
 
-const TransactionTrackingContext = createContext<TransactionTrackingContextType | null>(null);
+const TransactionTrackingContext =
+  createContext<TransactionTrackingContextType | null>(null);
 
 export function useTransactionTracking() {
   const context = useContext(TransactionTrackingContext);
   if (!context) {
-    throw new Error("useTransactionTracking must be used within TransactionTrackingProvider");
+    throw new Error(
+      "useTransactionTracking must be used within TransactionTrackingProvider"
+    );
   }
   return context;
 }
 
-// Use pre-configured singleton service
+// Singleton discovery service
 const discoveryService = noteDiscoveryService;
 
-export function TransactionTrackingProvider({ children }: { children: React.ReactNode }) {
-  const [trackingStatus, setTrackingStatus] = useState<TrackingStatus>("idle");
-  const [trackedTransaction, setTrackedTransaction] = useState<TransactionInfo | null>(null);
+export function TransactionTrackingProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const [trackingStatus, setTrackingStatus] =
+    useState<TrackingStatus>("idle");
+  const [trackedTransaction, setTrackedTransaction] =
+    useState<TransactionInfo | null>(null);
+
   const eventTargetRef = useRef(new EventTarget());
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const publicKey = usePublicKey();
-  const accountKey = useAccountKey();
 
-  /**
-   * Clears tracking immediately and cancels timers
-   */
+  // ---- CRYPTO CONTEXT (STORAGE IS SOURCE OF TRUTH) ----
+  const cryptoRef = useRef<{
+    publicKey: string | null;
+    accountKey: bigint | null;
+  }>({
+    publicKey: null,
+    accountKey: null,
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadCrypto() {
+      try {
+        const accountData = await storageManager.getAccountData();
+        if (!accountData || cancelled) return;
+
+        cryptoRef.current = {
+          publicKey: accountData.publicKey ?? null,
+          accountKey: parseUserKey(accountData.privateKey),
+        };
+      } catch {
+        // Silent — provider must never block UI
+      }
+    }
+
+    loadCrypto();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // ---- HELPERS ----
+
   const clearTracking = useCallback(() => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
@@ -61,22 +108,16 @@ export function TransactionTrackingProvider({ children }: { children: React.Reac
     setTrackingStatus("idle");
   }, []);
 
-  /**
-   * Starts auto-clear timer (default 5 minutes)
-   */
   const scheduleAutoClear = useCallback(
     (ms: number = 5 * 60 * 1000) => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      timeoutRef.current = setTimeout(() => {
-        clearTracking();
-      }, ms);
+      timeoutRef.current = setTimeout(clearTracking, ms);
     },
     [clearTracking]
   );
 
-  /**
-   * Track a new transaction
-   */
+  // ---- PUBLIC API ----
+
   const trackTransaction = useCallback(
     (txHash: string, chainId: number) => {
       clearTracking();
@@ -89,49 +130,55 @@ export function TransactionTrackingProvider({ children }: { children: React.Reac
       setTrackedTransaction({ hash: txHash, chainId, blockNumber: null });
       setTrackingStatus("pending");
 
-      // Auto-clear if it gets stuck for >5 min
       scheduleAutoClear();
     },
     [clearTracking, scheduleAutoClear]
   );
 
-  /**
-   * Register a callback when transaction gets indexed
-   */
   const onTransactionIndexed = useCallback((callback: () => void) => {
-    const eventTarget = eventTargetRef.current;
     const handler = () => callback();
-    eventTarget.addEventListener("indexed", handler);
+    eventTargetRef.current.addEventListener("indexed", handler);
     return () => {
-      eventTarget.removeEventListener("indexed", handler);
+      eventTargetRef.current.removeEventListener("indexed", handler);
     };
   }, []);
 
-  /**
-   * Wait for transaction receipt
-   */
+  // ---- WAIT FOR RECEIPT ----
+
   useEffect(() => {
-    if (!trackedTransaction?.hash || !trackedTransaction?.chainId || trackingStatus !== "pending")
+    if (
+      !trackedTransaction?.hash ||
+      trackingStatus !== "pending"
+    ) {
       return;
+    }
 
     const waitForReceipt = async () => {
       try {
-        // Get the correct public client for the transaction's chain
-        const chainClient = getPublicClient(trackedTransaction.chainId);
-
-        const receipt = await chainClient.waitForTransactionReceipt({
+        const client = getPublicClient(trackedTransaction.chainId);
+        const receipt = await client.waitForTransactionReceipt({
           hash: trackedTransaction.hash as `0x${string}`,
-          timeout: 60000, // 1 minute
+          timeout: 60_000,
         });
 
-        const shortHash = `${trackedTransaction.hash.slice(0, 6)}...${trackedTransaction.hash.slice(-4)}`;
+        const shortHash = `${trackedTransaction.hash.slice(
+          0,
+          6
+        )}...${trackedTransaction.hash.slice(-4)}`;
 
         if (receipt.status === "success") {
-          showToast.success(`${shortHash} • Transaction successful! Indexing...`, {
-            duration: 4000,
-          });
+          showToast.success(
+            `${shortHash} • Transaction successful! Indexing...`,
+            { duration: 4000 }
+          );
+
           setTrackedTransaction((prev) =>
-            prev ? { ...prev, blockNumber: Number(receipt.blockNumber) } : null
+            prev
+              ? {
+                  ...prev,
+                  blockNumber: Number(receipt.blockNumber),
+                }
+              : null
           );
           setTrackingStatus("waiting");
         } else {
@@ -142,80 +189,76 @@ export function TransactionTrackingProvider({ children }: { children: React.Reac
           scheduleAutoClear(5000);
         }
       } catch (error) {
-        const shortHash = `${trackedTransaction.hash.slice(0, 6)}...${trackedTransaction.hash.slice(-4)}`;
-
-        // Use standardized error handling
         showToast.handleError(error, {
-          action: `${shortHash} • Transaction`,
+          action: "Transaction",
           fallbackMessage: "Transaction timeout",
-          context: {
-            component: "useTransactionTracking",
-            hash: trackedTransaction.hash,
-            chainId: trackedTransaction.chainId,
-          },
         });
-
         setTrackingStatus("failed");
         scheduleAutoClear(5000);
       }
     };
 
     waitForReceipt();
-  }, [trackedTransaction?.hash, trackedTransaction?.chainId, trackingStatus, scheduleAutoClear]);
+  }, [
+    trackedTransaction?.hash,
+    trackedTransaction?.chainId,
+    trackingStatus,
+    scheduleAutoClear,
+  ]);
 
-  /**
-   * Poll until transaction is indexed
-   */
+  // ---- POLL FOR INDEXING ----
+
   useEffect(() => {
     if (
-      !trackedTransaction?.hash ||
       trackingStatus !== "waiting" ||
-      trackedTransaction.blockNumber === null
+      trackedTransaction?.blockNumber == null
     ) {
       return;
     }
 
-    const checkTransactionIndexed = async () => {
+    const poll = async () => {
       try {
-        const indexedBlockInfo = await fetchLatestIndexedBlock();
+        const indexed = await fetchLatestIndexedBlock();
         if (
-          indexedBlockInfo &&
-          trackedTransaction.blockNumber !== null &&
-          Number.parseInt(indexedBlockInfo.blockNumber) >= trackedTransaction.blockNumber
+          indexed &&
+          Number(indexed.blockNumber) >= trackedTransaction.blockNumber!
         ) {
           showToast.success("Transaction indexed!", { duration: 3000 });
           setTrackingStatus("synced");
 
+          const { publicKey, accountKey } = cryptoRef.current;
+
           if (publicKey && accountKey) {
             discoveryService
-              .discoverNotes(publicKey, SHINOBI_CASH_ETH_POOL.address, accountKey)
-              .catch((err) => {
-                // Log but don't show toast (background operation)
+              .discoverNotes(
+                publicKey,
+                SHINOBI_CASH_ETH_POOL.address,
+                accountKey
+              )
+              .catch((err) =>
                 logError(err, {
                   action: "autoSyncNotes",
-                  component: "useTransactionTracking",
                   suppressed: true,
-                });
-              });
+                })
+              );
           }
 
-          eventTargetRef.current.dispatchEvent(new CustomEvent("indexed"));
+          eventTargetRef.current.dispatchEvent(
+            new CustomEvent("indexed")
+          );
 
-          // Auto-clear after 10s
-          scheduleAutoClear(10000);
+          scheduleAutoClear(10_000);
         }
-      } catch (error) {
-        // Log but don't show toast (polling operation, non-critical)
-        logError(error, {
+      } catch (err) {
+        logError(err, {
           action: "checkTransactionIndexed",
-          component: "useTransactionTracking",
           suppressed: true,
         });
       }
     };
 
-    checkTransactionIndexed();
-    intervalRef.current = setInterval(checkTransactionIndexed, 5000);
+    poll();
+    intervalRef.current = setInterval(poll, 5000);
 
     return () => {
       if (intervalRef.current) {
@@ -224,32 +267,24 @@ export function TransactionTrackingProvider({ children }: { children: React.Reac
       }
     };
   }, [
-    trackedTransaction?.hash,
     trackedTransaction?.blockNumber,
     trackingStatus,
-    publicKey,
-    accountKey,
     scheduleAutoClear,
   ]);
 
-  /**
-   * Cleanup on unmount
-   */
-  useEffect(() => {
-    return () => {
-      clearTracking();
-    };
-  }, [clearTracking]);
+  // ---- CLEANUP ----
 
-  const contextValue = {
-    trackTransaction,
-    onTransactionIndexed,
-    trackingStatus,
-    trackedTxHash: trackedTransaction?.hash || null,
-  };
+  useEffect(() => clearTracking, [clearTracking]);
 
   return (
-    <TransactionTrackingContext.Provider value={contextValue}>
+    <TransactionTrackingContext.Provider
+      value={{
+        trackTransaction,
+        onTransactionIndexed,
+        trackingStatus,
+        trackedTxHash: trackedTransaction?.hash ?? null,
+      }}
+    >
       {children}
     </TransactionTrackingContext.Provider>
   );

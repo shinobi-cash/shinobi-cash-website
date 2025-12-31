@@ -71,14 +71,6 @@ export async function fetchActivities(
       throw new Error(result.error || "Failed to fetch activities");
     }
 
-    console.log("[fetchActivities] Response:", {
-      itemCount: result.data.items.length,
-      limit,
-      hasNextPage: result.data.pageInfo.hasNextPage,
-      firstItem: result.data.items[0]?.type,
-      orderDirection,
-    });
-
     return result.data;
   } catch (error) {
     logError(error, { action: "fetchActivities", poolId: poolAddress });
@@ -157,8 +149,6 @@ export async function fetchLatestASPRoot(): Promise<{
     if (!result.success) {
       throw new Error(result.error || "Failed to fetch ASP root");
     }
-
-    console.log("[fetchLatestASPRoot] Result:", result.data);
 
     return result.data;
   } catch (error) {

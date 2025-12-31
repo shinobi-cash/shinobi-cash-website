@@ -1,7 +1,7 @@
 /**
  * file: shinobi-cash-website/apps/app/src/lib/storage/StorageManager.ts
  * Storage Manager - Main coordinator for all storage operations
- * Maintains exact same API as current noteCache for seamless replacement
+ * Canonical storage coordinator
  */
 
 import { fetchActivities } from "@/services/data/indexerService";
@@ -33,59 +33,141 @@ class StorageManager {
 
   constructor() {
     this.notesRepo = new NotesRepository(notesStorageAdapter, sharedEncryptionService);
-    this.accountRepo = new AccountRepository(accountStorageAdapter, sharedEncryptionService);
+    this.accountRepo = new AccountRepository(
+      accountStorageAdapter,
+      accountStorageAdapter.getEncryptionService()
+    );
     this.passkeyRepo = new PasskeyRepository(passkeyStorageAdapter);
     this.sessionRepo = new SessionRepository(localStorageAdapter, sessionStorageAdapter);
   }
 
-  // ============ SESSION MANAGEMENT ============
-  // Exact API match to noteCache
-
-  /**
-   * Initialize account-scoped session with derived encryption key
-   * Exact implementation from noteCache.initializeAccountSession
-   */
-  async initializeAccountSession(accountName: string, symmetricKey: CryptoKey): Promise<void> {
-    this.currentAccountName = accountName;
-    sharedEncryptionService.setEncryptionKey(symmetricKey);
-
-    // Initialize all storage adapters
-    await notesStorageAdapter.initializeSession(symmetricKey);
-    await accountStorageAdapter.initializeSession(symmetricKey);
-
-    // Mark session as initialized
-    await this.sessionRepo.markSessionInitialized(accountName);
+  async importWalletKEK(encryptionKey: Uint8Array): Promise<CryptoKey> {
+    const keyBytes = new Uint8Array(encryptionKey);
+    return await crypto.subtle.importKey(
+      "raw",
+      keyBytes,
+      { name: "AES-GCM" },
+      false,
+      ["encrypt", "decrypt"]
+    );
   }
 
+  // ============ SESSION MANAGEMENT ============
+
   /**
-   * Initialize wallet-based account session with signature-derived encryption key
-   * Used when user skips passkey setup and relies on wallet signature for encryption
+   /**
+   * Session is considered initialized IFF:
+   * - KEK is active (accountStorageAdapter)
+   * - DEK is active (sharedEncryptionService)
+   * - currentAccountName is set
+   *
+   * No persistent session markers are trusted.
+   *
+   * @param accountName - Account identifier
+   * @param kek - Key Encryption Key from auth method (passkey KEK or wallet KEK)
+   * @param amkPrivateKey - Account Master Key (decrypted with KEK)
    */
-  async initializeWalletAccountSession(
+   async initializeAccountSession(
+      accountName: string,
+      kek: CryptoKey,
+      amkPrivateKey: string
+    ): Promise<void> {
+      // 1️⃣ Entry + invariant check
+      if (!amkPrivateKey || amkPrivateKey.length !== 66) {
+        throw new Error(
+          "CRITICAL: initializeAccountSession called without valid AMK"
+        );
+      }
+
+      console.debug(
+        "[StorageManager][Session] Finalizing session",
+        { accountName }
+      );
+
+      this.currentAccountName = accountName;
+
+      // 2️⃣ Derive DEK from AMK
+      console.debug(
+        "[StorageManager][Session] Deriving DEK from AMK"
+      );
+
+      const { KDF } = await import("./services/KeyDerivationService");
+      const dek = await KDF.deriveDataEncryptionKey(amkPrivateKey);
+
+      // 3️⃣ Activate DEK (notes layer)
+      sharedEncryptionService.setEncryptionKey(dek);
+      await notesStorageAdapter.initializeSession(dek);
+
+      console.debug(
+        "[StorageManager][Session] Notes encryption initialized (DEK active)",
+        { dekReady: sharedEncryptionService.isKeyAvailable() }
+      );
+
+      // 4️⃣ Activate KEK (account layer)
+      await accountStorageAdapter.initializeSession(kek);
+
+      console.debug(
+        "[StorageManager][Session] Account encryption initialized (KEK active)",
+        { kekReady: accountStorageAdapter.isSessionActive() }
+      );
+
+      // 5️⃣ Final invariant check before marking session
+      if (
+        !sharedEncryptionService.isKeyAvailable() ||
+        !accountStorageAdapter.isSessionActive()
+      ) {
+        throw new Error(
+          "CRITICAL: Session initialization incomplete (KEK or DEK missing)"
+        );
+      }
+
+      console.debug(
+        "[StorageManager][Session] Session fully initialized",
+        {
+          accountName,
+          kek: "active",
+          dek: "active",
+        }
+      );
+    }
+
+  /**
+   * Initialize wallet-based account session
+   *
+   * CRITICAL CHANGE: Now takes both KEK and AMK to follow correct encryption hierarchy.
+   *
+   * @param accountId - Wallet account identifier
+   * @param kek - Wallet KEK (derived from signature)
+   * @param amkPrivateKey - Account Master Key (to derive DEK)
+   */
+  async loginWithWallet(
     accountId: string,
-    encryptionKey: Uint8Array
+    kek: Uint8Array,
+    amkPrivateKey: string
   ): Promise<void> {
-    // Convert Uint8Array to CryptoKey for encryption
-    // Ensure the buffer is an ArrayBuffer for crypto.subtle
-    const keyBuffer = encryptionKey.buffer.slice(
-      encryptionKey.byteOffset,
-      encryptionKey.byteOffset + encryptionKey.byteLength
+    // Convert Uint8Array KEK to CryptoKey
+    const keyBuffer = kek.buffer.slice(
+      kek.byteOffset,
+      kek.byteOffset + kek.byteLength
     ) as ArrayBuffer;
 
-    const cryptoKey = await crypto.subtle.importKey("raw", keyBuffer, { name: "AES-GCM" }, false, [
-      "encrypt",
-      "decrypt",
-    ]);
+    const kekCryptoKey = await crypto.subtle.importKey(
+      "raw",
+      keyBuffer,
+      { name: "AES-GCM" },
+      false,
+      ["encrypt", "decrypt"]
+    );
 
-    // Use standard session initialization
-    await this.initializeAccountSession(accountId, cryptoKey);
+    // Use standard session initialization with KEK and AMK
+    await this.initializeAccountSession(accountId, kekCryptoKey, amkPrivateKey);
   }
 
   /**
    * Save wallet-based account data with auto-generated display name
    * Account is identified by wallet address + chain ID
    */
-  async saveWalletAccountData(data: {
+  async persistWalletAccount(data: {
     accountId: string;
     walletAddress: string;
     chainId: number;
@@ -113,11 +195,28 @@ class StorageManager {
   }
 
   /**
+   * Unlock account data ONLY using KEK.
+   * ❌ Does NOT derive DEK
+   * ❌ Does NOT initialize notes
+   */
+  async initializeAccountUnlockOnly(
+    accountName: string,
+    kek: CryptoKey
+  ): Promise<void> {
+    this.currentAccountName = accountName;
+
+    // Account data is encrypted with KEK
+    await accountStorageAdapter.initializeSession(kek);
+  }
+
+  /**
    * Transactional wallet account setup
    * Ensures both session initialization and data save succeed, or rolls back
    * Prevents partial state (initialized session without account data)
+   *
+   * CRITICAL CHANGE: Now passes AMK to derive DEK correctly
    */
-  async setupWalletAccountTransaction(
+  async createWalletAccount(
     accountId: string,
     encryptionKey: Uint8Array,
     data: {
@@ -131,12 +230,13 @@ class StorageManager {
     let sessionInitialized = false;
 
     try {
-      // Step 1: Initialize session
-      await this.initializeWalletAccountSession(accountId, encryptionKey);
+      // Step 1: Initialize session with KEK and AMK
+      // KEK encrypts account data, AMK derives DEK for notes
+      await this.loginWithWallet(accountId, encryptionKey, data.privateKey);
       sessionInitialized = true;
 
       // Step 2: Save account data (full keys, auto-generated display name)
-      await this.saveWalletAccountData({
+      await this.persistWalletAccount({
         accountId,
         walletAddress: data.walletAddress,
         chainId: data.chainId,
@@ -147,7 +247,7 @@ class StorageManager {
     } catch (error) {
       // Rollback: Clear session if it was initialized
       if (sessionInitialized) {
-        this.clearSession();
+        this.clearInMemorySession();
       }
       throw error;
     }
@@ -157,40 +257,14 @@ class StorageManager {
    * Clear session data from memory
    * Exact implementation from noteCache.clearSession
    */
-  clearSession(): void {
-    sharedEncryptionService.clearEncryptionKey();
+  clearInMemorySession(): void {
+    sharedEncryptionService.clearEncryptionKey(); // DEK
+    accountStorageAdapter.clearSession();         // KEK
     this.currentAccountName = null;
-  }
-
-  /**
-   * Check if there's any encrypted data in storage
-   * Exact implementation from noteCache.hasEncryptedData
-   */
-  hasEncryptedData(accountName?: string): boolean {
-    return this.sessionRepo.hasEncryptedData(accountName);
-  }
-
-  /**
-   * Clear all cached data (for logout/session end)
-   * Exact implementation from noteCache.clearAllData
-   */
-  async clearAllData(): Promise<void> {
-    await notesStorageAdapter.clearAllStores();
-    this.clearSession();
-    await this.sessionRepo.clearAllSessionMarkers();
-  }
-
-  /**
-   * Reset the database by deleting and recreating it
-   * Exact implementation from noteCache.resetDatabase
-   */
-  async resetDatabase(): Promise<void> {
-    await notesStorageAdapter.resetDatabase();
   }
 
   // ============ NOTES OPERATIONS ============
   // Exact API match to noteCache
-
   async getCachedNotes(publicKey: string, poolAddress: string): Promise<DiscoveryResult | null> {
     return this.notesRepo.getCachedNotes(publicKey, poolAddress);
   }
@@ -256,19 +330,15 @@ class StorageManager {
     return this.accountRepo.getDecryptedAccountData(accountName);
   }
 
-  async listAccountNames(): Promise<string[]> {
-    return this.accountRepo.listAccountNames();
-  }
-
   /**
    * List all accounts with full data (discriminated by type)
    */
   async listAllAccounts(): Promise<CachedAccountData[]> {
-    const names = await this.accountRepo.listAccountNames();
+    const index = await this.accountRepo.listAccountIndex();
     const accounts: CachedAccountData[] = [];
 
-    for (const name of names) {
-      const account = await this.getAccountDataByName(name);
+    for (const entry of index) {
+      const account = await this.getAccountDataByName(entry.id);
       if (account) {
         accounts.push(account);
       }
@@ -295,32 +365,6 @@ class StorageManager {
     return all.filter((acc): acc is CachedAccountData & { type: "wallet" } =>
       acc.type === "wallet"
     );
-  }
-
-  /**
-   * List account metadata without decryption
-   * Safe to call before session initialization
-   */
-  async listAccountMetadata() {
-    return this.accountRepo.listAccountMetadata();
-  }
-
-  /**
-   * List passkey account metadata without decryption
-   * Safe to call before session initialization
-   */
-  async listPasskeyAccountsMetadata() {
-    const all = await this.listAccountMetadata();
-    return all.filter((acc) => acc.type === "passkey");
-  }
-
-  /**
-   * List wallet account metadata without decryption
-   * Safe to call before session initialization
-   */
-  async listWalletAccountsMetadata() {
-    const all = await this.listAccountMetadata();
-    return all.filter((acc) => acc.type === "wallet");
   }
 
   async accountExists(accountName: string): Promise<boolean> {
@@ -394,19 +438,15 @@ class StorageManager {
         baselineData.lastProcessedCursor
       );
 
-      console.log(`Initialized sync baseline for new account with cursor: ${currentCursor}`);
     } catch (error) {
       console.warn("Failed to initialize sync baseline, will fall back to full scan:", error);
       // Don't throw - if this fails, the sync will just do a full scan
     }
   }
+    async listAccountIndex() {
+    return this.accountRepo.listAccountIndex();
+  }
 }
 
 // Export singleton instance - maintains same usage pattern as current noteCache
 export const storageManager = new StorageManager();
-
-// Export individual repositories for direct access if needed
-export { NotesRepository } from "./repositories/NotesRepository";
-export { AccountRepository } from "./repositories/AccountRepository";
-export { PasskeyRepository } from "./repositories/PasskeyRepository";
-export { SessionRepository } from "./repositories/SessionRepository";

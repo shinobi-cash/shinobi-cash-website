@@ -29,7 +29,8 @@ export class NotesRepository {
   private async getKey(publicKey: string, poolAddress: string): Promise<string> {
     const publicKeyHash = await EncryptionService.createHash(publicKey);
     const poolAddressHash = await EncryptionService.createHash(poolAddress);
-    return `${publicKeyHash}_${poolAddressHash}`;
+    const key = `${publicKeyHash}_${poolAddressHash}`;
+    return key;
   }
 
   /**
@@ -156,7 +157,8 @@ export class NotesRepository {
         const decryptedData = await this.encryptionService.decrypt<CachedNoteData>(encryptedData);
         return decryptedData;
       } catch (decryptionError) {
-        console.error("Failed to decrypt cached data:", decryptionError);
+        console.error("[NotesRepository] ❌ Failed to decrypt cached notes:", decryptionError);
+        console.error("[NotesRepository] This likely means notes were encrypted with a different KEK");
         return null; // Return null if decryption fails (wrong password)
       }
     }

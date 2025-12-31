@@ -25,7 +25,6 @@ export async function discoverNotes(
   accountKey: bigint,
   options?: DiscoveryOptions
 ): Promise<DiscoveryResult> {
-  console.log('[NoteDiscoveryService] Using NoteSyncEngine');
 
   return storageManager.discoverNotes(
     publicKey,

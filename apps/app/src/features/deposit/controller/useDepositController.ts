@@ -6,7 +6,8 @@
  * - Provides simple API to UI
  */
 
-import { usePublicKey, useAccountKey } from "@/features/auth/hooks/useAuthStore";
+import { storageManager } from "@/lib/storage";
+import { parseUserKey } from "@shinobi-cash/core";
 import { useAccount, useBalance, useChainId } from "wagmi";
 import { useDepositFormState } from "../hooks/useDepositFormState";
 import { useDepositCommitment } from "../hooks/useDepositCommitment";
@@ -16,7 +17,7 @@ import { useTransactionTracking } from "@/hooks/transactions/useTransactionTrack
 import { formatEther } from "viem";
 import { formatDepositAmountsForDisplay } from "../protocol/depositFees";
 import { isDepositSupported } from "../protocol/depositRoute";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { DepositStatus, DepositError } from "../types/depositStatus";
 
 interface Asset {
@@ -26,37 +27,30 @@ interface Asset {
 }
 
 interface DepositControllerState {
-  // Form state
   amount: string;
   amountError: string | null;
 
-  // Derived amounts
   depositNoteAmount: number;
   complianceFee: number;
 
-  // Gas state
   gasCostEth: string;
   isEstimatingGas: boolean;
   gasEstimationError: string | null;
 
-  // Transaction state
   isDepositing: boolean;
   isPreparing: boolean;
-  isSubmitted: boolean; // Hash received, not necessarily confirmed
+  isSubmitted: boolean;
   transactionHash: string | undefined;
   transactionError: string | null;
 
-  // Wallet state
   isConnected: boolean;
   address: string | undefined;
   balance: string;
   hasBalance: boolean;
 
-  // Chain state
   isOnSupportedChain: boolean;
   chainId: number;
 
-  // Computed state
   canDeposit: boolean;
   status: DepositStatus;
   lastError: DepositError;
@@ -74,11 +68,9 @@ export function useDepositController(
   asset: Asset,
   onTransactionSuccess?: () => void
 ): DepositController {
-  // Wallet & Auth
+  // Wallet
   const { isConnected, address } = useAccount();
   const chainId = useChainId();
-  const publicKey = usePublicKey();
-  const accountKey = useAccountKey();
   const { data: balance } = useBalance({ address });
   const { trackTransaction } = useTransactionTracking();
 
@@ -86,43 +78,84 @@ export function useDepositController(
   const hasBalance = availableBalance > BigInt(0);
   const formattedBalance = balance?.value ? formatEther(balance.value) : "0";
 
-  // Core hooks
+  // ---------- CRYPTO CONTEXT (FROM STORAGE, NOT AUTH STORE) ----------
+  const cryptoRef = useRef<{
+    publicKey: string | null;
+    accountKey: bigint | null;
+  }>({
+    publicKey: null,
+    accountKey: null,
+  });
+
+  const [cryptoReady, setCryptoReady] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadCrypto() {
+      try {
+        const accountData = await storageManager.getAccountData();
+        if (!accountData || cancelled) return;
+
+        cryptoRef.current = {
+          publicKey: accountData.publicKey ?? null,
+          accountKey: parseUserKey(accountData.privateKey),
+        };
+
+        setCryptoReady(true);
+      } catch (err) {
+        console.error("[DepositController] Failed to load crypto context:", err);
+      }
+    }
+
+    loadCrypto();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // ---------- CORE HOOKS ----------
   const form = useDepositFormState({ availableBalance });
-  const commitment = useDepositCommitment(publicKey, accountKey);
+
+  const commitment = useDepositCommitment(
+    cryptoRef.current.publicKey,
+    cryptoRef.current.accountKey
+  );
+
   const gas = useDepositGasEstimate(form.amount, commitment.noteData);
   const tx = useDepositTransaction();
 
-  // Derived state
+  // ---------- DERIVED STATE ----------
   const isOnSupportedChain = isDepositSupported(chainId);
-  const isPreparing = commitment.isGeneratingNote || gas.isLoading;
+  const isPreparing = !cryptoReady || commitment.isGeneratingNote || gas.isLoading;
   const hasNoteData = !!commitment.noteData;
 
-  // Fee calculations (for display only)
   const amounts = formatDepositAmountsForDisplay(form.amount);
 
-  // Refs for tracking shown txs
   const shownTxsRef = useRef(new Set<string>());
 
-  // Track last error with domain for UI to handle
-  const lastError: DepositError = tx.error
-    ? { type: "transaction", message: tx.error }
-    : gas.error
-      ? { type: "gas", message: gas.error }
-      : commitment.error
-        ? { type: "commitment", message: commitment.error }
-        : null;
+  const lastError: DepositError =
+    tx.error
+      ? { type: "transaction", message: tx.error }
+      : gas.error
+        ? { type: "gas", message: gas.error }
+        : commitment.error
+          ? { type: "commitment", message: commitment.error }
+          : null;
 
-  // Handle note generation errors (silent retry)
+  // ---------- EFFECTS ----------
   useEffect(() => {
     if (!commitment.error) return;
-    console.warn("Note generation failed, auto-retrying:", commitment.error);
     const timer = setTimeout(() => commitment.regenerateNote(), 1000);
     return () => clearTimeout(timer);
   }, [commitment.error, commitment.regenerateNote]);
 
-  // Handle transaction submission (hash received)
   useEffect(() => {
-    if (tx.isSubmitted && tx.transactionHash && !shownTxsRef.current.has(tx.transactionHash)) {
+    if (
+      tx.isSubmitted &&
+      tx.transactionHash &&
+      !shownTxsRef.current.has(tx.transactionHash)
+    ) {
       shownTxsRef.current.add(tx.transactionHash);
       trackTransaction(tx.transactionHash, chainId);
 
@@ -142,9 +175,9 @@ export function useDepositController(
     onTransactionSuccess,
   ]);
 
-  // Actions
+  // ---------- ACTIONS ----------
   const deposit = () => {
-    if (!commitment.noteData || !form.amount || form.amountError) return;
+    if (!cryptoReady || !commitment.noteData || !form.amount || form.amountError) return;
     tx.clearError();
     tx.deposit(form.amount, commitment.noteData);
   };
@@ -155,8 +188,9 @@ export function useDepositController(
     shownTxsRef.current.clear();
   };
 
-  // Status logic - semantic representation (single source of truth)
+  // ---------- STATUS ----------
   const getStatus = (): DepositStatus => {
+    if (!cryptoReady) return "preparing";
     if (tx.isLoading) return "submitting";
     if (!isConnected || !address) return "wallet-disconnected";
     if (commitment.isGeneratingNote || !hasNoteData) return "preparing";
@@ -173,7 +207,6 @@ export function useDepositController(
   const canDeposit = status === "ready";
 
   return {
-    // State
     amount: form.amount,
     amountError: form.amountError,
     depositNoteAmount: amounts.noteAmount,
@@ -196,7 +229,6 @@ export function useDepositController(
     status,
     lastError,
 
-    // Actions
     setAmount: form.handleAmountChange,
     deposit,
     reset,

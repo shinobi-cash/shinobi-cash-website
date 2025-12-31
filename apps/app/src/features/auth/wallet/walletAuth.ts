@@ -5,7 +5,7 @@
  * Uses HKDF for secure key derivation to prevent signature malleability attacks.
  */
 
-import { storageManager, KDF } from "@/lib/storage";
+import { storageManager } from "@/lib/storage";
 import type { KeyGenerationResult } from "@shinobi-cash/core";
 import { deriveKeysFromSignature, getWalletAccountId } from "../shared";
 
@@ -15,7 +15,7 @@ import { deriveKeysFromSignature, getWalletAccountId } from "../shared";
  * Perform wallet-based login for existing wallet-only accounts
  * Returns keys if account exists, null if new user
  */
-export async function performWalletLogin(
+export async function loginWithWalletIfExists(
   signature: string,
   walletAddress: string,
   chainId: number
@@ -32,29 +32,27 @@ export async function performWalletLogin(
     return null;
   }
 
-  // Existing account - initialize session and load data
-  try {
-    await storageManager.initializeWalletAccountSession(accountId, encryptionKey);
+ const kek = await storageManager.importWalletKEK(encryptionKey);
 
-    const accountData = await storageManager.getAccountData();
-    if (!accountData) {
-      console.warn("Account exists but data not found, treating as new account");
-      return null;
-    }
+  // 1. Unlock account data
+  await storageManager.initializeAccountUnlockOnly(accountId, kek);
 
-    // Store session info (wallet-based auth)
-    await KDF.storeSessionInfo(accountId, "wallet");
+  // 2. Load account (must succeed)
+  const accountData = await storageManager.getAccountData();
+  if (!accountData) throw new Error("Failed to decrypt account");
 
-    // Return keys
-    return {
-      publicKey: accountData.publicKey,
-      privateKey: accountData.privateKey,
-      address: accountData.address,
-    };
-  } catch (error) {
-    console.warn("Failed to load account data, treating as new account:", error);
-    return null;
-  }
+  // 3. Finalize session (derive DEK)
+  await storageManager.initializeAccountSession(
+    accountId,
+    kek,
+    accountData.privateKey
+  );
+
+  return {
+    publicKey: accountData.publicKey,
+    privateKey: accountData.privateKey,
+    address: accountData.address,
+  };
 }
 
 // ============ WALLET ACCOUNT SETUP ============
@@ -88,7 +86,7 @@ export async function setupWalletAccountWithDerivedKey(
 ): Promise<void> {
   const accountId = getWalletAccountId(walletAddress, chainId);
 
-  await storageManager.setupWalletAccountTransaction(accountId, encryptionKey, {
+  await storageManager.createWalletAccount(accountId, encryptionKey, {
     walletAddress,
     chainId,
     publicKey: generatedKeys.publicKey,

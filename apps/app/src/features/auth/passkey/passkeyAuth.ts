@@ -27,25 +27,37 @@ export async function performPasskeyLogin(accountName: string): Promise<KeyGener
     );
   }
 
-  // Derive symmetric key from passkey
-  let symmetricKey: CryptoKey;
+  // Derive symmetric key from passkey (this is the KEK)
+  let passkeyKEK: CryptoKey;
   try {
-    ({ symmetricKey } = await KDF.deriveKeyFromPasskey(trimmed, passkeyData.credentialId));
+    ({ symmetricKey: passkeyKEK } = await KDF.deriveKeyFromPasskey(trimmed, passkeyData.credentialId));
   } catch (err) {
     throw mapPasskeyError(err);
   }
 
-  // Initialize session with derived key
-  await storageManager.initializeAccountSession(trimmed, symmetricKey);
+  // Existing passkey account MUST either fully restore or fail loudly.
+  // No fallback to account creation is allowed here.
+  // Step 1: Unlock account data only (KEK)
+  await storageManager.initializeAccountUnlockOnly(
+    trimmed,
+    passkeyKEK
+  );
 
-  // Load and decrypt account data (already contains full keys)
+  // Step 2: Load decrypted account data (contains AMK)
   const accountData = await storageManager.getAccountData();
   if (!accountData) {
-    throw new AuthError(AuthErrorCode.ACCOUNT_NOT_FOUND, "Account data not found");
+      throw new AuthError(
+      AuthErrorCode.DECRYPTION_FAILED,
+      "Failed to decrypt account data with passkey"
+    );
   }
 
-  // Store session info for auto-resume
-  await KDF.storeSessionInfo(trimmed, "passkey", { credentialId: passkeyData.credentialId });
+  // Step 3: Finalize session with AMK → DEK
+  await storageManager.initializeAccountSession(
+    trimmed,
+    passkeyKEK,
+    accountData.privateKey
+  );
 
   // Return keys
   return {
@@ -87,38 +99,42 @@ export async function performPasskeySetup(
     throw mapPasskeyError(err);
   }
 
-  // Derive symmetric key from new passkey
-  let symmetricKey: CryptoKey;
+  // Derive symmetric key from new passkey (this is the KEK)
+  let passkeyKEK: CryptoKey;
   try {
-    ({ symmetricKey } = await KDF.deriveKeyFromPasskey(trimmed, credentialId));
+    ({ symmetricKey: passkeyKEK } = await KDF.deriveKeyFromPasskey(trimmed, credentialId));
   } catch (err) {
     throw mapPasskeyError(err);
   }
 
-  // Initialize session with passkey-derived key
-  await storageManager.initializeAccountSession(trimmed, symmetricKey);
+  try {
+    // Initialize session with passkey KEK and AMK
+    // KEK encrypts account data, AMK derives DEK for notes
+    await storageManager.initializeAccountSession(trimmed, passkeyKEK, generatedKeys.privateKey);
 
-  // Store encrypted account data (privateKey only, no mnemonic)
-  await storageManager.storeAccountData({
-    type: "passkey",
-    accountName: trimmed,
-    displayName: trimmed, // For passkeys, display name = account name
-    publicKey: generatedKeys.publicKey,
-    privateKey: generatedKeys.privateKey,
-    address: generatedKeys.address,
-    createdAt: Date.now(),
-  });
+    // Store encrypted account data (privateKey only, no mnemonic)
+    await storageManager.storeAccountData({
+      type: "passkey",
+      accountName: trimmed,
+      displayName: trimmed, // For passkeys, display name = account name
+      publicKey: generatedKeys.publicKey,
+      privateKey: generatedKeys.privateKey,
+      address: generatedKeys.address,
+      createdAt: Date.now(),
+    });
 
-  // Store passkey metadata
-  await storageManager.storePasskeyData({
-    accountName: trimmed,
-    credentialId,
-    publicKeyHash: userHandle,
-    created: Date.now(),
-  });
+    // Store passkey metadata
+    await storageManager.storePasskeyData({
+      accountName: trimmed,
+      credentialId,
+      publicKeyHash: userHandle,
+      created: Date.now(),
+    });
+  } catch (e) {
+    storageManager.clearInMemorySession()
+    throw e
+  }
 
-  // Store session info for auto-resume
-  await KDF.storeSessionInfo(trimmed, "passkey", { credentialId });
 }
 
 // ============ PASSKEY CHECK ============

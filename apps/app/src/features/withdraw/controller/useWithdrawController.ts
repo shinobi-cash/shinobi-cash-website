@@ -2,8 +2,9 @@
  * Withdrawal Controller
  */
 
-import { useCallback, useMemo } from "react";
-import { usePublicKey, useAccountKey } from "@/features/auth/hooks/useAuthStore";
+import { useCallback, useMemo, useEffect, useRef, useState } from "react";
+import { storageManager } from "@/lib/storage";
+import { parseUserKey } from "@shinobi-cash/core";
 import type { Note } from "@shinobi-cash/core";
 import { SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
 import type { WithdrawStatus, WithdrawError } from "../types/withdrawStatus";
@@ -19,41 +20,33 @@ import { formatFeeQuote, deriveWithdrawStatus } from "../domain/pipeline";
 // ============ TYPES ============
 
 export interface WithdrawController {
-  // State
   status: WithdrawStatus;
   lastError: WithdrawError;
   canWithdraw: boolean;
 
-  // Form state
   amount: string;
   recipientAddress: string;
   destinationChainId: number;
   amountError: string | null;
   addressError: string | null;
 
-  // Note selection
   selectedNote: Note | null;
   availableNotes: Note[];
   isLoadingNotes: boolean;
 
-  // Balance calculations
   noteBalance: number;
   remainingBalance: number;
 
-  // Fee breakdown
   executionFee: number;
   solverFee: number;
   youReceive: number;
   isCrossChain: boolean;
 
-  // Transaction state
   transactionHash: string | null;
   isSubmitted: boolean;
 
-  // Proof state
   isPreparing: boolean;
 
-  // Actions
   setAmount: (value: string) => void;
   setRecipientAddress: (value: string) => void;
   setDestinationChain: (chainId: number) => void;
@@ -70,17 +63,55 @@ export function useWithdrawController(
   asset: { symbol: string; name: string; icon: string },
   onTransactionSuccess?: () => void
 ): WithdrawController {
-  const publicKey = usePublicKey();
-  const accountKey = useAccountKey();
   const poolAddress = SHINOBI_CASH_ETH_POOL.address;
 
-  if (!publicKey || !accountKey) {
-    throw new Error("useWithdrawController: Missing auth values despite AuthenticationGate");
-  }
+  // ---------- CRYPTO CONTEXT (SOURCE OF TRUTH) ----------
+  const cryptoRef = useRef<{
+    publicKey: string | null;
+    accountKey: bigint | null;
+  }>({
+    publicKey: null,
+    accountKey: null,
+  });
+
+  const [cryptoReady, setCryptoReady] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadCrypto() {
+      try {
+        const accountData = await storageManager.getAccountData();
+        if (!accountData || cancelled) return;
+
+        cryptoRef.current = {
+          publicKey: accountData.publicKey ?? null,
+          accountKey: parseUserKey(accountData.privateKey),
+        };
+
+        setCryptoReady(true);
+      } catch (err) {
+        console.warn("[WithdrawController] Failed to load crypto context:", err);
+      }
+    }
+
+    loadCrypto();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const publicKey = cryptoRef.current.publicKey;
+  const accountKey = cryptoRef.current.accountKey;
 
   // ============ CHILD HOOKS ============
 
-  const noteSelection = useNoteSelection(publicKey, poolAddress, null);
+  const noteSelection = useNoteSelection(
+    publicKey ?? "",
+    poolAddress,
+    null
+  );
+
   const form = useWithdrawFormState(noteSelection.selectedNote, asset.symbol);
   const engine = useWithdrawalEngine();
 
@@ -91,16 +122,14 @@ export function useWithdrawController(
     [form.destinationChainId]
   );
 
-  // Preview fee quotes as user types (for UI display only)
   const { feeQuote } = usePreviewFeeQuote(
     noteSelection.selectedNote,
     form.amount,
     form.recipientAddress,
-    accountKey,
+    accountKey ?? BigInt(0),
     route.isCrossChain ? form.destinationChainId : undefined
   );
 
-  // Fee breakdown from reactive fee quote
   const feeBreakdown = useMemo(() => {
     if (!feeQuote) {
       return {
@@ -120,30 +149,24 @@ export function useWithdrawController(
     };
   }, [feeQuote, route.isCrossChain]);
 
-  // Balance calculations - use BigInt internally
   const noteBalance = useMemo(() => {
     if (!noteSelection.selectedNote) return 0;
-    const noteBalanceWei = BigInt(noteSelection.selectedNote.amount);
-    return Number(formatEther(noteBalanceWei));
+    return Number(formatEther(BigInt(noteSelection.selectedNote.amount)));
   }, [noteSelection.selectedNote]);
 
   const remainingBalance = useMemo(() => {
     if (!noteSelection.selectedNote || !form.amount) return noteBalance;
 
     try {
-      const noteBalanceWei = BigInt(noteSelection.selectedNote.amount);
-      const withdrawAmountWei = parseEther(form.amount);
-
-      const remainingWei =
-        withdrawAmountWei > noteBalanceWei ? BigInt(0) : noteBalanceWei - withdrawAmountWei;
-
-      return Number(formatEther(remainingWei));
+      const noteWei = BigInt(noteSelection.selectedNote.amount);
+      const withdrawWei = parseEther(form.amount);
+      const remaining = withdrawWei > noteWei ? BigInt(0) : noteWei - withdrawWei;
+      return Number(formatEther(remaining));
     } catch {
       return noteBalance;
     }
   }, [noteSelection.selectedNote, form.amount, noteBalance]);
 
-  // Error handling
   const lastError: WithdrawError = engine.error
     ? { type: "proof", message: engine.error.message }
     : form.amountError
@@ -152,7 +175,6 @@ export function useWithdrawController(
         ? { type: "validation", message: form.addressError }
         : null;
 
-  // Status state machine (pure derivation)
   const status = deriveWithdrawStatus({
     hasExecutionResult: !!engine.executionResult,
     isExecuting: engine.isExecuting,
@@ -165,27 +187,22 @@ export function useWithdrawController(
     recipientAddress: form.recipientAddress,
   });
 
-  const canWithdraw = status === "ready";
+  const canWithdraw = status === "ready" && cryptoReady;
 
   // ============ ACTIONS ============
 
-  /**
-   * Prepare withdrawal using new engine
-   */
   const prepareWithdrawal = useCallback(async () => {
     if (!noteSelection.selectedNote || !canWithdraw || !accountKey) return;
 
-    try {
-      // Create withdrawal request
-      const request: WithdrawalRequest = {
-        note: noteSelection.selectedNote,
-        withdrawAmountWei: parseEther(form.amount),
-        recipient: form.recipientAddress as `0x${string}`,
-        accountKey,
-        destinationChainId: route.isCrossChain ? form.destinationChainId : undefined,
-      };
+    const request: WithdrawalRequest = {
+      note: noteSelection.selectedNote,
+      withdrawAmountWei: parseEther(form.amount),
+      recipient: form.recipientAddress as `0x${string}`,
+      accountKey,
+      destinationChainId: route.isCrossChain ? form.destinationChainId : undefined,
+    };
 
-      // Prepare using engine
+    try {
       await engine.prepare(request);
     } catch (err) {
       console.error("Withdrawal preparation failed:", err);
@@ -201,14 +218,8 @@ export function useWithdrawController(
     engine,
   ]);
 
-  /**
-   * Execute withdrawal using engine
-   */
   const executeWithdrawal = useCallback(async () => {
-    if (!engine.preparedUserOp) {
-      console.error("No prepared withdrawal found");
-      return;
-    }
+    if (!engine.preparedUserOp) return;
 
     try {
       await engine.execute();
@@ -218,52 +229,41 @@ export function useWithdrawController(
     }
   }, [engine, onTransactionSuccess]);
 
-  /**
-   * Reset entire withdrawal flow
-   */
   const reset = useCallback(() => {
     form.reset();
     engine.reset();
   }, [form, engine]);
 
-  // ============ RETURN CONTROLLER ============
+  // ============ RETURN ============
 
   return {
-    // State
     status,
     lastError,
     canWithdraw,
 
-    // Form state
     amount: form.amount,
     recipientAddress: form.recipientAddress,
     destinationChainId: form.destinationChainId,
     amountError: form.amountError,
     addressError: form.addressError,
 
-    // Note selection
     selectedNote: noteSelection.selectedNote,
     availableNotes: noteSelection.availableNotes,
     isLoadingNotes: noteSelection.isLoadingNotes,
 
-    // Balance calculations
     noteBalance,
     remainingBalance,
 
-    // Fee breakdown
     executionFee: feeBreakdown.executionFee,
     solverFee: feeBreakdown.solverFee,
     youReceive: feeBreakdown.youReceive,
     isCrossChain: feeBreakdown.isCrossChain,
 
-    // Transaction state
-    transactionHash: engine.executionResult?.transactionHash || null,
+    transactionHash: engine.executionResult?.transactionHash ?? null,
     isSubmitted: !!engine.executionResult,
 
-    // Proof state
     isPreparing: engine.isPreparing,
 
-    // Actions
     setAmount: form.setAmount,
     setRecipientAddress: form.setRecipientAddress,
     setDestinationChain: form.setDestinationChain,

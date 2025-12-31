@@ -5,97 +5,103 @@
 
 import { useAuthStore as useStore } from "../domain/authStore";
 import { useMemo } from "react";
-import type { AuthSession, AuthMethod, AccountIndex } from "../domain/types";
+import type { AuthMethod, AccountIndex } from "../domain/types";
 import type { AuthState } from "../domain/state";
 
 /**
- * Get current auth session
- * Returns null if not authenticated
- *
- * @returns AuthSession if authenticated, null otherwise
+ * UI-safe auth session
+ * (NO cryptographic material)
  */
-export function useAuthSession(): AuthSession | null {
-  return useStore((state) =>
-    state.state.status === "authenticated" ? state.state.session : null
-  );
+export type UiAuthSession = {
+  accountName: string;
+  authenticatedAt: number;
+  method: AuthMethod;
+};
+
+/**
+ * Get current auth session (UI-safe)
+ */
+export function useAuthSession(): UiAuthSession | null {
+  return useStore((store) => {
+    if (store.state.status !== "authenticated") return null;
+
+    return {
+      accountName: store.state.session.accountName,
+      authenticatedAt: store.state.session.authenticatedAt,
+      method: store.state.session.method,
+    };
+  });
 }
 
 /**
  * Check if user is authenticated
- *
- * @returns true if authenticated, false otherwise
  */
 export function useIsAuthenticated(): boolean {
-  return useStore((state) => state.state.status === "authenticated");
+  return useStore((store) => store.state.status === "authenticated");
 }
 
 /**
- * Get current auth state
- * Useful for conditional rendering based on status
- *
- * @returns Current AuthState
+ * Get full auth state (discriminated union)
  */
 export function useAuthState(): AuthState {
-  return useStore((state) => state.state);
+  return useStore((store) => store.state);
 }
 
 /**
- * Get auth actions
- * Returns stable action methods from the store
- * Memoized to prevent infinite re-renders
+ * Auth actions exposed to UI
  */
 export function useAuthActions() {
-  const bootstrap = useStore((state) => state.bootstrap);
-  const startAccountCreation = useStore((state) => state.startAccountCreation);
-  const completeAccountCreation = useStore((state) => state.completeAccountCreation);
-  const selectAccount = useStore((state) => state.selectAccount);
-  const authenticateWithWallet = useStore((state) => state.authenticateWithWallet);
-  const authenticate = useStore((state) => state.authenticate);
-  const logout = useStore((state) => state.logout);
-  const clearError = useStore((state) => state.clearError);
-  const setError = useStore((state) => state.setError);
+  const bootstrap = useStore((s) => s.bootstrap);
+  const startAccountCreation = useStore((s) => s.startAccountCreation);
+  const selectAccount = useStore((s) => s.selectAccount);
+  const authenticateWithWallet = useStore((s) => s.authenticateWithWallet);
+  const logout = useStore((s) => s.logout);
+  const clearError = useStore((s) => s.clearError);
+  const setError = useStore((s) => s.setError);
 
   return useMemo(
     () => ({
       bootstrap,
       startAccountCreation,
-      completeAccountCreation,
       selectAccount,
       authenticateWithWallet,
-      authenticate,
       logout,
       clearError,
       setError,
     }),
-    [bootstrap, startAccountCreation, completeAccountCreation, selectAccount, authenticateWithWallet, authenticate, logout, clearError, setError]
+    [
+      bootstrap,
+      startAccountCreation,
+      selectAccount,
+      authenticateWithWallet,
+      logout,
+      clearError,
+      setError,
+    ]
   );
 }
 
 /**
- * Get available accounts
- * Returns empty array if not in accounts-detected state
- *
- * @returns Array of AccountIndex
+ * Available accounts (pre-auth)
  */
 export function useAvailableAccounts(): AccountIndex[] {
-  return useStore((state) =>
-    state.state.status === "accounts-detected" ? state.state.accounts : []
+  return useStore((store) =>
+    store.state.status === "accounts-detected"
+      ? store.state.accounts
+      : []
   );
 }
 
 /**
- * Get current auth method
- * Returns null if not creating/authenticating
- *
- * @returns AuthMethod if in progress, null otherwise
+ * Current auth method (if in progress)
  */
 export function useCurrentAuthMethod(): AuthMethod | null {
-  return useStore((state) => {
-    if (state.state.status === "creating-account") {
-      return state.state.method;
+  return useStore((store) => {
+    if (store.state.status === "creating-account") {
+      return store.state.method;
     }
-    if (state.state.status === "authenticating") {
-      return state.state.method;
+    if (store.state.status === "authenticating") {
+      return store.state.method;
     }
     return null;
   });
@@ -103,62 +109,25 @@ export function useCurrentAuthMethod(): AuthMethod | null {
 
 /**
  * Check if auth operation is in progress
- *
- * @returns true if creating account or authenticating
  */
 export function useIsAuthInProgress(): boolean {
-  return useStore((state) => {
-    const status = state.state.status;
-    return status === "creating-account" || status === "authenticating" || status === "booting";
+  return useStore((store) => {
+    const status = store.state.status;
+    return (
+      status === "booting" ||
+      status === "creating-account" ||
+      status === "authenticating"
+    );
   });
 }
 
 /**
- * Get error state
- * Returns null if no error
- *
- * @returns AuthError if in error state, null otherwise
+ * Get auth error (if any)
  */
 export function useAuthError() {
-  return useStore((state) =>
-    state.state.status === "error"
-      ? { error: state.state.error, retry: state.state.retry }
+  return useStore((store) =>
+    store.state.status === "error"
+      ? { error: store.state.error, retry: store.state.retry }
       : null
-  );
-}
-
-/**
- * Get account key (for note encryption)
- * Returns null if not authenticated
- *
- * @returns accountKey bigint if authenticated, null otherwise
- */
-export function useAccountKey(): bigint | null {
-  return useStore((state) =>
-    state.state.status === "authenticated" ? state.state.session.accountKey : null
-  );
-}
-
-/**
- * Get public key
- * Returns null if not authenticated
- *
- * @returns publicKey string if authenticated, null otherwise
- */
-export function usePublicKey(): string | null {
-  return useStore((state) =>
-    state.state.status === "authenticated" ? state.state.session.publicKey : null
-  );
-}
-
-/**
- * Get address
- * Returns null if not authenticated
- *
- * @returns address string if authenticated, null otherwise
- */
-export function useAddress(): string | null {
-  return useStore((state) =>
-    state.state.status === "authenticated" ? state.state.session.address : null
   );
 }

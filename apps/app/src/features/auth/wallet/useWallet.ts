@@ -10,7 +10,7 @@ import { useAccount, useSignTypedData, useChainId } from "wagmi";
 import { getEIP712Message } from "./eip712";
 import { generateKeysFromWalletSignature } from "../shared";
 import {
-  performWalletLogin,
+  loginWithWalletIfExists,
   setupWalletAccount,
   deriveEncryptionKey,
 } from "./walletAuth";
@@ -102,7 +102,7 @@ export function useWalletAuth() {
       });
       const signature = await signTypedDataAsync(message);
 
-      const keys = await performWalletLogin(signature, address, chainId);
+      const keys = await loginWithWalletIfExists(signature, address, chainId);
 
       setState({ isProcessing: false, error: null });
       return keys; // null if new account, keys if existing

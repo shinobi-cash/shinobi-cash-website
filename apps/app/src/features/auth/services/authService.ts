@@ -1,24 +1,32 @@
 /**
  * Auth Service
  * Main authentication orchestration layer
- * Coordinates between passkey/wallet services and session management
+ *
+ * RESPONSIBILITY:
+ * - Route auth to passkey or wallet flows
+ * - Do NOT manage crypto sessions directly
+ * - Do NOT persist keys
+ *
+ * Crypto session lifecycle is owned by:
+ * - walletAuth / passkeyAuth
+ * - StorageManager
+ * - KDF (resume metadata only)
  */
 
 import type { KeyGenerationResult } from "@shinobi-cash/core";
-import type { AuthMethod, AuthSession } from "../domain/types";
+import type { AuthMethod } from "../domain/types";
 import * as passkeyService from "./passkeyService";
 import * as walletService from "./walletService";
-import * as sessionService from "./sessionService";
+import { KDF, storageManager } from "@/lib/storage";
 
 /**
  * Authenticate with existing account
- * Routes to appropriate auth method and creates session
+ * Routes to appropriate auth method
  *
  * @param accountId - Account identifier
  * @param method - Authentication method (passkey or wallet)
- * @param walletParams - Required for wallet auth (signature, walletAddress, chainId)
- * @returns AuthSession on successful authentication
- * @throws AuthError if authentication fails
+ * @param walletParams - Required for wallet auth
+ * @returns KeyGenerationResult
  */
 export async function authenticate(
   accountId: string,
@@ -28,36 +36,28 @@ export async function authenticate(
     walletAddress: string;
     chainId: number;
   }
-): Promise<AuthSession> {
-  let keys: KeyGenerationResult;
-
+): Promise<KeyGenerationResult> {
   if (method === "passkey") {
-    // Passkey authentication
-    keys = await passkeyService.login(accountId);
-  } else {
-    // Wallet authentication
-    if (!walletParams) {
-      throw new Error("Wallet parameters required for wallet authentication");
-    }
-
-    const { signature, walletAddress, chainId } = walletParams;
-    keys = await walletService.login(signature, walletAddress, chainId);
+    return passkeyService.login(accountId);
   }
 
-  // Create session from keys
-  return await sessionService.createSession(accountId, keys, method);
+  if (!walletParams) {
+    throw new Error("Wallet parameters required for wallet authentication");
+  }
+
+  const { signature, walletAddress, chainId } = walletParams;
+  return walletService.login(signature, walletAddress, chainId);
 }
 
 /**
  * Create new account
- * Routes to appropriate account creation method and creates session
+ * Routes to appropriate account creation method
  *
- * @param accountId - Account identifier (accountName for passkey, accountId for wallet)
+ * @param accountId - Account identifier
  * @param method - Authentication method
  * @param keys - Generated cryptographic keys
  * @param walletParams - Required for wallet account creation
- * @returns AuthSession for the newly created account
- * @throws AuthError if account creation fails
+ * @returns KeyGenerationResult
  */
 export async function createAccount(
   accountId: string,
@@ -68,42 +68,54 @@ export async function createAccount(
     walletAddress: string;
     chainId: number;
   }
-): Promise<AuthSession> {
+): Promise<KeyGenerationResult> {
   if (method === "passkey") {
-    // Create passkey account
     await passkeyService.createAccount(accountId, keys);
-  } else {
-    // Create wallet account
-    if (!walletParams) {
-      throw new Error("Wallet parameters required for wallet account creation");
-    }
-
-    const { signature, walletAddress, chainId } = walletParams;
-    await walletService.createAccount(walletAddress, signature, chainId, keys);
+    return keys;
   }
 
-  // Create session from keys
-  return await sessionService.createSession(accountId, keys, method);
+  if (!walletParams) {
+    throw new Error("Wallet parameters required for wallet account creation");
+  }
+
+  const { signature, walletAddress, chainId } = walletParams;
+  await walletService.createAccount(walletAddress, signature, chainId, keys);
+
+  return keys;
 }
 
 /**
  * Bootstrap authentication system
- * Attempts to restore session, falls back to listing accounts
  *
- * @returns Object with restoration status and session/accounts
+ * Attempts best-effort session resume.
+ * NEVER throws.
+ *
+ * NOTE:
+ * - "session-restored" means crypto session (KEK + DEK) is live
+ * - No keys are returned or stored here
  */
 export async function bootstrap(): Promise<
-  | { type: "session-restored"; session: AuthSession }
+  | { type: "session-restored" }
   | { type: "no-session"; hasAccounts: boolean }
 > {
-  // Try to restore existing session
-  const session = await sessionService.tryRestoreSession();
+  try {
+    const resume = await KDF.resumeAuth();
 
-  if (session) {
-    return { type: "session-restored", session };
+    if (resume.status === "passkey-ready") {
+      // Let passkey auth fully restore crypto session
+      await passkeyService.login(resume.accountName);
+      return { type: "session-restored" };
+    }
+
+    if (resume.status === "none") {
+      // Wallet resume can be added later if needed
+      return { type: "no-session", hasAccounts: true };
+    }
+  } catch (error) {
+    console.warn("Bootstrap resume failed (non-fatal):", error);
   }
 
-  // Check if any accounts exist
+  // Fallback: check if any accounts exist
   const accountIndexService = await import("./accountIndexService");
   const hasAccounts = await accountIndexService.hasAccounts();
 
@@ -112,16 +124,29 @@ export async function bootstrap(): Promise<
 
 /**
  * Logout
- * Clears session and returns to unauthenticated state
+ *
+ * Clears:
+ * - KDF resume metadata
+ * - In-memory crypto session (KEK + DEK)
+ *
+ * Best-effort, never throws
  */
 export async function logout(): Promise<void> {
-  await sessionService.clearSession();
+  try {
+    await KDF.clearSessionInfo();
+  } catch (e) {
+    console.warn("Failed to clear KDF session info:", e);
+  }
+
+  try {
+    storageManager.clearInMemorySession();
+  } catch (e) {
+    console.warn("Failed to clear storage session:", e);
+  }
 }
 
 /**
  * Check if passkey is supported
- *
- * @returns true if WebAuthn is available
  */
 export function isPasskeySupported(): boolean {
   return passkeyService.isSupported();

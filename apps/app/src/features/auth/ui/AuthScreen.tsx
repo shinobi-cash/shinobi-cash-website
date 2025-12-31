@@ -14,6 +14,7 @@ import { AccountsDetectedScreen } from "./screens/AccountsDetectedScreen";
 import { CreatingAccountScreen } from "./screens/CreatingAccountScreen";
 import { AuthenticatingScreen } from "./screens/AuthenticatingScreen";
 import { WalletAuthHandler } from "./screens/WalletAuthHandler";
+import { WalletAccountCreationHandler } from "./screens/WalletAccountCreationHandler";
 import { ErrorScreen } from "./screens/ErrorScreen";
 
 export function AuthScreen() {
@@ -59,6 +60,11 @@ export function AuthScreen() {
       );
 
     case "creating-account":
+      // For wallet, use WalletAccountCreationHandler to trigger signing
+      if (state.method === "wallet") {
+        return <WalletAccountCreationHandler />;
+      }
+      // For passkey, show loading (not implemented yet)
       return <CreatingAccountScreen method={state.method} />;
 
     case "authenticating":
@@ -83,7 +89,4 @@ export function AuthScreen() {
         />
       );
   }
-
-  // Exhaustiveness check - should never reach here
-  return <BootingScreen />;
 }

@@ -4,7 +4,7 @@
  */
 
 import {
-  performWalletLogin,
+  loginWithWalletIfExists,
   setupWalletAccount,
   setupWalletAccountWithDerivedKey,
 } from "../wallet/walletAuth";
@@ -28,7 +28,7 @@ export async function login(
   chainId: number
 ): Promise<KeyGenerationResult> {
   try {
-    const result = await performWalletLogin(signature, walletAddress, chainId);
+    const result = await loginWithWalletIfExists(signature, walletAddress, chainId);
 
     if (!result) {
       const accountId = getWalletAccountId(walletAddress, chainId);
