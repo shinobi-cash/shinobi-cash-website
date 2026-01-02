@@ -3,24 +3,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Settings, Menu } from "lucide-react";
-import { useAccount, useChainId, useSwitchChain } from "wagmi";
-import { SHINOBI_CASH_SUPPORTED_CHAINS } from "@shinobi-cash/constants";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@workspace/ui/components/select";
 import { useState } from "react";
 import { AddPasskeyModal } from "@/features/auth/components/AddPasskeyModal";
 import { RemovePasskeyModal } from "@/features/auth/components/RemovePasskeyModal";
 import { SettingMenu } from "@/components/SettingMenu";
 
 export function Header() {
-  const { isConnected } = useAccount();
-  const chainId = useChainId();
-  const { switchChain } = useSwitchChain();
   const [showAddPasskeyModal, setShowAddPasskeyModal] = useState(false);
   const [showRemovePasskeyModal, setShowRemovePasskeyModal] = useState(false);
 
@@ -31,34 +19,6 @@ export function Header() {
   const handleRemovePasskey = () => {
     setShowRemovePasskeyModal(true);
   };
-
-  const getCurrentChain = () => {
-    return SHINOBI_CASH_SUPPORTED_CHAINS.find((chain) => chain.id === chainId);
-  };
-
-  const getChainIcon = (id: number) => {
-    const chainIconMap: Record<number, string> = {
-      // Mainnets
-      1: "/chains/eth-diamond-black-white.svg",
-      8453: "/chains/Base_square_blue.svg",
-      10: "/chains/OPMainnet_square.svg",
-      42161: "/chains/AF_logomark.svg",
-      // Testnets
-      421614: "/chains/AF_logomark.svg",
-      84532: "/chains/Base_square_blue.svg",
-      11155111: "/chains/eth-diamond-black-white.svg",
-      11155420: "/chains/OPMainnet_square.svg",
-    };
-    return chainIconMap[id] || "/chains/eth-diamond-black-white.svg";
-  };
-
-  const handleChainSwitch = (newChainId: string) => {
-    if (switchChain) {
-      switchChain({ chainId: Number(newChainId) });
-    }
-  };
-
-  const currentChain = getCurrentChain();
 
   return (
     <>
@@ -93,48 +53,6 @@ export function Header() {
 
         {/* Actions - Right */}
         <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
-          {/* Desktop: Chain Selector */}
-          {isConnected && currentChain && (
-            <Select value={chainId.toString()} onValueChange={handleChainSwitch}>
-              <SelectTrigger className="hidden h-9 w-auto min-w-[140px] items-center gap-2 border-gray-700 bg-gray-900/50 sm:h-10 md:flex lg:h-11">
-                <SelectValue>
-                  <div className="flex items-center gap-2">
-                    <Image
-                      src={getChainIcon(chainId)}
-                      alt={currentChain.name}
-                      width={20}
-                      height={20}
-                      className="h-4 w-4 sm:h-5 sm:w-5"
-                    />
-                    <span className="text-xs font-medium sm:text-sm lg:text-base">
-                      {currentChain.name}
-                    </span>
-                  </div>
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent className="border-gray-700 bg-gray-900">
-                {SHINOBI_CASH_SUPPORTED_CHAINS.map((chain) => (
-                  <SelectItem
-                    key={chain.id}
-                    value={chain.id.toString()}
-                    className="flex cursor-pointer items-center gap-2 hover:bg-gray-800 focus:bg-gray-800"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Image
-                        src={getChainIcon(chain.id)}
-                        alt={chain.name}
-                        width={20}
-                        height={20}
-                        className="h-5 w-5"
-                      />
-                      <span className="text-sm font-medium">{chain.name}</span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-
           {/* Account Menu */}
           <SettingMenu onAddPasskey={handleAddPasskey} onRemovePasskey={handleRemovePasskey}>
             <button
