@@ -9,12 +9,12 @@ interface NoteRowProps {
 
 export function NoteRow({ note, onClick }: NoteRowProps) {
   // Show user-friendly labels based on chain progression
-  const noteLabel = `Note ${note.depositIndex + 1}.${note.changeIndex}`
+  const noteLabel = `Note ${note.depositIndex + 1}.${note.changeIndex}`;
 
   return (
     <button
       type="button"
-      className="rounded-lg border border-gray-700 bg-gray-800/50 w-full cursor-pointer border-b px-2 py-2 text-left transition-all duration-150 sm:px-3 sm:py-3"
+      className="w-full cursor-pointer rounded-lg border border-b border-gray-700 bg-gray-800/50 px-2 py-2 text-left transition-all duration-150 sm:px-3 sm:py-3"
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
     >

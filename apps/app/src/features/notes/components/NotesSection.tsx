@@ -113,7 +113,7 @@ export function NotesSection({ controller, onNoteChainClick }: NotesSectionProps
       </div>
 
       <div className="flex-1 overflow-hidden">
-        <div className="h-full overflow-y-auto space-y-2">
+        <div className="h-full space-y-2 overflow-y-auto">
           {renderEmptyState()}
 
           {/* Render filtered notes */}
@@ -121,10 +121,7 @@ export function NotesSection({ controller, onNoteChainClick }: NotesSectionProps
             <>
               {controller.filteredNoteViews.map((view) => (
                 <div key={view.key} className="border-app-border border-b last:border-b-0">
-                  <NoteRow
-                    note={view.lastNote}
-                    onClick={() => onNoteChainClick(view.chain)}
-                  />
+                  <NoteRow note={view.lastNote} onClick={() => onNoteChainClick(view.chain)} />
                 </div>
               ))}
             </>

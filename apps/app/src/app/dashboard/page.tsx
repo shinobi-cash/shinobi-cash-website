@@ -40,7 +40,7 @@ export default function NotesPage() {
   }
 
   return (
-    <div className="flex h-full w-full flex-col">
+    <div className="flex h-[550px] w-full flex-col">
       {/* Balance Section - Fixed */}
       <div className="shrink-0 border-b border-gray-800 px-4 pb-4 pt-4 sm:px-6 sm:pt-6">
         <AmountDisplay

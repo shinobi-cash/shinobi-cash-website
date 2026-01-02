@@ -7,6 +7,7 @@
 import { usePriceData } from "@/hooks/usePriceData";
 import { formatUsdAmount } from "@/utils/formatters";
 import type { TokenSymbol } from "@/lib/prices/types";
+import { ChevronDown } from "lucide-react";
 
 interface FeeBreakdownProps {
   /** Execution fee - accepts string (for estimates) or number (for exact values) */
@@ -58,25 +59,13 @@ export function FeeBreakdown({
   return (
     <div className="mb-2">
       <details className="overflow-hidden">
-        <summary className="flex cursor-pointer items-center justify-between py-3 transition-colors hover:bg-gray-800/80">
+        <summary className="flex cursor-pointer items-center justify-between py-3 transition-colors">
           <span className="text-sm font-medium text-gray-400">Fees</span>
           <div className="flex items-center gap-2">
             {!isEstimating && totalFeesUsd !== null && (
               <span className="text-sm text-gray-400">≈ {formatUsdAmount(totalFeesUsd, 4)}</span>
             )}
-            <svg
-              className="h-4 w-4 text-gray-400 transition-transform duration-200"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 9l-7 7-7-7"
-              />
-            </svg>
+            <ChevronDown className="h-4 w-4 hover:bg-gray-800/80" />
           </div>
         </summary>
         <div className="space-y-2 pt-2">

@@ -182,14 +182,14 @@ export function DepositForm({ asset, onTransactionSuccess }: DepositFormProps) {
         </TokenAmountInputWithBalance>
 
         {/* Error Messages */}
-        {controller.amountError && (
+        {/* {controller.amountError && (
           <p className="mt-1 text-sm text-red-500">{controller.amountError}</p>
         )}
         {controller.gasEstimationError && controller.amount && !controller.amountError && (
           <p className="mt-1 text-sm text-red-500">
             {getUserMessage(new Error(controller.gasEstimationError))}
           </p>
-        )}
+        )} */}
 
         {/* Arrow Divider */}
         <SectionDivider />
