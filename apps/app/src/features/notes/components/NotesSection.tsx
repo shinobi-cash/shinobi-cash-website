@@ -103,8 +103,8 @@ export function NotesSection({ controller, onNoteChainClick }: NotesSectionProps
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex-shrink-0 border-b border-gray-800">
+    <div className="flex min-h-0 flex-1 flex-col space-y-2">
+      <div className="flex-shrink-0">
         <div className="flex">
           {renderFilterButton("available", controller.availableCount, "border-green-500")}
           {renderFilterButton("pending", controller.pendingCount, "border-yellow-500")}
@@ -113,7 +113,7 @@ export function NotesSection({ controller, onNoteChainClick }: NotesSectionProps
       </div>
 
       <div className="flex-1 overflow-hidden">
-        <div className="h-full overflow-y-auto">
+        <div className="h-full overflow-y-auto space-y-2">
           {renderEmptyState()}
 
           {/* Render filtered notes */}
@@ -123,7 +123,6 @@ export function NotesSection({ controller, onNoteChainClick }: NotesSectionProps
                 <div key={view.key} className="border-app-border border-b last:border-b-0">
                   <NoteRow
                     note={view.lastNote}
-                    chainLength={view.length}
                     onClick={() => onNoteChainClick(view.chain)}
                   />
                 </div>

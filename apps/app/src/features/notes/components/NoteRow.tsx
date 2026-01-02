@@ -4,30 +4,19 @@ import { AmountDisplay } from "@/components/shared/AmountDisplay";
 
 interface NoteRowProps {
   note: Note;
-  chainLength?: number;
   onClick?: () => void;
 }
 
-export function NoteRow({ note, chainLength, onClick }: NoteRowProps) {
+export function NoteRow({ note, onClick }: NoteRowProps) {
   // Show user-friendly labels based on chain progression
-  const noteLabel =
-    chainLength === 1
-      ? "Private Deposit" // Simple case: only one note in chain
-      : note.changeIndex === 0
-        ? "Initial Deposit"
-        : "Updated Balance";
+  const noteLabel = `Note ${note.depositIndex + 1}.${note.changeIndex}`
 
   return (
     <button
       type="button"
-      className="bg-app-surface border-app active:bg-app-surface-hover hover:bg-app-surface-hover w-full cursor-pointer border-b px-2 py-2 text-left transition-all duration-150 sm:px-3 sm:py-3"
+      className="rounded-lg border border-gray-700 bg-gray-800/50 w-full cursor-pointer border-b px-2 py-2 text-left transition-all duration-150 sm:px-3 sm:py-3"
       onMouseDown={(e) => e.preventDefault()}
-      onClick={() => {
-        // Blur any focused element prior to opening the drawer
-        const active = document.activeElement as HTMLElement | null;
-        if (active && typeof active.blur === "function") active.blur();
-        onClick?.();
-      }}
+      onClick={onClick}
     >
       <div className="flex flex-col gap-1">
         <div className="flex items-center justify-between gap-2">
