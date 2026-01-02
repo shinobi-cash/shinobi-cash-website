@@ -17,7 +17,8 @@ import { useTransactionTracking } from "@/hooks/transactions/useTransactionTrack
 import { formatEther } from "viem";
 import { formatDepositAmountsForDisplay } from "../protocol/depositFees";
 import { isDepositSupported } from "../protocol/depositRoute";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
+import { DEPOSIT_FEES, POOL_CHAIN } from "@shinobi-cash/constants";
 import type { DepositStatus, DepositError } from "../types/depositStatus";
 
 interface Asset {
@@ -50,6 +51,8 @@ interface DepositControllerState {
 
   isOnSupportedChain: boolean;
   chainId: number;
+  isCrossChain: boolean;
+  solverFee: number;
 
   canDeposit: boolean;
   status: DepositStatus;
@@ -131,6 +134,14 @@ export function useDepositController(
   const hasNoteData = !!commitment.noteData;
 
   const amounts = formatDepositAmountsForDisplay(form.amount);
+
+  // Calculate if this is a cross-chain deposit and solver fee
+  const isCrossChain = useMemo(() => chainId !== POOL_CHAIN.id, [chainId]);
+  const solverFee = useMemo(() => {
+    if (!isCrossChain || !form.amount) return 0;
+    const depositAmount = parseFloat(form.amount) || 0;
+    return (depositAmount * DEPOSIT_FEES.DEFAULT_SOLVER_FEE_BPS) / 10_000;
+  }, [isCrossChain, form.amount]);
 
   const shownTxsRef = useRef(new Set<string>());
 
@@ -220,6 +231,8 @@ export function useDepositController(
     hasBalance,
     isOnSupportedChain,
     chainId,
+    isCrossChain,
+    solverFee,
     canDeposit,
     status,
     lastError,

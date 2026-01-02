@@ -208,6 +208,8 @@ export function DepositForm({ asset, onTransactionSuccess }: DepositFormProps) {
         <FeeBreakdown
           executionFee={controller.gasCostEth}
           assetSymbol={asset.symbol}
+          solverFee={controller.solverFee}
+          isCrossChain={controller.isCrossChain}
           isEstimating={controller.isEstimatingGas}
           decimals={6}
         />
