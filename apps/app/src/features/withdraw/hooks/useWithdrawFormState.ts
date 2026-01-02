@@ -92,16 +92,21 @@ export function useWithdrawFormState(selectedNote: Note | null, assetSymbol: str
     [validateAddress]
   );
 
-  const handleDestinationChainChange = useCallback((chainId: number) => {
-    setForm((prev) => ({
-      ...prev,
-      destinationChainId: chainId,
-      // Clear address when switching chains for better UX
-      recipientAddress: chainId !== POOL_CHAIN_ID ? "" : prev.recipientAddress,
-    }));
-    // Clear address validation error when switching chains
-    setErrors((prev) => ({ ...prev, address: null }));
-  }, []);
+  const handleDestinationChainChange = useCallback(
+    (chainId: number) => {
+      setForm((prev) => ({
+        ...prev,
+        destinationChainId: chainId,
+      }));
+      // Re-validate existing values with new chain context
+      // This will show errors if values are now invalid, but keeps user input
+      setErrors((prev) => ({
+        amount: form.withdrawAmount ? validateAmount(form.withdrawAmount) : null,
+        address: form.recipientAddress ? validateAddress(form.recipientAddress) : null,
+      }));
+    },
+    [form.withdrawAmount, form.recipientAddress, validateAmount, validateAddress]
+  );
 
   const handleMaxClick = useCallback(() => {
     if (!selectedNote) return;
@@ -123,14 +128,15 @@ export function useWithdrawFormState(selectedNote: Note | null, assetSymbol: str
   }, []);
 
   // Re-validate amount when selected note changes
+  // Different notes have different balances - validate to show error if amount now exceeds balance
   useEffect(() => {
-    if (form.withdrawAmount && selectedNote) {
+    if (form.withdrawAmount) {
       setErrors((prev) => ({
         ...prev,
         amount: validateAmount(form.withdrawAmount),
       }));
     }
-  }, [selectedNote, form.withdrawAmount, validateAmount]);
+  }, [selectedNote?.nullifier, form.withdrawAmount, validateAmount]);
 
   return {
     // State

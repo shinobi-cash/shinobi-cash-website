@@ -5,7 +5,7 @@
 
 export function SectionDivider() {
   return (
-    <div className="my-1 flex justify-center">
+    <div className="flex justify-center">
       <div className="rounded-full border border-gray-700 bg-gray-900 p-2">
         <svg
           className="h-5 w-5 text-gray-400"

@@ -25,8 +25,6 @@ interface TokenAmountInputWithBalanceProps {
   children?: ReactNode;
   /** Disabled state */
   disabled?: boolean;
-  /** Read-only state */
-  readOnly?: boolean;
 }
 
 export function TokenAmountInputWithBalance({
@@ -37,7 +35,6 @@ export function TokenAmountInputWithBalance({
   onMaxClick,
   children,
   disabled = false,
-  readOnly = false,
 }: TokenAmountInputWithBalanceProps) {
   const { usdPrice, isLoading } = usePriceData(assetSymbol as TokenSymbol);
 
@@ -53,39 +50,32 @@ export function TokenAmountInputWithBalance({
   return (
     <div className="space-y-2">
       {/* Token Amount Input with composable right slot */}
-      <TokenAmountInput
-        amount={amount}
-        onAmountChange={onAmountChange}
-        disabled={disabled}
-        readOnly={readOnly}
-      >
+      <TokenAmountInput amount={amount} onAmountChange={onAmountChange} disabled={disabled}>
         {children}
       </TokenAmountInput>
 
       {/* USD Value (left) + Balance & Max Button (right) - Same line */}
-      {!readOnly && (
-        <div className="flex items-center justify-between text-sm">
-          {/* USD Value */}
-          <span className="text-gray-400">
-            {hasValidAmount &&
-              (isLoading ? "Loading price..." : amountUsd ? `≈ ${formatUsdAmount(amountUsd)}` : "")}
-          </span>
+      <div className="flex items-center justify-between text-sm">
+        {/* USD Value */}
+        <span className="text-gray-400">
+          {hasValidAmount &&
+            (isLoading ? "Loading price..." : amountUsd ? `≈ ${formatUsdAmount(amountUsd)}` : "")}
+        </span>
 
-          {/* Balance and Max Button */}
-          <div className="flex items-center gap-2">
-            <span className="text-gray-400">
-              Balance: {formattedBalance} {assetSymbol}
-            </span>
-            <button
-              onClick={onMaxClick}
-              className="rounded-lg bg-gray-700 px-3 py-1 text-sm font-medium text-white transition-colors hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={disabled || !hasBalance}
-            >
-              Max
-            </button>
-          </div>
+        {/* Balance and Max Button */}
+        <div className="flex items-center gap-2">
+          <span className="text-gray-400">
+            Balance: {formattedBalance} {assetSymbol}
+          </span>
+          <button
+            onClick={onMaxClick}
+            className="rounded-lg bg-gray-700 px-3 py-1 text-sm font-medium text-white transition-colors hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={disabled || !hasBalance}
+          >
+            Max
+          </button>
         </div>
-      )}
+      </div>
     </div>
   );
 }

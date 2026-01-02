@@ -6,6 +6,7 @@
 
 import Image from "next/image";
 import { getChainIcon } from "@/utils/chainIcons";
+import { ChevronDown } from "lucide-react";
 
 interface TokenChainSelectorProps {
   asset: {
@@ -58,15 +59,8 @@ export function TokenChainSelector({
         </div>
       </div>
       <span className="text-base font-medium text-white">{asset.symbol}</span>
-      {showChevron && onClick && (
-        <svg
-          className="h-4 w-4 text-gray-400"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
+      {showChevron && (
+        <ChevronDown className="w-4 h-4" />
       )}
     </Component>
   );

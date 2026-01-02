@@ -3,7 +3,7 @@
  * Pure UI component that delegates all logic to useWithdrawController
  */
 
-import { Loader2, ChevronDown, ChevronLeft } from "lucide-react";
+import { Loader2, ChevronDown } from "lucide-react";
 import { useState, useCallback, useEffect, useRef } from "react";
 import { Button } from "@workspace/ui/components/button";
 import { POOL_CHAIN } from "@shinobi-cash/constants";
@@ -14,7 +14,7 @@ import { SectionDivider } from "@/components/shared/SectionDivider";
 import { TokenChainSelector } from "@/components/shared/TokenChainSelector";
 import { AssetChainSelectorScreen } from "@/components/shared/AssetChainSelectorScreen";
 import { RecipientAddressInputScreen } from "@/components/shared/RecipientAddressInputScreen";
-import { WithdrawalFeeBreakdown } from "@/components/shared/WithdrawalFeeBreakdown";
+import { FeeBreakdown } from "@/components/shared/FeeBreakdown";
 import { NoteSelectionScreen } from "./NoteSelectionScreen";
 import { WithdrawalTimelineScreen } from "./WithdrawalTimelineScreen";
 import { useWithdrawController } from "../controller/useWithdrawController";
@@ -22,6 +22,7 @@ import { WITHDRAW_STATUS_LABELS } from "../types/withdrawStatus";
 import { ETH_ASSET, DISPLAY_DECIMALS } from "../constants";
 import { showToast } from "@/lib/toast";
 import { getUserMessage } from "@/lib/errors/errorHandler";
+import { BackButton } from "@/components/ui/back-button";
 
 interface WithdrawalFormProps {
   onTransactionSuccess?: () => void;
@@ -124,15 +125,8 @@ export function WithdrawalForm({ onTransactionSuccess }: WithdrawalFormProps) {
   if (isDestinationSelectionOpen) {
     return (
       <div className="flex h-full flex-col">
-        <div className="flex items-center gap-3 border-b border-gray-800 px-4 py-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsDestinationSelectionOpen(false)}
-            className="h-8 w-8"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </Button>
+        <div className="flex items-center gap-3 py-2 px-4 border-b border-gray-800">
+          <BackButton onClick={() => setIsDestinationSelectionOpen(false)} />
           <h2 className="text-lg font-semibold text-white">Select Asset & Chain</h2>
         </div>
 
@@ -151,8 +145,8 @@ export function WithdrawalForm({ onTransactionSuccess }: WithdrawalFormProps) {
 
   // Main Withdrawal Form
   return (
-    <div className="mx-auto flex h-full w-full max-w-md flex-col overflow-x-hidden lg:max-w-lg">
-      <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6">
+    <div className="flex h-full w-full flex-col overflow-x-hidden px-4 py-4 sm:px-6 sm:py-6">
+      <div className="flex-1 overflow-y-auto space-y-2">
         {/* You Pay Section - From Note (Pool Chain) */}
         <InputLabel
           label="You Pay"
@@ -177,31 +171,22 @@ export function WithdrawalForm({ onTransactionSuccess }: WithdrawalFormProps) {
             </Button>
           }
         />
-        {controller.selectedNote ? (
-          <TokenAmountInputWithBalance
-            amount={controller.amount}
-            onAmountChange={controller.setAmount}
-            balance={controller.noteBalance.toString()}
-            assetSymbol={asset.symbol}
-            onMaxClick={controller.setMax}
-            disabled={controller.isPreparing || controller.status === "submitting"}
-          >
-            <TokenChainSelector asset={asset} chainId={POOL_CHAIN.id} showChevron={false} />
-          </TokenAmountInputWithBalance>
-        ) : (
-          <TokenAmountInput
-            amount={controller.amount}
-            onAmountChange={controller.setAmount}
-            disabled={true}
-          >
-            <TokenChainSelector asset={asset} chainId={POOL_CHAIN.id} showChevron={false} />
-          </TokenAmountInput>
-        )}
-
-        {/* Error Message */}
-        {controller.amountError && (
-          <p className="mt-1 text-sm text-red-500">{controller.amountError}</p>
-        )}
+        <TokenAmountInputWithBalance
+          amount={controller.amount}
+          onAmountChange={controller.setAmount}
+          balance={controller.selectedNote ? controller.noteBalance.toString() : "0"}
+          assetSymbol={asset.symbol}
+          onMaxClick={controller.setMax}
+          disabled={
+            !controller.selectedNote || controller.isPreparing || controller.status === "submitting"
+          }
+        >
+          <TokenChainSelector
+            asset={asset}
+            chainId={POOL_CHAIN.id}
+            showChevron={true}
+          />
+        </TokenAmountInputWithBalance>
 
         {/* Arrow/Divider */}
         <SectionDivider />
@@ -241,9 +226,8 @@ export function WithdrawalForm({ onTransactionSuccess }: WithdrawalFormProps) {
               ? controller.youReceive.toFixed(DISPLAY_DECIMALS)
               : controller.amount || "0"
           }
-          onAmountChange={() => {}} // Read-only
-          disabled={controller.isPreparing || controller.status === "submitting"}
-          readOnly={true}
+          onAmountChange={() => {}}
+          disabled={true}
         >
           <TokenChainSelector
             asset={asset}
@@ -259,17 +243,16 @@ export function WithdrawalForm({ onTransactionSuccess }: WithdrawalFormProps) {
         </TokenAmountInput>
 
         {/* Fee Breakdown */}
-        <WithdrawalFeeBreakdown
-          withdrawalAmount={parseFloat(controller.amount) || 0}
+        <FeeBreakdown
           executionFee={controller.executionFee}
           solverFee={controller.solverFee}
-          youReceive={controller.youReceive}
           assetSymbol={asset.symbol}
           isCrossChain={controller.isCrossChain}
+          showAsDeduction={true}
         />
 
         {/* Action Button */}
-        <div className="mt-2 sm:mt-4">
+        <div className="sm:mt-4">
           <Button
             onClick={handlePrepareWithdrawal}
             disabled={!controller.canWithdraw}

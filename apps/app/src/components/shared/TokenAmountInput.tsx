@@ -10,7 +10,6 @@ interface TokenAmountInputProps {
   onAmountChange: (value: string) => void;
   disabled?: boolean;
   placeholder?: string;
-  readOnly?: boolean;
   children?: ReactNode;
   className?: string;
 }
@@ -20,7 +19,6 @@ export function TokenAmountInput({
   onAmountChange,
   disabled = false,
   placeholder = "0",
-  readOnly = false,
   children,
   className = "",
 }: TokenAmountInputProps) {
@@ -33,23 +31,18 @@ export function TokenAmountInput({
   };
 
   return (
-    <div className={`mb-2 flex w-full items-center gap-3 overflow-hidden ${className}`}>
-      {/* Amount Input */}
-      {readOnly ? (
-        <div className="min-w-0 flex-1 px-0 py-2 text-3xl font-semibold text-white sm:text-4xl md:text-5xl">
-          {amount || "0.0000"}
-        </div>
-      ) : (
-        <input
-          type="text"
-          inputMode="decimal"
-          value={amount}
-          onChange={(e) => handleChange(e.target.value)}
-          placeholder={placeholder}
-          className="min-w-0 flex-1 border-none bg-transparent px-0 py-2 text-3xl font-semibold text-white focus:outline-none sm:text-4xl md:text-5xl"
-          disabled={disabled}
-        />
-      )}
+    <div
+      className={`flex w-full items-center gap-3 overflow-hidden rounded-lg border border-gray-700 bg-gray-800/50 p-3 ${className}`}
+    >
+      <input
+        type="text"
+        inputMode="decimal"
+        value={amount}
+        onChange={(e) => handleChange(e.target.value)}
+        placeholder={placeholder}
+        className="min-w-0 flex-1 border-none bg-transparent px-0 py-2 text-3xl font-semibold text-white placeholder:text-gray-600 focus:outline-none disabled:cursor-not-allowed disabled:opacity-70 sm:text-4xl md:text-5xl"
+        disabled={disabled}
+      />
 
       {/* Right slot - composable via children */}
       {children}

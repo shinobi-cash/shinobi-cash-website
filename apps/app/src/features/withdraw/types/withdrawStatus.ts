@@ -24,19 +24,19 @@ export type WithdrawStatus =
 
 /**
  * UI labels for each status
+ * Button text provides contextual feedback - tells user exactly what to do next
  * Separated from status enum to allow i18n and A/B testing
- * Component owns these labels, not the controller
  */
 export const WITHDRAW_STATUS_LABELS: Record<WithdrawStatus, string> = {
-  idle: "Preview Withdrawal",
+  idle: "Enter Amount and Recipient",
   "no-note-selected": "Select Note to Continue",
-  "invalid-amount": "Invalid Amount",
-  "invalid-address": "Invalid Address",
-  "preparing-proof": "Preparing...",
-  "proof-failed": "Proof Failed",
+  "invalid-amount": "Enter Valid Amount",
+  "invalid-address": "Enter Valid Recipient Address",
+  "preparing-proof": "Preparing Proof...",
+  "proof-failed": "Proof Generation Failed - Retry",
   ready: "Preview Withdrawal",
-  submitting: "Executing...",
-  submitted: "Submitted",
+  submitting: "Submitting Transaction...",
+  submitted: "Transaction Submitted",
 };
 
 // ============ ERROR DOMAINS ============

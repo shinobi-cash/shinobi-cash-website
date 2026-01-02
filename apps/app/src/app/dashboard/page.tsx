@@ -53,7 +53,7 @@ export default function NotesPage() {
       </div>
 
       {/* Notes Section - Scrollable */}
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4 sm:px-6">
         <NotesSection controller={notesController} onNoteChainClick={noteChainModal.openWith} />
       </div>
     </div>

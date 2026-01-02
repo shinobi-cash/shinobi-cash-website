@@ -23,6 +23,7 @@ import { useDepositController } from "../controller/useDepositController";
 import { showToast } from "@/lib/toast";
 import { DEPOSIT_STATUS_LABELS } from "../types/depositStatus";
 import { getUserMessage } from "@/lib/errors/errorHandler";
+import { BackButton } from "@/components/ui/back-button";
 
 function DepositNoteInfo() {
   return (
@@ -102,22 +103,8 @@ export function DepositForm({ asset, onTransactionSuccess }: DepositFormProps) {
   if (isAssetSelectorOpen) {
     return (
       <div className="flex h-full flex-col">
-        <div className="flex items-center gap-3 border-b border-gray-800 px-4 py-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsAssetSelectorOpen(false)}
-            className="h-8 w-8 p-0"
-          >
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
-          </Button>
+        <div className="flex items-center gap-3 py-2 px-4 border-b border-gray-800">
+          <BackButton onClick={() => setIsAssetSelectorOpen(false)} />
           <h2 className="text-lg font-semibold text-white">Select Asset & Chain</h2>
         </div>
 
@@ -136,8 +123,8 @@ export function DepositForm({ asset, onTransactionSuccess }: DepositFormProps) {
 
   // Main Deposit Form
   return (
-    <div className="mx-auto flex h-full w-full max-w-md flex-col overflow-x-hidden lg:max-w-lg">
-      <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6">
+    <div className="flex h-full w-full flex-col overflow-x-hidden  px-4 py-4 sm:px-6 sm:py-6">
+      <div className="flex-1 overflow-y-auto space-y-2">
         {/* Unsupported Network Warning */}
         {!controller.isOnSupportedChain && (
           <div className="mb-6">
@@ -211,17 +198,18 @@ export function DepositForm({ asset, onTransactionSuccess }: DepositFormProps) {
         <InputLabel label="You Receive (Deposit Note)" labelRight={<DepositNoteInfo />} />
         <TokenAmountInput
           amount={controller.depositNoteAmount > 0 ? controller.depositNoteAmount.toFixed(4) : "0"}
-          onAmountChange={() => {}} // Read-only
-          readOnly={true}
+          onAmountChange={() => {}}
+          disabled={true}
         >
-          <TokenChainSelector asset={asset} chainId={POOL_CHAIN.id} showChevron={false} />
+          <TokenChainSelector asset={asset} chainId={POOL_CHAIN.id} showChevron={true} disabled />
         </TokenAmountInput>
 
         {/* Fee Breakdown */}
         <FeeBreakdown
-          gasCost={controller.gasCostEth}
+          executionFee={controller.gasCostEth}
           assetSymbol={asset.symbol}
-          isEstimatingGas={controller.isEstimatingGas}
+          isEstimating={controller.isEstimatingGas}
+          decimals={6}
         />
 
         {/* Submit Button */}

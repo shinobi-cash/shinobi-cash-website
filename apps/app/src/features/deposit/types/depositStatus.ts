@@ -28,17 +28,18 @@ export type DepositError =
 
 /**
  * Maps deposit status to user-facing button labels
+ * Button text provides contextual feedback - tells user exactly what to do next
  * UI can override these for i18n, A/B testing, or custom messaging
  */
 export const DEPOSIT_STATUS_LABELS: Record<DepositStatus, string> = {
-  idle: "Deposit",
-  "wallet-disconnected": "Connect Wallet",
-  preparing: "Preparing...",
-  "unsupported-network": "Unsupported Network",
+  idle: "Enter Amount to Deposit",
+  "wallet-disconnected": "Connect Wallet to Continue",
+  preparing: "Preparing Deposit...",
+  "unsupported-network": "Switch to Supported Network",
   "insufficient-balance": "Insufficient Balance",
-  "invalid-amount": "Enter Amount",
-  "gas-estimation-failed": "Cannot Estimate Gas",
-  "estimating-gas": "Estimating...",
+  "invalid-amount": "Enter Valid Amount",
+  "gas-estimation-failed": "Gas Estimation Failed - Try Again",
+  "estimating-gas": "Estimating Gas...",
   ready: "Deposit",
-  submitting: "Depositing...",
+  submitting: "Submitting Deposit...",
 };

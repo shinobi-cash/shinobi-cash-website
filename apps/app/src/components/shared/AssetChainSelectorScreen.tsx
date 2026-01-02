@@ -60,7 +60,7 @@ export function AssetChainSelectorScreen({
     <div className="flex flex-col">
       {/* Search Inputs */}
       <div className="flex border-b border-gray-800">
-        <div className="w-1/2 border-r border-gray-800 px-4 py-4">
+        <div className="w-1/2 border-r border-gray-800">
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <input

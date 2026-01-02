@@ -23,9 +23,9 @@ export function RecipientAddressInputScreen({
   onConfirm,
 }: RecipientAddressInputScreenProps) {
   return (
-    <div className="flex h-full flex-col bg-gray-900">
+    <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex items-center gap-3 border-b border-gray-800 px-4 py-4">
+      <div className="flex items-center gap-3 border-b py-2 px-4 border-gray-800">
         <BackButton onClick={onBack} />
         <h2 className="text-lg font-semibold text-white">Recipient Address</h2>
       </div>
