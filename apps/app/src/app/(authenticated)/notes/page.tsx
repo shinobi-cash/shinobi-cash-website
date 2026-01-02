@@ -24,7 +24,7 @@ export default function NotesPage() {
     if (lastNote.status === "unspent" && lastNote.isActivated) {
       // Close the note details and navigate to withdrawal
       noteChainModal.setOpen(false);
-      router.push("/dashboard/withdraw");
+      router.push("/withdraw");
     }
   };
 

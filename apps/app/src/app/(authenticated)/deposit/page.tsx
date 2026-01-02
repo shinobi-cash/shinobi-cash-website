@@ -2,22 +2,25 @@
 
 import { useRouter } from "next/navigation";
 import { useNotesController } from "@/features/notes";
-import { WithdrawalForm } from "@/features/withdraw";
+import { DepositForm } from "@/features/deposit";
 
-export default function WithdrawPage() {
+export default function DepositPage() {
   const router = useRouter();
   const notesController = useNotesController();
 
   const handleTransactionSuccess = () => {
-    // Refresh notes after successful withdrawal
+    // Refresh notes after successful deposit
     notesController.refresh();
     // Navigate back to notes view
-    router.push("/dashboard");
+    router.push("/notes");
   };
 
   return (
     <div className="h-full overflow-y-auto">
-      <WithdrawalForm onTransactionSuccess={handleTransactionSuccess} />
+      <DepositForm
+        asset={{ symbol: "ETH", name: "Ethereum", icon: "/ethereum.svg" }}
+        onTransactionSuccess={handleTransactionSuccess}
+      />
     </div>
   );
 }

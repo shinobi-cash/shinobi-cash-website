@@ -5,10 +5,10 @@ import { usePathname } from "next/navigation";
 import { cn } from "@workspace/ui/lib/utils";
 
 const tabs = [
-  { label: "Notes", href: "/dashboard" },
-  { label: "Deposit", href: "/dashboard/deposit" },
-  { label: "Withdraw", href: "/dashboard/withdraw" },
-  { label: "Activity", href: "/dashboard/activity" },
+  { label: "Notes", href: "/notes" },
+  { label: "Deposit", href: "/deposit" },
+  { label: "Withdraw", href: "/withdraw" },
+  { label: "Activity", href: "/activity" },
 ] as const;
 
 export function DashboardTabs() {

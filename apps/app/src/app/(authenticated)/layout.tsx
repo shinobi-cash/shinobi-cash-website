@@ -8,46 +8,37 @@ import { DashboardTabs } from "@/components/DashboardTabs";
 import { SyncIndicator } from "@/components/SyncIndicator";
 import { useNotesController } from "@/features/notes";
 
-// ============ ROOT LAYOUT ============
-
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+/**
+ * Authenticated Layout
+ * Wraps all authenticated routes (notes, deposit, withdraw, activity)
+ * Provides auth check, header, card UI with tabs, and footer
+ */
+export default function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useIsAuthenticated();
-
-  return isAuthenticated ? (
-    <AuthenticatedDashboard>{children}</AuthenticatedDashboard>
-  ) : (
-    <UnauthenticatedDashboard />
-  );
-}
-
-// ============ UNAUTHENTICATED ============
-
-function UnauthenticatedDashboard() {
-  return (
-    <div className="bg-linear-to-br flex min-h-dvh flex-col overflow-y-auto from-gray-900 via-gray-900 to-black">
-      <div className="p-4">
-        <Header />
-      </div>
-
-      <div className="flex-1 py-8">
-        <div className="mx-auto w-full max-w-md md:max-w-lg lg:max-w-xl">
-          <AuthScreen />
-        </div>
-      </div>
-
-      <div className="hidden shrink-0 md:block">
-        <Footer />
-      </div>
-    </div>
-  );
-}
-
-// ============ AUTHENTICATED ============
-
-function AuthenticatedDashboard({ children }: { children: React.ReactNode }) {
-  // 🔒 Guaranteed auth context
   const notesController = useNotesController();
 
+  // Show auth screen if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className="bg-linear-to-br flex min-h-dvh flex-col overflow-y-auto from-gray-900 via-gray-900 to-black">
+        <div className="p-4">
+          <Header />
+        </div>
+
+        <div className="flex-1 py-8">
+          <div className="mx-auto w-full max-w-md md:max-w-lg lg:max-w-xl">
+            <AuthScreen />
+          </div>
+        </div>
+
+        <div className="hidden shrink-0 md:block">
+          <Footer />
+        </div>
+      </div>
+    );
+  }
+
+  // Authenticated layout with card UI
   return (
     <div className="bg-linear-to-br flex min-h-dvh flex-col overflow-y-auto from-gray-900 via-gray-900 to-black">
       <div className="p-4">
@@ -63,7 +54,7 @@ function AuthenticatedDashboard({ children }: { children: React.ReactNode }) {
           </div>
 
           {/* Card Content */}
-          <div className={"max-h-[600px]"}>{children}</div>
+          <div>{children}</div>
         </div>
       </div>
 
