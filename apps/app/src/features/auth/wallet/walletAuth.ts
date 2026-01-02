@@ -34,19 +34,27 @@ export async function loginWithWalletIfExists(
 
   const kek = await storageManager.importWalletKEK(encryptionKey);
 
-  // 1. Unlock account data
-  await storageManager.initializeAccountUnlockOnly(accountId, kek);
+  // ENVELOPE ENCRYPTION: Unwrap AMK using wallet KEK
+  // 1️⃣ Init KEK only for wrapped-AMK store
+  const { wrappedAMKStorageAdapter } = await import("@/lib/storage/adapters/IndexedDBAdapter");
+  await wrappedAMKStorageAdapter.initializeSession(kek);
 
-  // 2. Load account (must succeed)
-  const accountData = await storageManager.getAccountData();
-  if (!accountData) throw new Error("Failed to decrypt account");
+  // 2️⃣ Unwrap AMK with wallet KEK
+  const amk = await storageManager.unwrapAMK(accountId, "wallet");
+  if (!amk) {
+    throw new Error("Failed to unwrap AMK with wallet KEK. Account data may be corrupted.");
+  }
 
-  // 3. Finalize session (derive DEK)
-  await storageManager.initializeAccountSession(accountId, kek, accountData.privateKey);
+  // 3️⃣ Finalize session (activates DEK + sets account context)
+  await storageManager.initializeAccountSession(accountId, amk);
+
+  // Load account metadata using unwrapped AMK
+  const accountData = await storageManager.getAccountData(amk);
+  if (!accountData) throw new Error("Failed to load account metadata");
 
   return {
     publicKey: accountData.publicKey,
-    privateKey: accountData.privateKey,
+    privateKey: amk,
     address: accountData.address,
   };
 }

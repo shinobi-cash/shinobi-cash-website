@@ -14,6 +14,7 @@ import {
 } from "@workspace/ui/components/select";
 import { useState } from "react";
 import { AddPasskeyModal } from "@/features/auth/components/AddPasskeyModal";
+import { RemovePasskeyModal } from "@/features/auth/components/RemovePasskeyModal";
 import { SettingMenu } from "@/components/SettingMenu";
 
 export function Header() {
@@ -21,9 +22,14 @@ export function Header() {
   const chainId = useChainId();
   const { switchChain } = useSwitchChain();
   const [showAddPasskeyModal, setShowAddPasskeyModal] = useState(false);
+  const [showRemovePasskeyModal, setShowRemovePasskeyModal] = useState(false);
 
   const handleAddPasskey = () => {
     setShowAddPasskeyModal(true);
+  };
+
+  const handleRemovePasskey = () => {
+    setShowRemovePasskeyModal(true);
   };
 
   const getCurrentChain = () => {
@@ -57,6 +63,7 @@ export function Header() {
   return (
     <>
       <AddPasskeyModal open={showAddPasskeyModal} onOpenChange={setShowAddPasskeyModal} />
+      <RemovePasskeyModal open={showRemovePasskeyModal} onOpenChange={setShowRemovePasskeyModal} />
       <header className="mx-auto flex items-center justify-between rounded-xl border border-gray-800 bg-black/50 px-4 py-3 backdrop-blur-sm sm:rounded-2xl sm:px-6 lg:px-8">
         {/* Logo and Navigation */}
         <div className="flex gap-6">
@@ -129,7 +136,7 @@ export function Header() {
           )}
 
           {/* Account Menu */}
-          <SettingMenu onAddPasskey={handleAddPasskey}>
+          <SettingMenu onAddPasskey={handleAddPasskey} onRemovePasskey={handleRemovePasskey}>
             <button
               className="rounded-lg p-2 transition-colors hover:bg-gray-800"
               aria-label="Account Menu"

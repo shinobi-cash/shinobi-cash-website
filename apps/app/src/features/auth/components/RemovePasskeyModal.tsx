@@ -1,0 +1,137 @@
+"use client";
+
+/**
+ * Remove Passkey Modal
+ * Disables passkey unlock for the current wallet account
+ * @file features/auth/components/RemovePasskeyModal.tsx
+ */
+
+import { storageManager } from "@/lib/storage";
+import { AlertTriangle, Fingerprint } from "lucide-react";
+import { useCallback, useState } from "react";
+import { Button } from "@workspace/ui/components/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@workspace/ui/components/dialog";
+import { toast } from "sonner";
+
+interface RemovePasskeyModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onRemoved?: () => void;
+}
+
+export function RemovePasskeyModal({ open, onOpenChange, onRemoved }: RemovePasskeyModalProps) {
+  const [isRemoving, setIsRemoving] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleRemove = useCallback(async () => {
+    setIsRemoving(true);
+    setError("");
+
+    try {
+      // Get current account data
+      const accountData = await storageManager.getAccountData();
+      if (!accountData) {
+        throw new Error("No active session");
+      }
+
+      // Remove passkey unlock completely
+      await storageManager.removePasskeyUnlock(accountData.accountId);
+
+      toast.success("Passkey removed", {
+        description: "Biometric unlock has been disabled for this account.",
+      });
+
+      onRemoved?.();
+      onOpenChange(false);
+    } catch (err) {
+      console.error("Failed to remove passkey:", err);
+      setError(err instanceof Error ? err.message : "Failed to remove passkey");
+    } finally {
+      setIsRemoving(false);
+    }
+  }, [onOpenChange, onRemoved]);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="bg-linear-to-br border-gray-700 from-gray-900 via-gray-900 sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-white">
+            <AlertTriangle className="h-5 w-5 text-yellow-500" />
+            Remove Passkey?
+          </DialogTitle>
+          <DialogDescription className="text-gray-400">
+            This will remove biometric unlock from this device. You&apos;ll need to use your wallet
+            to sign in. You can add a new passkey later if needed.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          {error && (
+            <div className="flex items-center gap-2 rounded-lg border border-red-900 bg-red-950/20 p-3">
+              <AlertTriangle className="h-4 w-4 text-red-400" />
+              <p className="text-sm text-red-400">{error}</p>
+            </div>
+          )}
+
+          <div className="rounded-lg border border-gray-700 bg-gray-800/50 p-4">
+            <h4 className="mb-2 text-sm font-medium text-gray-300">What will be removed:</h4>
+            <ul className="space-y-1 text-sm text-gray-400">
+              <li className="flex items-center gap-2">
+                <span className="text-gray-600">•</span>
+                Biometric authentication data
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="text-gray-600">•</span>
+                Quick unlock on this device
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="text-gray-600">•</span>
+                Passkey credential
+              </li>
+            </ul>
+          </div>
+
+          <div className="rounded-lg border border-blue-900 bg-blue-950/20 p-4">
+            <h4 className="mb-2 text-sm font-medium text-blue-300">What stays:</h4>
+            <ul className="space-y-1 text-sm text-blue-400">
+              <li className="flex items-center gap-2">
+                <span className="text-blue-600">•</span>
+                Your wallet account and funds
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="text-blue-600">•</span>
+                All notes and transaction history
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="text-blue-600">•</span>
+                Wallet signature authentication
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isRemoving}
+          >
+            Cancel
+          </Button>
+          <Button type="button" variant="destructive" onClick={handleRemove} disabled={isRemoving}>
+            <Fingerprint />
+            {isRemoving ? "Removing..." : "Remove Passkey"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

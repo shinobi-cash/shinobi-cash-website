@@ -8,10 +8,11 @@ import { EncryptionService } from "@shinobi-cash/core";
 
 // Database constants - exact match to current implementation
 const DB_NAME = "shinobi.cash";
-const DB_VERSION = 1;
+const DB_VERSION = 2; // Bump version for wrapped-amk store
 const STORE_NAME = "encrypted-notes";
 const ACCOUNT_STORE_NAME = "encrypted-account";
 const PASSKEY_STORE_NAME = "passkey-credentials";
+const WRAPPED_AMK_STORE_NAME = "wrapped-amk"; // NEW: Envelope encryption store
 
 export class IndexedDBAdapter<T = unknown> implements IEncryptedStorageAdapter<T> {
   private db: IDBDatabase | null = null;
@@ -38,7 +39,8 @@ export class IndexedDBAdapter<T = unknown> implements IEncryptedStorageAdapter<T
         if (
           !this.db.objectStoreNames.contains(STORE_NAME) ||
           !this.db.objectStoreNames.contains(ACCOUNT_STORE_NAME) ||
-          !this.db.objectStoreNames.contains(PASSKEY_STORE_NAME)
+          !this.db.objectStoreNames.contains(PASSKEY_STORE_NAME) ||
+          !this.db.objectStoreNames.contains(WRAPPED_AMK_STORE_NAME)
         ) {
           console.warn("Some object stores are missing. Database may need to be recreated.");
         }
@@ -73,6 +75,14 @@ export class IndexedDBAdapter<T = unknown> implements IEncryptedStorageAdapter<T
             });
             passkeyStore.createIndex("publicKeyHash", "publicKeyHash", { unique: false });
             passkeyStore.createIndex("credentialId", "credentialId", { unique: false });
+          }
+        }
+
+        // NEW: Wrapped AMK store for envelope encryption
+        if (oldVersion < 2) {
+          if (!db.objectStoreNames.contains(WRAPPED_AMK_STORE_NAME)) {
+            // Storage key: id field with format "accountId:amk:wallet" or "accountId:amk:passkey"
+            db.createObjectStore(WRAPPED_AMK_STORE_NAME, { keyPath: "id" });
           }
         }
       };
@@ -306,8 +316,9 @@ export class IndexedDBAdapter<T = unknown> implements IEncryptedStorageAdapter<T
 // CRITICAL FIX: Create SEPARATE encryption services for different data types
 // Notes use DEK (derived from AMK), account data uses KEK
 const notesEncryptionService = new EncryptionService(); // For DEK
-const accountEncryptionService = new EncryptionService(); // For KEK
-const passkeyEncryptionService = new EncryptionService(); // For KEK
+const accountEncryptionService = new EncryptionService(); // For KEK (account data)
+const passkeyEncryptionService = new EncryptionService(); // For KEK (passkey metadata)
+const wrappedAMKEncryptionService = new EncryptionService(); // For KEK (wrapped AMK)
 
 // Create store-specific adapters with their own encryption services
 export const notesStorageAdapter = new IndexedDBAdapter(STORE_NAME, notesEncryptionService);
@@ -318,6 +329,10 @@ export const accountStorageAdapter = new IndexedDBAdapter(
 export const passkeyStorageAdapter = new IndexedDBAdapter(
   PASSKEY_STORE_NAME,
   passkeyEncryptionService
+);
+export const wrappedAMKStorageAdapter = new IndexedDBAdapter(
+  WRAPPED_AMK_STORE_NAME,
+  wrappedAMKEncryptionService
 );
 
 // Export notes encryption service for repositories (they need to access it directly)

@@ -5,7 +5,7 @@
 
 import { storageManager } from "@/lib/storage";
 import { isPasskeySupported } from "@/utils/environment";
-import { Fingerprint, LogOut, WalletIcon, RefreshCw } from "lucide-react";
+import { LogOut, WalletIcon, RefreshCw, FingerprintIcon } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useAccount, useDisconnect } from "wagmi";
 import {
@@ -23,20 +23,23 @@ import { useAutoSync } from "@/hooks/useAutoSync";
 interface SettingMenuProps {
   children: React.ReactNode;
   onAddPasskey?: () => void;
+  onRemovePasskey?: () => void;
 }
 
-export function SettingMenu({ children, onAddPasskey }: SettingMenuProps) {
+export function SettingMenu({ children, onAddPasskey, onRemovePasskey }: SettingMenuProps) {
   const isAuthenticated = useIsAuthenticated();
   const { logout } = useAuthActions();
   const { isConnected } = useAccount();
   const { disconnect } = useDisconnect();
   const [canAddPasskey, setCanAddPasskey] = useState(false);
+  const [passkeyEnabled, setPasskeyEnabled] = useState(false);
   const { autoSyncEnabled, setAutoSyncEnabled } = useAutoSync();
 
   // Check if user can add passkey (wallet-based account without passkey)
   useEffect(() => {
     if (!isAuthenticated) {
       setCanAddPasskey(false);
+      setPasskeyEnabled(false);
       return;
     }
 
@@ -45,30 +48,27 @@ export function SettingMenu({ children, onAddPasskey }: SettingMenuProps) {
         // Check if passkey is supported on this device
         if (!isPasskeySupported()) {
           setCanAddPasskey(false);
+          setPasskeyEnabled(false);
           return;
         }
 
-        // Get account data to check if it's wallet-based
+        // Get account data
         const accountData = await storageManager.getAccountData();
         if (!accountData) {
           setCanAddPasskey(false);
+          setPasskeyEnabled(false);
           return;
         }
 
-        // Wallet accounts (type: "wallet") can add passkeys
-        // Passkey accounts (type: "passkey") already have passkeys
-        if (accountData.type === "passkey") {
-          setCanAddPasskey(false);
-          return;
-        }
-
-        // For wallet accounts, check if passkey already exists
+        // Check if passkey unlock is already enabled for this wallet
         const accountId = accountData.accountId;
-        const hasPasskey = await storageManager.passkeyExists(accountId);
-        setCanAddPasskey(!hasPasskey);
+        const isEnabled = await storageManager.isPasskeyUnlockEnabled(accountId);
+        setCanAddPasskey(!isEnabled);
+        setPasskeyEnabled(isEnabled);
       } catch (error) {
         console.error("Failed to check passkey status:", error);
         setCanAddPasskey(false);
+        setPasskeyEnabled(false);
       }
     };
 
@@ -91,6 +91,10 @@ export function SettingMenu({ children, onAddPasskey }: SettingMenuProps) {
     onAddPasskey?.();
   }, [onAddPasskey]);
 
+  const handleRemovePasskey = useCallback(() => {
+    onRemovePasskey?.();
+  }, [onRemovePasskey]);
+
   // Don't show menu if not authenticated
   if (!isAuthenticated) {
     return <>{children}</>;
@@ -100,7 +104,6 @@ export function SettingMenu({ children, onAddPasskey }: SettingMenuProps) {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56 border-gray-700 bg-gray-900 p-1">
-        {/* Notes Section */}
         <DropdownMenuLabel className="px-2 text-xs font-semibold text-gray-500">
           Notes
         </DropdownMenuLabel>
@@ -130,8 +133,20 @@ export function SettingMenu({ children, onAddPasskey }: SettingMenuProps) {
               onClick={handleAddPasskey}
               className="cursor-pointer text-gray-300 hover:bg-gray-800 hover:text-white focus:bg-gray-800 focus:text-white"
             >
-              <Fingerprint className="mr-2 h-4 w-4" />
+              <FingerprintIcon className="mr-2 h-4 w-4" />
               Add Passkey
+            </DropdownMenuItem>
+            <DropdownMenuSeparator className="bg-gray-800" />
+          </>
+        )}
+        {passkeyEnabled && (
+          <>
+            <DropdownMenuItem
+              onClick={handleRemovePasskey}
+              className="cursor-pointer text-yellow-400 hover:bg-gray-800 hover:text-yellow-300 focus:bg-gray-800 focus:text-yellow-300"
+            >
+              <FingerprintIcon className="mr-2 h-4 w-4" />
+              Remove Passkey
             </DropdownMenuItem>
             <DropdownMenuSeparator className="bg-gray-800" />
           </>

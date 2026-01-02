@@ -3,7 +3,7 @@
  * Defines the discriminated union of all possible auth states
  */
 
-import type { AccountIndex, AuthMethod, AuthError } from "./types";
+import type { AuthMethod, AuthError } from "./types";
 
 // ============ UI SESSION TYPE (SAFE) ============
 
@@ -21,13 +21,12 @@ export type UiAuthSession = {
 };
 
 // ============ AUTH STATE (Discriminated Union) ============
+// Simplified: Wallet-only auth model with passkey as convenience unlock
 
 export type AuthState =
   | BootingState
-  | NoAccountsState
-  | AccountsDetectedState
-  | CreatingAccountState
-  | AuthenticatingState
+  | UnauthenticatedState
+  | SigningInState
   | AuthenticatedState
   | ErrorState;
 
@@ -35,24 +34,13 @@ export type BootingState = {
   status: "booting";
 };
 
-export type NoAccountsState = {
-  status: "no-accounts";
+export type UnauthenticatedState = {
+  status: "unauthenticated";
 };
 
-export type AccountsDetectedState = {
-  status: "accounts-detected";
-  accounts: AccountIndex[];
-};
-
-export type CreatingAccountState = {
-  status: "creating-account";
-  method: AuthMethod;
-};
-
-export type AuthenticatingState = {
-  status: "authenticating";
-  method: AuthMethod;
-  accountId: string;
+export type SigningInState = {
+  status: "signing-in";
+  accountId?: string; // Optional: may not have accountId during initial wallet creation
 };
 
 export type AuthenticatedState = {
@@ -78,20 +66,12 @@ export function isBooting(state: AuthState): state is BootingState {
   return state.status === "booting";
 }
 
-export function isNoAccounts(state: AuthState): state is NoAccountsState {
-  return state.status === "no-accounts";
+export function isUnauthenticated(state: AuthState): state is UnauthenticatedState {
+  return state.status === "unauthenticated";
 }
 
-export function isAccountsDetected(state: AuthState): state is AccountsDetectedState {
-  return state.status === "accounts-detected";
-}
-
-export function isCreatingAccount(state: AuthState): state is CreatingAccountState {
-  return state.status === "creating-account";
-}
-
-export function isAuthenticating(state: AuthState): state is AuthenticatingState {
-  return state.status === "authenticating";
+export function isSigningIn(state: AuthState): state is SigningInState {
+  return state.status === "signing-in";
 }
 
 export function isAuthenticated(state: AuthState): state is AuthenticatedState {

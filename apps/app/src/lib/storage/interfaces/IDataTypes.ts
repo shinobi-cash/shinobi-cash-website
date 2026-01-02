@@ -5,30 +5,44 @@
  * should be imported from @shinobi-cash/core directly
  */
 
-// Account data discriminated by type for type-safe handling
-export type CachedAccountData = PasskeyAccountData | WalletAccountData;
-
-// Passkey account with human-readable name
-export interface PasskeyAccountData {
-  type: "passkey";
-  accountName: string; // User-chosen name (e.g., "my-wallet")
-  displayName: string; // Same as accountName for passkeys
-  privateKey: string; // Stored (source of truth)
-  publicKey: string; // Derived from privateKey (not persisted)
-  address: string; // Derived from publicKey (not persisted)
+// Passkey unlock metadata (device-scoped convenience unlock)
+export interface PasskeyUnlock {
+  enabled: boolean;
+  credentialId: string;
+  deviceName: string; // "MacBook Pro", "iPhone", etc.
   createdAt: number;
 }
 
-// Wallet-only account identified by address + chain
+// Account data - wallet is the ONLY account type
+// Passkey is just an optional unlock method, not a separate account
+export type CachedAccountData = WalletAccountData;
+
+// Wallet account (the ONLY identity)
 export interface WalletAccountData {
   type: "wallet";
-  accountId: string; // Technical ID: "0xabc:chain-1"
+  accountId: string; // Technical ID: "0xabc-1" (format: walletAddress-chainId)
   displayName: string; // User-friendly: "Account 1"
   walletAddress: string; // External wallet address (MetaMask, etc.)
   chainId: number; // 1, 137, etc.
   privateKey: string; // Stored (source of truth)
   publicKey: string; // Derived from privateKey (not persisted)
   address: string; // Derived from publicKey (not persisted)
+  createdAt: number;
+
+  // NEW: Optional passkey unlock for this wallet
+  passkeyUnlock?: PasskeyUnlock;
+}
+
+// DEPRECATED: Passkey accounts no longer exist
+// Passkey is now a property of wallet accounts (passkeyUnlock)
+// This interface is kept for reference only
+export interface PasskeyAccountData {
+  type: "passkey";
+  accountName: string;
+  displayName: string;
+  privateKey: string;
+  publicKey: string;
+  address: string;
   createdAt: number;
 }
 
@@ -58,4 +72,17 @@ export interface SessionInfo {
   lastAuthTime: number;
   environment: "iframe" | "native";
   credentialId?: string; // Only for passkey auth
+}
+
+// Wrapped AMK (Account Master Key) storage
+// Envelope encryption: AMK is encrypted with each KEK separately
+// This allows multiple auth methods to unlock the same AMK
+export interface WrappedAMK {
+  id: string; // Storage key: "accountId:amk:wallet" or "accountId:amk:passkey"
+  accountId: string; // Wallet account ID
+  wrappedBy: "wallet" | "passkey"; // Which KEK encrypted this
+  encryptedPrivateKey: string; // AMK encrypted with KEK
+  iv: string; // Initialization vector
+  salt: string; // Salt used for encryption
+  createdAt: number;
 }

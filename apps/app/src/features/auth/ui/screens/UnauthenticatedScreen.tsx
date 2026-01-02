@@ -1,26 +1,25 @@
 /**
- * No Accounts Screen
- * Shown when no accounts exist - prompts user to create one
+ * Unauthenticated Screen
+ * Shown when no session exists - prompts user to sign in with wallet
+ * Simplified: Wallet is the ONLY authentication method
  */
 
-import type { AuthMethod } from "../../domain/types";
-
-interface NoAccountsScreenProps {
-  onCreateAccount: (method: AuthMethod) => void;
+interface UnauthenticatedScreenProps {
+  onSignInWithWallet: () => void;
 }
 
-export function NoAccountsScreen({ onCreateAccount }: NoAccountsScreenProps) {
+export function UnauthenticatedScreen({ onSignInWithWallet }: UnauthenticatedScreenProps) {
   return (
     <div className="flex flex-col p-6">
       <div className="mb-6">
-        <h2 className="text-lg font-semibold text-white">Get Started</h2>
+        <h2 className="text-lg font-semibold text-white">Sign In</h2>
         <p className="mt-2 text-sm text-gray-400">
-          Connect your wallet to create your account. Your keys never leave your device.
+          Connect your wallet to access your account. Your keys never leave your device.
         </p>
       </div>
 
       <button
-        onClick={() => onCreateAccount("wallet")}
+        onClick={onSignInWithWallet}
         className="flex w-full flex-col items-start rounded-lg border border-gray-700 bg-gray-900/50 p-4 text-left hover:bg-gray-800"
       >
         <div className="mb-2 flex items-center gap-2">
@@ -37,10 +36,11 @@ export function NoAccountsScreen({ onCreateAccount }: NoAccountsScreenProps) {
               d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
             />
           </svg>
-          <span className="font-medium text-white">Create With Wallet</span>
+          <span className="font-medium text-white">Sign in with Wallet</span>
         </div>
         <p className="text-xs text-gray-400">
-          Sign with your wallet to create your account. You can add passkey for quick access later.
+          Sign with your wallet to access your account. You can enable Quick Unlock after signing in
+          for faster access.
         </p>
       </button>
     </div>

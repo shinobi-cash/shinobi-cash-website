@@ -12,6 +12,7 @@ import {
   accountStorageAdapter,
   notesStorageAdapter,
   passkeyStorageAdapter,
+  wrappedAMKStorageAdapter,
   sharedEncryptionService,
 } from "./adapters/IndexedDBAdapter";
 import type { CachedAccountData, NamedPasskeyData } from "./interfaces/IDataTypes";
@@ -19,6 +20,7 @@ import { AccountRepository } from "./repositories/AccountRepository";
 import { NotesRepository } from "./repositories/NotesRepository";
 import { PasskeyRepository } from "./repositories/PasskeyRepository";
 import { SessionRepository } from "./repositories/SessionRepository";
+import { WrappedAMKRepository } from "./repositories/WrappedAMKRepository";
 import { SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
 
 class StorageManager {
@@ -26,16 +28,19 @@ class StorageManager {
   private accountRepo: AccountRepository;
   private passkeyRepo: PasskeyRepository;
   private sessionRepo: SessionRepository;
+  private wrappedAMKRepo: WrappedAMKRepository;
   private currentAccountName: string | null = null;
+  private currentAMK: string | null = null; // In-memory AMK for active session
 
   constructor() {
     this.notesRepo = new NotesRepository(notesStorageAdapter, sharedEncryptionService);
-    this.accountRepo = new AccountRepository(
-      accountStorageAdapter,
-      accountStorageAdapter.getEncryptionService()
-    );
+    this.accountRepo = new AccountRepository(accountStorageAdapter);
     this.passkeyRepo = new PasskeyRepository(passkeyStorageAdapter);
     this.sessionRepo = new SessionRepository(localStorageAdapter, sessionStorageAdapter);
+    this.wrappedAMKRepo = new WrappedAMKRepository(
+      wrappedAMKStorageAdapter,
+      wrappedAMKStorageAdapter.getEncryptionService()
+    );
   }
 
   async importWalletKEK(encryptionKey: Uint8Array): Promise<CryptoKey> {
@@ -49,23 +54,17 @@ class StorageManager {
   // ============ SESSION MANAGEMENT ============
 
   /**
-   /**
    * Session is considered initialized IFF:
-   * - KEK is active (accountStorageAdapter)
    * - DEK is active (sharedEncryptionService)
    * - currentAccountName is set
+   * - currentAMK is set in memory
    *
    * No persistent session markers are trusted.
    *
    * @param accountName - Account identifier
-   * @param kek - Key Encryption Key from auth method (passkey KEK or wallet KEK)
-   * @param amkPrivateKey - Account Master Key (decrypted with KEK)
+   * @param amkPrivateKey - Account Master Key (unwrapped from KEK)
    */
-  async initializeAccountSession(
-    accountName: string,
-    kek: CryptoKey,
-    amkPrivateKey: string
-  ): Promise<void> {
+  async initializeAccountSession(accountName: string, amkPrivateKey: string): Promise<void> {
     // 1️⃣ Entry + invariant check
     if (!amkPrivateKey || amkPrivateKey.length !== 66) {
       throw new Error("CRITICAL: initializeAccountSession called without valid AMK");
@@ -74,6 +73,7 @@ class StorageManager {
     console.debug("[StorageManager][Session] Finalizing session", { accountName });
 
     this.currentAccountName = accountName;
+    this.currentAMK = amkPrivateKey; // Store AMK in memory for session
 
     // 2️⃣ Derive DEK from AMK
     console.debug("[StorageManager][Session] Deriving DEK from AMK");
@@ -89,51 +89,16 @@ class StorageManager {
       dekReady: sharedEncryptionService.isKeyAvailable(),
     });
 
-    // 4️⃣ Activate KEK (account layer)
-    await accountStorageAdapter.initializeSession(kek);
-
-    console.debug("[StorageManager][Session] Account encryption initialized (KEK active)", {
-      kekReady: accountStorageAdapter.isSessionActive(),
-    });
-
     // 5️⃣ Final invariant check before marking session
-    if (!sharedEncryptionService.isKeyAvailable() || !accountStorageAdapter.isSessionActive()) {
-      throw new Error("CRITICAL: Session initialization incomplete (KEK or DEK missing)");
+    if (!sharedEncryptionService.isKeyAvailable()) {
+      throw new Error("CRITICAL: Session initialization incomplete (DEK missing)");
     }
 
     console.debug("[StorageManager][Session] Session fully initialized", {
       accountName,
-      kek: "active",
+      amk: "in-memory",
       dek: "active",
     });
-  }
-
-  /**
-   * Initialize wallet-based account session
-   *
-   * CRITICAL CHANGE: Now takes both KEK and AMK to follow correct encryption hierarchy.
-   *
-   * @param accountId - Wallet account identifier
-   * @param kek - Wallet KEK (derived from signature)
-   * @param amkPrivateKey - Account Master Key (to derive DEK)
-   */
-  async loginWithWallet(accountId: string, kek: Uint8Array, amkPrivateKey: string): Promise<void> {
-    // Convert Uint8Array KEK to CryptoKey
-    const keyBuffer = kek.buffer.slice(
-      kek.byteOffset,
-      kek.byteOffset + kek.byteLength
-    ) as ArrayBuffer;
-
-    const kekCryptoKey = await crypto.subtle.importKey(
-      "raw",
-      keyBuffer,
-      { name: "AES-GCM" },
-      false,
-      ["encrypt", "decrypt"]
-    );
-
-    // Use standard session initialization with KEK and AMK
-    await this.initializeAccountSession(accountId, kekCryptoKey, amkPrivateKey);
   }
 
   /**
@@ -168,23 +133,17 @@ class StorageManager {
   }
 
   /**
-   * Unlock account data ONLY using KEK.
-   * ❌ Does NOT derive DEK
-   * ❌ Does NOT initialize notes
-   */
-  async initializeAccountUnlockOnly(accountName: string, kek: CryptoKey): Promise<void> {
-    this.currentAccountName = accountName;
-
-    // Account data is encrypted with KEK
-    await accountStorageAdapter.initializeSession(kek);
-  }
-
-  /**
-   * Transactional wallet account setup
-   * Ensures both session initialization and data save succeed, or rolls back
-   * Prevents partial state (initialized session without account data)
+   * Transactional wallet account setup using ENVELOPE ENCRYPTION
    *
-   * CRITICAL CHANGE: Now passes AMK to derive DEK correctly
+   * CRITICAL INVARIANT: KEKs never encrypt account data.
+   * KEKs ONLY encrypt the AMK (privateKey).
+   * Account metadata is stored separately.
+   *
+   * Flow:
+   * 1. Initialize wallet KEK session (for wrapped AMK encryption)
+   * 2. Store AMK wrapped with wallet KEK
+   * 3. Store account metadata (not encrypted with KEK)
+   * 4. Finalize full session (derive DEK from AMK)
    */
   async createWalletAccount(
     accountId: string,
@@ -197,15 +156,35 @@ class StorageManager {
       address: string;
     }
   ): Promise<void> {
-    let sessionInitialized = false;
+    let kekCryptoKey: CryptoKey | null = null;
 
     try {
-      // Step 1: Initialize session with KEK and AMK
-      // KEK encrypts account data, AMK derives DEK for notes
-      await this.loginWithWallet(accountId, encryptionKey, data.privateKey);
-      sessionInitialized = true;
+      // 1️⃣ Import wallet KEK
+      const keyBuffer = encryptionKey.buffer.slice(
+        encryptionKey.byteOffset,
+        encryptionKey.byteOffset + encryptionKey.byteLength
+      ) as ArrayBuffer;
 
-      // Step 2: Save account data (full keys, auto-generated display name)
+      kekCryptoKey = await crypto.subtle.importKey("raw", keyBuffer, { name: "AES-GCM" }, false, [
+        "encrypt",
+        "decrypt",
+      ]);
+
+      console.debug("[StorageManager][CreateAccount] Wallet KEK imported");
+
+      // 2️⃣ Initialize wrapped AMK KEK session
+      await wrappedAMKStorageAdapter.initializeSession(kekCryptoKey);
+
+      console.debug("[StorageManager][CreateAccount] Wrapped AMK KEK initialized");
+
+      // 3️⃣ Store AMK wrapped with wallet KEK (envelope encryption)
+      await this.storeWrappedAMK(accountId, "wallet", data.privateKey);
+
+      console.debug("[StorageManager][CreateAccount] Wrapped AMK stored with wallet KEK");
+
+      // 4️⃣ Persist account metadata (NOT encrypted with KEK)
+      // Account data is stored WITHOUT encryption by KEK
+      // The AMK is already stored securely in wrapped form
       await this.persistWalletAccount({
         accountId,
         walletAddress: data.walletAddress,
@@ -214,23 +193,64 @@ class StorageManager {
         privateKey: data.privateKey,
         address: data.address,
       });
+
+      console.debug("[StorageManager][CreateAccount] Account metadata persisted");
+
+      // 5️⃣ Finalize full session (derive DEK from AMK)
+      await this.initializeAccountSession(accountId, data.privateKey);
+
+      console.debug("[StorageManager][CreateAccount] Full session initialized (DEK active)");
     } catch (error) {
-      // Rollback: Clear session if it was initialized
-      if (sessionInitialized) {
-        this.clearInMemorySession();
-      }
+      this.clearInMemorySession();
       throw error;
     }
   }
 
   /**
    * Clear session data from memory
-   * Exact implementation from noteCache.clearSession
    */
   clearInMemorySession(): void {
     sharedEncryptionService.clearEncryptionKey(); // DEK
-    accountStorageAdapter.clearSession(); // KEK
+    wrappedAMKStorageAdapter.clearSession(); // Wrapped AMK KEK
     this.currentAccountName = null;
+    this.currentAMK = null; // Clear in-memory AMK
+  }
+
+  // ============ WRAPPED AMK OPERATIONS (Envelope Encryption) ============
+
+  /**
+   * Store wrapped AMK for a specific auth method
+   * Invariant: KEK must be active for the auth method before calling this
+   *
+   * @param accountId - Wallet account ID
+   * @param wrappedBy - Auth method ("wallet" or "passkey")
+   * @param amk - Account Master Key (privateKey) to wrap
+   */
+  async storeWrappedAMK(
+    accountId: string,
+    wrappedBy: "wallet" | "passkey",
+    amk: string
+  ): Promise<void> {
+    return this.wrappedAMKRepo.storeWrappedAMK(accountId, wrappedBy, amk);
+  }
+
+  /**
+   * Unwrap (decrypt) AMK using the active KEK
+   * Invariant: KEK must be active for the auth method before calling this
+   *
+   * @param accountId - Wallet account ID
+   * @param wrappedBy - Auth method ("wallet" or "passkey")
+   * @returns Decrypted AMK (privateKey) or null if not found
+   */
+  async unwrapAMK(accountId: string, wrappedBy: "wallet" | "passkey"): Promise<string | null> {
+    return this.wrappedAMKRepo.unwrapAMK(accountId, wrappedBy);
+  }
+
+  /**
+   * Check if wrapped AMK exists for a specific auth method
+   */
+  async hasWrappedAMK(accountId: string, wrappedBy: "wallet" | "passkey"): Promise<boolean> {
+    return this.wrappedAMKRepo.hasWrappedAMK(accountId, wrappedBy);
   }
 
   // ============ NOTES OPERATIONS ============
@@ -288,53 +308,51 @@ class StorageManager {
     return this.accountRepo.storeAccountData(accountData);
   }
 
-  async getAccountData(): Promise<CachedAccountData | null> {
+  /**
+   * Get account metadata with AMK-derived fields
+   * Uses in-memory AMK from active session if not provided
+   *
+   * @param amk - Optional Account Master Key (uses session AMK if not provided)
+   * @returns Complete account data
+   */
+  async getAccountData(amk?: string): Promise<CachedAccountData | null> {
     if (!this.currentAccountName) {
       throw new Error("No current account context");
     }
-    return this.accountRepo.getDecryptedAccountData(this.currentAccountName);
-  }
-
-  async getAccountDataByName(accountName: string): Promise<CachedAccountData | null> {
-    // Return decrypted data for callers expecting CachedAccountData
-    return this.accountRepo.getDecryptedAccountData(accountName);
-  }
-
-  /**
-   * List all accounts with full data (discriminated by type)
-   */
-  async listAllAccounts(): Promise<CachedAccountData[]> {
-    const index = await this.accountRepo.listAccountIndex();
-    const accounts: CachedAccountData[] = [];
-
-    for (const entry of index) {
-      const account = await this.getAccountDataByName(entry.id);
-      if (account) {
-        accounts.push(account);
-      }
+    const useAMK = amk || this.currentAMK;
+    if (!useAMK) {
+      throw new Error("No AMK available - session not initialized or AMK not provided");
     }
-
-    return accounts;
+    return this.accountRepo.getAccountMetadata(this.currentAccountName, useAMK);
   }
 
   /**
-   * List only passkey accounts
+   * Get account metadata by name with AMK-derived fields
+   *
+   * @param accountName - Account ID
+   * @param amk - Account Master Key (unwrapped)
+   * @returns Complete account data
    */
-  async listPasskeyAccounts(): Promise<CachedAccountData[]> {
-    const all = await this.listAllAccounts();
-    return all.filter(
-      (acc): acc is CachedAccountData & { type: "passkey" } => acc.type === "passkey"
-    );
+  async getAccountDataByName(accountName: string, amk: string): Promise<CachedAccountData | null> {
+    return this.accountRepo.getAccountMetadata(accountName, amk);
+  }
+
+  /**
+   * List all accounts (index only - no AMK-derived fields)
+   * Returns account metadata without publicKey/address (requires AMK to derive)
+   * Use getAccountDataByName(id, amk) to get full account data for a specific account
+   */
+  async listAllAccounts() {
+    // Return account index only (metadata without AMK-derived fields)
+    return this.accountRepo.listAccountIndex();
   }
 
   /**
    * List only wallet accounts
+   * Returns account index only (no AMK-derived fields)
    */
-  async listWalletAccounts(): Promise<CachedAccountData[]> {
-    const all = await this.listAllAccounts();
-    return all.filter(
-      (acc): acc is CachedAccountData & { type: "wallet" } => acc.type === "wallet"
-    );
+  async listWalletAccounts() {
+    return this.listAllAccounts();
   }
 
   async accountExists(accountName: string): Promise<boolean> {
@@ -354,6 +372,132 @@ class StorageManager {
 
   async passkeyExists(accountName: string): Promise<boolean> {
     return this.passkeyRepo.passkeyExists(accountName);
+  }
+
+  // ============ PASSKEY UNLOCK MANAGEMENT (NEW) ============
+  // Manage passkey as a property of wallet accounts
+
+  /**
+   * Enable passkey unlock for a wallet account
+   * Adds passkey metadata to the wallet account
+   *
+   * @param walletAccountId - Wallet account ID (format: "0xaddress-chainId")
+   * @param credentialId - WebAuthn credential ID
+   * @param accountData - Current account data (passed from caller, no session dependency)
+   * @param deviceName - Optional device name (defaults to "This Device")
+   */
+  async enablePasskeyUnlock(
+    walletAccountId: string,
+    credentialId: string,
+    accountData: CachedAccountData,
+    deviceName: string = "This Device"
+  ): Promise<void> {
+    if (accountData.type !== "wallet") {
+      throw new Error("Only wallet accounts can enable passkey unlock");
+    }
+
+    // Verify the wallet account ID matches provided data
+    if (accountData.accountId !== walletAccountId) {
+      throw new Error(
+        `Account ID mismatch: expected ${walletAccountId}, got ${accountData.accountId}`
+      );
+    }
+
+    // Update account with passkey unlock enabled
+    const updatedData: CachedAccountData = {
+      ...accountData,
+      passkeyUnlock: {
+        enabled: true,
+        credentialId,
+        deviceName,
+        createdAt: Date.now(),
+      },
+    };
+
+    await this.accountRepo.storeAccountData(updatedData);
+  }
+
+  /**
+   * Remove passkey unlock completely from wallet account
+   * Cleans up ALL passkey-related data from IndexedDB
+   *
+   * Cleanup steps:
+   * 1. Delete wrapped AMK (passkey-encrypted)
+   * 2. Delete passkey credential metadata
+   * 3. Remove passkeyUnlock field from account
+   * 4. Remove passkey credential from session (preserves session)
+   *
+   * @param walletAccountId - Wallet account ID
+   */
+  async removePasskeyUnlock(walletAccountId: string): Promise<void> {
+    console.debug("[StorageManager] Starting complete passkey removal", { walletAccountId });
+
+    // 1️⃣ Get current account data
+    const accountData = await this.getAccountData();
+    if (!accountData) {
+      throw new Error("No active session - please sign in first");
+    }
+
+    if (accountData.type !== "wallet") {
+      throw new Error("Only wallet accounts can remove passkey unlock");
+    }
+
+    if (accountData.accountId !== walletAccountId) {
+      throw new Error(
+        `Account ID mismatch: expected ${walletAccountId}, got ${accountData.accountId}`
+      );
+    }
+
+    try {
+      // 2️⃣ Delete wrapped AMK from IndexedDB
+      await this.wrappedAMKRepo.deleteWrappedAMK(walletAccountId, "passkey");
+      console.debug("[StorageManager] Deleted wrapped AMK for passkey");
+
+      // 3️⃣ Delete passkey credential metadata
+      await this.passkeyRepo.deletePasskeyData(walletAccountId);
+      console.debug("[StorageManager] Deleted passkey credential data");
+
+      // 4️⃣ Remove passkeyUnlock metadata from account
+      const updatedData: CachedAccountData = {
+        ...accountData,
+        passkeyUnlock: undefined,
+      };
+      await this.accountRepo.storeAccountData(updatedData);
+      console.debug("[StorageManager] Removed passkey metadata from account");
+
+      // 5️⃣ Remove passkey credential from session
+      // This removes the credentialId but keeps the session active
+      const { KDF } = await import("./services/KeyDerivationService");
+      await KDF.removePasskeyFromSession();
+      console.debug("[StorageManager] Removed passkey credential from session");
+
+      console.debug("[StorageManager] Passkey unlock completely removed");
+    } catch (error) {
+      console.error("[StorageManager] Failed to remove passkey unlock:", error);
+      throw new Error(
+        `Failed to remove passkey unlock: ${error instanceof Error ? error.message : "Unknown error"}`
+      );
+    }
+  }
+
+  /**
+   * Check if passkey unlock is enabled for a wallet account
+   *
+   * @param walletAccountId - Wallet account ID (optional - uses current session if not provided)
+   * @returns true if passkey unlock is enabled
+   */
+  async isPasskeyUnlockEnabled(walletAccountId?: string): Promise<boolean> {
+    const accountData = await this.getAccountData();
+    if (!accountData || accountData.type !== "wallet") {
+      return false;
+    }
+
+    // If walletAccountId is provided, verify it matches current session
+    if (walletAccountId && accountData.accountId !== walletAccountId) {
+      return false;
+    }
+
+    return accountData.passkeyUnlock?.enabled === true;
   }
 
   // ============ USER SALT OPERATIONS ============

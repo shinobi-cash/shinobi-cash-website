@@ -3,15 +3,17 @@
  */
 
 import { ethers } from "ethers";
-import { EncryptionService, type EncryptedData } from "@shinobi-cash/core";
+import { EncryptionService } from "@shinobi-cash/core";
 import type { IndexedDBAdapter } from "../adapters/IndexedDBAdapter";
 import type { CachedAccountData } from "../interfaces/IDataTypes";
 
 /**
- * Stored account data (without derived fields)
- * publicKey and address are derived from privateKey at runtime
+ * Stored account metadata (NO AMK)
+ * CRITICAL INVARIANT: privateKey (AMK) is NEVER stored in account metadata
+ * AMK is stored ONLY in wrapped-amk store, encrypted per auth method
+ * publicKey and address are derived from AMK at runtime
  */
-type StoredAccountData = Omit<CachedAccountData, "publicKey" | "address">;
+type StoredAccountMetadata = Omit<CachedAccountData, "privateKey" | "publicKey" | "address">;
 
 /**
  * Derive publicKey and address from privateKey
@@ -37,65 +39,53 @@ export type AccountIndex = {
 };
 
 /**
- * Full storage record with encrypted payload
+ * Full storage record with unencrypted metadata
+ * CRITICAL: No AMK stored here, only metadata
  */
 type StorageRecord = AccountIndex & {
-  encryptedPayload: { iv: string; data: string; salt: string };
+  metadata: StoredAccountMetadata;
 };
 
 function isStorageRecord(value: unknown): value is StorageRecord {
   if (!value || typeof value !== "object") return false;
   const v = value as Record<string, unknown>;
-  const payload = v.encryptedPayload as Record<string, unknown> | undefined;
   return (
     typeof v.id === "string" &&
     typeof v.type === "string" &&
-    (v.type === "passkey" || v.type === "wallet") &&
+    v.type === "wallet" && // Only wallet accounts exist now
     typeof v.publicKeyHash === "string" &&
-    !!payload &&
-    typeof payload.iv === "string" &&
-    typeof payload.data === "string" &&
-    typeof payload.salt === "string" &&
+    !!v.metadata &&
+    typeof v.metadata === "object" &&
     typeof v.createdAt === "number"
   );
 }
 
 export class AccountRepository {
-  constructor(
-    private storageAdapter: IndexedDBAdapter,
-    private encryptionService: EncryptionService
-  ) {}
+  constructor(private storageAdapter: IndexedDBAdapter) {}
 
   /**
-   * Store account data
+   * Store account metadata (WITHOUT AMK)
+   * CRITICAL: AMK (privateKey) is NOT stored here
+   * AMK is stored separately in wrapped-amk store
    */
   async storeAccountData(accountData: CachedAccountData): Promise<void> {
-    if (!this.encryptionService.isKeyAvailable()) {
-      throw new Error("Session not initialized");
-    }
+    // Account metadata is NO LONGER encrypted with KEK
+    // It's stored as plaintext metadata (publicKey hash for indexing)
+    const publicKeyHash = await EncryptionService.createHash(accountData.publicKey);
 
-    // Derive publicKey from privateKey for hashing
-    const { publicKey } = deriveKeysFromPrivateKey(accountData.privateKey);
-    const publicKeyHash = await EncryptionService.createHash(publicKey);
-
-    // Remove derived fields before encryption (only persist privateKey)
+    // Remove ALL secret fields (privateKey, publicKey, address)
+    // Only store metadata
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { publicKey: _, address: __, ...storedData } = accountData;
-    const encrypted = await this.encryptionService.encrypt(storedData as StoredAccountData);
+    const { privateKey: _pk, publicKey: _pub, address: _addr, ...metadata } = accountData;
 
-    // Determine storage key based on account type
-    const storageKey =
-      accountData.type === "passkey" ? accountData.accountName : accountData.accountId;
+    // Use accountId as storage key (all accounts are wallet accounts now)
+    const storageKey = accountData.accountId;
 
     const storageData: StorageRecord = {
-      id: storageKey, // Use accountName for passkey, accountId for wallet
-      type: accountData.type, // Store type as unencrypted metadata
+      id: storageKey,
+      type: accountData.type, // Always "wallet" now
       publicKeyHash,
-      encryptedPayload: {
-        iv: this.encryptionService.arrayBufferToBase64(encrypted.iv),
-        data: this.encryptionService.arrayBufferToBase64(encrypted.data),
-        salt: this.encryptionService.arrayBufferToBase64(encrypted.salt),
-      },
+      metadata: metadata as StoredAccountMetadata, // No encryption, just metadata
       createdAt: accountData.createdAt,
     };
 
@@ -116,42 +106,30 @@ export class AccountRepository {
   }
 
   /**
-   * Get decrypted account data by name
-   * Decrypts storage record and derives publicKey/address from privateKey
+   * Get account metadata by name (NO AMK, NO DECRYPTION)
+   * Returns metadata only. Caller must provide AMK-derived fields separately.
+   *
+   * @param accountName - Account ID to retrieve
+   * @param amk - Account Master Key (for deriving publicKey/address)
+   * @returns Complete account data with derived fields
    */
-  async getDecryptedAccountData(accountName: string): Promise<CachedAccountData | null> {
-    if (!this.storageAdapter.isSessionActive()) {
-      throw new Error("Account session not initialized (KEK missing)");
-    }
+  async getAccountMetadata(accountName: string, amk: string): Promise<CachedAccountData | null> {
     if (!accountName) {
-      throw new Error("No current account context");
+      throw new Error("No account name provided");
     }
 
     const result = (await this.storageAdapter.get(accountName)) as unknown;
     if (isStorageRecord(result)) {
-      try {
-        const encryptedData: EncryptedData = {
-          iv: this.encryptionService.base64ToArrayBuffer(result.encryptedPayload.iv),
-          data: this.encryptionService.base64ToArrayBuffer(result.encryptedPayload.data),
-          salt: this.encryptionService.base64ToArrayBuffer(result.encryptedPayload.salt),
-        };
+      // Derive publicKey and address from AMK
+      const { publicKey, address } = deriveKeysFromPrivateKey(amk);
 
-        // Decrypt stored data (without publicKey/address)
-        const storedData = await this.encryptionService.decrypt<StoredAccountData>(encryptedData);
-
-        // Derive publicKey and address from privateKey
-        const { publicKey, address } = deriveKeysFromPrivateKey(storedData.privateKey);
-
-        // Return complete account data with derived fields
-        return {
-          ...storedData,
-          publicKey,
-          address,
-        } as CachedAccountData;
-      } catch (decryptionError) {
-        console.error("Failed to decrypt account data:", decryptionError);
-        return null;
-      }
+      // Return complete account data with derived fields
+      return {
+        ...result.metadata,
+        privateKey: amk, // Add AMK back (in memory only)
+        publicKey,
+        address,
+      } as CachedAccountData;
     }
     return null;
   }

@@ -19,8 +19,7 @@ interface AuthStore {
   state: AuthState;
 
   bootstrap: () => Promise<void>;
-  startAccountCreation: (method: AuthMethod) => void;
-  selectAccount: (accountId: string, method: AuthMethod) => void;
+  startWalletSignIn: () => void;
 
   authenticateWithWallet: (
     accountId: string,
@@ -46,24 +45,24 @@ export const useAuthStore = create<AuthStore>()(
 
       /**
        * Bootstrap authentication system
+       * Simplified: Silent passkey restore → unauthenticated if fails
        */
       bootstrap: async () => {
         set({ state: { status: "booting" } });
 
         try {
           const { bootstrap: bootstrapAuth } = await import("../services/authService");
-          const { listAccountIndexes } = await import("../services/accountIndexService");
-
           const result = await bootstrapAuth();
 
           if (result.type === "session-restored") {
-            // 🔐 Crypto session already restored internally
+            // 🔐 Crypto session already restored via passkey (silent, automatic)
+            console.debug("[AuthStore] Session restored via passkey quick unlock");
             set({
               state: {
                 status: "authenticated",
                 session: {
-                  accountName: "restored",
-                  method: "passkey", // best-effort; UI-only
+                  accountName: "restored", // Will be updated with actual accountId
+                  method: "passkey",
                   authenticatedAt: Date.now(),
                 },
               },
@@ -71,62 +70,28 @@ export const useAuthStore = create<AuthStore>()(
             return;
           }
 
-          if (result.hasAccounts) {
-            const accounts = await listAccountIndexes();
-            set({ state: { status: "accounts-detected", accounts } });
-          } else {
-            set({ state: { status: "no-accounts" } });
-          }
+          // No session restored → show wallet login
+          console.debug("[AuthStore] No session restored, showing wallet login");
+          set({ state: { status: "unauthenticated" } });
         } catch (error) {
-          get().setError(
-            {
-              code: "INITIALIZATION_FAILED" as AuthErrorCode,
-              message: "Failed to initialize auth system",
-              timestamp: Date.now(),
-              originalError: error,
-            },
-            () => get().bootstrap()
-          );
+          console.warn("[AuthStore] Bootstrap failed, showing wallet login", error);
+          // Graceful fallback: show wallet login even on error
+          set({ state: { status: "unauthenticated" } });
         }
       },
 
       /**
-       * Start account creation flow
+       * Start wallet sign-in flow
        */
-      startAccountCreation: (method) => {
-        set({ state: { status: "creating-account", method } });
-      },
-
-      /**
-       * Select account to authenticate
-       */
-      selectAccount: async (accountId, method) => {
-        set({ state: { status: "authenticating", method, accountId } });
-
-        if (method === "passkey") {
-          try {
-            const { authenticate } = await import("../services/authService");
-            await authenticate(accountId, "passkey");
-            get().markAuthenticated(accountId, "passkey");
-          } catch (error) {
-            get().setError(
-              {
-                code: "PASSKEY_AUTH_FAILED" as AuthErrorCode,
-                message: error instanceof Error ? error.message : "Passkey authentication failed",
-                timestamp: Date.now(),
-                originalError: error,
-              },
-              () => get().selectAccount(accountId, method)
-            );
-          }
-        }
+      startWalletSignIn: () => {
+        set({ state: { status: "signing-in" } });
       },
 
       /**
        * Authenticate with wallet signature
        */
       authenticateWithWallet: async (accountId, signature, walletAddress, chainId) => {
-        set({ state: { status: "authenticating", method: "wallet", accountId } });
+        set({ state: { status: "signing-in", accountId } });
 
         try {
           const { authenticate } = await import("../services/authService");
@@ -145,7 +110,7 @@ export const useAuthStore = create<AuthStore>()(
               timestamp: Date.now(),
               originalError: error,
             },
-            () => get().selectAccount(accountId, "wallet")
+            () => get().authenticateWithWallet(accountId, signature, walletAddress, chainId)
           );
         }
       },

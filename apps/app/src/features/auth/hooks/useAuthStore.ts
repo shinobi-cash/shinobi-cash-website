@@ -5,7 +5,7 @@
 
 import { useAuthStore as useStore } from "../domain/authStore";
 import { useMemo } from "react";
-import type { AuthMethod, AccountIndex } from "../domain/types";
+import type { AuthMethod } from "../domain/types";
 import type { AuthState } from "../domain/state";
 
 /**
@@ -52,9 +52,9 @@ export function useAuthState(): AuthState {
  */
 export function useAuthActions() {
   const bootstrap = useStore((s) => s.bootstrap);
-  const startAccountCreation = useStore((s) => s.startAccountCreation);
-  const selectAccount = useStore((s) => s.selectAccount);
+  const startWalletSignIn = useStore((s) => s.startWalletSignIn);
   const authenticateWithWallet = useStore((s) => s.authenticateWithWallet);
+  const markAuthenticated = useStore((s) => s.markAuthenticated);
   const logout = useStore((s) => s.logout);
   const clearError = useStore((s) => s.clearError);
   const setError = useStore((s) => s.setError);
@@ -62,18 +62,18 @@ export function useAuthActions() {
   return useMemo(
     () => ({
       bootstrap,
-      startAccountCreation,
-      selectAccount,
+      startWalletSignIn,
       authenticateWithWallet,
+      markAuthenticated,
       logout,
       clearError,
       setError,
     }),
     [
       bootstrap,
-      startAccountCreation,
-      selectAccount,
+      startWalletSignIn,
       authenticateWithWallet,
+      markAuthenticated,
       logout,
       clearError,
       setError,
@@ -82,36 +82,12 @@ export function useAuthActions() {
 }
 
 /**
- * Available accounts (pre-auth)
- */
-export function useAvailableAccounts(): AccountIndex[] {
-  return useStore((store) =>
-    store.state.status === "accounts-detected" ? store.state.accounts : []
-  );
-}
-
-/**
- * Current auth method (if in progress)
- */
-export function useCurrentAuthMethod(): AuthMethod | null {
-  return useStore((store) => {
-    if (store.state.status === "creating-account") {
-      return store.state.method;
-    }
-    if (store.state.status === "authenticating") {
-      return store.state.method;
-    }
-    return null;
-  });
-}
-
-/**
  * Check if auth operation is in progress
  */
 export function useIsAuthInProgress(): boolean {
   return useStore((store) => {
     const status = store.state.status;
-    return status === "booting" || status === "creating-account" || status === "authenticating";
+    return status === "booting" || status === "signing-in";
   });
 }
 

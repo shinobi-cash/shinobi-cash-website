@@ -226,7 +226,9 @@ export class KeyDerivationService {
   }
 
   /**
-   * Resume authentication - exact implementation from keyDerivation.ts
+   * Resume authentication
+   * Checks if session has passkey capability (regardless of authMethod)
+   * This allows passkey unlock for wallet-authenticated sessions
    */
   async resumeAuth(): Promise<
     { status: "passkey-ready"; result: DerivedKeyResult; accountName: string } | { status: "none" }
@@ -234,12 +236,23 @@ export class KeyDerivationService {
     const session = await this.sessionRepo.getStoredSessionInfo();
     if (!session) return { status: "none" };
 
-    if (session.authMethod === "passkey" && session.credentialId) {
+    // Check if session has passkey capability (credentialId)
+    // This works for both authMethod: "wallet" and authMethod: "passkey"
+    if (session.credentialId) {
+      console.debug("[KDF] Resuming with passkey", {
+        authMethod: session.authMethod,
+        hasCredentialId: true,
+      });
+
       const result = await this.deriveKeyFromPasskey(session.accountName, session.credentialId);
       await this.sessionRepo.updateSessionLastAuth();
       return { status: "passkey-ready", result, accountName: session.accountName };
     }
 
+    console.debug("[KDF] No passkey credential in session", {
+      authMethod: session.authMethod,
+      hasCredentialId: false,
+    });
     return { status: "none" };
   }
 
@@ -269,6 +282,22 @@ export class KeyDerivationService {
   }
 
   /**
+   * Add passkey credential to existing session
+   * Delegates to SessionRepository
+   */
+  async addPasskeyToSession(credentialId: string): Promise<void> {
+    return this.sessionRepo.addPasskeyToSession(credentialId);
+  }
+
+  /**
+   * Remove passkey credential from existing session
+   * Delegates to SessionRepository
+   */
+  async removePasskeyFromSession(): Promise<void> {
+    return this.sessionRepo.removePasskeyFromSession();
+  }
+
+  /**
    * Helper method - exact implementation from keyDerivation.ts
    */
   private base64urlToArrayBuffer(base64url: string): ArrayBuffer {
@@ -293,4 +322,7 @@ export const KDF = {
   getStoredSessionInfo: keyDerivationService.getStoredSessionInfo.bind(keyDerivationService),
   clearSessionInfo: keyDerivationService.clearSessionInfo.bind(keyDerivationService),
   resumeAuth: keyDerivationService.resumeAuth.bind(keyDerivationService),
+  addPasskeyToSession: keyDerivationService.addPasskeyToSession.bind(keyDerivationService),
+  removePasskeyFromSession:
+    keyDerivationService.removePasskeyFromSession.bind(keyDerivationService),
 };

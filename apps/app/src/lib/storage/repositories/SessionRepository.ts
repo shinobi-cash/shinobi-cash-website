@@ -91,6 +91,62 @@ export class SessionRepository {
   }
 
   /**
+   * Add passkey credential to existing session
+   * Preserves the original authMethod (wallet), just adds passkey capability
+   *
+   * @param credentialId - WebAuthn credential ID
+   */
+  async addPasskeyToSession(credentialId: string): Promise<void> {
+    const existingSession = await this.getStoredSessionInfo();
+    if (!existingSession) {
+      console.warn("[SessionRepository] No existing session to add passkey to");
+      return;
+    }
+
+    // Preserve original authMethod, just add passkey credentialId
+    const updatedSession: SessionInfo = {
+      ...existingSession,
+      credentialId,
+      lastAuthTime: Date.now(), // Update timestamp
+    };
+
+    try {
+      await this.sessionStorageAdapter.set(SESSION_KEY, updatedSession);
+      console.debug("[SessionRepository] Added passkey credential to existing session", {
+        authMethod: updatedSession.authMethod,
+        hasCredentialId: !!updatedSession.credentialId,
+      });
+    } catch (e) {
+      console.warn("Failed to add passkey to session:", e);
+    }
+  }
+
+  /**
+   * Remove passkey credential from existing session
+   * Keeps the session but removes passkey capability
+   */
+  async removePasskeyFromSession(): Promise<void> {
+    const existingSession = await this.getStoredSessionInfo();
+    if (!existingSession) {
+      return;
+    }
+
+    // Remove credentialId
+    const updatedSession: SessionInfo = {
+      ...existingSession,
+      credentialId: undefined,
+      lastAuthTime: Date.now(),
+    };
+
+    try {
+      await this.sessionStorageAdapter.set(SESSION_KEY, updatedSession);
+      console.debug("[SessionRepository] Removed passkey credential from session");
+    } catch (e) {
+      console.warn("Failed to remove passkey from session:", e);
+    }
+  }
+
+  /**
    * Store user salt - from keyDerivation.getOrCreateUserSalt logic
    */
   async storeUserSalt(accountName: string, salt: Uint8Array): Promise<void> {

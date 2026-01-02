@@ -2,12 +2,11 @@
 
 /**
  * Add Passkey Modal
- * Allows users with wallet-based accounts to add passkey authentication
+ * Enables passkey unlock for the current wallet account
  * @file features/auth/components/AddPasskeyModal.tsx
  */
 
 import { storageManager } from "@/lib/storage";
-import { useAccountNameValidation } from "@/hooks/useAccountNameValidation";
 import { AlertCircle, Fingerprint } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@workspace/ui/components/button";
@@ -19,7 +18,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@workspace/ui/components/dialog";
-import { Input } from "@workspace/ui/components/input";
 import { useAddPasskeyFlow } from "../passkey/usePasskey";
 
 interface AddPasskeyModalProps {
@@ -28,8 +26,6 @@ interface AddPasskeyModalProps {
 }
 
 export function AddPasskeyModal({ open, onOpenChange }: AddPasskeyModalProps) {
-  const [accountName, setAccountName] = useState("");
-  const { accountNameError, onAccountNameChange, setAccountNameError } = useAccountNameValidation();
   const [setupError, setSetupError] = useState("");
 
   // Shared passkey flow
@@ -43,32 +39,31 @@ export function AddPasskeyModal({ open, onOpenChange }: AddPasskeyModalProps) {
     setAuthKeys: false, // already authenticated
   });
 
-  // Reset form on close
+  // Reset error on close
   useEffect(() => {
     if (!open) {
-      setAccountName("");
-      setAccountNameError("");
       setSetupError("");
       clearError();
     }
-  }, [open, setAccountNameError, clearError]);
+  }, [open, clearError]);
 
   const handleAddPasskey = useCallback(
     async (e?: React.FormEvent) => {
       if (e) e.preventDefault();
 
-      if (accountNameError || !accountName.trim()) return;
-
       setSetupError("");
 
       try {
-        // 🔐 Get decrypted account keys from storage (single source of truth)
+        // Get current wallet account data
         const accountData = await storageManager.getAccountData();
         if (!accountData) {
           throw new Error("Account data not available");
         }
 
-        const success = await addPasskey(accountName, {
+        // Use walletAccountId as passkey name (no user input needed)
+        const walletAccountId = accountData.accountId;
+
+        const success = await addPasskey(walletAccountId, {
           publicKey: accountData.publicKey,
           privateKey: accountData.privateKey,
           address: accountData.address,
@@ -78,13 +73,13 @@ export function AddPasskeyModal({ open, onOpenChange }: AddPasskeyModalProps) {
           setSetupError(passkeyError.message);
         }
       } catch (err) {
-        setSetupError(err instanceof Error ? err.message : "Failed to add passkey");
+        setSetupError(err instanceof Error ? err.message : "Failed to enable quick unlock");
       }
     },
-    [accountName, accountNameError, addPasskey, passkeyError]
+    [addPasskey, passkeyError]
   );
 
-  const canSubmit = !isProcessing && !accountNameError && accountName.trim().length > 0;
+  const canSubmit = !isProcessing;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -92,34 +87,15 @@ export function AddPasskeyModal({ open, onOpenChange }: AddPasskeyModalProps) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-white">
             <Fingerprint className="h-5 w-5 text-blue-500" />
-            Add Passkey
+            Enable Quick Unlock
           </DialogTitle>
           <DialogDescription className="text-gray-400">
-            Add a passkey to your account for convenient sign-in without needing to connect your
-            wallet each time.
+            Use fingerprint or face unlock to skip wallet signatures on reload. Stored securely on
+            this device only.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleAddPasskey} className="space-y-4">
-          <div className="space-y-2">
-            <Input
-              id="passkey-account-name"
-              value={accountName}
-              onChange={(e) => {
-                setAccountName(e.target.value);
-                if (accountNameError) setAccountNameError("");
-                if (setupError) setSetupError("");
-                onAccountNameChange(e.target.value);
-              }}
-              placeholder="Choose a name for your passkey"
-              maxLength={30}
-              autoComplete="off"
-              aria-invalid={!!accountNameError}
-              disabled={isProcessing}
-            />
-            {accountNameError && <p className="text-xs text-red-400">{accountNameError}</p>}
-          </div>
-
           {setupError && (
             <div className="flex items-center gap-2 rounded-lg border border-red-900 bg-red-950/20 p-3">
               <AlertCircle className="h-4 w-4 text-red-400" />
@@ -138,7 +114,7 @@ export function AddPasskeyModal({ open, onOpenChange }: AddPasskeyModalProps) {
             </Button>
             <Button type="submit" disabled={!canSubmit}>
               <Fingerprint />
-              {isProcessing ? "Creating..." : "Create Passkey"}
+              {isProcessing ? "Enabling..." : "Enable Quick Unlock"}
             </Button>
           </DialogFooter>
         </form>

@@ -12,12 +12,16 @@ import { createAuthError, AuthErrorCode } from "../domain/types";
  * Authenticates using existing passkey credential
  *
  * @param accountName - User's account name
+ * @param preDerivedKEK - Optional pre-derived passkey KEK (from resumeAuth)
  * @returns KeyGenerationResult with full keys
  * @throws AuthError if authentication fails
  */
-export async function login(accountName: string): Promise<KeyGenerationResult> {
+export async function login(
+  accountName: string,
+  preDerivedKEK?: CryptoKey
+): Promise<KeyGenerationResult> {
   try {
-    return await performPasskeyLogin(accountName);
+    return await performPasskeyLogin(accountName, preDerivedKEK);
   } catch (error) {
     // Map errors to AuthError
     throw createAuthError(

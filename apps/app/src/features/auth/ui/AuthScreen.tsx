@@ -1,79 +1,50 @@
 /**
  * Auth Screen
  * Main declarative router for authentication UI
- * Switches on state.status to render appropriate screen
+ * Simplified: Wallet-only authentication with passkey as convenience unlock
  */
 
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useAuthState, useAuthActions } from "../hooks/useAuthStore";
 import { BootingScreen } from "./screens/BootingScreen";
-import { NoAccountsScreen } from "./screens/NoAccountsScreen";
-import { AccountsDetectedScreen } from "./screens/AccountsDetectedScreen";
-import { CreatingAccountScreen } from "./screens/CreatingAccountScreen";
-import { AuthenticatingScreen } from "./screens/AuthenticatingScreen";
-import { WalletAuthHandler } from "./screens/WalletAuthHandler";
-import { WalletAccountCreationHandler } from "./screens/WalletAccountCreationHandler";
+import { UnauthenticatedScreen } from "./screens/UnauthenticatedScreen";
+import { WalletSignInHandler } from "./screens/WalletSignInHandler";
 import { ErrorScreen } from "./screens/ErrorScreen";
 
 export function AuthScreen() {
   const state = useAuthState();
   const actions = useAuthActions();
+  const bootstrapCalled = useRef(false);
 
-  // Bootstrap on mount
+  // Bootstrap on mount (once only)
   useEffect(() => {
-    actions.bootstrap();
-  }, [actions]);
+    if (!bootstrapCalled.current) {
+      bootstrapCalled.current = true;
+      actions.bootstrap();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Declarative UI - switch on state.status
   switch (state.status) {
     case "booting":
       return <BootingScreen />;
 
-    case "no-accounts":
+    case "unauthenticated":
+      // Single entry point: Sign in with Wallet
       return (
-        <NoAccountsScreen
-          onCreateAccount={(method) => {
-            actions.startAccountCreation(method);
-            // TODO: Trigger actual account creation flow
-            // This will be connected to existing auth components
+        <UnauthenticatedScreen
+          onSignInWithWallet={() => {
+            actions.startWalletSignIn();
           }}
         />
       );
 
-    case "accounts-detected":
-      return (
-        <AccountsDetectedScreen
-          accounts={state.accounts}
-          onSelectAccount={(accountId, method) => {
-            actions.selectAccount(accountId, method);
-            // TODO: Trigger actual authentication flow
-            // This will be connected to existing auth components
-          }}
-          onCreateNew={() => {
-            // Transition back to no-accounts to show creation options
-            // This is a temporary solution - ideally we'd have a dedicated state
-            actions.bootstrap();
-          }}
-        />
-      );
-
-    case "creating-account":
-      // For wallet, use WalletAccountCreationHandler to trigger signing
-      if (state.method === "wallet") {
-        return <WalletAccountCreationHandler />;
-      }
-      // For passkey, show loading (not implemented yet)
-      return <CreatingAccountScreen method={state.method} />;
-
-    case "authenticating":
-      // For wallet, use WalletAuthHandler to trigger signing
-      if (state.method === "wallet") {
-        return <WalletAuthHandler accountId={state.accountId} />;
-      }
-      // For passkey, just show loading (auth happens in store)
-      return <AuthenticatingScreen method={state.method} accountId={state.accountId} />;
+    case "signing-in":
+      // Wallet signature in progress (tries login first, creates if needed)
+      return <WalletSignInHandler />;
 
     case "authenticated":
       // When authenticated, don't show auth screen

@@ -102,7 +102,8 @@ export async function bootstrap(): Promise<
 
     if (resume.status === "passkey-ready") {
       // Let passkey auth fully restore crypto session
-      await passkeyService.login(resume.accountName);
+      // Pass the pre-derived KEK to avoid duplicate WebAuthn call
+      await passkeyService.login(resume.accountName, resume.result.symmetricKey);
       return { type: "session-restored" };
     }
 

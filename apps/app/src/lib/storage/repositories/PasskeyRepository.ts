@@ -46,4 +46,11 @@ export class PasskeyRepository {
       return false;
     }
   }
+
+  /**
+   * Delete passkey data by account name
+   */
+  async deletePasskeyData(accountName: string): Promise<void> {
+    await this.storageAdapter.remove(accountName);
+  }
 }
