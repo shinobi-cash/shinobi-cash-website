@@ -125,7 +125,7 @@ export function WithdrawalForm({ onTransactionSuccess }: WithdrawalFormProps) {
   if (isDestinationSelectionOpen) {
     return (
       <div className="flex h-full flex-col">
-        <div className="flex items-center gap-3 py-2 px-4 border-b border-gray-800">
+        <div className="flex items-center gap-3 border-b border-gray-800 px-4 py-2">
           <BackButton onClick={() => setIsDestinationSelectionOpen(false)} />
           <h2 className="text-lg font-semibold text-white">Select Asset & Chain</h2>
         </div>
@@ -146,7 +146,7 @@ export function WithdrawalForm({ onTransactionSuccess }: WithdrawalFormProps) {
   // Main Withdrawal Form
   return (
     <div className="flex h-full w-full flex-col overflow-x-hidden px-4 py-4 sm:px-6 sm:py-6">
-      <div className="flex-1 overflow-y-auto space-y-2">
+      <div className="flex-1 space-y-2 overflow-y-auto">
         {/* You Pay Section - From Note (Pool Chain) */}
         <InputLabel
           label="You Pay"
@@ -181,11 +181,7 @@ export function WithdrawalForm({ onTransactionSuccess }: WithdrawalFormProps) {
             !controller.selectedNote || controller.isPreparing || controller.status === "submitting"
           }
         >
-          <TokenChainSelector
-            asset={asset}
-            chainId={POOL_CHAIN.id}
-            showChevron={true}
-          />
+          <TokenChainSelector asset={asset} chainId={POOL_CHAIN.id} showChevron={true} />
         </TokenAmountInputWithBalance>
 
         {/* Arrow/Divider */}

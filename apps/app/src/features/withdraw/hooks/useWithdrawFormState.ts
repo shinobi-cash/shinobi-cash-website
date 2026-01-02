@@ -136,7 +136,7 @@ export function useWithdrawFormState(selectedNote: Note | null, assetSymbol: str
         amount: validateAmount(form.withdrawAmount),
       }));
     }
-  }, [selectedNote?.nullifier, form.withdrawAmount, validateAmount]);
+  }, [selectedNote, form.withdrawAmount, validateAmount]);
 
   return {
     // State

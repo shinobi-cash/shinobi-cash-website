@@ -103,7 +103,7 @@ export function DepositForm({ asset, onTransactionSuccess }: DepositFormProps) {
   if (isAssetSelectorOpen) {
     return (
       <div className="flex h-full flex-col">
-        <div className="flex items-center gap-3 py-2 px-4 border-b border-gray-800">
+        <div className="flex items-center gap-3 border-b border-gray-800 px-4 py-2">
           <BackButton onClick={() => setIsAssetSelectorOpen(false)} />
           <h2 className="text-lg font-semibold text-white">Select Asset & Chain</h2>
         </div>
@@ -123,8 +123,8 @@ export function DepositForm({ asset, onTransactionSuccess }: DepositFormProps) {
 
   // Main Deposit Form
   return (
-    <div className="flex h-full w-full flex-col overflow-x-hidden  px-4 py-4 sm:px-6 sm:py-6">
-      <div className="flex-1 overflow-y-auto space-y-2">
+    <div className="flex h-full w-full flex-col overflow-x-hidden px-4 py-4 sm:px-6 sm:py-6">
+      <div className="flex-1 space-y-2 overflow-y-auto">
         {/* Unsupported Network Warning */}
         {!controller.isOnSupportedChain && (
           <div className="mb-6">

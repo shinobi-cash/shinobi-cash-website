@@ -59,9 +59,7 @@ export function TokenChainSelector({
         </div>
       </div>
       <span className="text-base font-medium text-white">{asset.symbol}</span>
-      {showChevron && (
-        <ChevronDown className="w-4 h-4" />
-      )}
+      {showChevron && <ChevronDown className="h-4 w-4" />}
     </Component>
   );
 }

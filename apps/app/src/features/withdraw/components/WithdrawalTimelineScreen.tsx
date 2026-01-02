@@ -66,7 +66,7 @@ export const WithdrawalTimelineScreen = ({
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex items-center gap-3 py-2 px-4 border-b border-gray-800">
+      <div className="flex items-center gap-3 border-b border-gray-800 px-4 py-2">
         <BackButton onClick={onBack} />
         <div>
           <h2 className="text-lg font-semibold text-white">{getTitle()}</h2>
