@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useNotesController } from "@/features/notes";
-import { DepositForm } from "@/features/deposit";
+import { DepositForm } from "@/features/deposit/ui/components/DepositForm";
 
 export default function DepositPage() {
   const router = useRouter();

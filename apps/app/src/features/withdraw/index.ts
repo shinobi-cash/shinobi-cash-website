@@ -6,9 +6,6 @@
  * import { WithdrawalForm, useWithdrawController } from '@/features/withdraw';
  */
 
-// Components (UI)
-export { WithdrawalForm } from "./components/WithdrawalForm";
-
 // Controller (Feature Orchestrator)
 export { useWithdrawController } from "./controller/useWithdrawController";
 export type { WithdrawController } from "./controller/useWithdrawController";

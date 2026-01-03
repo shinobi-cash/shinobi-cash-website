@@ -7,11 +7,11 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useAuthState, useAuthActions } from "../hooks/useAuthStore";
-import { BootingScreen } from "./screens/BootingScreen";
-import { UnauthenticatedScreen } from "./screens/UnauthenticatedScreen";
-import { WalletSignInHandler } from "./screens/WalletSignInHandler";
-import { ErrorScreen } from "./screens/ErrorScreen";
+import { useAuthState, useAuthActions } from "../../hooks/useAuthStore";
+import { Booting } from "../components/Booting";
+import { Unauthenticated } from "../components/Unauthenticated";
+import { WalletSignIn } from "../components/WalletSignIn";
+import { AuthErrorComponent } from "../components/AuthErrorComponent";
 
 export function AuthScreen() {
   const state = useAuthState();
@@ -30,12 +30,12 @@ export function AuthScreen() {
   // Declarative UI - switch on state.status
   switch (state.status) {
     case "booting":
-      return <BootingScreen />;
+      return <Booting />;
 
     case "unauthenticated":
       // Single entry point: Sign in with Wallet
       return (
-        <UnauthenticatedScreen
+        <Unauthenticated
           onSignInWithWallet={() => {
             actions.startWalletSignIn();
           }}
@@ -44,7 +44,7 @@ export function AuthScreen() {
 
     case "signing-in":
       // Wallet signature in progress (tries login first, creates if needed)
-      return <WalletSignInHandler />;
+      return <WalletSignIn />;
 
     case "authenticated":
       // When authenticated, don't show auth screen
@@ -52,6 +52,8 @@ export function AuthScreen() {
       return null;
 
     case "error":
-      return <ErrorScreen error={state.error} retry={state.retry} onClear={actions.clearError} />;
+      return (
+        <AuthErrorComponent error={state.error} retry={state.retry} onClear={actions.clearError} />
+      );
   }
 }

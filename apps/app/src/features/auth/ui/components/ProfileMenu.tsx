@@ -30,8 +30,8 @@ import {
 import { Switch } from "@workspace/ui/components/switch";
 import { useIsAuthenticated, useAuthActions } from "@/features/auth/hooks/useAuthStore";
 import { useAutoSync } from "@/hooks/useAutoSync";
-import { AddPasskeyModal } from "@/features/auth/components/AddPasskeyModal";
-import { RemovePasskeyModal } from "@/features/auth/components/RemovePasskeyModal";
+import { AddPasskeyModal } from "./AddPasskeyModal";
+import { RemovePasskeyModal } from "./RemovePasskeyModal";
 
 export function ProfileMenu() {
   const isAuthenticated = useIsAuthenticated();

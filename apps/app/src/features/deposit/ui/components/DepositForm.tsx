@@ -3,11 +3,10 @@
  * Pure UI component that delegates all logic to useDepositController
  */
 
-import { Copy, Check, Loader2 } from "lucide-react";
+import { Copy, Check, Loader2, ChevronLeft } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useChainId, useSwitchChain } from "wagmi";
 import { Button } from "@workspace/ui/components/button";
-import { NetworkWarning } from "./NetworkWarning";
 import { POOL_CHAIN } from "@shinobi-cash/constants";
 import { TokenAmountInput } from "@/components/shared/TokenAmountInput";
 import { TokenAmountInputWithBalance } from "@/components/shared/TokenAmountInputWithBalance";
@@ -19,11 +18,10 @@ import { AssetChainSelectorScreen } from "@/components/shared/AssetChainSelector
 import { CircleQuestionMarkIcon } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { modal } from "@/context";
-import { useDepositController } from "../controller/useDepositController";
 import { showToast } from "@/lib/toast";
-import { DEPOSIT_STATUS_LABELS } from "../types/depositStatus";
 import { getUserMessage } from "@/lib/errors/errorHandler";
-import { BackButton } from "@/components/ui/back-button";
+import { useDepositController } from "../../controller/useDepositController";
+import { DEPOSIT_STATUS_LABELS } from "../../types/depositStatus";
 
 function DepositNoteInfo() {
   return (
@@ -32,7 +30,7 @@ function DepositNoteInfo() {
         <CircleQuestionMarkIcon className="h-5 w-5" />
       </TooltipTrigger>
       <TooltipContent>
-        <p>Amount after deducting 1% compliance fee</p>
+        <p>Amount after deducting the 1% compliance fee</p>
       </TooltipContent>
     </Tooltip>
   );
@@ -104,7 +102,15 @@ export function DepositForm({ asset, onTransactionSuccess }: DepositFormProps) {
     return (
       <div className="flex h-full flex-col">
         <div className="flex items-center gap-3 border-b border-gray-800 px-4 py-2">
-          <BackButton onClick={() => setIsAssetSelectorOpen(false)} />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsAssetSelectorOpen(false)}
+            className={`hover:bg-app-surface-hover h-8 w-8 p-0 transition-colors duration-200`}
+            aria-label="Go back"
+          >
+            <ChevronLeft className="text-app-secondary h-4 w-4" />
+          </Button>
           <h2 className="text-lg font-semibold text-white">Select Asset & Chain</h2>
         </div>
 
@@ -125,17 +131,6 @@ export function DepositForm({ asset, onTransactionSuccess }: DepositFormProps) {
   return (
     <div className="flex h-full w-full flex-col overflow-x-hidden px-4 py-4 sm:px-6 sm:py-6">
       <div className="flex-1 space-y-2 overflow-y-auto">
-        {/* Unsupported Network Warning */}
-        {!controller.isOnSupportedChain && (
-          <div className="mb-6">
-            <NetworkWarning
-              type="warning"
-              title="Unsupported Network"
-              message="Please switch to a supported network in your wallet"
-            />
-          </div>
-        )}
-
         {/* You Pay Section */}
         <InputLabel
           label="You Pay"

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ProfileMenu } from "@/components/ProfileMenu";
+import { ProfileMenu } from "@/features/auth/ui/components/ProfileMenu";
 
 export function Header() {
   return (

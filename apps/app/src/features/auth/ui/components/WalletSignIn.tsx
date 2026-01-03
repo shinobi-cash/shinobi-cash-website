@@ -15,7 +15,7 @@ import { AuthErrorCode } from "../../domain/types";
 import { getEIP712Message } from "../../wallet/eip712";
 import { generateKeysFromWalletSignature } from "../../shared";
 
-export function WalletSignInHandler() {
+export function WalletSignIn() {
   const { signTypedDataAsync } = useSignTypedData();
   const { address, isConnected } = useAccount();
   const chainId = useChainId();

@@ -6,9 +6,6 @@
  * import { useNotesController, NotesSection } from '@/features/notes';
  */
 
-// Components (UI)
-export { NotesSection } from "./components/NotesSection";
-
 // Controller (Feature Orchestrator)
 export { useNotesController } from "./controller/useNotesController";
 export type { NotesController } from "./controller/useNotesController";

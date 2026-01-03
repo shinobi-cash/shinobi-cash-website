@@ -18,7 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@workspace/ui/components/dialog";
-import { useAddPasskeyFlow } from "../passkey/usePasskey";
+import { useAddPasskeyFlow } from "../../passkey/usePasskey";
 
 interface AddPasskeyModalProps {
   open: boolean;

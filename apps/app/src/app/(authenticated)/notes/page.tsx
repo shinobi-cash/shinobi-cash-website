@@ -2,10 +2,11 @@
 
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { useNotesController, NotesSection, type NoteChain } from "@/features/notes";
+import { useNotesController, type NoteChain } from "@/features/notes";
 import { useModalWithSelection } from "@/hooks/useModalState";
-import { NoteChainScreen } from "@/features/notes/components/NoteChainScreen";
 import { AmountDisplay } from "@/components/shared/AmountDisplay";
+import { NoteChainScreen } from "@/features/notes/ui/screens/NoteChainScreen";
+import { NotesSection } from "@/features/notes/ui/components/NotesSection";
 
 export default function NotesPage() {
   const router = useRouter();

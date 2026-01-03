@@ -3,11 +3,11 @@
  * Full-screen view for selecting a note to withdraw from
  */
 
-import { BackButton } from "@/components/ui/back-button";
 import type { Note } from "@shinobi-cash/core";
 import { formatEthAmount } from "@/utils/formatters";
-import { Loader2 } from "lucide-react";
+import { ChevronLeft, Loader2 } from "lucide-react";
 import Image from "next/image";
+import { Button } from "@workspace/ui/components/button";
 
 interface NoteSelectionScreenProps {
   availableNotes: Note[];
@@ -34,7 +34,15 @@ export function NoteSelectionScreen({
     <div className="flex h-full flex-col">
       {/* Header */}
       <div className="flex items-center gap-3 border-b border-gray-800 px-4 py-2">
-        <BackButton onClick={onBack} />
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onBack}
+          className={`hover:bg-app-surface-hover h-8 w-8 p-0 transition-colors duration-200`}
+          aria-label="Go back"
+        >
+          <ChevronLeft className="text-app-secondary h-4 w-4" />
+        </Button>
         <h2 className="text-lg font-semibold text-white">Select Note</h2>
       </div>
 

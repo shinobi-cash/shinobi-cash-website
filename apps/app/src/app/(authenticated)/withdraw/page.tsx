@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useNotesController } from "@/features/notes";
-import { WithdrawalForm } from "@/features/withdraw";
+import { WithdrawalForm } from "@/features/withdraw/ui/components/WithdrawalForm";
 
 export default function WithdrawPage() {
   const router = useRouter();

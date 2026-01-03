@@ -6,9 +6,8 @@
 import { getTxExplorerUrl } from "@/config/chains";
 import type { NoteChain } from "@shinobi-cash/core";
 import { formatTimestamp } from "@/utils/formatters";
-import { ExternalLink, Info } from "lucide-react";
+import { ChevronLeft, ExternalLink, Info } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
-import { BackButton } from "../../../components/ui/back-button";
 import { AmountDisplay } from "@/components/shared/AmountDisplay";
 
 interface NoteChainScreenProps {
@@ -32,7 +31,15 @@ export function NoteChainScreen({ noteChain, onBack, onWithdrawClick }: NoteChai
     <div className="flex h-full flex-col">
       {/* Header */}
       <div className="flex items-center gap-3 border-b border-gray-800 px-4 py-2">
-        <BackButton onClick={onBack} />
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onBack}
+          className={`hover:bg-app-surface-hover h-8 w-8 p-0 transition-colors duration-200`}
+          aria-label="Go back"
+        >
+          <ChevronLeft className="text-app-secondary h-4 w-4" />
+        </Button>
         <div>
           <h2 className="text-lg font-semibold text-white">Note Details</h2>
           <p className="text-xs text-gray-400">Detail of your private deposit and withdrawals</p>
@@ -86,7 +93,7 @@ export function NoteChainScreen({ noteChain, onBack, onWithdrawClick }: NoteChai
               <div className="flex items-start gap-2">
                 <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-yellow-400" />
                 <div>
-                  <p className="text-xs font-medium text-yellow-200">Waiting for Solver</p>
+                  <p className="text-xs font-medium text-yellow-200">Waiting for Solver Fill</p>
                   <p className="mt-0.5 text-xs text-yellow-400">
                     This cross-chain deposit is waiting to be filled by a solver. Once filled, it
                     will appear in your Available balance.

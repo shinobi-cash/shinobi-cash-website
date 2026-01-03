@@ -3,7 +3,7 @@
  * Pure UI component that delegates all logic to useWithdrawController
  */
 
-import { Loader2, ChevronDown } from "lucide-react";
+import { Loader2, ChevronDown, ChevronLeft } from "lucide-react";
 import { useState, useCallback, useEffect, useRef } from "react";
 import { Button } from "@workspace/ui/components/button";
 import { POOL_CHAIN } from "@shinobi-cash/constants";
@@ -13,16 +13,15 @@ import { InputLabel } from "@/components/shared/InputLabel";
 import { SectionDivider } from "@/components/shared/SectionDivider";
 import { TokenChainSelector } from "@/components/shared/TokenChainSelector";
 import { AssetChainSelectorScreen } from "@/components/shared/AssetChainSelectorScreen";
-import { RecipientAddressInputScreen } from "@/components/shared/RecipientAddressInputScreen";
 import { FeeBreakdown } from "@/components/shared/FeeBreakdown";
-import { NoteSelectionScreen } from "./NoteSelectionScreen";
-import { WithdrawalTimelineScreen } from "./WithdrawalTimelineScreen";
-import { useWithdrawController } from "../controller/useWithdrawController";
-import { WITHDRAW_STATUS_LABELS } from "../types/withdrawStatus";
-import { ETH_ASSET, DISPLAY_DECIMALS } from "../constants";
+import { NoteSelectionScreen } from "../screens/NoteSelectionScreen";
+import { WithdrawalTimelineScreen } from "../screens/WithdrawalTimelineScreen";
 import { showToast } from "@/lib/toast";
 import { getUserMessage } from "@/lib/errors/errorHandler";
-import { BackButton } from "@/components/ui/back-button";
+import { RecipientAddressInputScreen } from "../screens/RecipientAddressInputScreen";
+import { DISPLAY_DECIMALS, ETH_ASSET } from "../../constants";
+import { WITHDRAW_STATUS_LABELS } from "../../types/withdrawStatus";
+import { useWithdrawController } from "../../controller/useWithdrawController";
 
 interface WithdrawalFormProps {
   onTransactionSuccess?: () => void;
@@ -126,7 +125,15 @@ export function WithdrawalForm({ onTransactionSuccess }: WithdrawalFormProps) {
     return (
       <div className="flex h-full flex-col">
         <div className="flex items-center gap-3 border-b border-gray-800 px-4 py-2">
-          <BackButton onClick={() => setIsDestinationSelectionOpen(false)} />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsDestinationSelectionOpen(false)}
+            className={`hover:bg-app-surface-hover h-8 w-8 p-0 transition-colors duration-200`}
+            aria-label="Go back"
+          >
+            <ChevronLeft className="text-app-secondary h-4 w-4" />
+          </Button>
           <h2 className="text-lg font-semibold text-white">Select Asset & Chain</h2>
         </div>
 

@@ -5,11 +5,10 @@
 
 import type { Note } from "@shinobi-cash/core";
 import { formatEthAmount, formatHash } from "@/utils/formatters";
-import { Check, Copy, Info, Loader2, ArrowRight } from "lucide-react";
+import { Check, Copy, Info, Loader2, ArrowRight, ChevronLeft } from "lucide-react";
 import { POOL_CHAIN, SHINOBI_CASH_SUPPORTED_CHAINS } from "@shinobi-cash/constants";
 import { memo, useCallback, useState } from "react";
 import { Button } from "@workspace/ui/components/button";
-import { BackButton } from "@/components/ui/back-button";
 
 export interface WithdrawalStep {
   id: string;
@@ -67,7 +66,15 @@ export const WithdrawalTimelineScreen = ({
     <div className="flex h-full flex-col">
       {/* Header */}
       <div className="flex items-center gap-3 border-b border-gray-800 px-4 py-2">
-        <BackButton onClick={onBack} />
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onBack}
+          className={`hover:bg-app-surface-hover h-8 w-8 p-0 transition-colors duration-200`}
+          aria-label="Go back"
+        >
+          <ChevronLeft className="text-app-secondary h-4 w-4" />
+        </Button>
         <div>
           <h2 className="text-lg font-semibold text-white">{getTitle()}</h2>
           <p className="text-xs text-gray-400">

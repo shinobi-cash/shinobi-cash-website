@@ -4,9 +4,9 @@
  */
 
 import { RefreshCw } from "lucide-react";
-import { NoteRow } from "@/features/notes/components/NoteRow";
-import { type NotesController } from "../controller/useNotesController";
-import { NOTE_FILTER_LABELS, type NoteFilter, type NoteChain } from "../types";
+import { NoteRow } from "./NoteRow";
+import { type NotesController } from "../../controller/useNotesController";
+import { NOTE_FILTER_LABELS, type NoteFilter, type NoteChain } from "../../types";
 
 interface NotesSectionProps {
   controller: NotesController;

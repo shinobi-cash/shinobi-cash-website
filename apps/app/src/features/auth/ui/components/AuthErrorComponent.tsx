@@ -5,13 +5,13 @@
 
 import type { AuthError } from "../../domain/types";
 
-interface ErrorScreenProps {
+interface AuthErrorComponentProps {
   error: AuthError;
   retry?: () => void | Promise<void>;
   onClear: () => void;
 }
 
-export function ErrorScreen({ error, retry, onClear }: ErrorScreenProps) {
+export function AuthErrorComponent({ error, retry, onClear }: AuthErrorComponentProps) {
   const handleRetry = async () => {
     if (retry) {
       await retry();

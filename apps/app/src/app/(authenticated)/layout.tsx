@@ -1,11 +1,11 @@
 "use client";
 
 import { useIsAuthenticated } from "@/features/auth/hooks/useAuthStore";
-import { AuthScreen } from "@/features/auth/ui/AuthScreen";
-import { Header } from "@/components/Header";
-import { Footer } from "@/components/Footer";
-import { DashboardTabs } from "@/components/DashboardTabs";
-import { SyncIndicator } from "@/components/SyncIndicator";
+import { AuthScreen } from "@/features/auth/ui/screens/AuthScreen";
+import { Header } from "@/components/layout/Header";
+import { Footer } from "@/components/layout/Footer";
+import { DashboardTabs } from "@/components/layout/DashboardTabs";
+import { SyncIndicator } from "@/components/navigation/SyncIndicator";
 import { useNotesController } from "@/features/notes";
 
 /**

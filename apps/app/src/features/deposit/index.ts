@@ -6,10 +6,6 @@
  * import { DepositForm, useDepositController } from '@/features/deposit';
  */
 
-// Components (UI)
-export { DepositForm } from "./components/DepositForm";
-export { NetworkWarning } from "./components/NetworkWarning";
-
 // Controller (Feature Orchestrator)
 export { useDepositController } from "./controller/useDepositController";
 export type { DepositController } from "./controller/useDepositController";
