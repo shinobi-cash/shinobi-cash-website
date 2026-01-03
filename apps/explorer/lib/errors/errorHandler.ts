@@ -13,21 +13,6 @@ import {
   NetworkError,
 } from "./AppErrors";
 
-// Lazy import to avoid circular dependencies
-let reportErrorToSentry: ((error: unknown, context?: Record<string, unknown>) => void) | null =
-  null;
-
-// Initialize Sentry integration if available
-if (process.env.NODE_ENV === "production" || process.env.NEXT_PUBLIC_SENTRY_ENABLED === "true") {
-  import("../monitoring/sentry")
-    .then((module) => {
-      reportErrorToSentry = module.reportErrorToSentry;
-    })
-    .catch(() => {
-      // Sentry not installed or disabled
-    });
-}
-
 /**
  * Extract user-friendly error message from any error type
  */
@@ -237,19 +222,11 @@ export function logError(
       // Log programming errors as errors (unexpected)
       console.error(`[${error.category}/${error.code}]`, error.message, errorInfo);
     }
-
-    // Send to error monitoring if enabled
-    if (shouldReport(error)) {
-      reportToMonitoring(error, context);
-    }
   } else if (error instanceof AuthError) {
     console.warn(`[AUTH/${error.code}]`, error.message, errorInfo);
   } else {
     // Unknown errors - always log as error
     console.error("[UNKNOWN_ERROR]", errorInfo);
-
-    // Always report unknown errors to monitoring
-    reportToMonitoring(error, context);
   }
 }
 
@@ -328,49 +305,4 @@ export function wrapError(
       originalError: serializeError(error),
     },
   });
-}
-
-/**
- * Check if error should be reported to monitoring
- */
-export function shouldReport(error: unknown): boolean {
-  // Don't report user cancellations
-  if (isUserCancellation(error)) {
-    return false;
-  }
-
-  // Report all non-operational errors (programming errors)
-  if (error instanceof AppError && !error.isOperational) {
-    return true;
-  }
-
-  // Report critical operational errors
-  if (error instanceof AppError) {
-    const criticalCategories = [ErrorCategory.BLOCKCHAIN, ErrorCategory.STORAGE];
-    return criticalCategories.includes(error.category);
-  }
-
-  // Report unknown errors
-  if (!(error instanceof AppError) && !(error instanceof AuthError)) {
-    return true;
-  }
-
-  return false;
-}
-
-/**
- * Report error to monitoring service (Sentry, etc.)
- */
-function reportToMonitoring(error: unknown, context?: Record<string, unknown>): void {
-  // Only report if monitoring is enabled
-  if (!reportErrorToSentry) {
-    return;
-  }
-
-  try {
-    reportErrorToSentry(error, context);
-  } catch (err) {
-    // Don't let monitoring errors crash the app
-    console.error("Failed to report error to monitoring:", err);
-  }
 }

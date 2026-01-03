@@ -4,7 +4,7 @@
  * Follows Single Responsibility Principle
  */
 
-import { cn } from "@/lib/utils";
+import { cn } from "@workspace/ui/lib/utils";
 
 export type ActivityStatus = "pending" | "approved" | "rejected" | "completed";
 

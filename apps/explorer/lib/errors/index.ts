@@ -33,6 +33,5 @@ export {
   isRecoverable,
   isUserCancellation,
   logError,
-  shouldReport,
   wrapError,
 } from "./errorHandler";

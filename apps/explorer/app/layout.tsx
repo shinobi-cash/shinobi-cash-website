@@ -1,9 +1,6 @@
 import type { Metadata } from "next";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "sonner";
+import { Providers } from "./providers";
 import "./globals.css";
-
-const queryClient = new QueryClient();
 
 export const metadata: Metadata = {
   title: "Shinobi Cash - Explorer",
@@ -18,10 +15,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased">
-        <QueryClientProvider client={queryClient}>
-          {children}
-          <Toaster />
-        </QueryClientProvider>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
