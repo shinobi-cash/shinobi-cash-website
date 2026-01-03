@@ -13,6 +13,15 @@ import { POOL_CHAIN, SHINOBI_CASH_SUPPORTED_CHAINS } from "@shinobi-cash/constan
 export const POOL_CHAIN_ID = POOL_CHAIN.id;
 
 /**
+ * Get chain name from chain ID
+ */
+export const getChainName = (chainId: number | string | bigint): string => {
+  const id = Number(chainId);
+  const chain = SHINOBI_CASH_SUPPORTED_CHAINS.find((c) => c.id === id);
+  return chain?.name ?? `Chain ${id}`;
+};
+
+/**
  * Get transaction explorer URL
  */
 export const getTxExplorerUrl = (chainId: number | string | bigint, txHash: string): string => {

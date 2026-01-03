@@ -43,14 +43,14 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
       </div>
 
       <div className="flex-1 py-8">
-        <div className="mx-auto w-full max-w-md md:max-w-lg lg:max-w-xl space-y-4">
+        <div className="mx-auto w-full max-w-md space-y-4 md:max-w-lg lg:max-w-xl">
           {/* Card Top Bar */}
           <div className="flex items-center justify-between gap-4 px-4 pt-4">
             <DashboardTabs />
           </div>
 
           {/* Card Content */}
-          <div className="border rounded-xl bg-gray-900/70">{children}</div>
+          <div className="rounded-xl border bg-gray-900/70">{children}</div>
         </div>
       </div>
 

@@ -1,10 +1,62 @@
 "use client";
 
+import { useState, useMemo } from "react";
+import { useActivityController } from "@/features/activity/controller/useActivityController";
+import { ActivityFilterDropdown } from "@/features/activity/ui/components/ActivityFilterDropdown";
+import { ActivityList } from "@/features/activity/ui/components/ActivityList";
+import { ActivityDetailsScreen } from "@/features/activity/ui/screens/ActivityDetailsScreen";
+
 export default function ActivityPage() {
+  const activityController = useActivityController();
+  const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
+
+  // Find the selected activity
+  const selectedActivity = useMemo(() => {
+    if (!selectedActivityId) return null;
+    return activityController.activities.find((a) => a.id === selectedActivityId) ?? null;
+  }, [selectedActivityId, activityController.activities]);
+
+  const handleActivityClick = (activityId: string) => {
+    setSelectedActivityId(activityId);
+  };
+
+  const handleBack = () => {
+    setSelectedActivityId(null);
+  };
+
+  // Show activity details if selected
+  if (selectedActivity) {
+    return <ActivityDetailsScreen activity={selectedActivity} onBack={handleBack} />;
+  }
+
   return (
-    <div className="flex h-full w-full items-center justify-center overflow-y-auto px-4 py-4 sm:px-6 sm:py-6">
-      <div className="text-center text-gray-400">
-        <p>Activity page coming soon...</p>
+    <div className="flex h-[550px] w-full flex-col">
+      {/* Header with Filter - Fixed */}
+      <div className="shrink-0 border-b border-gray-800 px-4 py-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-white">Recent Activity</h2>
+          <ActivityFilterDropdown
+            activeFilter={activityController.activeFilter}
+            onFilterChange={activityController.setFilter}
+            counts={{
+              total: activityController.totalCount,
+              deposit: activityController.depositCount,
+              withdrawal: activityController.withdrawalCount,
+              refund: activityController.refundCount,
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Activity List - Scrollable */}
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4 pt-2 sm:px-6">
+        <ActivityList
+          activities={activityController.filteredActivities}
+          status={activityController.status}
+          activeFilter={activityController.activeFilter}
+          totalCount={activityController.totalCount}
+          onActivityClick={handleActivityClick}
+        />
       </div>
     </div>
   );
