@@ -1,7 +1,7 @@
 "use client";
 
-import { SyncIndicator } from "@/components/navigation/SyncIndicator";
-import { IndexerHealthIndicator } from "@/components/navigation/IndexerHealthIndicator";
+import { SyncIndicator } from "@/components/indicator/SyncIndicator";
+import { IndexerHealthIndicator } from "@/components/indicator/IndexerHealthIndicator";
 import { useNoteDiscoverySession } from "@/hooks/notes/useNoteDiscoverySession";
 
 interface FooterProps {
