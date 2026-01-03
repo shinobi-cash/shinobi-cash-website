@@ -2,16 +2,17 @@
 
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { useNotesController, type NoteChain } from "@/features/notes";
-import { useModalWithSelection } from "@/hooks/useModalState";
 import { AmountDisplay } from "@/components/shared/AmountDisplay";
 import { NoteChainScreen } from "@/features/notes/ui/screens/NoteChainScreen";
 import { NotesSection } from "@/features/notes/ui/components/NotesSection";
+import { NoteChain } from "@shinobi-cash/core";
+import { useNotesController } from "@/features/notes/controller/useNotesController";
+import { useSelectionState } from "@/hooks/useSelectionState";
 
 export default function NotesPage() {
   const router = useRouter();
   const notesController = useNotesController();
-  const noteChainModal = useModalWithSelection<NoteChain>(false);
+  const selection = useSelectionState<NoteChain>();
 
   // Calculate total balance from available notes
   const totalBalance = useMemo(() => {
@@ -24,17 +25,17 @@ export default function NotesPage() {
     const lastNote = noteChain[noteChain.length - 1];
     if (lastNote.status === "unspent" && lastNote.isActivated) {
       // Close the note details and navigate to withdrawal
-      noteChainModal.setOpen(false);
+      selection.clear();
       router.push("/withdraw");
     }
   };
 
   // Show note chain details modal if open
-  if (noteChainModal.isOpen) {
+  if (selection.isSelected) {
     return (
       <NoteChainScreen
-        noteChain={noteChainModal.selectedItem}
-        onBack={() => noteChainModal.setOpen(false)}
+        noteChain={selection.selected}
+        onBack={selection.clear}
         onWithdrawClick={startWithdrawal}
       />
     );
@@ -55,7 +56,7 @@ export default function NotesPage() {
 
       {/* Notes Section - Scrollable */}
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4 sm:px-6">
-        <NotesSection controller={notesController} onNoteChainClick={noteChainModal.openWith} />
+        <NotesSection controller={notesController} onNoteChainClick={selection.select} />
       </div>
     </div>
   );

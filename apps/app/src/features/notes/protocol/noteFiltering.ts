@@ -5,10 +5,7 @@
  */
 
 import type { Note, NoteChain } from "@shinobi-cash/core";
-import type { NoteFilter } from "../types/filters";
-
-// Re-export for backward compatibility
-export type { NoteFilter } from "../types/filters";
+import type { NoteFilter } from "../types";
 
 /**
  * Get the last note from a note chain

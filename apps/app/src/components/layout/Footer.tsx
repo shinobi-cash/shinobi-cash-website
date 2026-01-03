@@ -1,7 +1,16 @@
 "use client";
 
-export function Footer() {
+import { SyncIndicator } from "@/components/navigation/SyncIndicator";
+import { IndexerHealthIndicator } from "@/components/navigation/IndexerHealthIndicator";
+import { useNoteDiscoverySession } from "@/hooks/notes/useNoteDiscoverySession";
+
+interface FooterProps {
+  showIndicators?: boolean;
+}
+
+export function Footer({ showIndicators = false }: FooterProps) {
   const currentYear = new Date().getFullYear();
+  const noteDiscoverySession = useNoteDiscoverySession();
 
   return (
     <footer className="border-t border-gray-800 bg-black/30 backdrop-blur-sm">
@@ -22,7 +31,20 @@ export function Footer() {
               GitHub
             </a>
           </div>
-          <div className="text-sm text-gray-500">v1.0.0</div>
+          <div className="flex items-center gap-4">
+            {showIndicators && (
+              <>
+                <IndexerHealthIndicator />
+                <div className="h-4 w-px bg-gray-700" />
+                <SyncIndicator
+                  onSync={() => {
+                    noteDiscoverySession.discovery.refresh();
+                  }}
+                />
+              </>
+            )}
+            <div className="text-sm text-gray-500">v1.0.0</div>
+          </div>
         </div>
       </div>
     </footer>

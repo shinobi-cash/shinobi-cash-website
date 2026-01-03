@@ -1,18 +1,16 @@
 /**
  * Notes Controller
- * Main orchestrator for the notes feature
- * Coordinates all child hooks and owns the state machine
+ * UI-facing orchestrator for the notes feature
+ * (Discovery + crypto lifecycle delegated to domain hook)
  */
 
-import { useMemo, useCallback, useEffect, useRef, useState } from "react";
-import { storageManager } from "@/lib/storage";
-import { parseUserKey } from "@shinobi-cash/core";
-import { useTransactionTracking } from "@/hooks/transactions/useTransactionTracking";
-import { SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
+import { useMemo, useCallback } from "react";
 import type { Note } from "@shinobi-cash/core";
 import type { NotesStatus, NotesError, NoteFilter, NoteChainView } from "../types";
-import { useNoteDiscovery } from "../hooks/useNoteDiscovery";
+
+import { useNoteDiscoverySession } from "@/hooks/notes/useNoteDiscoverySession";
 import { useNoteFilter } from "../hooks/useNoteFilter";
+
 import {
   filterNoteChains,
   getNoteChainCounts,
@@ -41,72 +39,22 @@ export interface NotesController {
   availableNotes: Note[];
 
   setFilter: (filter: NoteFilter) => void;
-  refresh: () => Promise<void>;
   reset: () => void;
 }
 
 // ============ CONTROLLER ============
 
 export function useNotesController(): NotesController {
-  const { onTransactionIndexed } = useTransactionTracking();
-  const poolAddress = SHINOBI_CASH_ETH_POOL.address;
+  // Domain-level discovery + crypto lifecycle
+  const { discovery, cryptoReady } = useNoteDiscoverySession();
 
-  // ---------- CRYPTO CONTEXT (SOURCE OF TRUTH) ----------
-  const cryptoRef = useRef<{
-    publicKey: string | null;
-    accountKey: bigint | null;
-  }>({
-    publicKey: null,
-    accountKey: null,
-  });
-
-  const [cryptoReady, setCryptoReady] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadCrypto() {
-      try {
-        const accountData = await storageManager.getAccountData();
-        if (!accountData || cancelled) return;
-
-        cryptoRef.current = {
-          publicKey: accountData.publicKey ?? null,
-          accountKey: parseUserKey(accountData.privateKey),
-        };
-
-        setCryptoReady(true);
-      } catch (err) {
-        console.warn("[NotesController] Failed to load crypto context:", err);
-      }
-    }
-
-    loadCrypto();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const publicKey = cryptoRef.current.publicKey;
-  const accountKey = cryptoRef.current.accountKey;
-
-  // ============ CHILD HOOKS ============
-
-  const discovery = useNoteDiscovery(
-    publicKey ?? "",
-    poolAddress,
-    accountKey ?? BigInt(0),
-    cryptoReady
-  );
-
-  const { refresh: refreshDiscovery } = discovery;
+  // UI filter state
   const filter = useNoteFilter("available");
 
   // ============ DERIVED STATE ============
 
   const noteChains = useMemo(() => {
-    if (!discovery.data?.notes) return [];
-    return discovery.data.notes;
+    return discovery.data?.notes ?? [];
   }, [discovery.data]);
 
   const sortedNoteChains = useMemo(() => {
@@ -143,37 +91,15 @@ export function useNotesController(): NotesController {
 
   // ============ STATUS MACHINE ============
 
-  const getStatus = useCallback((): NotesStatus => {
-    if (!cryptoReady) return "idle";
-    if (discovery.discoveryError) return "error";
-    if (discovery.isDiscovering && !discovery.data) return "loading";
-    if (noteChains.length === 0) return "empty";
-    return "ready";
-  }, [
-    cryptoReady,
-    discovery.discoveryError,
-    discovery.isDiscovering,
-    discovery.data,
-    noteChains.length,
-  ]);
-
-  const status = getStatus();
-
-  // ============ AUTO-REFRESH ON TX INDEXED ============
-
-  useEffect(() => {
-    const cleanup = onTransactionIndexed(() => {
-      refreshDiscovery();
-    });
-    return cleanup;
-  }, [onTransactionIndexed, refreshDiscovery]);
-
-  // ============ ACTIONS ============
-
-  const refresh = useCallback(async () => {
-    if (!cryptoReady) return;
-    await refreshDiscovery();
-  }, [cryptoReady, refreshDiscovery]);
+  const status: NotesStatus = !cryptoReady
+    ? "idle"
+    : discovery.discoveryError
+      ? "error"
+      : discovery.isDiscovering && !discovery.data
+        ? "loading"
+        : noteChains.length === 0
+          ? "empty"
+          : "ready";
 
   const reset = useCallback(() => {
     filter.reset();
@@ -199,7 +125,6 @@ export function useNotesController(): NotesController {
     availableNotes,
 
     setFilter: filter.setFilter,
-    refresh,
     reset,
   };
 }

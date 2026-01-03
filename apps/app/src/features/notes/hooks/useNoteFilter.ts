@@ -4,7 +4,7 @@
  */
 
 import { useState, useCallback } from "react";
-import type { NoteFilter } from "../protocol/noteFiltering";
+import { type NoteFilter } from "../types";
 
 export function useNoteFilter(initialFilter: NoteFilter = "available") {
   const [activeFilter, setActiveFilter] = useState<NoteFilter>(initialFilter);

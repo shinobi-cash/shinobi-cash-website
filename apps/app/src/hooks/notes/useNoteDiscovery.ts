@@ -1,15 +1,8 @@
-/**
- * Note Discovery Hook
- * Handles note scanning and discovery
- */
+"use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  noteDiscoveryService,
-  noteStorageProvider,
-} from "@/features/notes/services/NoteDiscoveryService";
-import type { DiscoveryResult } from "@shinobi-cash/core";
-import type { DiscoveryProgress } from "@shinobi-cash/core";
+import { noteDiscoveryService, noteStorageProvider } from "@/services/NoteDiscoveryService";
+import type { DiscoveryResult, DiscoveryProgress } from "@shinobi-cash/core";
 
 interface DiscoveryState {
   data: DiscoveryResult | null;

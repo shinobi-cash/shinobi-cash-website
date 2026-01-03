@@ -6,7 +6,8 @@
 import { RefreshCw } from "lucide-react";
 import { NoteRow } from "./NoteRow";
 import { type NotesController } from "../../controller/useNotesController";
-import { NOTE_FILTER_LABELS, type NoteFilter, type NoteChain } from "../../types";
+import { NOTE_FILTER_LABELS, type NoteFilter } from "../../types";
+import { NoteChain } from "@shinobi-cash/core";
 
 interface NotesSectionProps {
   controller: NotesController;

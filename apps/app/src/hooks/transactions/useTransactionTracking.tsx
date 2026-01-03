@@ -1,5 +1,5 @@
 import { getPublicClient } from "@/lib/clients";
-import { noteDiscoveryService } from "@/features/notes/services/NoteDiscoveryService";
+import { noteDiscoveryService } from "@/services/NoteDiscoveryService";
 import { showToast } from "@/lib/toast";
 import { fetchLatestIndexedBlock } from "@/services/data/indexerService";
 import { storageManager } from "@/lib/storage";
