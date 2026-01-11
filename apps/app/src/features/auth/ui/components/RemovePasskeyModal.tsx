@@ -6,9 +6,8 @@
  * @file features/auth/components/RemovePasskeyModal.tsx
  */
 
-import { storageManager } from "@/lib/storage";
 import { AlertTriangle, Fingerprint } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@workspace/ui/components/button";
 import {
   Dialog,
@@ -19,6 +18,7 @@ import {
   DialogTitle,
 } from "@workspace/ui/components/dialog";
 import { toast } from "sonner";
+import { usePasskeyAuth } from "../../hooks/usePasskeyAuth";
 
 interface RemovePasskeyModalProps {
   open: boolean;
@@ -27,36 +27,44 @@ interface RemovePasskeyModalProps {
 }
 
 export function RemovePasskeyModal({ open, onOpenChange, onRemoved }: RemovePasskeyModalProps) {
-  const [isRemoving, setIsRemoving] = useState(false);
-  const [error, setError] = useState("");
+  const [removeError, setRemoveError] = useState("");
 
-  const handleRemove = useCallback(async () => {
-    setIsRemoving(true);
-    setError("");
-
-    try {
-      // Get current account data
-      const accountData = await storageManager.getAccountData();
-      if (!accountData) {
-        throw new Error("No active session");
-      }
-
-      // Remove passkey unlock completely
-      await storageManager.removePasskeyUnlock(accountData.accountId);
-
+  const {
+    isProcessing,
+    error: passkeyError,
+    removePasskey,
+    clearError,
+  } = usePasskeyAuth({
+    onSuccess: () => {
       toast.success("Passkey removed", {
         description: "Biometric unlock has been disabled for this account.",
       });
-
       onRemoved?.();
       onOpenChange(false);
-    } catch (err) {
-      console.error("Failed to remove passkey:", err);
-      setError(err instanceof Error ? err.message : "Failed to remove passkey");
-    } finally {
-      setIsRemoving(false);
+    },
+  });
+
+  // Reset error on close
+  useEffect(() => {
+    if (!open) {
+      setRemoveError("");
+      clearError();
     }
-  }, [onOpenChange, onRemoved]);
+  }, [open, clearError]);
+
+  const handleRemove = useCallback(async () => {
+    setRemoveError("");
+
+    try {
+      const success = await removePasskey();
+
+      if (!success && passkeyError) {
+        setRemoveError(passkeyError.message);
+      }
+    } catch (err) {
+      setRemoveError(err instanceof Error ? err.message : "Failed to remove passkey");
+    }
+  }, [removePasskey, passkeyError]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -73,10 +81,10 @@ export function RemovePasskeyModal({ open, onOpenChange, onRemoved }: RemovePass
         </DialogHeader>
 
         <div className="space-y-4">
-          {error && (
+          {removeError && (
             <div className="flex items-center gap-2 rounded-lg border border-red-900 bg-red-950/20 p-3">
               <AlertTriangle className="h-4 w-4 text-red-400" />
-              <p className="text-sm text-red-400">{error}</p>
+              <p className="text-sm text-red-400">{removeError}</p>
             </div>
           )}
 
@@ -122,13 +130,18 @@ export function RemovePasskeyModal({ open, onOpenChange, onRemoved }: RemovePass
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
-            disabled={isRemoving}
+            disabled={isProcessing}
           >
             Cancel
           </Button>
-          <Button type="button" variant="destructive" onClick={handleRemove} disabled={isRemoving}>
+          <Button
+            type="button"
+            variant="destructive"
+            onClick={handleRemove}
+            disabled={isProcessing}
+          >
             <Fingerprint />
-            {isRemoving ? "Removing..." : "Remove Passkey"}
+            {isProcessing ? "Removing..." : "Remove Passkey"}
           </Button>
         </DialogFooter>
       </DialogContent>

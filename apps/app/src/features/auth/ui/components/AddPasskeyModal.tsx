@@ -6,7 +6,6 @@
  * @file features/auth/components/AddPasskeyModal.tsx
  */
 
-import { storageManager } from "@/lib/storage";
 import { AlertCircle, Fingerprint } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@workspace/ui/components/button";
@@ -18,7 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@workspace/ui/components/dialog";
-import { useAddPasskeyFlow } from "../../passkey/usePasskey";
+import { usePasskeyAuth } from "../../hooks/usePasskeyAuth";
 
 interface AddPasskeyModalProps {
   open: boolean;
@@ -32,11 +31,10 @@ export function AddPasskeyModal({ open, onOpenChange }: AddPasskeyModalProps) {
   const {
     isProcessing,
     error: passkeyError,
-    addPasskey,
+    enablePasskey,
     clearError,
-  } = useAddPasskeyFlow({
+  } = usePasskeyAuth({
     onSuccess: () => onOpenChange(false),
-    setAuthKeys: false, // already authenticated
   });
 
   // Reset error on close
@@ -54,20 +52,7 @@ export function AddPasskeyModal({ open, onOpenChange }: AddPasskeyModalProps) {
       setSetupError("");
 
       try {
-        // Get current wallet account data
-        const accountData = await storageManager.getAccountData();
-        if (!accountData) {
-          throw new Error("Account data not available");
-        }
-
-        // Use walletAccountId as passkey name (no user input needed)
-        const walletAccountId = accountData.accountId;
-
-        const success = await addPasskey(walletAccountId, {
-          publicKey: accountData.publicKey,
-          privateKey: accountData.privateKey,
-          address: accountData.address,
-        });
+        const success = await enablePasskey();
 
         if (!success && passkeyError) {
           setSetupError(passkeyError.message);
@@ -76,7 +61,7 @@ export function AddPasskeyModal({ open, onOpenChange }: AddPasskeyModalProps) {
         setSetupError(err instanceof Error ? err.message : "Failed to enable quick unlock");
       }
     },
-    [addPasskey, passkeyError]
+    [enablePasskey, passkeyError]
   );
 
   const canSubmit = !isProcessing;

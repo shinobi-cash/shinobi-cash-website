@@ -1,59 +1,42 @@
-/**
- * Auth Screen
- * Main declarative router for authentication UI
- * Simplified: Wallet-only authentication with passkey as convenience unlock
- */
-
 "use client";
 
+/**
+ * Auth Screen
+ * Declarative router for authentication UI
+ */
+
 import { useEffect, useRef } from "react";
-import { useAuthState, useAuthActions } from "../../hooks/useAuthStore";
-import { Booting } from "../components/Booting";
-import { Unauthenticated } from "../components/Unauthenticated";
-import { WalletSignIn } from "../components/WalletSignIn";
-import { AuthErrorComponent } from "../components/AuthErrorComponent";
+import { WalletAuth } from "../components/WalletAuth";
+import { AuthController } from "@/features/auth/controllers/AuthController";
+import { useSnapshot } from "valtio";
 
 export function AuthScreen() {
-  const state = useAuthState();
-  const actions = useAuthActions();
-  const bootstrapCalled = useRef(false);
+  const state = useSnapshot(AuthController.state);
 
-  // Bootstrap on mount (once only)
+  const bootstrappedRef = useRef(false);
+
   useEffect(() => {
-    if (!bootstrapCalled.current) {
-      bootstrapCalled.current = true;
-      actions.bootstrap();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (bootstrappedRef.current) return;
+    bootstrappedRef.current = true;
+    AuthController.bootstrap();
   }, []);
 
-  // Declarative UI - switch on state.status
-  switch (state.status) {
+  switch (state.state.status) {
     case "booting":
-      return <Booting />;
+      return (
+        <div className="flex flex-col items-center justify-center p-8">
+          <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-gray-700 border-t-orange-500" />
+          <h2 className="text-lg font-semibold text-white">Initializing...</h2>
+        </div>
+      );
 
     case "unauthenticated":
-      // Single entry point: Sign in with Wallet
-      return (
-        <Unauthenticated
-          onSignInWithWallet={() => {
-            actions.startWalletSignIn();
-          }}
-        />
-      );
-
-    case "signing-in":
-      // Wallet signature in progress (tries login first, creates if needed)
-      return <WalletSignIn />;
+      return <WalletAuth />;
 
     case "authenticated":
-      // When authenticated, don't show auth screen
-      // This state is handled by the app layout
       return null;
 
-    case "error":
-      return (
-        <AuthErrorComponent error={state.error} retry={state.retry} onClear={actions.clearError} />
-      );
+    default:
+      return null;
   }
 }

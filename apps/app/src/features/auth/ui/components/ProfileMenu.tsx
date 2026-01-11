@@ -3,7 +3,6 @@
  * @file src/components/ProfileMenu.tsx
  */
 
-import { storageManager } from "@/lib/storage";
 import { isPasskeySupported } from "@/utils/environment";
 import {
   LogOut,
@@ -13,7 +12,7 @@ import {
   MoreHorizontalIcon,
   CircleUserRound,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useAccount, useDisconnect } from "wagmi";
 import { ButtonGroup } from "@workspace/ui/components/button-group";
 import { Button } from "@workspace/ui/components/button";
@@ -28,61 +27,27 @@ import {
 } from "@workspace/ui/components/dropdown-menu";
 
 import { Switch } from "@workspace/ui/components/switch";
-import { useIsAuthenticated, useAuthActions } from "@/features/auth/hooks/useAuthStore";
 import { useAutoSync } from "@/hooks/useAutoSync";
 import { AddPasskeyModal } from "./AddPasskeyModal";
 import { RemovePasskeyModal } from "./RemovePasskeyModal";
+import { useSnapshot } from "valtio";
+import { AuthController } from "@/features/auth/controllers/AuthController";
 
 export function ProfileMenu() {
-  const isAuthenticated = useIsAuthenticated();
-  const { logout } = useAuthActions();
+  const state = useSnapshot(AuthController.state);
   const { isConnected } = useAccount();
   const { disconnect } = useDisconnect();
-  const [canAddPasskey, setCanAddPasskey] = useState(false);
-  const [passkeyEnabled, setPasskeyEnabled] = useState(false);
   const [showAddPasskeyModal, setShowAddPasskeyModal] = useState(false);
   const [showRemovePasskeyModal, setShowRemovePasskeyModal] = useState(false);
   const { autoSyncEnabled, setAutoSyncEnabled } = useAutoSync();
 
-  // Check if user can add passkey (wallet-based account without passkey)
-  useEffect(() => {
-    if (!isAuthenticated) {
-      setCanAddPasskey(false);
-      setPasskeyEnabled(false);
-      return;
-    }
+  const isAuthenticated = state.state.status === "authenticated";
 
-    const checkPasskeyStatus = async () => {
-      try {
-        // Check if passkey is supported on this device
-        if (!isPasskeySupported()) {
-          setCanAddPasskey(false);
-          setPasskeyEnabled(false);
-          return;
-        }
+  // Get passkey status from auth state
+  const passkeyEnabled = isAuthenticated ? state.state.session.passkeyEnabled : false;
 
-        // Get account data
-        const accountData = await storageManager.getAccountData();
-        if (!accountData) {
-          setCanAddPasskey(false);
-          setPasskeyEnabled(false);
-          return;
-        }
-
-        // Check if passkey unlock is already enabled for this wallet
-        const accountId = accountData.accountId;
-        const isEnabled = await storageManager.isPasskeyUnlockEnabled(accountId);
-        setCanAddPasskey(!isEnabled);
-        setPasskeyEnabled(isEnabled);
-      } catch (error) {
-        console.error("Failed to check passkey status:", error);
-        setCanAddPasskey(false);
-        setPasskeyEnabled(false);
-      }
-    };
-
-    checkPasskeyStatus();
-  }, [isAuthenticated]);
+  // Check if user can add passkey (passkey supported and not already enabled)
+  const canAddPasskey = isAuthenticated && isPasskeySupported() && !passkeyEnabled;
 
   const handleAddPasskey = () => {
     setShowAddPasskeyModal(true);
@@ -93,12 +58,12 @@ export function ProfileMenu() {
   };
 
   const handleLogout = useCallback(async () => {
-    await logout();
+    await AuthController.logout();
     // Also disconnect wallet when logging out
     if (isConnected) {
       disconnect();
     }
-  }, [logout, isConnected, disconnect]);
+  }, [isConnected, disconnect]);
 
   const handleDisconnectWallet = useCallback(() => {
     disconnect();
