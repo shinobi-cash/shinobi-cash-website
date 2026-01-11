@@ -8,12 +8,13 @@
  */
 
 import { EncryptionService } from "@shinobi-cash/core";
-import type { IndexedDBAdapter } from "../adapters/IndexedDBAdapter";
+import type { IndexedDBStore } from "../adapters/IndexedDBStore";
 import type { WrappedAMK } from "../interfaces/IDataTypes";
+import type { WalletAccountId } from "@/features/auth/utils";
 
 export class WrappedAMKRepository {
   constructor(
-    private storageAdapter: IndexedDBAdapter,
+    private storageAdapter: IndexedDBStore,
     private encryptionService: EncryptionService
   ) {}
 
@@ -21,12 +22,12 @@ export class WrappedAMKRepository {
    * Store wrapped AMK for a specific auth method
    * Creates a new encrypted version of the AMK wrapped with the provided KEK
    *
-   * @param accountId - Wallet account ID
+   * @param accountId - Wallet account ID (validated)
    * @param wrappedBy - Auth method ("wallet" or "passkey")
    * @param amk - Account Master Key (privateKey) to wrap
    */
   async storeWrappedAMK(
-    accountId: string,
+    accountId: WalletAccountId,
     wrappedBy: "wallet" | "passkey",
     amk: string
   ): Promise<void> {
@@ -108,17 +109,9 @@ export class WrappedAMKRepository {
   }
 
   /**
-   * Check if wrapped AMK exists for a specific auth method
-   */
-  async hasWrappedAMK(accountId: string, wrappedBy: "wallet" | "passkey"): Promise<boolean> {
-    const wrapped = await this.getWrappedAMK(accountId, wrappedBy);
-    return wrapped !== null;
-  }
-
-  /**
    * Delete wrapped AMK for a specific auth method
    */
-  async deleteWrappedAMK(accountId: string, wrappedBy: "wallet" | "passkey"): Promise<void> {
+  async deleteWrappedAMK(accountId: WalletAccountId, wrappedBy: "wallet" | "passkey"): Promise<void> {
     const storageKey = `${accountId}:amk:${wrappedBy}`;
     await this.storageAdapter.remove(storageKey);
   }

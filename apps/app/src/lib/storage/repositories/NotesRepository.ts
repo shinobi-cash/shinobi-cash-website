@@ -1,6 +1,8 @@
 /**
- * Notes Repository - Domain-specific note storage operations
- * Maintains exact logic and data compatibility with current noteCache implementation
+ * NotesRepository
+ * NOTE:
+ * This module is designed to be Web Worker compatible.
+ * Do not introduce direct storage or DOM dependencies.
  */
 
 import {
@@ -14,17 +16,17 @@ import {
   type ActivityFetcher,
   type DiscoveryState,
 } from "@shinobi-cash/core";
-import type { IndexedDBAdapter } from "../adapters/IndexedDBAdapter";
-import type { StoredEncryptedData } from "../interfaces/IDataTypes";
+import type { IndexedDBStore } from "../adapters/IndexedDBStore";
+import type { EncryptedNotesData } from "../interfaces/IDataTypes";
 
 export class NotesRepository {
   constructor(
-    private storageAdapter: IndexedDBAdapter,
+    private storageAdapter: IndexedDBStore,
     private encryptionService: EncryptionService
   ) {}
 
   /**
-   * Generate storage key - exact implementation from noteCache
+   * Generate storage key
    */
   private async getKey(publicKey: string, poolAddress: string): Promise<string> {
     const publicKeyHash = await EncryptionService.createHash(publicKey);
@@ -34,7 +36,7 @@ export class NotesRepository {
   }
 
   /**
-   * Get cached notes - exact implementation from noteCache.getCachedNotes
+   * Get cached notes
    */
   async getCachedNotes(publicKey: string, poolAddress: string): Promise<DiscoveryResult | null> {
     if (!this.encryptionService.isKeyAvailable()) {
@@ -56,7 +58,7 @@ export class NotesRepository {
   }
 
   /**
-   * Store discovered notes - exact implementation from noteCache.storeDiscoveredNotes
+   * Store discovered notes
    */
   async storeDiscoveredNotes(
     publicKey: string,
@@ -74,34 +76,7 @@ export class NotesRepository {
   }
 
   /**
-   * Get next deposit index - exact implementation from noteCache.getNextDepositIndex
-   */
-  async getNextDepositIndex(publicKey: string, poolAddress: string): Promise<number> {
-    const cached = await this.getCachedData(publicKey, poolAddress);
-    return cached ? cached.lastUsedDepositIndex + 1 : 0;
-  }
-
-  /**
-   * Update last used deposit index - exact implementation from noteCache.updateLastUsedDepositIndex
-   */
-  async updateLastUsedDepositIndex(
-    publicKey: string,
-    poolAddress: string,
-    depositIndex: number
-  ): Promise<void> {
-    const cached = await this.getCachedData(publicKey, poolAddress);
-
-    const notes = cached ? cached.notes : [];
-    const lastUsedIndex = cached
-      ? Math.max(cached.lastUsedDepositIndex, depositIndex)
-      : depositIndex;
-    const lastProcessedCursor = cached ? cached.lastProcessedCursor : undefined;
-
-    await this.storeData(publicKey, poolAddress, notes, lastUsedIndex, lastProcessedCursor);
-  }
-
-  /**
-   * Store data internally - exact implementation from noteCache.storeData
+   * Store data internally
    */
   async storeData(
     publicKey: string,
@@ -121,10 +96,8 @@ export class NotesRepository {
 
     const encrypted = await this.encryptionService.encrypt(sensitiveData);
 
-    const storageData: StoredEncryptedData = {
+    const storageData: EncryptedNotesData = {
       id: await this.getKey(publicKey, poolAddress),
-      publicKeyHash: await EncryptionService.createHash(publicKey),
-      poolAddressHash: await EncryptionService.createHash(poolAddress),
       encryptedPayload: {
         iv: this.encryptionService.arrayBufferToBase64(encrypted.iv),
         data: this.encryptionService.arrayBufferToBase64(encrypted.data),
@@ -137,14 +110,14 @@ export class NotesRepository {
   }
 
   /**
-   * Get cached data internally - exact implementation from noteCache.getCachedData
+   * Get cached data internally
    */
   private async getCachedData(
     publicKey: string,
     poolAddress: string
   ): Promise<CachedNoteData | null> {
     const key = await this.getKey(publicKey, poolAddress);
-    const result = (await this.storageAdapter.get(key)) as StoredEncryptedData | null;
+    const result = (await this.storageAdapter.get(key)) as EncryptedNotesData | null;
 
     if (result) {
       const encryptedData: EncryptedData = {

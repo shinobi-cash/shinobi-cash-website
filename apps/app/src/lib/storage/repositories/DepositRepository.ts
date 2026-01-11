@@ -24,18 +24,6 @@ export class DepositRepository {
   }
 
   /**
-   * Record deposit index after successful deposit
-   * Updates the last used deposit index in storage
-   */
-  async recordDepositIndex(
-    publicKey: string,
-    poolAddress: string,
-    depositIndex: number
-  ): Promise<void> {
-    await this.notesRepo.updateLastUsedDepositIndex(publicKey, poolAddress, depositIndex);
-  }
-
-  /**
    * Generate deposit commitment (composes core crypto primitives + storage)
    *
    * This method demonstrates app-layer composition:

@@ -1,33 +1,28 @@
 /**
  * Session Repository - Session and browser storage operations
- * Maintains exact logic with current keyDerivation.ts and noteCache session methods
  */
 
+import { IBrowserStorageAdapter } from "../adapters/types";
 import type { SessionInfo } from "../interfaces/IDataTypes";
-import type { IBrowserStorageAdapter } from "../interfaces/IStorageAdapter";
+import type { WalletAccountId } from "@/features/auth/utils";
 
 // Session constants - exact match to keyDerivation.ts
 const SESSION_KEY = "shinobi_session";
-const SESSION_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 24h
+const SESSION_TIMEOUT_MS = 60 * 60 * 1000; //  1h
 
 export class SessionRepository {
-  constructor(
-    private localStorageAdapter: IBrowserStorageAdapter,
-    private sessionStorageAdapter: IBrowserStorageAdapter
-  ) {}
+  private sessionStorageAdapter: IBrowserStorageAdapter;
+  constructor(_sessionStorageAdapter: IBrowserStorageAdapter) {
+    this.sessionStorageAdapter = _sessionStorageAdapter;
+  }
 
   /**
    * Store session info - exact implementation from keyDerivation.storeSessionInfo
    */
-  async storeSessionInfo(
-    accountName: string,
-    authMethod: "passkey" | "wallet",
-    opts?: { credentialId?: string }
-  ): Promise<void> {
+  async storeSessionInfo(accountId: WalletAccountId, opts?: { credentialId?: string }): Promise<void> {
     const isIframe = window.self !== window.top;
     const sessionInfo: SessionInfo = {
-      accountName: accountName.trim(),
-      authMethod,
+      accountId,
       credentialId: opts?.credentialId,
       lastAuthTime: Date.now(),
       environment: isIframe ? "iframe" : "native",
@@ -86,7 +81,7 @@ export class SessionRepository {
   async updateSessionLastAuth(): Promise<void> {
     const s = await this.getStoredSessionInfo();
     if (s) {
-      await this.storeSessionInfo(s.accountName, s.authMethod, { credentialId: s.credentialId });
+      await this.storeSessionInfo(s.accountId, { credentialId: s.credentialId });
     }
   }
 
@@ -113,7 +108,6 @@ export class SessionRepository {
     try {
       await this.sessionStorageAdapter.set(SESSION_KEY, updatedSession);
       console.debug("[SessionRepository] Added passkey credential to existing session", {
-        authMethod: updatedSession.authMethod,
         hasCredentialId: !!updatedSession.credentialId,
       });
     } catch (e) {
@@ -144,56 +138,5 @@ export class SessionRepository {
     } catch (e) {
       console.warn("Failed to remove passkey from session:", e);
     }
-  }
-
-  /**
-   * Store user salt - from keyDerivation.getOrCreateUserSalt logic
-   */
-  async storeUserSalt(accountName: string, salt: Uint8Array): Promise<void> {
-    const key = `shinobi_user_salt:${accountName.toLowerCase().trim()}`;
-    const base64Salt = btoa(String.fromCharCode(...salt));
-    await this.localStorageAdapter.set(key, base64Salt);
-  }
-
-  /**
-   * Get user salt - from keyDerivation.getOrCreateUserSalt logic
-   */
-  async getUserSalt(accountName: string): Promise<Uint8Array | null> {
-    const key = `shinobi_user_salt:${accountName.toLowerCase().trim()}`;
-    const existing = (await this.localStorageAdapter.get(key)) as string | null;
-    if (existing) {
-      const bin = atob(existing);
-      const out = new Uint8Array(bin.length);
-      for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-      return out;
-    }
-    return null;
-  }
-
-  /**
-   * Create user salt if doesn't exist - from keyDerivation.getOrCreateUserSalt logic
-   */
-  async getOrCreateUserSalt(accountName: string): Promise<Uint8Array> {
-    const existing = await this.getUserSalt(accountName);
-    if (existing) return existing;
-
-    const salt = new Uint8Array(16);
-    crypto.getRandomValues(salt);
-    await this.storeUserSalt(accountName, salt);
-    return salt;
-  }
-
-  /**
-   * Store theme preference - from ThemeContext.tsx
-   */
-  async storeTheme(theme: string, storageKey = "shinobi.cash.theme"): Promise<void> {
-    await this.localStorageAdapter.set(storageKey, theme);
-  }
-
-  /**
-   * Get theme preference - from ThemeContext.tsx
-   */
-  async getTheme(storageKey = "shinobi.cash.theme"): Promise<string | null> {
-    return this.localStorageAdapter.get(storageKey) as Promise<string | null>;
   }
 }

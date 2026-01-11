@@ -1,163 +1,129 @@
 /**
  * Account Repository - Account data storage operations
+ * Wallet-based accounts only (passkey is an unlock method, not an account type)
  */
 
 import { ethers } from "ethers";
-import { EncryptionService } from "@shinobi-cash/core";
-import type { IndexedDBAdapter } from "../adapters/IndexedDBAdapter";
-import type { CachedAccountData } from "../interfaces/IDataTypes";
+import type { AccountMetadata, AccountData } from "../interfaces/IDataTypes";
+import type { WalletAccountId } from "@/features/auth/utils";
+import { assertWalletAccountId } from "@/features/auth/utils";
+import { IndexedDBStore } from "../adapters/IndexedDBStore";
 
 /**
- * Stored account metadata (NO AMK)
- * CRITICAL INVARIANT: privateKey (AMK) is NEVER stored in account metadata
- * AMK is stored ONLY in wrapped-amk store, encrypted per auth method
- * publicKey and address are derived from AMK at runtime
+ * Derive publicKey from AMK
+ * Must remain deterministic and pure
  */
-type StoredAccountMetadata = Omit<CachedAccountData, "privateKey" | "publicKey" | "address">;
-
-/**
- * Derive publicKey and address from privateKey
- */
-function deriveKeysFromPrivateKey(privateKey: string): { publicKey: string; address: string } {
+function deriveKeysFromPrivateKey(privateKey: string): {
+  publicKey: string;
+} {
   const wallet = new ethers.Wallet(privateKey);
   return {
     publicKey: wallet.signingKey.publicKey,
-    address: wallet.address,
   };
 }
 
 /**
- * AccountIndex (renamed from AccountMetadata)
- * Canonical unencrypted account index for pre-auth discovery
- * Used for account listing and UX decisions before authentication
+ * Canonical unencrypted account index
+ * Used for pre-auth discovery and UX
  */
 export type AccountIndex = {
   id: string;
-  type: "passkey" | "wallet";
-  publicKeyHash: string;
-  createdAt: number;
 };
 
 /**
- * Full storage record with unencrypted metadata
- * CRITICAL: No AMK stored here, only metadata
+ * Full stored account record (NO AMK)
  */
 type StorageRecord = AccountIndex & {
-  metadata: StoredAccountMetadata;
+  profile: AccountMetadata;
 };
 
 function isStorageRecord(value: unknown): value is StorageRecord {
   if (!value || typeof value !== "object") return false;
   const v = value as Record<string, unknown>;
-  return (
-    typeof v.id === "string" &&
-    typeof v.type === "string" &&
-    v.type === "wallet" && // Only wallet accounts exist now
-    typeof v.publicKeyHash === "string" &&
-    !!v.metadata &&
-    typeof v.metadata === "object" &&
-    typeof v.createdAt === "number"
-  );
+  return typeof v.id === "string" && typeof v.profile === "object" && v.profile !== null;
 }
 
 export class AccountRepository {
-  constructor(private storageAdapter: IndexedDBAdapter) {}
+  constructor(private storageAdapter: IndexedDBStore) {}
 
   /**
-   * Store account metadata (WITHOUT AMK)
-   * CRITICAL: AMK (privateKey) is NOT stored here
+   * Store account metadata (WITHOUT AMK or derived fields)
    * AMK is stored separately in wrapped-amk store
+   *
+   * IMPORTANT: This method MERGES metadata to preserve existing fields.
+   * This ensures partial updates don't drop other fields (forward-compatible).
+   *
+   * @param metadata - Account metadata (excludes privateKey, publicKey)
    */
-  async storeAccountData(accountData: CachedAccountData): Promise<void> {
-    // Account metadata is NO LONGER encrypted with KEK
-    // It's stored as plaintext metadata (publicKey hash for indexing)
-    const publicKeyHash = await EncryptionService.createHash(accountData.publicKey);
+  async storeAccountData(metadata: AccountMetadata): Promise<void> {
+    const existing = await this.getStoredAccountRecord(metadata.accountId);
 
-    // Remove ALL secret fields (privateKey, publicKey, address)
-    // Only store metadata
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { privateKey: _pk, publicKey: _pub, address: _addr, ...metadata } = accountData;
-
-    // Use accountId as storage key (all accounts are wallet accounts now)
-    const storageKey = accountData.accountId;
-
-    const storageData: StorageRecord = {
-      id: storageKey,
-      type: accountData.type, // Always "wallet" now
-      publicKeyHash,
-      metadata: metadata as StoredAccountMetadata, // No encryption, just metadata
-      createdAt: accountData.createdAt,
+    const record: StorageRecord = {
+      id: metadata.accountId,
+      profile: {
+        ...(existing?.profile ?? {}),
+        ...metadata,
+      },
     };
 
-    await this.storageAdapter.set(storageData);
+    await this.storageAdapter.set(record);
   }
 
   /**
-   * Get encrypted account record by name
-   * Returns raw encrypted storage record without decryption
+   * Get raw stored account record (NO AMK)
    */
-  async getEncryptedAccountRecord(accountName: string): Promise<StorageRecord | null> {
-    const result = (await this.storageAdapter.get(accountName)) as unknown;
-
-    if (!isStorageRecord(result)) {
-      return null;
-    }
-    return result;
+  async getStoredAccountRecord(accountId: WalletAccountId): Promise<StorageRecord | null> {
+    const result = (await this.storageAdapter.get(accountId)) as unknown;
+    return isStorageRecord(result) ? result : null;
   }
 
   /**
-   * Get account metadata by name (NO AMK, NO DECRYPTION)
-   * Returns metadata only. Caller must provide AMK-derived fields separately.
+   * Get full account data by accountId using provided AMK
+   * Reconstructs runtime AccountData from stored metadata + AMK
    *
-   * @param accountName - Account ID to retrieve
+   * @param accountId - Account identifier (validated)
    * @param amk - Account Master Key (for deriving publicKey/address)
-   * @returns Complete account data with derived fields
+   * @returns Full account data with secrets and derived fields
    */
-  async getAccountMetadata(accountName: string, amk: string): Promise<CachedAccountData | null> {
-    if (!accountName) {
-      throw new Error("No account name provided");
-    }
+  async getAccountMetadata(accountId: WalletAccountId, amk: string): Promise<AccountData | null> {
+    const record = await this.getStoredAccountRecord(accountId);
+    if (!record) return null;
 
-    const result = (await this.storageAdapter.get(accountName)) as unknown;
-    if (isStorageRecord(result)) {
-      // Derive publicKey and address from AMK
-      const { publicKey, address } = deriveKeysFromPrivateKey(amk);
+    const { publicKey } = deriveKeysFromPrivateKey(amk);
 
-      // Return complete account data with derived fields
-      return {
-        ...result.metadata,
-        privateKey: amk, // Add AMK back (in memory only)
-        publicKey,
-        address,
-      } as CachedAccountData;
-    }
-    return null;
+    return {
+      ...record.profile,
+      privateKey: amk,
+      publicKey,
+    };
   }
 
   /**
-   * Check if account exists - exact implementation from noteCache.accountExists
+   * Check if account exists
    */
-  async accountExists(accountName: string): Promise<boolean> {
-    return (await this.getEncryptedAccountRecord(accountName)) !== null;
+  async accountExists(accountId: WalletAccountId): Promise<boolean> {
+    return (await this.getStoredAccountRecord(accountId)) !== null;
   }
 
   /**
-   * List account index (unencrypted account metadata)
-   * Safe to call before session initialization
+   * List account index (safe before auth)
    */
   async listAccountIndex(): Promise<AccountIndex[]> {
-    const names = await this.storageAdapter.keys();
+    const keys = await this.storageAdapter.keys();
     const index: AccountIndex[] = [];
 
-    for (const name of names) {
-      const record = await this.getEncryptedAccountRecord(name);
-      if (record) {
-        index.push({
-          id: record.id,
-          type: record.type,
-          publicKeyHash: record.publicKeyHash,
-          createdAt: record.createdAt,
-        });
+    for (const key of keys) {
+      try {
+        const accountId = assertWalletAccountId(key);
+        const record = await this.getStoredAccountRecord(accountId);
+        if (record) {
+          index.push({
+            id: record.id,
+          });
+        }
+      } catch {
+        // Skip invalid account IDs
+        console.warn(`[AccountRepository] Skipping invalid account ID: ${key}`);
       }
     }
 
