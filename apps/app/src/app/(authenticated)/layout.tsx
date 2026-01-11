@@ -1,10 +1,11 @@
 "use client";
 
-import { useIsAuthenticated } from "@/features/auth/hooks/useAuthStore";
 import { AuthScreen } from "@/features/auth/ui/screens/AuthScreen";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { DashboardTabs } from "@/components/layout/DashboardTabs";
+import { useSnapshot } from "valtio";
+import { AuthController } from "@/features/auth/controllers/AuthController";
 
 /**
  * Authenticated Layout
@@ -12,8 +13,10 @@ import { DashboardTabs } from "@/components/layout/DashboardTabs";
  * Provides auth check, header, card UI with tabs, and footer
  */
 export default function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
-  const isAuthenticated = useIsAuthenticated();
+  const state = useSnapshot(AuthController.state);
+  const isAuthenticated = state.state.status === "authenticated";
 
+  console.log({ isAuthenticated });
   // Show auth screen if not authenticated
   if (!isAuthenticated) {
     return (

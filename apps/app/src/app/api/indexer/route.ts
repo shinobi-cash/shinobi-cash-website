@@ -35,7 +35,7 @@ const serverClient = new IndexerClient({
 
 // Cache TTL for different endpoints
 const CACHE_CONFIG = {
-  activities: 10, // 10 seconds (real-time data)
+  activities: 2, // 10 seconds (real-time data)
   stateTree: 30, // 30 seconds (changes occasionally)
   aspRoot: 60, // 1 minute (updates periodically)
   health: 5, // 5 seconds
