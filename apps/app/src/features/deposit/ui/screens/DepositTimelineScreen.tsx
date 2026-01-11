@@ -31,19 +31,22 @@ export function DepositTimelineScreen({
   walletError,
   onClose,
 }: DepositTimelineScreenProps) {
+  // Timeline UI tracks *privacy indexing only*
+  // On-chain confirmation is owned by DepositController (confirmed-onchain state)
   const { trackingStatus, trackedTxHash, trackedChainId } = useTransactionTracking();
 
   const explorerUrl =
     trackedTxHash && trackedChainId ? getTxExplorerUrl(trackedChainId, trackedTxHash) : null;
 
+  // Privacy indexer status (NOT on-chain confirmation)
   const isIndexing = trackingStatus === "waiting";
-  const isConfirmed = trackingStatus === "synced";
+  const isIndexed = trackingStatus === "synced"; // Privacy pool has indexed the deposit
   const isOnChainFailed = trackingStatus === "failed";
   const isWalletCancelled = walletError && isUserCancellation(walletError);
 
   // ----- Hero copy -----
 
-  const title = isConfirmed
+  const title = isIndexed
     ? "Deposit confirmed"
     : isWalletCancelled
       ? "Transaction cancelled"
@@ -53,7 +56,7 @@ export function DepositTimelineScreen({
           ? "Confirm in wallet"
           : "Processing deposit";
 
-  const subtitle = isConfirmed
+  const subtitle = isIndexed
     ? "Your deposit note has been created and secured privately."
     : isWalletCancelled
       ? "You cancelled the transaction in your wallet."
@@ -83,7 +86,7 @@ export function DepositTimelineScreen({
       status: isOnChainFailed
         ? "failed"
         : trackedTxHash
-          ? isIndexing || isConfirmed
+          ? isIndexing || isIndexed
             ? "completed"
             : "active"
           : "pending",
@@ -91,12 +94,12 @@ export function DepositTimelineScreen({
     },
     {
       label: "Deposit indexing",
-      status: isConfirmed ? "completed" : isIndexing ? "active" : "pending",
+      status: isIndexed ? "completed" : isIndexing ? "active" : "pending",
       description: "Your deposit note is indexed privately.",
     },
     {
       label: "Deposit secured",
-      status: isConfirmed ? "completed" : "pending",
+      status: isIndexed ? "completed" : "pending",
       description: "Your funds are now secured and ready for private withdrawal.",
     },
   ];
@@ -111,7 +114,7 @@ export function DepositTimelineScreen({
   };
 
   const StatusIcon = () => {
-    if (isConfirmed) return <CheckCircle className="h-12 w-12 text-green-500" />;
+    if (isIndexed) return <CheckCircle className="h-12 w-12 text-green-500" />;
     if (isWalletCancelled || isOnChainFailed) return <XCircle className="h-12 w-12 text-red-500" />;
     return <Hourglass className="h-12 w-12 text-gray-300" />;
   };
@@ -125,6 +128,8 @@ export function DepositTimelineScreen({
         {/* Hero */}
         <div className="flex flex-col items-center space-y-4 text-center">
           <StatusIcon />
+
+          <h2 className="text-2xl font-bold">{title}</h2>
 
           <span className="text-5xl font-extrabold">{noteAmount.toFixed(4)} ETH</span>
 

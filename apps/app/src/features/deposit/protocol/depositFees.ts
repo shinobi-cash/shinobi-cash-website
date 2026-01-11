@@ -11,7 +11,7 @@ const BPS_DIVISOR = 10_000;
  * @param depositAmount - Amount being deposited
  * @returns Compliance fee amount
  */
-export function calculateComplianceFee(depositAmount: number): number {
+function calculateComplianceFee(depositAmount: number): number {
   return (depositAmount * COMPLIANCE_FEE_BPS) / BPS_DIVISOR;
 }
 
@@ -20,7 +20,7 @@ export function calculateComplianceFee(depositAmount: number): number {
  * @param depositAmount - Amount being deposited
  * @returns Amount user will receive in their note (after 1% fee)
  */
-export function calculateDepositNoteAmount(depositAmount: number): number {
+function calculateDepositNoteAmount(depositAmount: number): number {
   const fee = calculateComplianceFee(depositAmount);
   return depositAmount - fee;
 }

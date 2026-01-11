@@ -20,8 +20,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/component
 import { modal } from "@/context";
 import { showToast } from "@/lib/toast";
 import { getUserMessage } from "@/lib/errors/errorHandler";
-import { useDepositController } from "../../controller/useDepositController";
-import { DEPOSIT_STATUS_LABELS } from "../../types/depositStatus";
+import { useDepositControllerSnapshot } from "../../hooks/useDepositControllerSnapshot";
+import { DepositController, DepositSelectors } from "../../controllers/DepositController";
 import { DepositPreviewScreen } from "../screens/DepositPreviewScreen";
 import { DepositTimelineScreen } from "../screens/DepositTimelineScreen";
 import { ScreenLayout } from "@/components/layouts/ScreenLayout";
@@ -54,45 +54,49 @@ export function DepositForm({ asset }: DepositFormProps) {
 
   const screens = useScreenNavigation<DepositScreen>();
 
-  // All deposit logic is in the controller
-  const controller = useDepositController();
+  // Read-only snapshot from controller
+  const state = useDepositControllerSnapshot();
 
   // Track shown errors to prevent duplicate toasts
   const shownErrorsRef = useRef(new Set<string>());
 
   // Handle error toasts (UI side effect with domain-specific messages)
   useEffect(() => {
-    if (controller.lastError) {
-      const errorKey = `${controller.lastError.type}:${controller.lastError.message}`;
+    if (state.state.status === "error") {
+      const error = state.state.error;
+      const errorKey = `${error.type}:${error.message}`;
+
       if (!shownErrorsRef.current.has(errorKey)) {
         shownErrorsRef.current.add(errorKey);
 
         let errorMessage: string;
-        if (controller.lastError.type === "gas") {
-          errorMessage = getUserMessage(new Error(controller.lastError.message));
-        } else if (controller.lastError.type === "commitment") {
+        if (error.type === "precondition") {
+          errorMessage = error.message; // Preconditions are user-facing messages
+        } else if (error.type === "gas") {
+          errorMessage = getUserMessage(new Error(error.message));
+        } else if (error.type === "commitment") {
           errorMessage = "Note generation failed";
         } else {
-          errorMessage = getUserMessage(new Error(controller.lastError.message));
+          errorMessage = getUserMessage(new Error(error.message));
         }
 
         showToast.error(errorMessage, { duration: 5000 });
       }
     }
-  }, [controller.lastError]);
+  }, [state.state]);
 
   // Clear shown errors when status resets (UX hygiene)
   useEffect(() => {
-    if (controller.status === "idle") {
+    if (state.state.status === "idle") {
       shownErrorsRef.current.clear();
     }
-  }, [controller.status]);
+  }, [state.state.status]);
 
   // Copy address handler
   const handleCopyAddress = async () => {
-    if (!controller.address) return;
+    if (!state.wallet.address) return;
     try {
-      await navigator.clipboard.writeText(controller.address);
+      await navigator.clipboard.writeText(state.wallet.address);
       setCopiedAddress(true);
       setTimeout(() => setCopiedAddress(false), 2000);
     } catch (error) {
@@ -105,19 +109,43 @@ export function DepositForm({ asset }: DepositFormProps) {
   };
 
   const handleConfirmDeposit = () => {
-    controller.deposit();
+    DepositController.submit();
     screens.navigate("timeline");
+  };
+
+  // Auto-prepare when prerequisites are met
+  // Policy lives in controller, UI just expresses intent
+  useEffect(() => {
+    if (DepositSelectors.canAutoPrepare()) {
+      DepositController.schedulePrepare();
+    }
+  }, [
+    state.amount,
+    state.wallet.isConnected,
+    state.crypto.cryptoReady,
+    state.wallet.chainId,
+  ]);
+
+  const handleReviewDeposit = () => {
+    // Already prepared, just navigate
+    if (state.state.status === "ready") {
+      screens.navigate("preview");
+    }
   };
 
   // Deposit Timeline Screen
   if (screens.is("timeline")) {
+    const depositAmounts = state.state.status === "ready" ? state.state.amounts : { noteAmount: 0 };
+    const isSubmitting = state.state.status === "submitting";
+    const txError = state.state.status === "error" ? state.state.error.message : null;
+
     return (
       <DepositTimelineScreen
-        noteAmount={controller.depositNoteAmount}
-        isWalletSubmitting={controller.isDepositing}
-        walletError={controller.transactionError}
+        noteAmount={depositAmounts.noteAmount}
+        isWalletSubmitting={isSubmitting}
+        walletError={txError}
         onClose={() => {
-          controller.reset();
+          DepositController.reset();
           screens.close();
         }}
       />
@@ -125,20 +153,24 @@ export function DepositForm({ asset }: DepositFormProps) {
   }
 
   // Show deposit preview screen
-  if (screens.is("preview") && controller.address) {
+  if (screens.is("preview") && state.wallet.address) {
+    const depositAmounts = state.state.status === "ready" ? state.state.amounts : { noteAmount: 0, complianceFee: 0, solverFee: 0 };
+    const gasEstimate = state.state.status === "ready" ? state.state.gasEstimate : { gasCostEth: "0" };
+    const isSubmitting = state.state.status === "submitting";
+
     return (
       <DepositPreviewScreen
         onBack={screens.close}
         onConfirm={handleConfirmDeposit}
-        depositAmount={controller.amount}
-        complianceFee={controller.complianceFee}
-        gasCostEth={controller.gasCostEth}
-        solverFee={controller.solverFee}
+        depositAmount={state.amount}
+        complianceFee={depositAmounts.complianceFee}
+        gasCostEth={gasEstimate.gasCostEth}
+        solverFee={depositAmounts.solverFee}
         originChainId={chainId}
         destinationChainId={POOL_CHAIN.id}
         poolAddress={SHINOBI_CASH_ETH_POOL.address}
-        userAddress={controller.address}
-        isProcessing={controller.isDepositing}
+        userAddress={state.wallet.address}
+        isProcessing={isSubmitting}
       />
     );
   }
@@ -166,13 +198,13 @@ export function DepositForm({ asset }: DepositFormProps) {
         <InputLabel
           label="You Pay"
           labelRight={
-            controller.address ? (
+            state.wallet.address ? (
               <Button
                 onClick={handleCopyAddress}
                 variant="ghost"
                 className="flex h-auto items-center gap-1.5 p-0 text-sm text-purple-400 transition-colors hover:text-purple-300"
               >
-                {controller.address.slice(0, 6)}...{controller.address.slice(-4)}
+                {state.wallet.address.slice(0, 6)}...{state.wallet.address.slice(-4)}
                 {copiedAddress ? (
                   <Check className="h-3 w-3 text-green-500" />
                 ) : (
@@ -191,18 +223,18 @@ export function DepositForm({ asset }: DepositFormProps) {
           }
         />
         <TokenAmountInputWithBalance
-          amount={controller.amount}
-          onAmountChange={controller.setAmount}
-          balance={controller.balance}
+          amount={state.amount}
+          onAmountChange={(value) => DepositController.setAmount(value)}
+          balance={state.wallet.balance}
           assetSymbol={asset.symbol}
-          onMaxClick={() => controller.setAmount(controller.balance)}
-          disabled={controller.isDepositing || !controller.isOnSupportedChain}
+          onMaxClick={() => DepositController.setAmount(state.wallet.balance)}
+          disabled={state.state.status === "submitting" || !DepositSelectors.isOnSupportedChain()}
         >
           <TokenChainSelector
             asset={asset}
             chainId={chainId}
             onClick={() => screens.navigate("assetSelector")}
-            disabled={controller.isDepositing || !controller.isOnSupportedChain}
+            disabled={state.state.status === "submitting" || !DepositSelectors.isOnSupportedChain()}
             showChevron={true}
           />
         </TokenAmountInputWithBalance>
@@ -213,7 +245,7 @@ export function DepositForm({ asset }: DepositFormProps) {
         {/* You Receive Section */}
         <InputLabel label="You Receive (Deposit Note)" labelRight={<DepositNoteInfo />} />
         <TokenAmountInput
-          amount={controller.depositNoteAmount > 0 ? controller.depositNoteAmount.toFixed(4) : "0"}
+          amount={state.state.status === "ready" ? state.state.amounts.noteAmount.toFixed(4) : "0"}
           onAmountChange={() => {}}
           disabled={true}
         >
@@ -222,27 +254,35 @@ export function DepositForm({ asset }: DepositFormProps) {
 
         {/* Fee Breakdown */}
         <FeeBreakdown
-          executionFee={controller.gasCostEth}
+          executionFee={state.state.status === "ready" ? state.state.gasEstimate.gasCostEth : "0"}
           assetSymbol={asset.symbol}
-          solverFee={controller.solverFee}
-          isCrossChain={controller.isCrossChain}
-          isEstimating={controller.isEstimatingGas}
+          solverFee={state.state.status === "ready" ? state.state.amounts.solverFee : 0}
+          isCrossChain={DepositSelectors.isCrossChain()}
+          isEstimating={state.state.status === "preparing" && state.state.step === "gas"}
           decimals={6}
         />
 
         {/* Submit Button */}
         <div className="mt-2 sm:mt-4">
           <Button
-            disabled={!controller.canDeposit}
-            onClick={() => screens.navigate("preview")}
+            disabled={!DepositSelectors.canDeposit()}
+            onClick={handleReviewDeposit}
             className="h-12 w-full rounded-xl text-base font-semibold disabled:cursor-not-allowed disabled:opacity-50 sm:h-14 sm:text-lg"
             size="lg"
           >
-            {controller.status === "submitting" ? (
+            {state.state.status === "preparing" ? (
               <div className="flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                {DEPOSIT_STATUS_LABELS[controller.status]}
+                Preparing Deposit...
               </div>
+            ) : state.state.status === "ready" ? (
+              "Review Deposit"
+            ) : !state.amount.trim() ? (
+              "Enter Amount to Deposit"
+            ) : !state.wallet.isConnected ? (
+              "Connect Wallet to Continue"
+            ) : !DepositSelectors.isOnSupportedChain() ? (
+              "Switch to Supported Network"
             ) : (
               "Review Deposit"
             )}
