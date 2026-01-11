@@ -1,62 +1,28 @@
 /**
  * App-Specific Data Type Interfaces
- *
- * Note: Core types (Note, NoteChain, CachedNoteData, DiscoveryResult, EncryptedData)
- * should be imported from @shinobi-cash/core directly
  */
 
-// Passkey unlock metadata (device-scoped convenience unlock)
-export interface PasskeyUnlock {
-  enabled: boolean;
-  credentialId: string;
-  deviceName: string; // "MacBook Pro", "iPhone", etc.
-  createdAt: number;
+import type { WalletAccountId } from "@/features/auth/utils";
+
+/**
+ * Account Metadata - This is stored in IndexedDB account store
+ */
+export interface AccountMetadata {
+  accountId: WalletAccountId; // Technical ID: "0xabc:chain-1" (format: walletAddress:chain-chainId)
+  credentialId?: string; // WebAuthn credential ID if passkey is enabled
 }
 
-// Account data - wallet is the ONLY account type
-// Passkey is just an optional unlock method, not a separate account
-export type CachedAccountData = WalletAccountData;
-
-// Wallet account (the ONLY identity)
-export interface WalletAccountData {
-  type: "wallet";
-  accountId: string; // Technical ID: "0xabc-1" (format: walletAddress-chainId)
-  displayName: string; // User-friendly: "Account 1"
-  walletAddress: string; // External wallet address (MetaMask, etc.)
-  chainId: number; // 1, 137, etc.
-  privateKey: string; // Stored (source of truth)
-  publicKey: string; // Derived from privateKey (not persisted)
-  address: string; // Derived from publicKey (not persisted)
-  createdAt: number;
-
-  // NEW: Optional passkey unlock for this wallet
-  passkeyUnlock?: PasskeyUnlock;
+/**
+ * Account Data - Runtime representation (includes secrets + derived fields)
+ * This is NEVER persisted to storage
+ */
+export interface AccountData extends AccountMetadata {
+  privateKey: string; // AMK - in memory only (from wrapped-amk store)
+  publicKey: string; // Derived from privateKey at runtime
 }
 
-// DEPRECATED: Passkey accounts no longer exist
-// Passkey is now a property of wallet accounts (passkeyUnlock)
-// This interface is kept for reference only
-export interface PasskeyAccountData {
-  type: "passkey";
-  accountName: string;
-  displayName: string;
-  privateKey: string;
-  publicKey: string;
-  address: string;
-  createdAt: number;
-}
-
-export interface NamedPasskeyData {
-  accountName: string;
-  credentialId: string;
-  publicKeyHash: string;
-  created: number;
-}
-
-export interface StoredEncryptedData {
+export interface EncryptedNotesData {
   id: string;
-  publicKeyHash: string;
-  poolAddressHash: string;
   encryptedPayload: {
     iv: string;
     data: string;
@@ -67,8 +33,7 @@ export interface StoredEncryptedData {
 
 // Session types - from keyDerivation.ts
 export interface SessionInfo {
-  accountName: string;
-  authMethod: "passkey" | "wallet";
+  accountId: WalletAccountId;
   lastAuthTime: number;
   environment: "iframe" | "native";
   credentialId?: string; // Only for passkey auth
@@ -79,7 +44,7 @@ export interface SessionInfo {
 // This allows multiple auth methods to unlock the same AMK
 export interface WrappedAMK {
   id: string; // Storage key: "accountId:amk:wallet" or "accountId:amk:passkey"
-  accountId: string; // Wallet account ID
+  accountId: WalletAccountId; // Wallet account ID
   wrappedBy: "wallet" | "passkey"; // Which KEK encrypted this
   encryptedPrivateKey: string; // AMK encrypted with KEK
   iv: string; // Initialization vector
