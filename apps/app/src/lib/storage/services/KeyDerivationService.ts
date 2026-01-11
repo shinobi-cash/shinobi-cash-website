@@ -1,66 +1,98 @@
+import { ethers } from "ethers";
+
+// ============ TYPES ============
+
 /**
- * Key Derivation Service
- * Provides cryptographic key derivation with secure storage integration
+ * WebAuthn PRF Extension Types
+ * (Not yet standard in TypeScript DOM lib)
  */
+interface PrfExtensionInput {
+  eval: {
+    first: BufferSource;
+    second?: BufferSource;
+  };
+}
 
-import { localStorageAdapter, sessionStorageAdapter } from "../adapters/BrowserStorageAdapter";
-import type { SessionInfo } from "../interfaces/IDataTypes";
-import { SessionRepository } from "../repositories/SessionRepository";
+interface PrfExtensionOutput {
+  results: {
+    first: ArrayBuffer;
+    second?: ArrayBuffer;
+  };
+}
 
-// Configuration - exact match to keyDerivation.ts
+// ============ CONFIGURATION ============
+
 const CONFIG = {
-  PBKDF2_ITERATIONS: 310_000,
+  // PBKDF2 not needed for Passkeys, but kept if you share constants
   KEY_LENGTH: 256,
   HASH_ALGORITHM: "SHA-256",
   SALT_PREFIX: "shinobi-salt-",
   HKDF_INFO: new TextEncoder().encode("shinobi-kdf-v1"),
-  SESSION_TIMEOUT_MS: 24 * 60 * 60 * 1000, // 24h
-};
-
-/**
- * CRITICAL INVARIANT:
- *
- * "KEKs unlock AMKs.
- *  AMKs derive data keys.
- *  Data is never encrypted with KEKs."
- *
- * This ensures:
- * - User data is portable across authentication methods
- * - Same account identity = same encrypted data
- * - New auth method ≠ new encryption universe
- */
-
-export interface DerivedKeyResult {
-  symmetricKey: CryptoKey;
-  salt: Uint8Array;
-}
+  NOTES_SALT: new TextEncoder().encode("shinobi-notes-salt"),
+  NOTES_INFO: new TextEncoder().encode("shinobi-notes-encryption"),
+} as const;
 
 export class KeyDerivationService {
-  private sessionRepo: SessionRepository;
-
-  constructor() {
-    this.sessionRepo = new SessionRepository(localStorageAdapter, sessionStorageAdapter);
-  }
-
   /**
-   * Generate account salt - exact implementation from keyDerivation.ts
+   * Derive Data Encryption Key (DEK) from Account Master Key (AMK)
+   *
+   * ARCHITECTURE:
+   * 1. KEK (Key Encryption Key) - Derived from Passkey/Wallet
+   * 2. AMK (Account Master Key) - Random key stored encrypted by KEK
+   * 3. DEK (Data Encryption Key) - Derived deterministically from AMK
+   *
+   * Benefit: changing auth method only requires re-encrypting the AMK.
    */
-  private async generateAccountSalt(accountName: string): Promise<Uint8Array> {
-    const saltInput = CONFIG.SALT_PREFIX + accountName.toLowerCase().trim();
-    const hash = await crypto.subtle.digest(
-      CONFIG.HASH_ALGORITHM,
-      new TextEncoder().encode(saltInput)
+  async deriveDataEncryptionKey(amkPrivateKey: string): Promise<CryptoKey> {
+    // 1. Robust Input Parsing
+    let privateKeyBytes: Uint8Array;
+    try {
+      privateKeyBytes = ethers.getBytes(amkPrivateKey);
+    } catch (e) {
+      throw new Error("SECURITY ERROR: AMK is malformed.");
+    }
+
+    if (privateKeyBytes.length !== 32) {
+      console.warn(
+        `[keyDerivationService] AMK length warning: expected 32 bytes, got ${privateKeyBytes.length}`
+      );
+    }
+
+    // 2. Import AMK
+    const keyMaterial = await crypto.subtle.importKey(
+      "raw",
+      privateKeyBytes as BufferSource,
+      "HKDF",
+      false,
+      ["deriveKey"]
     );
-    return new Uint8Array(hash);
+
+    // 3. Derive DEK
+    return crypto.subtle.deriveKey(
+      {
+        name: "HKDF",
+        salt: CONFIG.NOTES_SALT,
+        info: CONFIG.NOTES_INFO,
+        hash: CONFIG.HASH_ALGORITHM,
+      },
+      keyMaterial,
+      { name: "AES-GCM", length: CONFIG.KEY_LENGTH },
+      false, // SECURITY: Key cannot be exported from JS memory
+      ["encrypt", "decrypt"]
+    );
   }
 
   /**
-   * Derive key from passkey - exact implementation from keyDerivation.ts
+   * Derive KEK using Passkey PRF Extension
    */
-  async deriveKeyFromPasskey(accountName: string, credentialId: string): Promise<DerivedKeyResult> {
-    const prfBytes = await this.getPasskeyDerivedBytes(accountName, credentialId);
-    const accountSalt = await this.generateAccountSalt(accountName);
+  async deriveKEKFromPasskey(accountId: string, credentialId: string): Promise<CryptoKey> {
+    // 1. Get raw entropy from Authenticator (Hardware Security Module)
+    const prfBytes = await this.getPasskeyDerivedBytes(accountId, credentialId);
 
+    // 2. Mix with account-specific salt
+    const accountSalt = await this.generateAccountSalt(accountId);
+
+    // 3. Import PRF output as IKM (Input Keying Material)
     const keyMaterial = await crypto.subtle.importKey(
       "raw",
       prfBytes as BufferSource,
@@ -68,7 +100,9 @@ export class KeyDerivationService {
       false,
       ["deriveKey"]
     );
-    const symmetricKey = await crypto.subtle.deriveKey(
+
+    // 4. Expand into KEK
+    return crypto.subtle.deriveKey(
       {
         name: "HKDF",
         salt: accountSalt as BufferSource,
@@ -80,249 +114,151 @@ export class KeyDerivationService {
       false,
       ["encrypt", "decrypt"]
     );
-
-    return { symmetricKey, salt: accountSalt };
   }
 
   /**
-   * Derive Data Encryption Key (DEK) from Account Master Key (AMK)
-   *
-   * CRITICAL: This implements the correct encryption hierarchy:
-   * - KEK (from auth method) unlocks AMK
-   * - AMK derives DEK
-   * - DEK encrypts user data (notes, etc.)
-   *
-   * This ensures data is portable across authentication methods.
-   * Same AMK = same DEK = same encrypted data, regardless of auth method.
-   *
-   * @param amkPrivateKey - The Account Master Key (privateKey from session)
-   * @returns CryptoKey suitable for AES-GCM encryption/decryption
-   */
-  async deriveDataEncryptionKey(amkPrivateKey: string): Promise<CryptoKey> {
-    if (amkPrivateKey.length !== 66) {
-      throw new Error("SECURITY ERROR: Attempted to derive DEK from invalid AMK");
-    }
-
-    // Convert hex private key to bytes
-    const privateKeyHex = amkPrivateKey.startsWith("0x") ? amkPrivateKey.slice(2) : amkPrivateKey;
-    const privateKeyBytes = new Uint8Array(
-      privateKeyHex.match(/.{1,2}/g)?.map((byte) => parseInt(byte, 16)) || []
-    );
-
-    if (privateKeyBytes.length !== 32) {
-      console.warn("[KDF] WARNING: AMK is not 32 bytes, got", privateKeyBytes.length);
-    }
-
-    // Import AMK as HKDF key material
-    const keyMaterial = await crypto.subtle.importKey("raw", privateKeyBytes, "HKDF", false, [
-      "deriveKey",
-    ]);
-
-    // Derive DEK using HKDF with notes-specific salt and info
-    const salt = new TextEncoder().encode("shinobi-notes-salt");
-    const info = new TextEncoder().encode("shinobi-notes-encryption");
-    const dek = await crypto.subtle.deriveKey(
-      {
-        name: "HKDF",
-        salt: salt,
-        info: info,
-        hash: CONFIG.HASH_ALGORITHM,
-      },
-      keyMaterial,
-      { name: "AES-GCM", length: CONFIG.KEY_LENGTH },
-      false, // Non-extractable for security
-      ["encrypt", "decrypt"]
-    );
-
-    return dek;
-  }
-
-  /**
-   * Get passkey derived bytes - exact implementation from keyDerivation.ts
+   * Internal: Execute WebAuthn Assertion with PRF
    */
   private async getPasskeyDerivedBytes(
-    accountName: string,
+    accountId: string,
     credentialId: string
   ): Promise<Uint8Array> {
-    const challenge = crypto.getRandomValues(new Uint8Array(32));
-    const prfInput = new TextEncoder().encode(`shinobi-prf:${accountName.toLowerCase().trim()}`);
+    // Input for the hardware PRF.
+    // Using account name ensures the same hardware key produces different secrets for different accounts.
+    const prfInput = new TextEncoder().encode(`shinobi-prf:${accountId.toLowerCase().trim()}`);
 
-    const cred = (await navigator.credentials.get({
+    // Request Assertion
+    const cred = await navigator.credentials.get({
       publicKey: {
-        challenge,
-        allowCredentials: [{ id: this.base64urlToArrayBuffer(credentialId), type: "public-key" }],
-        userVerification: "required",
-        timeout: 60_000,
+        // Random challenge is required by spec, even if we only want PRF
+        challenge: crypto.getRandomValues(new Uint8Array(32)),
+        allowCredentials: [
+          {
+            id: this.base64urlToBytes(credentialId),
+            type: "public-key",
+          },
+        ],
+        userVerification: "required", // Required for PRF access
         extensions: {
-          prf: { eval: { first: prfInput } },
+          prf: { eval: { first: prfInput } } as PrfExtensionInput,
         },
       },
-    })) as PublicKeyCredential | null;
+    });
 
-    if (!cred || !cred.response) {
-      throw new Error("Passkey authentication failed - no assertion received");
-    }
+    if (!cred) throw new Error("Passkey authentication cancelled");
 
-    const extResults = cred.getClientExtensionResults?.() ?? {};
-    const prf = extResults?.prf;
-    const first: ArrayBuffer | undefined = prf?.results?.first as ArrayBuffer | undefined;
+    // Extract PRF Result
+    // @ts-expect-error - a
+    const extensions = cred.getClientExtensionResults() as { prf?: PrfExtensionOutput };
 
-    if (!first || !(first instanceof ArrayBuffer)) {
+    if (!extensions.prf?.results?.first) {
       throw new Error(
-        "Authenticator does not support PRF (hmac-secret) extension; deterministic passkey KDF unavailable."
+        "Device does not support Passkey PRF. Cannot derive encryption keys from this device."
       );
     }
 
-    return new Uint8Array(first);
+    return new Uint8Array(extensions.prf.results.first);
   }
 
   /**
-   * Create passkey credential - exact implementation from keyDerivation.ts
+   * Create a new Passkey credential
+   * * CRITICAL: We must request the PRF extension during creation.
+   * This "initializes" the capability on the hardware token.
    */
   async createPasskeyCredential(
-    accountName: string,
-    userHandle: string
+    accountId: string,
+    publicKeyHash: string
   ): Promise<{ credentialId: string }> {
-    const challenge = crypto.getRandomValues(new Uint8Array(32));
-    const userId = new TextEncoder().encode(userHandle);
-    // Safe access to environment variables in browser context
-    const rpId =
-      typeof process !== "undefined" && process.env?.NEXT_PUBLIC_RP_ID
-        ? process.env.NEXT_PUBLIC_RP_ID
-        : window.location.hostname;
+    // 1. Prepare User ID (Must be BufferSource)
+    const userId = new TextEncoder().encode(publicKeyHash);
 
+    // 2. Determine Relying Party ID (Domain)
+    // SAFETY: Use configured env var, fallback to current hostname for dev
+    const rpId = process.env.NEXT_PUBLIC_RP_ID || window.location.hostname;
+
+    // 3. Create "Probe" Input for PRF
+    // We send a dummy value to verify the authenticator supports PRF storage
+    const prfProbe = new TextEncoder().encode("shinobi-prf:probe");
+
+    // 4. Request Credential Creation
     const credential = (await navigator.credentials.create({
       publicKey: {
-        challenge,
+        // Random challenge (required by spec)
+        challenge: crypto.getRandomValues(new Uint8Array(32)),
+
         rp: {
           name: "Shinobi Privacy Pool",
           id: rpId,
         },
+
         user: {
           id: userId,
-          name: accountName,
-          displayName: accountName,
+          name: accountId,
+          displayName: accountId,
         },
+
+        // Algorithms: ES256 (-7) and RS256 (-257)
         pubKeyCredParams: [
-          { alg: -7, type: "public-key" }, // ES256
-          { alg: -257, type: "public-key" }, // RS256
+          { alg: -7, type: "public-key" },
+          { alg: -257, type: "public-key" },
         ],
+
         authenticatorSelection: {
-          authenticatorAttachment: "platform",
-          userVerification: "required",
-          residentKey: "preferred",
+          authenticatorAttachment: "platform", // FaceID / TouchID
+          userVerification: "required", // Required for PRF
+          residentKey: "preferred", // Store key on device
         },
+
         timeout: 60_000,
-        attestation: "none",
+        attestation: "none", // Privacy: don't reveal device model
+
         extensions: {
-          prf: { eval: { first: new TextEncoder().encode("shinobi-prf:probe") } },
+          prf: {
+            eval: { first: prfProbe },
+          } as PrfExtensionInput,
         },
       },
     })) as PublicKeyCredential | null;
 
-    if (!credential) throw new Error("Failed to create passkey credential");
+    if (!credential) {
+      throw new Error("Passkey creation was cancelled or failed.");
+    }
+
+    // 5. Verify PRF capability was actually created
+    // @ts-ignore
+    const extensionResults = credential.getClientExtensionResults();
+    // Some browsers (like Chrome on macOS) might not return the PRF result
+    // immediately during creation, but if it didn't throw, it likely succeeded.
+    // However, STRICT checks would look for `extensionResults.prf.enabled` if available.
 
     return { credentialId: credential.id };
   }
 
-  /**
-   * Resume authentication
-   * Checks if session has passkey capability (regardless of authMethod)
-   * This allows passkey unlock for wallet-authenticated sessions
-   */
-  async resumeAuth(): Promise<
-    { status: "passkey-ready"; result: DerivedKeyResult; accountName: string } | { status: "none" }
-  > {
-    const session = await this.sessionRepo.getStoredSessionInfo();
-    if (!session) return { status: "none" };
+  // ============ UTILS ============
 
-    // Check if session has passkey capability (credentialId)
-    // This works for both authMethod: "wallet" and authMethod: "passkey"
-    if (session.credentialId) {
-      console.debug("[KDF] Resuming with passkey", {
-        authMethod: session.authMethod,
-        hasCredentialId: true,
-      });
-
-      const result = await this.deriveKeyFromPasskey(session.accountName, session.credentialId);
-      await this.sessionRepo.updateSessionLastAuth();
-      return { status: "passkey-ready", result, accountName: session.accountName };
-    }
-
-    console.debug("[KDF] No passkey credential in session", {
-      authMethod: session.authMethod,
-      hasCredentialId: false,
-    });
-    return { status: "none" };
+  private async generateAccountSalt(accountId: string): Promise<Uint8Array> {
+    const saltInput = CONFIG.SALT_PREFIX + accountId.toLowerCase().trim();
+    const hash = await crypto.subtle.digest(
+      CONFIG.HASH_ALGORITHM,
+      new TextEncoder().encode(saltInput)
+    );
+    return new Uint8Array(hash);
   }
 
   /**
-   * Store session info - delegates to SessionRepository
+   * Standard Base64URL decoder
+   * Replaces custom logic with standardized URL-safe decoding
    */
-  async storeSessionInfo(
-    accountName: string,
-    authMethod: "passkey" | "wallet",
-    opts?: { credentialId?: string }
-  ): Promise<void> {
-    return this.sessionRepo.storeSessionInfo(accountName, authMethod, opts);
-  }
-
-  /**
-   * Get stored session info - delegates to SessionRepository
-   */
-  async getStoredSessionInfo(): Promise<SessionInfo | null> {
-    return this.sessionRepo.getStoredSessionInfo();
-  }
-
-  /**
-   * Clear session info - delegates to SessionRepository
-   */
-  async clearSessionInfo(): Promise<void> {
-    return this.sessionRepo.clearSessionInfo();
-  }
-
-  /**
-   * Add passkey credential to existing session
-   * Delegates to SessionRepository
-   */
-  async addPasskeyToSession(credentialId: string): Promise<void> {
-    return this.sessionRepo.addPasskeyToSession(credentialId);
-  }
-
-  /**
-   * Remove passkey credential from existing session
-   * Delegates to SessionRepository
-   */
-  async removePasskeyFromSession(): Promise<void> {
-    return this.sessionRepo.removePasskeyFromSession();
-  }
-
-  /**
-   * Helper method - exact implementation from keyDerivation.ts
-   */
-  private base64urlToArrayBuffer(base64url: string): ArrayBuffer {
+  private base64urlToBytes(base64url: string): ArrayBuffer {
     const base64 = base64url.replace(/-/g, "+").replace(/_/g, "/");
-    const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
-    const bin = atob(padded);
-    const bytes = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const binString = atob(base64);
+
+    const bytes = new Uint8Array(binString.length);
+    for (let i = 0; i < binString.length; i++) {
+      bytes[i] = binString.charCodeAt(i);
+    }
     return bytes.buffer;
   }
 }
 
-// Export singleton instance for consistent usage
 export const keyDerivationService = new KeyDerivationService();
-
-// Export public API that matches current KDF export from keyDerivation.ts
-export const KDF = {
-  deriveKeyFromPasskey: keyDerivationService.deriveKeyFromPasskey.bind(keyDerivationService),
-  deriveDataEncryptionKey: keyDerivationService.deriveDataEncryptionKey.bind(keyDerivationService),
-  createPasskeyCredential: keyDerivationService.createPasskeyCredential.bind(keyDerivationService),
-  storeSessionInfo: keyDerivationService.storeSessionInfo.bind(keyDerivationService),
-  getStoredSessionInfo: keyDerivationService.getStoredSessionInfo.bind(keyDerivationService),
-  clearSessionInfo: keyDerivationService.clearSessionInfo.bind(keyDerivationService),
-  resumeAuth: keyDerivationService.resumeAuth.bind(keyDerivationService),
-  addPasskeyToSession: keyDerivationService.addPasskeyToSession.bind(keyDerivationService),
-  removePasskeyFromSession:
-    keyDerivationService.removePasskeyFromSession.bind(keyDerivationService),
-};

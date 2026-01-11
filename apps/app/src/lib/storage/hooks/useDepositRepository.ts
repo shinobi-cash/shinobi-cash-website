@@ -4,7 +4,7 @@
 
 import { useMemo } from "react";
 import { DepositRepository } from "../repositories/DepositRepository";
-import { notesStorageAdapter, sharedEncryptionService } from "../adapters/IndexedDBAdapter";
+import { notesStorageAdapter, sharedEncryptionService } from "../adapters/IndexedDBStore";
 import { NotesRepository } from "../repositories/NotesRepository";
 
 /**
