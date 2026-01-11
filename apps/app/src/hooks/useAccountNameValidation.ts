@@ -1,4 +1,5 @@
-import { storageManager } from "@/lib/storage";
+import { repositoryRegistry } from "@/lib/storage/RepositoryRegistry";
+import { assertWalletAccountId } from "@/features/auth/utils";
 import { useEffect, useRef, useState } from "react";
 
 async function validateAccountName(name: string): Promise<string | null> {
@@ -9,8 +10,15 @@ async function validateAccountName(name: string): Promise<string | null> {
   if (!/^[a-zA-Z0-9\s\-_]+$/.test(trimmed))
     return "Account name can only contain letters, numbers, spaces, hyphens, and underscores";
 
-  const exists = await storageManager.accountExists(trimmed);
-  if (exists) return "An account with this name already exists";
+  // Validate as WalletAccountId format (address:chain-{chainId})
+  try {
+    const accountId = assertWalletAccountId(trimmed);
+    const exists = await repositoryRegistry.accountRepo.accountExists(accountId);
+    if (exists) return "An account with this name already exists";
+  } catch {
+    // Invalid format for WalletAccountId - not a valid account identifier
+    return "Invalid account ID format (expected: address:chain-{chainId})";
+  }
 
   return null;
 }

@@ -3,7 +3,7 @@
  * Provides cached note data with optimized loading
  */
 
-import { storageManager } from "@/lib/storage";
+import { repositoryRegistry } from "@/lib/storage/RepositoryRegistry";
 import type { DiscoveryResult } from "@shinobi-cash/core";
 import { useEffect, useState } from "react";
 
@@ -14,7 +14,7 @@ export function useCachedNotes(publicKey: string, poolAddress: string) {
   useEffect(() => {
     const loadCache = async () => {
       try {
-        const cached = await storageManager.getCachedNotes(publicKey, poolAddress);
+        const cached = await repositoryRegistry.notesRepo.getCachedNotes(publicKey, poolAddress);
         setData(cached);
       } catch (error) {
         console.error("Failed to load cached notes:", error);

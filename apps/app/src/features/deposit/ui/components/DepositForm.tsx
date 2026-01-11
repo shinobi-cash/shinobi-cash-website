@@ -3,11 +3,11 @@
  * Pure UI component that delegates all logic to useDepositController
  */
 
-import { Copy, Check, Loader2, ChevronLeft } from "lucide-react";
+import { Copy, Check, Loader2 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useChainId, useSwitchChain } from "wagmi";
 import { Button } from "@workspace/ui/components/button";
-import { POOL_CHAIN } from "@shinobi-cash/constants";
+import { POOL_CHAIN, SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
 import { TokenAmountInput } from "@/components/shared/TokenAmountInput";
 import { TokenAmountInputWithBalance } from "@/components/shared/TokenAmountInputWithBalance";
 import { InputLabel } from "@/components/shared/InputLabel";
@@ -22,6 +22,13 @@ import { showToast } from "@/lib/toast";
 import { getUserMessage } from "@/lib/errors/errorHandler";
 import { useDepositController } from "../../controller/useDepositController";
 import { DEPOSIT_STATUS_LABELS } from "../../types/depositStatus";
+import { DepositPreviewScreen } from "../screens/DepositPreviewScreen";
+import { DepositTimelineScreen } from "../screens/DepositTimelineScreen";
+import { ScreenLayout } from "@/components/layouts/ScreenLayout";
+import { ScreenHeader } from "@/components/shared/ScreenHeader";
+import { useScreenNavigation } from "@/hooks/useScreenNavigation";
+
+type DepositScreen = "timeline" | "preview" | "assetSelector";
 
 function DepositNoteInfo() {
   return (
@@ -38,17 +45,17 @@ function DepositNoteInfo() {
 
 interface DepositFormProps {
   asset: { symbol: string; name: string; icon: string };
-  onTransactionSuccess?: () => void;
 }
 
-export function DepositForm({ asset, onTransactionSuccess }: DepositFormProps) {
+export function DepositForm({ asset }: DepositFormProps) {
   const chainId = useChainId();
   const { switchChain } = useSwitchChain();
-  const [isAssetSelectorOpen, setIsAssetSelectorOpen] = useState(false);
   const [copiedAddress, setCopiedAddress] = useState(false);
 
+  const screens = useScreenNavigation<DepositScreen>();
+
   // All deposit logic is in the controller
-  const controller = useDepositController(asset, onTransactionSuccess);
+  const controller = useDepositController();
 
   // Track shown errors to prevent duplicate toasts
   const shownErrorsRef = useRef(new Set<string>());
@@ -97,33 +104,57 @@ export function DepositForm({ asset, onTransactionSuccess }: DepositFormProps) {
     modal.open();
   };
 
-  // Asset/Chain Selector Screen
-  if (isAssetSelectorOpen) {
-    return (
-      <div className="flex h-full flex-col">
-        <div className="flex items-center gap-3 border-b border-gray-800 px-4 py-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsAssetSelectorOpen(false)}
-            className={`hover:bg-app-surface-hover h-8 w-8 p-0 transition-colors duration-200`}
-            aria-label="Go back"
-          >
-            <ChevronLeft className="text-app-secondary h-4 w-4" />
-          </Button>
-          <h2 className="text-lg font-semibold text-white">Select Asset & Chain</h2>
-        </div>
+  const handleConfirmDeposit = () => {
+    controller.deposit();
+    screens.navigate("timeline");
+  };
 
+  // Deposit Timeline Screen
+  if (screens.is("timeline")) {
+    return (
+      <DepositTimelineScreen
+        noteAmount={controller.depositNoteAmount}
+        isWalletSubmitting={controller.isDepositing}
+        walletError={controller.transactionError}
+        onClose={() => {
+          controller.reset();
+          screens.close();
+        }}
+      />
+    );
+  }
+
+  // Show deposit preview screen
+  if (screens.is("preview") && controller.address) {
+    return (
+      <DepositPreviewScreen
+        onBack={screens.close}
+        onConfirm={handleConfirmDeposit}
+        depositAmount={controller.amount}
+        complianceFee={controller.complianceFee}
+        gasCostEth={controller.gasCostEth}
+        solverFee={controller.solverFee}
+        originChainId={chainId}
+        destinationChainId={POOL_CHAIN.id}
+        poolAddress={SHINOBI_CASH_ETH_POOL.address}
+        userAddress={controller.address}
+        isProcessing={controller.isDepositing}
+      />
+    );
+  }
+
+  // Asset/Chain Selector Screen
+  if (screens.is("assetSelector")) {
+    return (
+      <ScreenLayout header={<ScreenHeader title="Select Asset & Chain" onBack={screens.close} />}>
         <AssetChainSelectorScreen
           selectedChainId={chainId}
           onChainChange={(newChainId) => {
             switchChain?.({ chainId: newChainId });
           }}
-          onSelect={() => {
-            setIsAssetSelectorOpen(false);
-          }}
+          onSelect={screens.close}
         />
-      </div>
+      </ScreenLayout>
     );
   }
 
@@ -170,21 +201,11 @@ export function DepositForm({ asset, onTransactionSuccess }: DepositFormProps) {
           <TokenChainSelector
             asset={asset}
             chainId={chainId}
-            onClick={() => setIsAssetSelectorOpen(true)}
+            onClick={() => screens.navigate("assetSelector")}
             disabled={controller.isDepositing || !controller.isOnSupportedChain}
             showChevron={true}
           />
         </TokenAmountInputWithBalance>
-
-        {/* Error Messages */}
-        {/* {controller.amountError && (
-          <p className="mt-1 text-sm text-red-500">{controller.amountError}</p>
-        )}
-        {controller.gasEstimationError && controller.amount && !controller.amountError && (
-          <p className="mt-1 text-sm text-red-500">
-            {getUserMessage(new Error(controller.gasEstimationError))}
-          </p>
-        )} */}
 
         {/* Arrow Divider */}
         <SectionDivider />
@@ -213,7 +234,7 @@ export function DepositForm({ asset, onTransactionSuccess }: DepositFormProps) {
         <div className="mt-2 sm:mt-4">
           <Button
             disabled={!controller.canDeposit}
-            onClick={controller.deposit}
+            onClick={() => screens.navigate("preview")}
             className="h-12 w-full rounded-xl text-base font-semibold disabled:cursor-not-allowed disabled:opacity-50 sm:h-14 sm:text-lg"
             size="lg"
           >
@@ -223,7 +244,7 @@ export function DepositForm({ asset, onTransactionSuccess }: DepositFormProps) {
                 {DEPOSIT_STATUS_LABELS[controller.status]}
               </div>
             ) : (
-              DEPOSIT_STATUS_LABELS[controller.status]
+              "Review Deposit"
             )}
           </Button>
         </div>

@@ -6,9 +6,8 @@
  * - Provides simple API to UI
  */
 
-import { storageManager } from "@/lib/storage";
-import { parseUserKey } from "@shinobi-cash/core";
 import { useAccount, useBalance, useChainId } from "wagmi";
+import { useCryptoContext } from "@/hooks/useCryptoContext";
 import { useDepositFormState } from "../hooks/useDepositFormState";
 import { useDepositCommitment } from "../hooks/useDepositCommitment";
 import { useDepositGasEstimate } from "../hooks/useDepositGasEstimate";
@@ -17,15 +16,9 @@ import { useTransactionTracking } from "@/hooks/transactions/useTransactionTrack
 import { formatEther } from "viem";
 import { formatDepositAmountsForDisplay } from "../protocol/depositFees";
 import { isDepositSupported } from "../protocol/depositRoute";
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useRef, useMemo } from "react";
 import { DEPOSIT_FEES, POOL_CHAIN } from "@shinobi-cash/constants";
 import type { DepositStatus, DepositError } from "../types/depositStatus";
-
-interface Asset {
-  symbol: string;
-  name: string;
-  icon: string;
-}
 
 interface DepositControllerState {
   amount: string;
@@ -67,10 +60,7 @@ interface DepositControllerActions {
 
 export type DepositController = DepositControllerState & DepositControllerActions;
 
-export function useDepositController(
-  asset: Asset,
-  onTransactionSuccess?: () => void
-): DepositController {
+export function useDepositController(): DepositController {
   // Wallet
   const { isConnected, address } = useAccount();
   const chainId = useChainId();
@@ -82,48 +72,12 @@ export function useDepositController(
   const formattedBalance = balance?.value ? formatEther(balance.value) : "0";
 
   // ---------- CRYPTO CONTEXT (FROM STORAGE, NOT AUTH STORE) ----------
-  const cryptoRef = useRef<{
-    publicKey: string | null;
-    accountKey: bigint | null;
-  }>({
-    publicKey: null,
-    accountKey: null,
-  });
-
-  const [cryptoReady, setCryptoReady] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadCrypto() {
-      try {
-        const accountData = await storageManager.getAccountData();
-        if (!accountData || cancelled) return;
-
-        cryptoRef.current = {
-          publicKey: accountData.publicKey ?? null,
-          accountKey: parseUserKey(accountData.privateKey),
-        };
-
-        setCryptoReady(true);
-      } catch (err) {
-        console.error("[DepositController] Failed to load crypto context:", err);
-      }
-    }
-
-    loadCrypto();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const { publicKey, accountKey, cryptoReady } = useCryptoContext();
 
   // ---------- CORE HOOKS ----------
   const form = useDepositFormState({ availableBalance });
 
-  const commitment = useDepositCommitment(
-    cryptoRef.current.publicKey,
-    cryptoRef.current.accountKey
-  );
+  const commitment = useDepositCommitment(publicKey, accountKey);
 
   const gas = useDepositGasEstimate(form.amount, commitment.noteData);
   const tx = useDepositTransaction();
@@ -161,25 +115,12 @@ export function useDepositController(
   }, [commitment.error, commitment.regenerateNote]);
 
   useEffect(() => {
-    if (tx.isSubmitted && tx.transactionHash && !shownTxsRef.current.has(tx.transactionHash)) {
-      shownTxsRef.current.add(tx.transactionHash);
-      trackTransaction(tx.transactionHash, chainId);
+    if (!tx.transactionHash) return;
+    if (shownTxsRef.current.has(tx.transactionHash)) return;
 
-      setTimeout(() => {
-        tx.reset();
-        form.resetForm();
-        onTransactionSuccess?.();
-      }, 1000);
-    }
-  }, [
-    tx.isSubmitted,
-    tx.transactionHash,
-    tx.reset,
-    form,
-    trackTransaction,
-    chainId,
-    onTransactionSuccess,
-  ]);
+    shownTxsRef.current.add(tx.transactionHash);
+    trackTransaction(tx.transactionHash, chainId);
+  }, [tx.transactionHash, chainId, trackTransaction]);
 
   // ---------- ACTIONS ----------
   const deposit = () => {

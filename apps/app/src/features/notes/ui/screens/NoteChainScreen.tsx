@@ -6,9 +6,11 @@
 import { getTxExplorerUrl } from "@/config/chains";
 import type { NoteChain } from "@shinobi-cash/core";
 import { formatTimestamp } from "@/utils/formatters";
-import { ChevronLeft, ExternalLink, Info } from "lucide-react";
+import { ExternalLink, Info } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
 import { AmountDisplay } from "@/components/shared/AmountDisplay";
+import { ScreenHeader } from "@/components/shared/ScreenHeader";
+import { ScreenLayout } from "@/components/layouts/ScreenLayout";
 
 interface NoteChainScreenProps {
   noteChain: NoteChain | null;
@@ -28,26 +30,28 @@ export function NoteChainScreen({ noteChain, onBack, onWithdrawClick }: NoteChai
     !!onWithdrawClick;
 
   return (
-    <div className="flex h-full flex-col">
-      {/* Header */}
-      <div className="flex items-center gap-3 border-b border-gray-800 px-4 py-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onBack}
-          className={`hover:bg-app-surface-hover h-8 w-8 p-0 transition-colors duration-200`}
-          aria-label="Go back"
-        >
-          <ChevronLeft className="text-app-secondary h-4 w-4" />
-        </Button>
-        <div>
-          <h2 className="text-lg font-semibold text-white">Note Details</h2>
-          <p className="text-xs text-gray-400">Detail of your private deposit and withdrawals</p>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto px-4 py-6">
+    <ScreenLayout
+      header={
+        <ScreenHeader
+          title="Note Details"
+          subtitle="Detail of your private deposit and withdrawals"
+          onBack={onBack}
+        />
+      }
+      footer={
+        canWithdraw ? (
+          <div className="flex gap-2">
+            <Button onClick={onBack} variant="outline" className="flex-1">
+              Cancel
+            </Button>
+            <Button onClick={() => onWithdrawClick?.(noteChain)} className="flex-1">
+              Withdraw
+            </Button>
+          </div>
+        ) : undefined
+      }
+    >
+      <div className="space-y-6">
         <div className="space-y-6">
           {/* Balance Summary */}
           <div className="rounded-xl border border-gray-700 bg-gray-800 p-4 text-center shadow">
@@ -175,29 +179,6 @@ export function NoteChainScreen({ noteChain, onBack, onWithdrawClick }: NoteChai
           </ul>
         </div>
       </div>
-
-      {/* Footer Actions */}
-      {canWithdraw && (
-        <div className="border-t border-gray-800 px-4 py-4">
-          <div className="flex gap-3">
-            <Button
-              variant="outline"
-              onClick={onBack}
-              className="h-12 flex-1 rounded-xl text-base font-medium"
-              size="lg"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => onWithdrawClick(noteChain)}
-              className="h-12 flex-1 rounded-xl text-base font-medium"
-              size="lg"
-            >
-              Withdraw
-            </Button>
-          </div>
-        </div>
-      )}
-    </div>
+    </ScreenLayout>
   );
 }

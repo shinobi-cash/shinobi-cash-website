@@ -100,7 +100,7 @@ export function useWithdrawFormState(selectedNote: Note | null, assetSymbol: str
       }));
       // Re-validate existing values with new chain context
       // This will show errors if values are now invalid, but keeps user input
-      setErrors((prev) => ({
+      setErrors(() => ({
         amount: form.withdrawAmount ? validateAmount(form.withdrawAmount) : null,
         address: form.recipientAddress ? validateAddress(form.recipientAddress) : null,
       }));

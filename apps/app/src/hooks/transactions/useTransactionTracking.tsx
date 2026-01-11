@@ -2,12 +2,12 @@ import { getPublicClient } from "@/lib/clients";
 import { noteDiscoveryService } from "@/services/NoteDiscoveryService";
 import { showToast } from "@/lib/toast";
 import { fetchLatestIndexedBlock } from "@/services/data/indexerService";
-import { storageManager } from "@/lib/storage";
 import { parseUserKey } from "@shinobi-cash/core";
 import type React from "react";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
 import { logError } from "@/lib/errors";
+import { accountService } from "@/lib/storage/account/AccountService";
 
 export type TrackingStatus = "idle" | "pending" | "waiting" | "synced" | "failed";
 
@@ -22,6 +22,7 @@ interface TransactionTrackingContextType {
   onTransactionIndexed: (callback: () => void) => () => void;
   trackingStatus: TrackingStatus;
   trackedTxHash: string | null;
+  trackedChainId: number | null;
 }
 
 const TransactionTrackingContext = createContext<TransactionTrackingContextType | null>(null);
@@ -59,7 +60,7 @@ export function TransactionTrackingProvider({ children }: { children: React.Reac
 
     async function loadCrypto() {
       try {
-        const accountData = await storageManager.getAccountData();
+        const accountData = await accountService.getAccountData();
         if (!accountData || cancelled) return;
 
         cryptoRef.current = {
@@ -242,6 +243,7 @@ export function TransactionTrackingProvider({ children }: { children: React.Reac
         onTransactionIndexed,
         trackingStatus,
         trackedTxHash: trackedTransaction?.hash ?? null,
+        trackedChainId: trackedTransaction?.chainId ?? null,
       }}
     >
       {children}

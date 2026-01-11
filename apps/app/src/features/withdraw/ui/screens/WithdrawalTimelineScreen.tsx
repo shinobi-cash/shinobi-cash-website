@@ -5,10 +5,12 @@
 
 import type { Note } from "@shinobi-cash/core";
 import { formatEthAmount, formatHash } from "@/utils/formatters";
-import { Check, Copy, Info, Loader2, ArrowRight, ChevronLeft } from "lucide-react";
+import { Check, Copy, Info, Loader2, ArrowRight } from "lucide-react";
 import { POOL_CHAIN, SHINOBI_CASH_SUPPORTED_CHAINS } from "@shinobi-cash/constants";
 import { memo, useCallback, useState } from "react";
 import { Button } from "@workspace/ui/components/button";
+import { ScreenHeader } from "@/components/shared/ScreenHeader";
+import { ScreenLayout } from "@/components/layouts/ScreenLayout";
 
 export interface WithdrawalStep {
   id: string;
@@ -63,49 +65,25 @@ export const WithdrawalTimelineScreen = ({
   };
 
   return (
-    <div className="flex h-full flex-col">
-      {/* Header */}
-      <div className="flex items-center gap-3 border-b border-gray-800 px-4 py-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onBack}
-          className={`hover:bg-app-surface-hover h-8 w-8 p-0 transition-colors duration-200`}
-          aria-label="Go back"
-        >
-          <ChevronLeft className="text-app-secondary h-4 w-4" />
-        </Button>
-        <div>
-          <h2 className="text-lg font-semibold text-white">{getTitle()}</h2>
-          <p className="text-xs text-gray-400">
-            {screenMode === "preview"
-              ? "Review your withdrawal details before confirming"
-              : "Preparing your privacy-preserving withdrawal"}
-          </p>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto px-4 py-6">
-        {screenMode === "timeline" ? (
-          <TimelineView steps={steps} onClose={onBack} onShowPreview={onShowPreview} />
-        ) : (
-          <PreviewView
-            note={note}
-            withdrawAmount={withdrawAmount}
-            recipientAddress={recipientAddress}
-            destinationChainId={destinationChainId}
-            executionFee={executionFee}
-            solverFee={solverFee}
-            youReceive={youReceive}
-            remainingBalance={remainingBalance}
-            isProcessing={isProcessing}
-            isCrossChain={isCrossChain}
-            onConfirm={onConfirm}
-          />
-        )}
-      </div>
-    </div>
+    <ScreenLayout header={<ScreenHeader title={getTitle()} onBack={onBack} />}>
+      {screenMode === "timeline" ? (
+        <TimelineView steps={steps} onClose={onBack} onShowPreview={onShowPreview} />
+      ) : (
+        <PreviewView
+          note={note}
+          withdrawAmount={withdrawAmount}
+          recipientAddress={recipientAddress}
+          destinationChainId={destinationChainId}
+          executionFee={executionFee}
+          solverFee={solverFee}
+          youReceive={youReceive}
+          remainingBalance={remainingBalance}
+          isProcessing={isProcessing}
+          isCrossChain={isCrossChain}
+          onConfirm={onConfirm}
+        />
+      )}
+    </ScreenLayout>
   );
 };
 

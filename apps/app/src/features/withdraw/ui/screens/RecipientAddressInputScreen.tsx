@@ -5,7 +5,8 @@
 
 import { RecipientAddressInput } from "../components/RecipientAddressInput";
 import { Button } from "@workspace/ui/components/button";
-import { ChevronLeft } from "lucide-react";
+import { ScreenHeader } from "@/components/shared/ScreenHeader";
+import { ScreenLayout } from "@/components/layouts/ScreenLayout";
 
 interface RecipientAddressInputScreenProps {
   value: string;
@@ -23,28 +24,9 @@ export function RecipientAddressInputScreen({
   onConfirm,
 }: RecipientAddressInputScreenProps) {
   return (
-    <div className="flex h-full flex-col">
-      {/* Header */}
-      <div className="flex items-center gap-3 border-b border-gray-800 px-4 py-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onBack}
-          className={`hover:bg-app-surface-hover h-8 w-8 p-0 transition-colors duration-200`}
-          aria-label="Go back"
-        >
-          <ChevronLeft className="text-app-secondary h-4 w-4" />
-        </Button>
-        <h2 className="text-lg font-semibold text-white">Recipient Address</h2>
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 px-4 py-6">
-        <RecipientAddressInput value={value} onChange={onChange} error={error} />
-      </div>
-
-      {/* Confirm Button */}
-      <div className="border-t border-gray-800 px-4 py-4">
+    <ScreenLayout
+      header={<ScreenHeader title="Recipient Address" onBack={onBack} />}
+      footer={
         <Button
           onClick={onConfirm}
           disabled={!value || !!error}
@@ -52,7 +34,9 @@ export function RecipientAddressInputScreen({
         >
           Confirm
         </Button>
-      </div>
-    </div>
+      }
+    >
+      <RecipientAddressInput value={value} onChange={onChange} error={error} />
+    </ScreenLayout>
   );
 }

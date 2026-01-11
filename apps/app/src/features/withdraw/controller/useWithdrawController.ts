@@ -2,10 +2,9 @@
  * Withdrawal Controller
  */
 
-import { useCallback, useMemo, useEffect, useRef, useState } from "react";
-import { storageManager } from "@/lib/storage";
-import { parseUserKey } from "@shinobi-cash/core";
+import { useCallback, useMemo } from "react";
 import type { Note } from "@shinobi-cash/core";
+import { useCryptoContext } from "@/hooks/useCryptoContext";
 import { SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
 import type { WithdrawStatus, WithdrawError } from "../types/withdrawStatus";
 import { useNoteSelection } from "../hooks/useNoteSelection";
@@ -66,43 +65,7 @@ export function useWithdrawController(
   const poolAddress = SHINOBI_CASH_ETH_POOL.address;
 
   // ---------- CRYPTO CONTEXT (SOURCE OF TRUTH) ----------
-  const cryptoRef = useRef<{
-    publicKey: string | null;
-    accountKey: bigint | null;
-  }>({
-    publicKey: null,
-    accountKey: null,
-  });
-
-  const [cryptoReady, setCryptoReady] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadCrypto() {
-      try {
-        const accountData = await storageManager.getAccountData();
-        if (!accountData || cancelled) return;
-
-        cryptoRef.current = {
-          publicKey: accountData.publicKey ?? null,
-          accountKey: parseUserKey(accountData.privateKey),
-        };
-
-        setCryptoReady(true);
-      } catch (err) {
-        console.warn("[WithdrawController] Failed to load crypto context:", err);
-      }
-    }
-
-    loadCrypto();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const publicKey = cryptoRef.current.publicKey;
-  const accountKey = cryptoRef.current.accountKey;
+  const { publicKey, accountKey, cryptoReady } = useCryptoContext();
 
   // ============ CHILD HOOKS ============
 

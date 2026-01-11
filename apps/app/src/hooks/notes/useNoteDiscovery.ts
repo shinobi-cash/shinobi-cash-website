@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { noteDiscoveryService, noteStorageProvider } from "@/services/NoteDiscoveryService";
+import { noteDiscoveryService } from "@/services/NoteDiscoveryService";
 import type { DiscoveryResult, DiscoveryProgress } from "@shinobi-cash/core";
+import { repositoryRegistry } from "@/lib/storage/RepositoryRegistry";
 
 interface DiscoveryState {
   data: DiscoveryResult | null;
@@ -48,7 +49,7 @@ export function useNoteDiscovery(
     // Load cache first
     const loadCache = async () => {
       try {
-        const cached = await noteStorageProvider.getCachedNotes(publicKey, poolAddress);
+        const cached = await repositoryRegistry.notesRepo.getCachedNotes(publicKey, poolAddress);
         if (cached && runId === refreshIdRef.current) {
           setState((prev) => ({
             ...prev,

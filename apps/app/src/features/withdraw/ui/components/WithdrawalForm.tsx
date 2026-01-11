@@ -3,8 +3,8 @@
  * Pure UI component that delegates all logic to useWithdrawController
  */
 
-import { Loader2, ChevronDown, ChevronLeft } from "lucide-react";
-import { useState, useCallback, useEffect, useRef } from "react";
+import { Loader2, ChevronDown } from "lucide-react";
+import { useCallback, useEffect, useRef } from "react";
 import { Button } from "@workspace/ui/components/button";
 import { POOL_CHAIN } from "@shinobi-cash/constants";
 import { TokenAmountInput } from "@/components/shared/TokenAmountInput";
@@ -22,6 +22,11 @@ import { RecipientAddressInputScreen } from "../screens/RecipientAddressInputScr
 import { DISPLAY_DECIMALS, ETH_ASSET } from "../../constants";
 import { WITHDRAW_STATUS_LABELS } from "../../types/withdrawStatus";
 import { useWithdrawController } from "../../controller/useWithdrawController";
+import { ScreenLayout } from "@/components/layouts/ScreenLayout";
+import { ScreenHeader } from "@/components/shared/ScreenHeader";
+import { useScreenNavigation } from "@/hooks/useScreenNavigation";
+
+type WithdrawScreen = "noteSelection" | "recipientInput" | "destinationSelection" | "timeline";
 
 interface WithdrawalFormProps {
   onTransactionSuccess?: () => void;
@@ -29,15 +34,13 @@ interface WithdrawalFormProps {
 
 export function WithdrawalForm({ onTransactionSuccess }: WithdrawalFormProps) {
   const asset = ETH_ASSET;
-  const [isNoteSelectionOpen, setIsNoteSelectionOpen] = useState(false);
-  const [isDestinationSelectionOpen, setIsDestinationSelectionOpen] = useState(false);
-  const [isRecipientAddressInputOpen, setIsRecipientAddressInputOpen] = useState(false);
-  const [showTimeline, setShowTimeline] = useState(false);
+
+  const screens = useScreenNavigation<WithdrawScreen>();
 
   // All withdrawal logic is in the controller
   const controller = useWithdrawController(asset, () => {
     onTransactionSuccess?.();
-    setShowTimeline(false);
+    screens.close();
   });
 
   // Track shown errors to prevent duplicate toasts
@@ -66,15 +69,15 @@ export function WithdrawalForm({ onTransactionSuccess }: WithdrawalFormProps) {
 
   // Handle withdrawal preparation (show timeline)
   const handlePrepareWithdrawal = useCallback(async () => {
-    setShowTimeline(true);
+    screens.navigate("timeline");
     await controller.prepareWithdrawal();
-  }, [controller]);
+  }, [controller, screens]);
 
   // Show withdrawal timeline screen
-  if (showTimeline && controller.selectedNote) {
+  if (screens.is("timeline") && controller.selectedNote) {
     return (
       <WithdrawalTimelineScreen
-        onBack={() => setShowTimeline(false)}
+        onBack={screens.close}
         onConfirm={controller.executeWithdrawal}
         note={controller.selectedNote}
         withdrawAmount={controller.amount}
@@ -94,13 +97,13 @@ export function WithdrawalForm({ onTransactionSuccess }: WithdrawalFormProps) {
   }
 
   // Show note selection screen
-  if (isNoteSelectionOpen) {
+  if (screens.is("noteSelection")) {
     return (
       <NoteSelectionScreen
         availableNotes={controller.availableNotes}
         selectedNote={controller.selectedNote}
         onSelectNote={controller.selectNote}
-        onBack={() => setIsNoteSelectionOpen(false)}
+        onBack={screens.close}
         isLoading={controller.isLoadingNotes}
         asset={asset}
       />
@@ -108,45 +111,30 @@ export function WithdrawalForm({ onTransactionSuccess }: WithdrawalFormProps) {
   }
 
   // Show recipient address input screen
-  if (isRecipientAddressInputOpen) {
+  if (screens.is("recipientInput")) {
     return (
       <RecipientAddressInputScreen
         value={controller.recipientAddress}
         onChange={controller.setRecipientAddress}
         error={controller.addressError ?? undefined}
-        onBack={() => setIsRecipientAddressInputOpen(false)}
-        onConfirm={() => setIsRecipientAddressInputOpen(false)}
+        onBack={screens.close}
+        onConfirm={screens.close}
       />
     );
   }
 
   // Show destination selection screen
-  if (isDestinationSelectionOpen) {
+  if (screens.is("destinationSelection")) {
     return (
-      <div className="flex h-full flex-col">
-        <div className="flex items-center gap-3 border-b border-gray-800 px-4 py-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsDestinationSelectionOpen(false)}
-            className={`hover:bg-app-surface-hover h-8 w-8 p-0 transition-colors duration-200`}
-            aria-label="Go back"
-          >
-            <ChevronLeft className="text-app-secondary h-4 w-4" />
-          </Button>
-          <h2 className="text-lg font-semibold text-white">Select Asset & Chain</h2>
-        </div>
-
+      <ScreenLayout header={<ScreenHeader title="Select Asset & Chain" onBack={screens.close} />}>
         <AssetChainSelectorScreen
           selectedChainId={controller.destinationChainId}
           onChainChange={(newChainId) => {
             controller.setDestinationChain(newChainId);
           }}
-          onSelect={() => {
-            setIsDestinationSelectionOpen(false);
-          }}
+          onSelect={screens.close}
         />
-      </div>
+      </ScreenLayout>
     );
   }
 
@@ -159,7 +147,7 @@ export function WithdrawalForm({ onTransactionSuccess }: WithdrawalFormProps) {
           label="You Pay"
           labelRight={
             <Button
-              onClick={() => setIsNoteSelectionOpen(true)}
+              onClick={() => screens.navigate("noteSelection")}
               variant={"ghost"}
               className="flex h-auto items-center gap-1 p-0 text-sm text-purple-400 transition-colors hover:text-purple-300"
               disabled={controller.isPreparing || controller.status === "submitting"}
@@ -199,7 +187,7 @@ export function WithdrawalForm({ onTransactionSuccess }: WithdrawalFormProps) {
           label="You Receive"
           labelRight={
             <Button
-              onClick={() => setIsRecipientAddressInputOpen(true)}
+              onClick={() => screens.navigate("recipientInput")}
               variant={"ghost"}
               className="flex h-auto items-center gap-1 p-0 text-sm text-purple-400 transition-colors hover:text-purple-300"
               disabled={
@@ -235,7 +223,7 @@ export function WithdrawalForm({ onTransactionSuccess }: WithdrawalFormProps) {
           <TokenChainSelector
             asset={asset}
             chainId={controller.destinationChainId}
-            onClick={() => setIsDestinationSelectionOpen(true)}
+            onClick={() => screens.navigate("destinationSelection")}
             disabled={
               controller.isPreparing ||
               controller.status === "submitting" ||
