@@ -3,7 +3,7 @@
  * Handles localStorage and sessionStorage with consistent API
  */
 
-import type { IBrowserStorageAdapter } from "../interfaces/IStorageAdapter";
+import { IBrowserStorageAdapter } from "./types";
 
 export class BrowserStorageAdapter<T = string> implements IBrowserStorageAdapter<T> {
   constructor(private storage: Storage) {}
@@ -62,21 +62,6 @@ export class BrowserStorageAdapter<T = string> implements IBrowserStorageAdapter
   }
 
   async keys(): Promise<string[]> {
-    try {
-      const keys: string[] = [];
-      for (let i = 0; i < this.storage.length; i++) {
-        const key = this.storage.key(i);
-        if (key) keys.push(key);
-      }
-      return keys;
-    } catch (error) {
-      console.warn("Failed to get storage keys:", error);
-      return [];
-    }
-  }
-
-  // Browser-specific methods
-  getAllKeys(): string[] {
     const keys: string[] = [];
     for (let i = 0; i < this.storage.length; i++) {
       const key = this.storage.key(i);
@@ -84,26 +69,10 @@ export class BrowserStorageAdapter<T = string> implements IBrowserStorageAdapter
     }
     return keys;
   }
-
-  removeByPrefix(prefix: string): void {
-    const keysToRemove: string[] = [];
-    for (let i = 0; i < this.storage.length; i++) {
-      const key = this.storage.key(i);
-      if (key?.startsWith(prefix)) {
-        keysToRemove.push(key);
-      }
-    }
-    for (const key of keysToRemove) {
-      this.storage.removeItem(key);
-    }
-  }
 }
 
 // Concrete implementations for localStorage and sessionStorage
 // Use lazy initialization to avoid SSR issues
-export const localStorageAdapter = new BrowserStorageAdapter<unknown>(
-  typeof window !== "undefined" ? localStorage : ({} as Storage)
-);
 export const sessionStorageAdapter = new BrowserStorageAdapter<unknown>(
   typeof window !== "undefined" ? sessionStorage : ({} as Storage)
 );
