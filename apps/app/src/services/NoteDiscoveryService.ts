@@ -4,7 +4,7 @@
  * Uses NotesRepository with core primitives for note discovery
  */
 
-import { storageManager } from "@/lib/storage";
+import { repositoryRegistry } from "@/lib/storage/RepositoryRegistry";
 import { fetchActivities } from "@/services/data/indexerService";
 import type { DiscoveryResult, DiscoveryOptions } from "@shinobi-cash/core";
 
@@ -25,7 +25,7 @@ export async function discoverNotes(
   accountKey: bigint,
   options?: DiscoveryOptions
 ): Promise<DiscoveryResult> {
-  return storageManager.discoverNotes(
+  return repositoryRegistry.notesRepo.discoverNotes(
     publicKey,
     poolAddress,
     accountKey,
@@ -49,8 +49,5 @@ export async function discoverNotes(
 export const noteDiscoveryService = {
   discoverNotes,
 };
-
-// Also maintain compatibility with noteStorageProvider
-export const noteStorageProvider = storageManager;
 
 export default noteDiscoveryService;
