@@ -164,12 +164,16 @@ export function assertWalletAccountId(id: string): WalletAccountId {
   }
 
   if (!id.includes(":chain-")) {
-    throw new Error(`Invalid WalletAccountId format: "${id}" (expected format: address:chain-{chainId})`);
+    throw new Error(
+      `Invalid WalletAccountId format: "${id}" (expected format: address:chain-{chainId})`
+    );
   }
 
   const parts = id.split(":chain-");
   if (parts.length !== 2) {
-    throw new Error(`Invalid WalletAccountId format: "${id}" (multiple ":chain-" separators found)`);
+    throw new Error(
+      `Invalid WalletAccountId format: "${id}" (multiple ":chain-" separators found)`
+    );
   }
 
   const [address, chainIdStr] = parts;

@@ -19,7 +19,10 @@ export class SessionRepository {
   /**
    * Store session info - exact implementation from keyDerivation.storeSessionInfo
    */
-  async storeSessionInfo(accountId: WalletAccountId, opts?: { credentialId?: string }): Promise<void> {
+  async storeSessionInfo(
+    accountId: WalletAccountId,
+    opts?: { credentialId?: string }
+  ): Promise<void> {
     const isIframe = window.self !== window.top;
     const sessionInfo: SessionInfo = {
       accountId,

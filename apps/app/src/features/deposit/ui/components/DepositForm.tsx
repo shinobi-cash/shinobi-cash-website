@@ -119,12 +119,7 @@ export function DepositForm({ asset }: DepositFormProps) {
     if (DepositSelectors.canAutoPrepare()) {
       DepositController.schedulePrepare();
     }
-  }, [
-    state.amount,
-    state.wallet.isConnected,
-    state.crypto.cryptoReady,
-    state.wallet.chainId,
-  ]);
+  }, [state.amount, state.wallet.isConnected, state.crypto.cryptoReady, state.wallet.chainId]);
 
   const handleReviewDeposit = () => {
     // Already prepared, just navigate
@@ -154,8 +149,12 @@ export function DepositForm({ asset }: DepositFormProps) {
 
   // Show deposit preview screen
   if (screens.is("preview") && state.wallet.address) {
-    const depositAmounts = state.state.status === "ready" ? state.state.amounts : { noteAmount: 0, complianceFee: 0, solverFee: 0 };
-    const gasEstimate = state.state.status === "ready" ? state.state.gasEstimate : { gasCostEth: "0" };
+    const depositAmounts =
+      state.state.status === "ready"
+        ? state.state.amounts
+        : { noteAmount: 0, complianceFee: 0, solverFee: 0 };
+    const gasEstimate =
+      state.state.status === "ready" ? state.state.gasEstimate : { gasCostEth: "0" };
     const isSubmitting = state.state.status === "submitting";
 
     return (

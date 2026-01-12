@@ -173,7 +173,10 @@ function transition(next: DepositState) {
     if (!allowed.includes(next.status)) {
       console.warn(
         `[DepositController] Invalid transition: ${current} → ${next.status}`,
-        "\nAllowed transitions from", current, ":", allowed
+        "\nAllowed transitions from",
+        current,
+        ":",
+        allowed
       );
     }
   }
@@ -456,18 +459,14 @@ export const DepositController = {
       return;
     }
 
-    await depositService.trackTransaction(
-      txHash,
-      wallet.publicClient,
-      (status, reason) => {
-        if (status === "confirmed") {
-          transition({ status: "confirmed-onchain", txHash });
-          log.debug("Transaction confirmed on-chain", { txHash });
-        } else if (status === "failed") {
-          transition({ status: "failed", txHash, reason: reason ?? "Unknown error" });
-          log.debug("Transaction failed on-chain", { txHash, reason });
-        }
+    await depositService.trackTransaction(txHash, wallet.publicClient, (status, reason) => {
+      if (status === "confirmed") {
+        transition({ status: "confirmed-onchain", txHash });
+        log.debug("Transaction confirmed on-chain", { txHash });
+      } else if (status === "failed") {
+        transition({ status: "failed", txHash, reason: reason ?? "Unknown error" });
+        log.debug("Transaction failed on-chain", { txHash, reason });
       }
-    );
+    });
   },
 };

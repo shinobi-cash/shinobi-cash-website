@@ -12,7 +12,10 @@ import {
   derivePrecommitment,
 } from "@shinobi-cash/core";
 import { NotesRepository } from "@/lib/storage/repositories/NotesRepository";
-import { notesStorageAdapter, sharedEncryptionService } from "@/lib/storage/adapters/IndexedDBStore";
+import {
+  notesStorageAdapter,
+  sharedEncryptionService,
+} from "@/lib/storage/adapters/IndexedDBStore";
 import { resolveDepositRoute, buildDepositCallParams } from "../protocol/depositRoute";
 import { getUserMessage, logError } from "@/lib/errors";
 
@@ -172,8 +175,7 @@ export const depositService = {
 
       return hash;
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Failed to submit transaction";
+      const errorMessage = error instanceof Error ? error.message : "Failed to submit transaction";
 
       throw new Error(errorMessage);
     }
@@ -206,8 +208,7 @@ export const depositService = {
         onStatusChange("failed", "Transaction reverted");
       }
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Transaction tracking failed";
+      const errorMessage = error instanceof Error ? error.message : "Transaction tracking failed";
 
       onStatusChange("failed", errorMessage);
     }

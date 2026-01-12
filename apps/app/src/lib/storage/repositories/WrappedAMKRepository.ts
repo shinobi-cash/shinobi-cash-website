@@ -111,7 +111,10 @@ export class WrappedAMKRepository {
   /**
    * Delete wrapped AMK for a specific auth method
    */
-  async deleteWrappedAMK(accountId: WalletAccountId, wrappedBy: "wallet" | "passkey"): Promise<void> {
+  async deleteWrappedAMK(
+    accountId: WalletAccountId,
+    wrappedBy: "wallet" | "passkey"
+  ): Promise<void> {
     const storageKey = `${accountId}:amk:${wrappedBy}`;
     await this.storageAdapter.remove(storageKey);
   }

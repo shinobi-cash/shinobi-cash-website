@@ -61,7 +61,7 @@ export class AccountService {
       // 4️⃣ Persist account metadata (NOT encrypted with KEK)
       // Account data is stored WITHOUT encryption by KEK
       // The AMK is already stored securely in wrapped form
-      await repositoryRegistry.accountRepo.storeAccountData({accountId});
+      await repositoryRegistry.accountRepo.storeAccountData({ accountId });
 
       console.debug("[StorageManager][CreateAccount] Account metadata persisted");
 
