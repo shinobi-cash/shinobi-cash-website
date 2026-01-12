@@ -6,12 +6,13 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createAppKit } from "@reown/appkit/react";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { SettingsProvider } from "@/contexts/SettingsContext";
-import { TransactionTrackingProvider } from "@/hooks/transactions/useTransactionTracking";
+import { TransactionTrackingProvider } from "@/hooks/useTransactionTracking";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import React, { type ReactNode } from "react";
 import { cookieToInitialState, WagmiProvider, type Config } from "wagmi";
 import { Toaster } from "@workspace/ui/components/sonner";
 import { Particles } from "@workspace/ui/components/particles";
+import { NotesBackgroundBootstrap } from "./NoteBackgroudBootstrap";
 
 // Set up queryClient
 const queryClient = new QueryClient();
@@ -49,6 +50,7 @@ function ContextProvider({ children, cookies }: { children: ReactNode; cookies: 
           <WagmiProvider config={wagmiAdapter.wagmiConfig as Config} initialState={initialState}>
             <QueryClientProvider client={queryClient}>
               <TransactionTrackingProvider>
+                <NotesBackgroundBootstrap />
                 <Particles
                   className="pointer-events-none fixed inset-0"
                   quantity={100}

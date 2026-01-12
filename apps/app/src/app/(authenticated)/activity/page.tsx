@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useActivityController } from "@/features/activity/controller/useActivityController";
 import { ActivityFilterDropdown } from "@/features/activity/ui/components/ActivityFilterDropdown";
 import { ActivityList } from "@/features/activity/ui/components/ActivityList";
 import { ActivityDetailsScreen } from "@/features/activity/ui/screens/ActivityDetailsScreen";
+import { useActivityScreenController } from "@/features/activity/hooks/useActivityScreenController";
 
 export default function ActivityPage() {
-  const activityController = useActivityController();
+  const activityController = useActivityScreenController();
   const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
 
   // Find the selected activity

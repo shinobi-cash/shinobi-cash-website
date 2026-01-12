@@ -5,7 +5,7 @@
  */
 
 import type { WithdrawalPipelineContext, WithdrawalWitness, ExternalData } from "../domain/types";
-import { fetchASPData, fetchStateTreeLeaves } from "@/services/data/indexerService";
+import { fetchASPData, fetchStateTreeLeaves } from "@/utils/IndexerUtils";
 
 // ============ EXTERNAL DATA FETCHING ============
 

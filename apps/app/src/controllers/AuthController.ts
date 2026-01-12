@@ -1,8 +1,9 @@
 import { accountService } from "@/lib/storage/account/AccountService";
 import { repositoryRegistry } from "@/lib/storage/RepositoryRegistry";
 import { keyDerivationService } from "@/lib/storage/services/KeyDerivationService";
+import { parseUserKey } from "@shinobi-cash/core";
 import { proxy } from "valtio";
-import { deriveKeysFromSignature, generateKeysFromRandomSeed, getWalletAccountId } from "../utils";
+import { deriveKeysFromSignature, generateKeysFromRandomSeed, getWalletAccountId } from "../features/auth/utils";
 
 export enum AuthError {
   PASSKEY_NOT_FOUND = "PASSKEY_NOT_FOUND",
@@ -10,6 +11,16 @@ export enum AuthError {
   ACCOUNT_NOT_FOUND = "ACCOUNT_NOT_FOUND",
   ACCOUNT_ALREADY_EXISTS = "ACCOUNT_ALREADY_EXISTS",
   UNKNOWN = "UNKNOWN",
+}
+
+/**
+ * Crypto context (public key + account key)
+ * Single source of truth for crypto material, owned by AuthController
+ */
+export interface CryptoContext {
+  publicKey: string | null;
+  accountKey: bigint | null;
+  cryptoReady: boolean;
 }
 
 type AuthSession = {
@@ -24,8 +35,18 @@ type AuthState =
   | { status: "authenticated"; session: AuthSession }
   | { status: "error"; error: AuthError };
 
-const state = proxy<{ state: AuthState }>({
+interface AuthControllerState {
+  state: AuthState;
+  crypto: CryptoContext;
+}
+
+const state = proxy<AuthControllerState>({
   state: { status: "booting" },
+  crypto: {
+    publicKey: null,
+    accountKey: null,
+    cryptoReady: false,
+  },
 });
 
 export const AuthController = {
@@ -51,6 +72,13 @@ export const AuthController = {
         // Check passkey status after successful login
         const passkeyEnabled = await this.isPasskeyEnabled();
 
+        // Load crypto context immediately after successful login
+        const accountData = await accountService.getAccountData();
+        if (!accountData) {
+          throw new Error("Account data not available after login");
+        }
+
+        // Update auth state
         this.state.state = {
           status: "authenticated",
           session: {
@@ -59,12 +87,22 @@ export const AuthController = {
             passkeyEnabled,
           },
         };
+
+        // Update crypto context atomically
+        this.state.crypto = {
+          publicKey: accountData.publicKey ?? null,
+          accountKey: parseUserKey(accountData.privateKey),
+          cryptoReady: true,
+        };
+
         return;
       }
 
       this.state.state = { status: "unauthenticated" };
-    } catch {
+    } catch (error) {
+      console.error("[AuthController] Bootstrap failed:", error);
       this.state.state = { status: "unauthenticated" };
+      this._clearCrypto();
     }
   },
 
@@ -72,6 +110,7 @@ export const AuthController = {
     await repositoryRegistry.sessionRepo.clearSessionInfo();
     accountService.clearInMemorySession();
     this.state.state = { status: "unauthenticated" };
+    this._clearCrypto();
   },
 
   // ================= WALLET SIGN-IN =================
@@ -114,9 +153,23 @@ export const AuthController = {
     // Set authenticated state with passkey status
     const passkeyEnabled = !!metadata?.credentialId;
 
+    // Load crypto context immediately after successful login
+    const accountData = await accountService.getAccountData();
+    if (!accountData) {
+      throw new Error("Account data not available after login");
+    }
+
+    // Update auth state
     this.state.state = {
       status: "authenticated",
       session: { accountId: accountId, authenticatedAt: Date.now(), passkeyEnabled },
+    };
+
+    // Update crypto context atomically
+    this.state.crypto = {
+      publicKey: accountData.publicKey ?? null,
+      accountKey: parseUserKey(accountData.privateKey),
+      cryptoReady: true,
     };
   },
 
@@ -155,5 +208,19 @@ export const AuthController = {
     } catch {
       return false;
     }
+  },
+
+  // ================= INTERNAL HELPERS =================
+
+  /**
+   * Clear crypto context (called on logout or auth errors)
+   * @internal
+   */
+  _clearCrypto(): void {
+    this.state.crypto = {
+      publicKey: null,
+      accountKey: null,
+      cryptoReady: false,
+    };
   },
 };

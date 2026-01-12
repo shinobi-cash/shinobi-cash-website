@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { checkIndexerHealth } from "@/services/data/indexerService";
+import { checkIndexerHealth } from "@/utils/IndexerUtils";
 
 export function IndexerHealthIndicator() {
   const [isHealthy, setIsHealthy] = useState<boolean | null>(null);

@@ -4,7 +4,7 @@
  */
 
 import { formatEther, parseEther, type PublicClient, type WalletClient } from "viem";
-import { estimateContractGas } from "viem/actions";
+import { estimateContractGas, waitForTransactionReceipt } from "viem/actions";
 import { SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
 import {
   deriveDepositNullifier,
@@ -18,6 +18,7 @@ import {
 } from "@/lib/storage/adapters/IndexedDBStore";
 import { resolveDepositRoute, buildDepositCallParams } from "../protocol/depositRoute";
 import { getUserMessage, logError } from "@/lib/errors";
+import { NotesDiscoverySelectors } from "@/controllers/NotesDiscoveryController";
 
 const GAS_BUFFER = BigInt(120); // 20% buffer for safety
 const DIVISOR = BigInt(100);
@@ -63,10 +64,20 @@ export const depositService = {
     try {
       const poolAddress = SHINOBI_CASH_ETH_POOL.address;
 
-      // 1. Get next deposit index from storage (NotesRepository owns this data)
-      const notesRepo = new NotesRepository(notesStorageAdapter, sharedEncryptionService);
-      const cached = await notesRepo.getCachedNotes(publicKey, poolAddress);
-      const depositIndex = cached?.lastUsedIndex !== undefined ? cached.lastUsedIndex + 1 : 0;
+      // 1. Get next deposit index from discovery controller (single source of truth)
+      // Fallback to repository if controller not ready (cold start scenario)
+      let depositIndex = 0;
+      const lastUsedIndex = NotesDiscoverySelectors.getLastUsedIndex();
+
+      if (lastUsedIndex >= 0) {
+        // Controller has notes, use it
+        depositIndex = lastUsedIndex + 1;
+      } else {
+        // Fallback: controller not ready, read from storage directly
+        const notesRepo = new NotesRepository(notesStorageAdapter, sharedEncryptionService);
+        const cached = await notesRepo.getCachedNotes(publicKey, poolAddress);
+        depositIndex = cached?.lastUsedIndex !== undefined ? cached.lastUsedIndex + 1 : 0;
+      }
 
       // 2. Compose core crypto primitives directly (no repository wrapper)
       const nullifier = deriveDepositNullifier(accountKey, poolAddress, depositIndex);
@@ -196,7 +207,7 @@ export const depositService = {
   ): Promise<void> {
     try {
       // Wait for transaction receipt (throws on timeout)
-      const receipt = await publicClient.waitForTransactionReceipt({
+      const receipt = await waitForTransactionReceipt(publicClient, {
         hash: txHash,
         timeout: 60_000, // 60 seconds
       });

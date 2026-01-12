@@ -12,7 +12,7 @@ import { WithdrawalPreview } from "../components/WithdrawalPreview";
 import { WithdrawalTimeline } from "../components/WithdrawalTimeline";
 import type { EnginePhase } from "../../engine/WithdrawalEngine";
 import { useWithdrawControllerSnapshot } from "../../hooks/useWithdrawControllerSnapshot";
-import { WithdrawController, WithdrawSelectors } from "../../controllers/WithdrawController";
+import { WithdrawController, WithdrawSelectors } from "@/controllers/WithdrawController";
 
 interface WithdrawalTimelineScreenProps {
   onBack: () => void;
@@ -32,16 +32,14 @@ export function WithdrawalTimelineScreen({ onBack, onConfirm }: WithdrawalTimeli
 
   // Determine screen mode based on FSM state
   // Preview mode: Before work starts (idle, previewing)
-  // Timeline mode: During/after work (preparing, submitting, confirming, confirmed, failed, error)
+  // Timeline mode: During/after work (preparing, submitting, confirmed, error)
   const screenMode = useMemo(() => {
     const status = state.state.status;
     if (
       status === "preparing" ||
       status === "ready" ||
       status === "submitting" ||
-      status === "confirming" ||
       status === "confirmed" ||
-      status === "failed" ||
       status === "error"
     ) {
       return "timeline";

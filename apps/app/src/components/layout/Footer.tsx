@@ -2,7 +2,7 @@
 
 import { SyncIndicator } from "@/components/indicator/SyncIndicator";
 import { IndexerHealthIndicator } from "@/components/indicator/IndexerHealthIndicator";
-import { useNoteDiscoverySession } from "@/hooks/notes/useNoteDiscoverySession";
+import { NotesDiscoveryController } from "@/controllers/NotesDiscoveryController";
 
 interface FooterProps {
   showIndicators?: boolean;
@@ -10,7 +10,6 @@ interface FooterProps {
 
 export function Footer({ showIndicators = false }: FooterProps) {
   const currentYear = new Date().getFullYear();
-  const noteDiscoverySession = useNoteDiscoverySession();
 
   return (
     <footer className="border-t border-gray-800 bg-black/30 backdrop-blur-sm">
@@ -38,7 +37,7 @@ export function Footer({ showIndicators = false }: FooterProps) {
                 <div className="h-4 w-px bg-gray-700" />
                 <SyncIndicator
                   onSync={() => {
-                    noteDiscoverySession.discovery.refresh();
+                    NotesDiscoveryController.refresh();
                   }}
                 />
               </>

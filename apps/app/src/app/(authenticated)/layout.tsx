@@ -5,7 +5,7 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { DashboardTabs } from "@/components/layout/DashboardTabs";
 import { useSnapshot } from "valtio";
-import { AuthController } from "@/features/auth/controllers/AuthController";
+import { AuthController } from "@/controllers/AuthController";
 
 /**
  * Authenticated Layout

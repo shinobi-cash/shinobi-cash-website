@@ -26,7 +26,7 @@ import { ScreenLayout } from "@/components/layouts/ScreenLayout";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";
 import { useScreenNavigation } from "@/hooks/useScreenNavigation";
 import { useWithdrawControllerSnapshot } from "../../hooks/useWithdrawControllerSnapshot";
-import { WithdrawController, WithdrawSelectors } from "../../controllers/WithdrawController";
+import { WithdrawController, WithdrawSelectors } from "@/controllers/WithdrawController";
 
 type WithdrawScreen = "noteSelection" | "recipientInput" | "destinationSelection" | "timeline";
 
@@ -149,8 +149,7 @@ export function WithdrawalForm({ onTransactionSuccess }: WithdrawalFormProps) {
   // Main Withdrawal Form
   const isProcessing =
     state.state.status === "preparing" ||
-    state.state.status === "submitting" ||
-    state.state.status === "confirming";
+    state.state.status === "submitting";
   // Convert note amount from wei string to ETH number
   const noteBalance = state.selectedNote
     ? parseFloat(formatEthAmount(state.selectedNote.amount))

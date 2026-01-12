@@ -24,7 +24,7 @@ import {
   executeWithdrawalUserOperation,
   type WithdrawalData,
   type CrossChainWithdrawalData,
-} from "@/services/blockchain/contractService";
+} from "@/features/withdraw/services/contractService";
 
 // ============ USEROP PREPARATION ============
 

@@ -4,6 +4,12 @@
 
 import { Note, NoteChain } from "@shinobi-cash/core";
 
+
+/**
+ * Readonly view of a NoteChain (snapshot-safe)
+ */
+export type ReadonlyNoteChain = readonly Readonly<Note>[];
+
 // Status types
 // ============ STATUS ENUM ============
 

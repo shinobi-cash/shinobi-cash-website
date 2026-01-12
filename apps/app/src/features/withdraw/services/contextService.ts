@@ -11,7 +11,7 @@ import {
   createWithdrawalData,
   createCrossChainWithdrawalData,
   fetchPoolScope,
-} from "@/services/blockchain/contractService";
+} from "@/features/withdraw/services/contractService";
 import {
   SHINOBI_CASH_RELAY_WITHDRAWAL_PAYMASTER,
   SHINOBI_CASH_CROSSCHAIN_WITHDRAWAL_PAYMASTER,

@@ -7,16 +7,13 @@
  */
 
 import { proxy } from "valtio";
-import { WithdrawalEngine, type EnginePhase } from "../engine/WithdrawalEngine";
-import type {
-  WithdrawalRequest,
-  FeeQuote,
-  PreparedUserOperation,
-  ExecutionResult,
-} from "../domain/types";
+
 import { parseEther, formatEther, isAddress } from "viem";
 import { Note } from "@shinobi-cash/core";
 import { POOL_CHAIN } from "@shinobi-cash/constants";
+import { AuthController } from "@/controllers/AuthController";
+import { EnginePhase, WithdrawalEngine } from "@/features/withdraw/engine/WithdrawalEngine";
+import { ExecutionResult, FeeQuote, PreparedUserOperation, WithdrawalRequest } from "@/features/withdraw/domain/types";
 
 /**
  * Withdraw error types
@@ -43,16 +40,6 @@ type WithdrawState =
   | { status: "submitting" } // Executing UserOp via bundler (includes confirmation wait)
   | { status: "confirmed"; txHash: `0x${string}`; executionResult: ExecutionResult }
   | { status: "error"; error: WithdrawError };
-
-/**
- * Crypto context (from AccountService via useCryptoContext)
- * ONLY context needed for withdrawal (no wallet!)
- */
-export interface CryptoContext {
-  publicKey: string | null;
-  accountKey: bigint | null;
-  cryptoReady: boolean;
-}
 
 /**
  * Notes context (from useCachedNotes, read-only)
@@ -82,7 +69,6 @@ interface WithdrawControllerState {
   lastError: WithdrawError | null;
 
   // External contexts (updated by React adapter)
-  crypto: CryptoContext;
   notes: NotesContext; // Read-only, never mutated by controller
 }
 
@@ -96,11 +82,6 @@ const state = proxy<WithdrawControllerState>({
   selectedNote: null,
   previewFeeQuote: null,
   lastError: null,
-  crypto: {
-    publicKey: null,
-    accountKey: null,
-    cryptoReady: false,
-  },
   notes: {
     notes: [],
     isLoading: false,
@@ -114,13 +95,14 @@ export const WithdrawSelectors = {
    * Can user start withdrawal? (check before "Review" button)
    */
   canWithdraw: () => {
+    const crypto = AuthController.state.crypto;
     return (
       state.state.status === "idle" &&
       state.selectedNote !== null &&
       state.amount.trim() !== "" &&
       state.recipientAddress.trim() !== "" &&
       isAddress(state.recipientAddress) &&
-      state.crypto.cryptoReady // ← ONLY crypto check, NO wallet!
+      crypto.cryptoReady // ← ONLY crypto check, NO wallet!
     );
   },
 
@@ -128,12 +110,13 @@ export const WithdrawSelectors = {
    * Should controller auto-preview fees?
    */
   canAutoPreview: () => {
+    const crypto = AuthController.state.crypto;
     return (
       state.amount.trim() !== "" &&
       state.recipientAddress.trim() !== "" &&
       state.selectedNote !== null &&
       isAddress(state.recipientAddress) &&
-      state.crypto.cryptoReady
+      crypto.cryptoReady
     );
   },
 
@@ -234,6 +217,7 @@ export const WithdrawSelectors = {
   },
 };
 
+// Engine is per-withdrawal attempt; must be reset on any failure or reset
 let engine: WithdrawalEngine | null = null;
 
 function getEngine(): WithdrawalEngine {
@@ -581,13 +565,6 @@ export const WithdrawController = {
   // ================= CONTEXT UPDATES (called by React adapter) =================
 
   /**
-   * Update crypto context from useCryptoContext
-   */
-  _updateCrypto(crypto: CryptoContext): void {
-    state.crypto = crypto;
-  },
-
-  /**
    * Update notes context from useCachedNotes (read-only)
    */
   _updateNotes(notes: NotesContext): void {
@@ -601,7 +578,8 @@ export const WithdrawController = {
    * NO wallet validation - withdrawal uses Account Abstraction!
    */
   _validateInputs(): boolean {
-    const { amount, recipientAddress, selectedNote, crypto } = state;
+    const { amount, recipientAddress, selectedNote } = state;
+    const crypto = AuthController.state.crypto;
 
     if (!amount || !recipientAddress || !selectedNote) return false;
     if (!crypto.cryptoReady || !crypto.accountKey) return false;
@@ -629,11 +607,12 @@ export const WithdrawController = {
    * Build withdrawal request from current state
    */
   _buildRequest(): WithdrawalRequest {
+    const crypto = AuthController.state.crypto;
     return {
       note: state.selectedNote!,
       withdrawAmountWei: parseEther(state.amount),
       recipient: state.recipientAddress as `0x${string}`,
-      accountKey: state.crypto.accountKey!,
+      accountKey: crypto.accountKey!,
       destinationChainId: state.destinationChainId,
     };
   },

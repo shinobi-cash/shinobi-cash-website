@@ -6,6 +6,7 @@
 import { Copy, Check, Loader2 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useChainId, useSwitchChain } from "wagmi";
+import { useSnapshot } from "valtio";
 import { Button } from "@workspace/ui/components/button";
 import { POOL_CHAIN, SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
 import { TokenAmountInput } from "@/components/shared/TokenAmountInput";
@@ -21,7 +22,8 @@ import { modal } from "@/context";
 import { showToast } from "@/lib/toast";
 import { getUserMessage } from "@/lib/errors/errorHandler";
 import { useDepositControllerSnapshot } from "../../hooks/useDepositControllerSnapshot";
-import { DepositController, DepositSelectors } from "../../controllers/DepositController";
+import { DepositController, DepositSelectors } from "../../../../controllers/DepositController";
+import { AuthController } from "../../../../controllers/AuthController";
 import { DepositPreviewScreen } from "../screens/DepositPreviewScreen";
 import { DepositTimelineScreen } from "../screens/DepositTimelineScreen";
 import { ScreenLayout } from "@/components/layouts/ScreenLayout";
@@ -56,6 +58,10 @@ export function DepositForm({ asset }: DepositFormProps) {
 
   // Read-only snapshot from controller
   const state = useDepositControllerSnapshot();
+
+  // Subscribe to AuthController for crypto state
+  const authState = useSnapshot(AuthController.state);
+  const cryptoReady = authState.crypto.cryptoReady;
 
   // Track shown errors to prevent duplicate toasts
   const shownErrorsRef = useRef(new Set<string>());
@@ -119,7 +125,7 @@ export function DepositForm({ asset }: DepositFormProps) {
     if (DepositSelectors.canAutoPrepare()) {
       DepositController.schedulePrepare();
     }
-  }, [state.amount, state.wallet.isConnected, state.crypto.cryptoReady, state.wallet.chainId]);
+  }, [state.amount, state.wallet.isConnected, cryptoReady, state.wallet.chainId]);
 
   const handleReviewDeposit = () => {
     // Already prepared, just navigate

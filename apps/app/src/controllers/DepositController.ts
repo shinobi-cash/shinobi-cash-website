@@ -4,11 +4,12 @@
  */
 
 import { proxy } from "valtio";
-import { depositService, type CashNoteData, type GasEstimate } from "../services/depositService";
-import { formatDepositAmountsForDisplay } from "../protocol/depositFees";
-import { isDepositSupported } from "../protocol/depositRoute";
+import { depositService, type CashNoteData, type GasEstimate } from "../features/deposit/services/depositService";
+import { formatDepositAmountsForDisplay } from "../features/deposit/protocol/depositFees";
+import { isDepositSupported } from "../features/deposit/protocol/depositRoute";
 import { DEPOSIT_FEES, POOL_CHAIN } from "@shinobi-cash/constants";
 import type { PublicClient, WalletClient } from "viem";
+import { AuthController } from "@/controllers/AuthController";
 
 /**
  * Deposit error types
@@ -56,15 +57,6 @@ export interface WalletContext {
 }
 
 /**
- * Crypto context (from AccountService via useCryptoContext)
- */
-export interface CryptoContext {
-  publicKey: string | null;
-  accountKey: bigint | null;
-  cryptoReady: boolean;
-}
-
-/**
  * Full controller state (canonical truth only)
  */
 interface DepositControllerState {
@@ -76,7 +68,6 @@ interface DepositControllerState {
 
   // External contexts (updated by React adapter)
   wallet: WalletContext;
-  crypto: CryptoContext;
 }
 
 const state = proxy<DepositControllerState>({
@@ -90,11 +81,6 @@ const state = proxy<DepositControllerState>({
     publicClient: undefined,
     walletClient: undefined,
     gasPrice: undefined,
-  },
-  crypto: {
-    publicKey: null,
-    accountKey: null,
-    cryptoReady: false,
   },
 });
 
@@ -113,10 +99,11 @@ export const DepositSelectors = {
    * Policy for when preparation should be triggered
    */
   canAutoPrepare: () => {
+    const crypto = AuthController.state.crypto;
     return (
       state.amount.trim() !== "" &&
       state.wallet.isConnected &&
-      state.crypto.cryptoReady &&
+      crypto.cryptoReady &&
       isDepositSupported(state.wallet.chainId)
     );
   },
@@ -235,7 +222,8 @@ export const DepositController = {
     // Concurrency protection: only latest prepare() wins
     const current = ++prepareId;
 
-    const { amount, crypto, wallet } = state;
+    const { amount, wallet } = state;
+    const crypto = AuthController.state.crypto;
 
     log.debug("prepare() started", { prepareId: current, amount });
 
@@ -431,14 +419,6 @@ export const DepositController = {
    */
   _updateWallet(wallet: WalletContext) {
     state.wallet = wallet;
-  },
-
-  /**
-   * Update crypto context from useCryptoContext
-   * Called by useDepositControllerSnapshot
-   */
-  _updateCrypto(crypto: CryptoContext) {
-    state.crypto = crypto;
   },
 
   // ================= PRIVATE =================

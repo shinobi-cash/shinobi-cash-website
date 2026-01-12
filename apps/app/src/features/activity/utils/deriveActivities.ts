@@ -6,6 +6,7 @@
 
 import type { NoteChain, Note } from "@shinobi-cash/core";
 import type { Activity, ActivityType } from "../types";
+import { ReadonlyNoteChain } from "@/features/notes/types";
 
 /**
  * Derive activity type from note
@@ -47,7 +48,7 @@ function noteToActivity(note: Note): Activity {
  * Flattens all notes from all chains and converts them to activities,
  * sorted by timestamp (newest first).
  */
-export function deriveActivitiesFromNoteChains(noteChains: NoteChain[]): Activity[] {
+export function deriveActivitiesFromNoteChains(noteChains: readonly ReadonlyNoteChain[]): Activity[] {
   const activities: Activity[] = [];
 
   // Flatten all notes from all chains

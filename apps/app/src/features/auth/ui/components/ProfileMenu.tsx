@@ -31,7 +31,7 @@ import { useAutoSync } from "@/hooks/useAutoSync";
 import { AddPasskeyModal } from "./AddPasskeyModal";
 import { RemovePasskeyModal } from "./RemovePasskeyModal";
 import { useSnapshot } from "valtio";
-import { AuthController } from "@/features/auth/controllers/AuthController";
+import { AuthController } from "@/controllers/AuthController";
 
 export function ProfileMenu() {
   const state = useSnapshot(AuthController.state);

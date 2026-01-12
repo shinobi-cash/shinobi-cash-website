@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
-import { AuthController } from "../controllers/AuthController";
+import { AuthController } from "../../../controllers/AuthController";
 
 // ============ TYPES ============
 

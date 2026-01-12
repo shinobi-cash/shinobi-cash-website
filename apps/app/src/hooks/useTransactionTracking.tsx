@@ -1,13 +1,12 @@
 import { getPublicClient } from "@/lib/clients";
-import { noteDiscoveryService } from "@/services/NoteDiscoveryService";
 import { showToast } from "@/lib/toast";
-import { fetchLatestIndexedBlock } from "@/services/data/indexerService";
+import { fetchLatestIndexedBlock } from "@/utils/IndexerUtils";
 import { parseUserKey } from "@shinobi-cash/core";
 import type React from "react";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-import { SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
 import { logError } from "@/lib/errors";
 import { accountService } from "@/lib/storage/account/AccountService";
+import { NotesDiscoveryController } from "@/controllers/NotesDiscoveryController";
 
 export type TrackingStatus = "idle" | "pending" | "waiting" | "synced" | "failed";
 
@@ -34,9 +33,6 @@ export function useTransactionTracking() {
   }
   return context;
 }
-
-// Singleton discovery service
-const discoveryService = noteDiscoveryService;
 
 export function TransactionTrackingProvider({ children }: { children: React.ReactNode }) {
   const [trackingStatus, setTrackingStatus] = useState<TrackingStatus>("idle");
@@ -199,14 +195,7 @@ export function TransactionTrackingProvider({ children }: { children: React.Reac
           const { publicKey, accountKey } = cryptoRef.current;
 
           if (publicKey && accountKey) {
-            discoveryService
-              .discoverNotes(publicKey, SHINOBI_CASH_ETH_POOL.address, accountKey)
-              .catch((err) =>
-                logError(err, {
-                  action: "autoSyncNotes",
-                  suppressed: true,
-                })
-              );
+              NotesDiscoveryController.refresh();
           }
 
           eventTargetRef.current.dispatchEvent(new CustomEvent("indexed"));

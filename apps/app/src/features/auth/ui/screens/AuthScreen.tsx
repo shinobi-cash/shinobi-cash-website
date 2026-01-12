@@ -7,7 +7,7 @@
 
 import { useEffect, useRef } from "react";
 import { WalletAuth } from "../components/WalletAuth";
-import { AuthController } from "@/features/auth/controllers/AuthController";
+import { AuthController } from "@/controllers/AuthController";
 import { useSnapshot } from "valtio";
 
 export function AuthScreen() {

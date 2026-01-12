@@ -4,7 +4,7 @@ import { CheckCircle, Clock, Hourglass, XCircle } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";
 import { ScreenLayout } from "@/components/layouts/ScreenLayout";
-import { useTransactionTracking } from "@/hooks/transactions/useTransactionTracking";
+import { useTransactionTracking } from "@/hooks/useTransactionTracking";
 import { getTxExplorerUrl } from "@/config/chains";
 import { cn } from "@workspace/ui/lib/utils";
 import { getUserMessage, isUserCancellation } from "@/lib/errors/errorHandler";

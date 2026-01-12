@@ -5,15 +5,19 @@
  */
 
 import type { Note, NoteChain } from "@shinobi-cash/core";
-import type { NoteFilter } from "../types";
+import type { NoteFilter, ReadonlyNoteChain } from "../types";
 
 /**
  * Get the last note from a note chain
  * Pure helper function
  */
-export function getLastNote(noteChain: NoteChain): Note {
+export function getLastNote(noteChain: ReadonlyNoteChain): Note {
+  if (noteChain.length === 0) {
+    throw new Error("Invariant violation: empty NoteChain");
+  }
   return noteChain[noteChain.length - 1];
 }
+
 
 /**
  * Check if a note is available (unspent, activated, and approved by ASP)
@@ -49,7 +53,7 @@ export function isNoteSpent(note: Note): boolean {
  * @param filter - Filter type to apply
  * @returns Filtered array of note chains
  */
-export function filterNoteChains(noteChains: NoteChain[], filter: NoteFilter): NoteChain[] {
+export function filterNoteChains(noteChains: readonly ReadonlyNoteChain[], filter: NoteFilter): ReadonlyNoteChain[] {
   return noteChains.filter((noteChain) => {
     const lastNote = getLastNote(noteChain);
 
@@ -111,7 +115,7 @@ export function getNoteChainCounts(noteChains: NoteChain[]): Record<NoteFilter, 
  * @param noteChains - Array of note chains to sort
  * @returns New sorted array (does not mutate original)
  */
-export function sortNoteChainsByTimestamp(noteChains: NoteChain[]): NoteChain[] {
+export function sortNoteChainsByTimestamp(noteChains: ReadonlyNoteChain[]): ReadonlyNoteChain[] {
   return [...noteChains].sort((a, b) => {
     const lastNoteA = getLastNote(a);
     const lastNoteB = getLastNote(b);
@@ -126,7 +130,7 @@ export function sortNoteChainsByTimestamp(noteChains: NoteChain[]): NoteChain[] 
  * @param noteChains - Array of note chains
  * @returns Only available note chains
  */
-export function getAvailableNoteChains(noteChains: NoteChain[]): NoteChain[] {
+export function getAvailableNoteChains(noteChains: ReadonlyNoteChain[]): ReadonlyNoteChain[] {
   return filterNoteChains(noteChains, "available");
 }
 

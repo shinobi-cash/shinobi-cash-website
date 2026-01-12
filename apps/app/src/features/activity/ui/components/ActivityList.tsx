@@ -10,7 +10,7 @@ import type { Activity, ActivityFilter } from "../../types";
 import type { ActivityStatus } from "../../types";
 
 interface ActivityListProps {
-  activities: Activity[];
+  activities: readonly Activity[];
   status: ActivityStatus;
   activeFilter: ActivityFilter;
   totalCount: number;

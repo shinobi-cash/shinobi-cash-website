@@ -5,7 +5,7 @@
  */
 
 import { repositoryRegistry } from "@/lib/storage/RepositoryRegistry";
-import { fetchActivities } from "@/services/data/indexerService";
+import { fetchActivities } from "@/utils/IndexerUtils";
 import type { DiscoveryResult, DiscoveryOptions } from "@shinobi-cash/core";
 
 /**
@@ -44,10 +44,3 @@ export async function discoverNotes(
     options
   );
 }
-
-// Export wrapper object to maintain compatibility with existing hook
-export const noteDiscoveryService = {
-  discoverNotes,
-};
-
-export default noteDiscoveryService;

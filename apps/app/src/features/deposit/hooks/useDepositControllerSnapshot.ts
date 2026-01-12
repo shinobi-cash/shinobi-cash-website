@@ -7,13 +7,13 @@
 import { useEffect } from "react";
 import { useAccount, useChainId, useBalance, useConfig, useGasPrice, useWalletClient } from "wagmi";
 import { useSnapshot } from "valtio";
-import { DepositController } from "../controllers/DepositController";
-import { useCryptoContext } from "@/hooks/useCryptoContext";
+import { DepositController } from "../../../controllers/DepositController";
 import { formatEther } from "viem";
 
 /**
  * Read-only snapshot of DepositController state
- * Syncs wallet and crypto contexts from React to controller
+ * Syncs wallet context from React to controller
+ * Crypto context is read directly from AuthController by the controller
  *
  * This hook:
  * - Does NOT contain business logic
@@ -33,8 +33,6 @@ export function useDepositControllerSnapshot() {
   const config = useConfig();
   const { data: walletClient } = useWalletClient({ chainId });
 
-  // Crypto context (from AccountService via useCryptoContext)
-  const { publicKey, accountKey, cryptoReady } = useCryptoContext();
   // Sync wallet context to controller
   useEffect(() => {
     const publicClient = config.getClient({ chainId }) as any; // wagmi client is compatible with viem PublicClient
@@ -57,15 +55,6 @@ export function useDepositControllerSnapshot() {
     config,
     walletClient,
   ]);
-
-  // Sync crypto context to controller
-  useEffect(() => {
-    DepositController._updateCrypto({
-      publicKey,
-      accountKey,
-      cryptoReady,
-    });
-  }, [publicKey, accountKey, cryptoReady]);
 
   return snapshot;
 }
