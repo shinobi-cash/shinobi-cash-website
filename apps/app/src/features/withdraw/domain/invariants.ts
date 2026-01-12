@@ -122,24 +122,3 @@ export function validateWithdrawalContext(context: WithdrawalPipelineContext): v
     );
   }
 }
-
-/**
- * Assert fee readiness - throw if fees are not ready
- *
- * @param isLoading - Whether fees are loading
- * @param error - Fee estimation error if any
- * @throws WithdrawalValidationError if fees not ready
- */
-export function assertFeeReadiness(isLoading: boolean, error: string | null): void {
-  if (isLoading) {
-    throw new WithdrawalValidationError("Fee estimation is still loading", "FEES_NOT_READY", {
-      isLoading,
-    });
-  }
-
-  if (error) {
-    throw new WithdrawalValidationError("Fee estimation failed", "FEE_ESTIMATION_FAILED", {
-      error,
-    });
-  }
-}

@@ -173,15 +173,4 @@ export class WithdrawalEngine {
 
     return result;
   }
-
-  /**
-   * Complete withdrawal (prepare + execute)
-   *
-   * @param request - Withdrawal request
-   * @returns Execution result
-   */
-  async processComplete(request: WithdrawalRequest): Promise<ExecutionResult> {
-    await this.prepare(request);
-    return this.execute();
-  }
 }

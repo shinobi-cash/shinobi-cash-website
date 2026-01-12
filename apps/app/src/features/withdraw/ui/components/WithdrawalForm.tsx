@@ -1,10 +1,11 @@
 /**
- * Withdrawal Form - Refactored
- * Pure UI component that delegates all logic to useWithdrawController
+ * Withdrawal Form - New Controller Pattern
+ * Pure UI component using WithdrawController via snapshot adapter
+ * Follows interaction contract: Review = instant, Confirm = work starts
  */
 
 import { Loader2, ChevronDown } from "lucide-react";
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { Button } from "@workspace/ui/components/button";
 import { POOL_CHAIN } from "@shinobi-cash/constants";
 import { TokenAmountInput } from "@/components/shared/TokenAmountInput";
@@ -20,11 +21,12 @@ import { showToast } from "@/lib/toast";
 import { getUserMessage } from "@/lib/errors/errorHandler";
 import { RecipientAddressInputScreen } from "../screens/RecipientAddressInputScreen";
 import { DISPLAY_DECIMALS, ETH_ASSET } from "../../constants";
-import { WITHDRAW_STATUS_LABELS } from "../../types/withdrawStatus";
-import { useWithdrawController } from "../../controller/useWithdrawController";
+import { formatEthAmount } from "@/utils/formatters";
 import { ScreenLayout } from "@/components/layouts/ScreenLayout";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";
 import { useScreenNavigation } from "@/hooks/useScreenNavigation";
+import { useWithdrawControllerSnapshot } from "../../hooks/useWithdrawControllerSnapshot";
+import { WithdrawController, WithdrawSelectors } from "../../controllers/WithdrawController";
 
 type WithdrawScreen = "noteSelection" | "recipientInput" | "destinationSelection" | "timeline";
 
@@ -37,61 +39,67 @@ export function WithdrawalForm({ onTransactionSuccess }: WithdrawalFormProps) {
 
   const screens = useScreenNavigation<WithdrawScreen>();
 
-  // All withdrawal logic is in the controller
-  const controller = useWithdrawController(asset, () => {
-    onTransactionSuccess?.();
-    screens.close();
-  });
+  // Read-only snapshot from controller (React adapter)
+  const state = useWithdrawControllerSnapshot();
 
   // Track shown errors to prevent duplicate toasts
   const shownErrorsRef = useRef(new Set<string>());
 
+  // Auto-preview: Schedule lightweight fee preview when inputs change (debounced 500ms)
+  useEffect(() => {
+    if (WithdrawSelectors.canAutoPreview()) {
+      WithdrawController.schedulePreview();
+    }
+  }, [state.amount, state.recipientAddress, state.selectedNote, state.destinationChainId]);
+
+  // Notify parent on successful transaction (but don't auto-close - let user see success message)
+  useEffect(() => {
+    if (state.state.status === "confirmed") {
+      onTransactionSuccess?.();
+    }
+  }, [state.state.status, onTransactionSuccess]);
+
   // Handle error toasts (UI side effect with domain-specific messages)
   useEffect(() => {
-    if (controller.lastError) {
-      const errorKey = `${controller.lastError.type}:${controller.lastError.message}`;
+    if (state.lastError) {
+      const errorKey = `${state.lastError.type}:${state.lastError.message}`;
       if (!shownErrorsRef.current.has(errorKey)) {
         shownErrorsRef.current.add(errorKey);
 
         let errorMessage: string;
-        if (controller.lastError.type === "proof") {
+        if (state.lastError.type === "proof") {
           errorMessage = "Proof generation failed";
-        } else if (controller.lastError.type === "transaction") {
-          errorMessage = getUserMessage(new Error(controller.lastError.message));
+        } else if (state.lastError.type === "transaction") {
+          errorMessage = getUserMessage(new Error(state.lastError.message));
         } else {
-          errorMessage = getUserMessage(new Error(controller.lastError.message));
+          errorMessage = getUserMessage(new Error(state.lastError.message));
         }
 
         showToast.error(errorMessage, { duration: 5000 });
       }
     }
-  }, [controller.lastError]);
+  }, [state.lastError]);
 
-  // Handle withdrawal preparation (show timeline)
-  const handlePrepareWithdrawal = useCallback(async () => {
+  // Interaction Contract Fix: Review = instant validation + navigation (NO work)
+  const handleReviewWithdrawal = () => {
+    if (!WithdrawSelectors.canWithdraw()) {
+      showToast.error("Please fill all required fields");
+      return;
+    }
+    // Just navigate to preview/timeline screen (instant, uses preview fee quote)
     screens.navigate("timeline");
-    await controller.prepareWithdrawal();
-  }, [controller, screens]);
+  };
 
   // Show withdrawal timeline screen
-  if (screens.is("timeline") && controller.selectedNote) {
+  // Interaction Contract: Confirm button in timeline calls WithdrawController.confirm()
+  if (screens.is("timeline")) {
     return (
       <WithdrawalTimelineScreen
         onBack={screens.close}
-        onConfirm={controller.executeWithdrawal}
-        note={controller.selectedNote}
-        withdrawAmount={controller.amount}
-        recipientAddress={controller.recipientAddress}
-        destinationChainId={controller.destinationChainId}
-        executionFee={controller.executionFee}
-        solverFee={controller.solverFee}
-        youReceive={controller.youReceive}
-        remainingBalance={controller.remainingBalance}
-        isProcessing={controller.status === "preparing-proof" || controller.status === "submitting"}
-        isCrossChain={controller.isCrossChain}
-        steps={[]} // Timeline steps managed by timeline component
-        showPreview={true}
-        onShowPreview={() => {}}
+        onConfirm={() => {
+          // Confirm = prepare + submit (all work happens here)
+          WithdrawController.confirm();
+        }}
       />
     );
   }
@@ -100,11 +108,11 @@ export function WithdrawalForm({ onTransactionSuccess }: WithdrawalFormProps) {
   if (screens.is("noteSelection")) {
     return (
       <NoteSelectionScreen
-        availableNotes={controller.availableNotes}
-        selectedNote={controller.selectedNote}
-        onSelectNote={controller.selectNote}
+        availableNotes={[...state.notes.notes]}
+        selectedNote={state.selectedNote}
+        onSelectNote={(note) => WithdrawController.selectNote(note)}
         onBack={screens.close}
-        isLoading={controller.isLoadingNotes}
+        isLoading={state.notes.isLoading}
         asset={asset}
       />
     );
@@ -114,9 +122,9 @@ export function WithdrawalForm({ onTransactionSuccess }: WithdrawalFormProps) {
   if (screens.is("recipientInput")) {
     return (
       <RecipientAddressInputScreen
-        value={controller.recipientAddress}
-        onChange={controller.setRecipientAddress}
-        error={controller.addressError ?? undefined}
+        value={state.recipientAddress}
+        onChange={(address) => WithdrawController.setRecipientAddress(address)}
+        error={WithdrawSelectors.getAddressError() ?? undefined}
         onBack={screens.close}
         onConfirm={screens.close}
       />
@@ -128,9 +136,9 @@ export function WithdrawalForm({ onTransactionSuccess }: WithdrawalFormProps) {
     return (
       <ScreenLayout header={<ScreenHeader title="Select Asset & Chain" onBack={screens.close} />}>
         <AssetChainSelectorScreen
-          selectedChainId={controller.destinationChainId}
+          selectedChainId={state.destinationChainId}
           onChainChange={(newChainId) => {
-            controller.setDestinationChain(newChainId);
+            WithdrawController.setDestinationChain(newChainId);
           }}
           onSelect={screens.close}
         />
@@ -139,6 +147,15 @@ export function WithdrawalForm({ onTransactionSuccess }: WithdrawalFormProps) {
   }
 
   // Main Withdrawal Form
+  const isProcessing =
+    state.state.status === "preparing" ||
+    state.state.status === "submitting" ||
+    state.state.status === "confirming";
+  // Convert note amount from wei string to ETH number
+  const noteBalance = state.selectedNote
+    ? parseFloat(formatEthAmount(state.selectedNote.amount))
+    : 0;
+
   return (
     <div className="flex h-full w-full flex-col overflow-x-hidden px-4 py-4 sm:px-6 sm:py-6">
       <div className="flex-1 space-y-2 overflow-y-auto">
@@ -150,11 +167,11 @@ export function WithdrawalForm({ onTransactionSuccess }: WithdrawalFormProps) {
               onClick={() => screens.navigate("noteSelection")}
               variant={"ghost"}
               className="flex h-auto items-center gap-1 p-0 text-sm text-purple-400 transition-colors hover:text-purple-300"
-              disabled={controller.isPreparing || controller.status === "submitting"}
+              disabled={isProcessing}
             >
-              {controller.selectedNote ? (
+              {state.selectedNote ? (
                 <>
-                  {controller.noteBalance.toFixed(DISPLAY_DECIMALS)} {asset.symbol}
+                  {noteBalance.toFixed(DISPLAY_DECIMALS)} {asset.symbol}
                   <ChevronDown className="h-3 w-3" />
                 </>
               ) : (
@@ -167,14 +184,12 @@ export function WithdrawalForm({ onTransactionSuccess }: WithdrawalFormProps) {
           }
         />
         <TokenAmountInputWithBalance
-          amount={controller.amount}
-          onAmountChange={controller.setAmount}
-          balance={controller.selectedNote ? controller.noteBalance.toString() : "0"}
+          amount={state.amount}
+          onAmountChange={(amount) => WithdrawController.setAmount(amount)}
+          balance={state.selectedNote ? noteBalance.toString() : "0"}
           assetSymbol={asset.symbol}
-          onMaxClick={controller.setMax}
-          disabled={
-            !controller.selectedNote || controller.isPreparing || controller.status === "submitting"
-          }
+          onMaxClick={() => WithdrawController.setMax()}
+          disabled={!state.selectedNote || isProcessing}
         >
           <TokenChainSelector asset={asset} chainId={POOL_CHAIN.id} showChevron={true} />
         </TokenAmountInputWithBalance>
@@ -190,16 +205,12 @@ export function WithdrawalForm({ onTransactionSuccess }: WithdrawalFormProps) {
               onClick={() => screens.navigate("recipientInput")}
               variant={"ghost"}
               className="flex h-auto items-center gap-1 p-0 text-sm text-purple-400 transition-colors hover:text-purple-300"
-              disabled={
-                controller.isPreparing ||
-                controller.status === "submitting" ||
-                !controller.selectedNote
-              }
+              disabled={isProcessing || !state.selectedNote}
             >
-              {controller.recipientAddress ? (
+              {state.recipientAddress ? (
                 <>
-                  {controller.recipientAddress.slice(0, 6)}...
-                  {controller.recipientAddress.slice(-4)}
+                  {state.recipientAddress.slice(0, 6)}...
+                  {state.recipientAddress.slice(-4)}
                   <ChevronDown className="h-3 w-3" />
                 </>
               ) : (
@@ -213,50 +224,46 @@ export function WithdrawalForm({ onTransactionSuccess }: WithdrawalFormProps) {
         />
         <TokenAmountInput
           amount={
-            controller.youReceive > 0
-              ? controller.youReceive.toFixed(DISPLAY_DECIMALS)
-              : controller.amount || "0"
+            WithdrawSelectors.getYouReceive() > 0
+              ? WithdrawSelectors.getYouReceive().toFixed(DISPLAY_DECIMALS)
+              : state.amount || "0"
           }
           onAmountChange={() => {}}
           disabled={true}
         >
           <TokenChainSelector
             asset={asset}
-            chainId={controller.destinationChainId}
+            chainId={state.destinationChainId}
             onClick={() => screens.navigate("destinationSelection")}
-            disabled={
-              controller.isPreparing ||
-              controller.status === "submitting" ||
-              !controller.selectedNote
-            }
+            disabled={isProcessing || !state.selectedNote}
             showChevron={true}
           />
         </TokenAmountInput>
 
         {/* Fee Breakdown */}
         <FeeBreakdown
-          executionFee={controller.executionFee}
-          solverFee={controller.solverFee}
+          executionFee={WithdrawSelectors.getExecutionFee()}
+          solverFee={WithdrawSelectors.getSolverFee()}
           assetSymbol={asset.symbol}
-          isCrossChain={controller.isCrossChain}
+          isCrossChain={WithdrawSelectors.isCrossChain()}
           showAsDeduction={true}
         />
 
         {/* Action Button */}
         <div className="sm:mt-4">
           <Button
-            onClick={handlePrepareWithdrawal}
-            disabled={!controller.canWithdraw}
+            onClick={handleReviewWithdrawal}
+            disabled={!WithdrawSelectors.canWithdraw()}
             className="h-12 w-full rounded-xl text-base font-semibold disabled:cursor-not-allowed disabled:opacity-50 sm:h-14 sm:text-lg"
             size="lg"
           >
-            {controller.status === "preparing-proof" || controller.status === "submitting" ? (
+            {state.state.status === "previewing" ? (
               <div className="flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                {WITHDRAW_STATUS_LABELS[controller.status]}
+                Previewing fees...
               </div>
             ) : (
-              WITHDRAW_STATUS_LABELS[controller.status]
+              "Review Withdrawal"
             )}
           </Button>
         </div>
