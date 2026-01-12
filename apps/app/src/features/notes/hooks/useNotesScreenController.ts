@@ -77,37 +77,35 @@ export function useNotesScreenController(): NotesScreenControllerAPI {
     [discoveryState.noteChains, screenState.activeFilter]
   );
 
-
   return {
-  // UI status (from domain)
-  status: viewState.status,
-  lastError: discoveryState.lastError,
+    // UI status (from domain)
+    status: viewState.status,
+    lastError: discoveryState.lastError,
 
-  // Filtered views
-  filteredNoteViews,
+    // Filtered views
+    filteredNoteViews,
 
-  // Filter state
-  activeFilter: screenState.activeFilter,
-  availableCount: viewState.counts.available,
-  pendingCount: viewState.counts.pending,
-  spentCount: viewState.counts.spent,
-  totalCount: viewState.totalCount,
+    // Filter state
+    activeFilter: screenState.activeFilter,
+    availableCount: viewState.counts.available,
+    pendingCount: viewState.counts.pending,
+    spentCount: viewState.counts.spent,
+    totalCount: viewState.totalCount,
 
-  // Loading states (canonical)
-  isLoading: viewState.isLoading,
-  isRefreshing: viewState.isRefreshing,
+    // Loading states (canonical)
+    isLoading: viewState.isLoading,
+    isRefreshing: viewState.isRefreshing,
 
-  // Available notes (canonical)
-  availableNotes: viewState.availableNotes,
+    // Available notes (canonical)
+    availableNotes: viewState.availableNotes,
 
-  // Selection
-  selectedNoteChain: screenState.selectedNoteChain as NoteChain | null,
+    // Selection
+    selectedNoteChain: screenState.selectedNoteChain as NoteChain | null,
 
-  // Actions
-  setFilter: NotesScreenController.setFilter,
-  selectNoteChain: NotesScreenController.selectNoteChain,
-  clearSelection: NotesScreenController.clearSelection,
-  reset: NotesScreenController.reset,
-};
-
+    // Actions
+    setFilter: NotesScreenController.setFilter,
+    selectNoteChain: NotesScreenController.selectNoteChain,
+    clearSelection: NotesScreenController.clearSelection,
+    reset: NotesScreenController.reset,
+  };
 }

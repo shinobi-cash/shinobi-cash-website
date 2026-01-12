@@ -48,7 +48,9 @@ function noteToActivity(note: Note): Activity {
  * Flattens all notes from all chains and converts them to activities,
  * sorted by timestamp (newest first).
  */
-export function deriveActivitiesFromNoteChains(noteChains: readonly ReadonlyNoteChain[]): Activity[] {
+export function deriveActivitiesFromNoteChains(
+  noteChains: readonly ReadonlyNoteChain[]
+): Activity[] {
   const activities: Activity[] = [];
 
   // Flatten all notes from all chains

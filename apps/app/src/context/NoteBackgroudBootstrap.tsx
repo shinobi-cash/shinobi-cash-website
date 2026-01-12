@@ -19,9 +19,7 @@ export function NotesBackgroundBootstrap() {
     NotesDiscoveryController.bootstrap();
 
     // 2️⃣ Start background sync
-    NotesDiscoveryController.startBackgroundSync(
-      SHINOBI_CASH_ETH_POOL.address
-    );
+    NotesDiscoveryController.startBackgroundSync(SHINOBI_CASH_ETH_POOL.address);
 
     return () => {
       NotesDiscoveryController.stopBackgroundSync();

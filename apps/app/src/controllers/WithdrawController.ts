@@ -13,7 +13,12 @@ import { Note } from "@shinobi-cash/core";
 import { POOL_CHAIN } from "@shinobi-cash/constants";
 import { AuthController } from "@/controllers/AuthController";
 import { EnginePhase, WithdrawalEngine } from "@/features/withdraw/engine/WithdrawalEngine";
-import { ExecutionResult, FeeQuote, PreparedUserOperation, WithdrawalRequest } from "@/features/withdraw/domain/types";
+import {
+  ExecutionResult,
+  FeeQuote,
+  PreparedUserOperation,
+  WithdrawalRequest,
+} from "@/features/withdraw/domain/types";
 
 /**
  * Withdraw error types
@@ -616,6 +621,4 @@ export const WithdrawController = {
       destinationChainId: state.destinationChainId,
     };
   },
-
-
 };

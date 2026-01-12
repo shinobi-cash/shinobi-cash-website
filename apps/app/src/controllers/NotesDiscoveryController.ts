@@ -12,7 +12,11 @@ import { AuthController } from "@/controllers/AuthController";
 
 import type { Note } from "@shinobi-cash/core";
 import { NotesError, NotesStatus, ReadonlyNoteChain } from "@/features/notes/types";
-import { getAvailableNotes, getLastNote, getNoteChainCounts } from "@/features/notes/utils/noteFiltering";
+import {
+  getAvailableNotes,
+  getLastNote,
+  getNoteChainCounts,
+} from "@/features/notes/utils/noteFiltering";
 
 /**
  * Discovery state machine
@@ -57,7 +61,6 @@ interface NotesDiscoveryViewState {
   isRefreshing: boolean;
   isEmpty: boolean;
 }
-
 
 const state = proxy<NotesDiscoveryControllerState>({
   state: { status: "idle" },
@@ -170,7 +173,6 @@ export const NotesDiscoverySelectors = {
   },
 };
 let worker: Worker | null = null;
-
 
 /**
  * Notes Discovery Controller - Main API
@@ -341,14 +343,13 @@ export const NotesDiscoveryController = {
     state.progress = null;
     state.lastError = null;
   },
-  
+
   startBackgroundSync(poolAddress: string) {
     if (worker) return;
 
-    worker = new Worker(
-      new URL("../workers/notesSync.worker.ts", import.meta.url),
-      { type: "module" }
-    );
+    worker = new Worker(new URL("../workers/notesSync.worker.ts", import.meta.url), {
+      type: "module",
+    });
 
     worker.onmessage = (event) => {
       if (event.data.type === "SYNC_RESULT") {
@@ -365,10 +366,10 @@ export const NotesDiscoveryController = {
       },
     });
   },
-  
+
   stopBackgroundSync() {
     worker?.postMessage({ type: "STOP" });
     worker?.terminate();
     worker = null;
-  }
+  },
 };

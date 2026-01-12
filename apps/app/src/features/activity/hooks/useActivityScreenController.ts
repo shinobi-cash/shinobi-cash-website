@@ -47,7 +47,6 @@ export function useActivityScreenController(): ActivityScreenControllerAPI {
   useActivityDiscoverySnapshot();
   const discoverySnapshot = useSnapshot(ActivityDiscoveryController.state);
 
-
   // Subscribe to screen controller (UI)
   const screenState = useSnapshot(ActivityScreenController.state);
 

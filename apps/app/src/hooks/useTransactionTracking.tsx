@@ -195,7 +195,7 @@ export function TransactionTrackingProvider({ children }: { children: React.Reac
           const { publicKey, accountKey } = cryptoRef.current;
 
           if (publicKey && accountKey) {
-              NotesDiscoveryController.refresh();
+            NotesDiscoveryController.refresh();
           }
 
           eventTargetRef.current.dispatchEvent(new CustomEvent("indexed"));

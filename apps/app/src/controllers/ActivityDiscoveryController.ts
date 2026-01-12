@@ -10,7 +10,10 @@ import { proxy } from "valtio";
 import type { ReadonlyNoteChain } from "@/features/notes/types";
 import { NotesDiscoverySelectors } from "@/controllers/NotesDiscoveryController";
 import { Activity, ActivityStatus } from "@/features/activity/types";
-import { deriveActivitiesFromNoteChains, getActivityCounts } from "@/features/activity/utils/deriveActivities";
+import {
+  deriveActivitiesFromNoteChains,
+  getActivityCounts,
+} from "@/features/activity/utils/deriveActivities";
 
 // ============ STATE TYPES ============
 

@@ -147,9 +147,7 @@ export function WithdrawalForm({ onTransactionSuccess }: WithdrawalFormProps) {
   }
 
   // Main Withdrawal Form
-  const isProcessing =
-    state.state.status === "preparing" ||
-    state.state.status === "submitting";
+  const isProcessing = state.state.status === "preparing" || state.state.status === "submitting";
   // Convert note amount from wei string to ETH number
   const noteBalance = state.selectedNote
     ? parseFloat(formatEthAmount(state.selectedNote.amount))

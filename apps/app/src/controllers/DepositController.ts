@@ -4,7 +4,11 @@
  */
 
 import { proxy } from "valtio";
-import { depositService, type CashNoteData, type GasEstimate } from "../features/deposit/services/depositService";
+import {
+  depositService,
+  type CashNoteData,
+  type GasEstimate,
+} from "../features/deposit/services/depositService";
 import { formatDepositAmountsForDisplay } from "../features/deposit/protocol/depositFees";
 import { isDepositSupported } from "../features/deposit/protocol/depositRoute";
 import { DEPOSIT_FEES, POOL_CHAIN } from "@shinobi-cash/constants";

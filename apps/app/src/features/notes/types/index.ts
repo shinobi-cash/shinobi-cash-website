@@ -4,7 +4,6 @@
 
 import { Note, NoteChain } from "@shinobi-cash/core";
 
-
 /**
  * Readonly view of a NoteChain (snapshot-safe)
  */

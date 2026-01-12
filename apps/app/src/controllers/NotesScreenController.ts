@@ -7,8 +7,11 @@
 import { proxy } from "valtio";
 import type { NoteChain } from "@shinobi-cash/core";
 import { NoteChainView, NoteFilter, ReadonlyNoteChain } from "@/features/notes/types";
-import { filterNoteChains, getLastNote, sortNoteChainsByTimestamp } from "@/features/notes/utils/noteFiltering";
-
+import {
+  filterNoteChains,
+  getLastNote,
+  sortNoteChainsByTimestamp,
+} from "@/features/notes/utils/noteFiltering";
 
 /**
  * Screen UI state
@@ -44,7 +47,7 @@ export const NotesScreenSelectors = {
   /**
    * Get sorted + filtered view models for UI rendering
    */
- getFilteredNoteViews(
+  getFilteredNoteViews(
     noteChains: readonly ReadonlyNoteChain[],
     filter: NoteFilter
   ): NoteChainView[] {

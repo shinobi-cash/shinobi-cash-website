@@ -1,4 +1,3 @@
-
 /**
  * Activity Discovery Snapshot
  *

@@ -18,7 +18,6 @@ export function getLastNote(noteChain: ReadonlyNoteChain): Note {
   return noteChain[noteChain.length - 1];
 }
 
-
 /**
  * Check if a note is available (unspent, activated, and approved by ASP)
  * Pure function - no side effects
@@ -53,7 +52,10 @@ export function isNoteSpent(note: Note): boolean {
  * @param filter - Filter type to apply
  * @returns Filtered array of note chains
  */
-export function filterNoteChains(noteChains: readonly ReadonlyNoteChain[], filter: NoteFilter): ReadonlyNoteChain[] {
+export function filterNoteChains(
+  noteChains: readonly ReadonlyNoteChain[],
+  filter: NoteFilter
+): ReadonlyNoteChain[] {
   return noteChains.filter((noteChain) => {
     const lastNote = getLastNote(noteChain);
 

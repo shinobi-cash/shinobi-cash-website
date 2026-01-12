@@ -3,7 +3,11 @@ import { repositoryRegistry } from "@/lib/storage/RepositoryRegistry";
 import { keyDerivationService } from "@/lib/storage/services/KeyDerivationService";
 import { parseUserKey } from "@shinobi-cash/core";
 import { proxy } from "valtio";
-import { deriveKeysFromSignature, generateKeysFromRandomSeed, getWalletAccountId } from "../features/auth/utils";
+import {
+  deriveKeysFromSignature,
+  generateKeysFromRandomSeed,
+  getWalletAccountId,
+} from "../features/auth/utils";
 
 export enum AuthError {
   PASSKEY_NOT_FOUND = "PASSKEY_NOT_FOUND",
