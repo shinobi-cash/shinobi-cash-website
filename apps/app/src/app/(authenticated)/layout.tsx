@@ -6,6 +6,7 @@ import { Footer } from "@/components/layout/Footer";
 import { DashboardTabs } from "@/components/layout/DashboardTabs";
 import { useSnapshot } from "valtio";
 import { AuthController } from "@/controllers/AuthController";
+import { IndexerHealthIndicator } from "@/components/indicator/IndexerHealthIndicator";
 
 /**
  * Authenticated Layout
@@ -58,7 +59,9 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
       </div>
 
       <div className="hidden shrink-0 md:block">
-        <Footer showIndicators={true} />
+        <Footer
+          indicators={ <IndexerHealthIndicator />  }
+        />
       </div>
     </div>
   );
