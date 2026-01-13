@@ -14,6 +14,7 @@ import { isDepositSupported } from "../features/deposit/protocol/depositRoute";
 import { DEPOSIT_FEES, POOL_CHAIN } from "@shinobi-cash/constants";
 import type { PublicClient, WalletClient } from "viem";
 import { AuthController } from "@/controllers/AuthController";
+import { NotesDiscoverySelectors } from "@/controllers/NotesDiscoveryController";
 
 /**
  * Deposit error types
@@ -251,6 +252,9 @@ export const DepositController = {
     // Step 1: Generate commitment with retry logic
     transition({ status: "preparing", step: "commitment" });
 
+    // Get last used deposit index from discovery controller
+    const lastUsedIndex = NotesDiscoverySelectors.getLastUsedIndex();
+
     let noteData: CashNoteData | null = null;
     let retries = 0;
     const MAX_RETRIES = 3;
@@ -263,7 +267,11 @@ export const DepositController = {
       }
 
       try {
-        noteData = await depositService.generateCommitment(crypto.accountKey, crypto.publicKey);
+        noteData = await depositService.generateCommitment(
+          crypto.accountKey,
+          crypto.publicKey,
+          lastUsedIndex
+        );
         break; // Success
       } catch (error) {
         retries++;
