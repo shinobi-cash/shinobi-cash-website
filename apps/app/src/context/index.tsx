@@ -12,7 +12,7 @@ import React, { type ReactNode } from "react";
 import { cookieToInitialState, WagmiProvider, type Config } from "wagmi";
 import { Toaster } from "@workspace/ui/components/sonner";
 import { Particles } from "@workspace/ui/components/particles";
-import { NotesBackgroundBootstrap } from "./NoteBackgroudBootstrap";
+import { RuntimeBootstrap } from "./RuntimeBootstrap";
 
 // Set up queryClient
 const queryClient = new QueryClient();
@@ -50,7 +50,7 @@ function ContextProvider({ children, cookies }: { children: ReactNode; cookies: 
           <WagmiProvider config={wagmiAdapter.wagmiConfig as Config} initialState={initialState}>
             <QueryClientProvider client={queryClient}>
               <TransactionTrackingProvider>
-                <NotesBackgroundBootstrap />
+                <RuntimeBootstrap />
                 <Particles
                   className="pointer-events-none fixed inset-0"
                   quantity={100}

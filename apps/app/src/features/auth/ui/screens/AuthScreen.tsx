@@ -5,21 +5,12 @@
  * Declarative router for authentication UI
  */
 
-import { useEffect, useRef } from "react";
 import { WalletAuth } from "../components/WalletAuth";
 import { AuthController } from "@/controllers/AuthController";
 import { useSnapshot } from "valtio";
 
 export function AuthScreen() {
   const state = useSnapshot(AuthController.state);
-
-  const bootstrappedRef = useRef(false);
-
-  useEffect(() => {
-    if (bootstrappedRef.current) return;
-    bootstrappedRef.current = true;
-    AuthController.bootstrap();
-  }, []);
 
   switch (state.state.status) {
     case "booting":
