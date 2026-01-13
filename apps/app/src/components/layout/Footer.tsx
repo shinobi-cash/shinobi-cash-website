@@ -1,8 +1,8 @@
 "use client";
 
-import { SyncIndicator } from "@/components/indicator/SyncIndicator";
 import { IndexerHealthIndicator } from "@/components/indicator/IndexerHealthIndicator";
 import { NotesDiscoveryController } from "@/controllers/NotesDiscoveryController";
+import { SyncIndicator } from "../indicator/sync-indicator/SyncIndicator";
 
 interface FooterProps {
   showIndicators?: boolean;
