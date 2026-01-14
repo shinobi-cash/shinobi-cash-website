@@ -11,7 +11,7 @@ import {
   filterNoteChains,
   getLastNote,
   sortNoteChainsByTimestamp,
-} from "@/features/notes/utils/noteFiltering";
+} from "@/utils/noteFiltering";
 
 /**
  * Screen UI state

@@ -5,7 +5,8 @@
  * Each function takes an artifact from the previous stage and produces the next.
  */
 
-import type { WithdrawalRequest, WithdrawalKind } from "./types";
+import { WithdrawalKind, WithdrawalRequest } from "@/types/withdrawal";
+
 
 // ============ STAGE TRANSITIONS ============
 

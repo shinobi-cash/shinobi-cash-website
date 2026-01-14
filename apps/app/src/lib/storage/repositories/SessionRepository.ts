@@ -4,7 +4,7 @@
 
 import { IBrowserStorageAdapter } from "../adapters/types";
 import type { SessionInfo } from "../interfaces/IDataTypes";
-import type { WalletAccountId } from "@/features/auth/utils";
+import type { WalletAccountId } from "@/utils/authCrypto";
 
 // Session constants - exact match to keyDerivation.ts
 const SESSION_KEY = "shinobi_session";

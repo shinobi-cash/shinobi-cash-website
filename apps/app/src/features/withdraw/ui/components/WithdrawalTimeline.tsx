@@ -6,7 +6,7 @@ import { cn } from "@workspace/ui/lib/utils";
 import { getUserMessage } from "@/lib/errors/errorHandler";
 import { getTxExplorerUrl } from "@/config/chains";
 import { POOL_CHAIN } from "@shinobi-cash/constants";
-import type { EnginePhase } from "../../engine/WithdrawalEngine";
+import { EnginePhase } from "@/services/WithdrawalOrchestratorService";
 
 type StepStatus = "completed" | "active" | "pending" | "failed";
 

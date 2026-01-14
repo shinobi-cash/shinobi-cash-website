@@ -8,9 +8,9 @@ import {
   depositService,
   type CashNoteData,
   type GasEstimate,
-} from "../features/deposit/services/depositService";
-import { formatDepositAmountsForDisplay } from "../features/deposit/protocol/depositFees";
-import { isDepositSupported } from "../features/deposit/protocol/depositRoute";
+} from "@/services/DepositService";
+import { formatDepositAmountsForDisplay } from "@/utils/depositFees";
+import { isDepositSupported } from "@/utils/depositRoute";
 import { DEPOSIT_FEES, POOL_CHAIN } from "@shinobi-cash/constants";
 import type { PublicClient, WalletClient } from "viem";
 import { AuthController } from "@/controllers/AuthController";

@@ -5,7 +5,7 @@
  */
 
 import { repositoryRegistry } from "@/lib/storage/RepositoryRegistry";
-import { fetchActivities } from "@/utils/IndexerUtils";
+import { fetchActivities } from "@/services/IndexerService";
 import type { DiscoveryResult, DiscoveryOptions } from "@shinobi-cash/core";
 
 /**

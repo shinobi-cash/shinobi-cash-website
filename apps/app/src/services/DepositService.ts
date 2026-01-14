@@ -16,7 +16,7 @@ import {
   notesStorageAdapter,
   sharedEncryptionService,
 } from "@/lib/storage/adapters/IndexedDBStore";
-import { resolveDepositRoute, buildDepositCallParams } from "../protocol/depositRoute";
+import { resolveDepositRoute, buildDepositCallParams } from "@/utils/depositRoute";
 import { getUserMessage, logError } from "@/lib/errors";
 
 const GAS_BUFFER = BigInt(120); // 20% buffer for safety

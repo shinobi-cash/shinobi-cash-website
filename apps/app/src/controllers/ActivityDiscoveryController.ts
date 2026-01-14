@@ -13,7 +13,7 @@ import { Activity, ActivityStatus } from "@/features/activity/types";
 import {
   deriveActivitiesFromNoteChains,
   getActivityCounts,
-} from "@/features/activity/utils/deriveActivities";
+} from "@/utils/activityDerivation";
 
 // ============ STATE TYPES ============
 

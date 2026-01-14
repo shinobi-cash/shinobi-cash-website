@@ -4,8 +4,8 @@
  * Builds ZK circuit witness from withdrawal context and external data.
  */
 
-import type { WithdrawalPipelineContext, WithdrawalWitness, ExternalData } from "../domain/types";
-import { fetchASPData, fetchStateTreeLeaves } from "@/utils/IndexerUtils";
+import type { WithdrawalPipelineContext, WithdrawalWitness, ExternalData } from "@/types/withdrawal";
+import { fetchASPData, fetchStateTreeLeaves } from "@/services/IndexerService";
 
 // ============ EXTERNAL DATA FETCHING ============
 

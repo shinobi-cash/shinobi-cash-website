@@ -7,7 +7,7 @@ import {
 } from "../adapters/IndexedDBStore";
 import { AccountData, AccountMetadata } from "../interfaces/IDataTypes";
 import { EncryptionService } from "@shinobi-cash/core";
-import type { WalletAccountId } from "@/features/auth/utils";
+import type { WalletAccountId } from "@/utils/authCrypto";
 
 export class AccountService {
   private currentAccountName: WalletAccountId | null = null;

@@ -13,13 +13,13 @@ import type {
   WithdrawalProof,
   PreparedUserOperation,
   ExecutionResult,
-} from "../domain/types";
-import { validateWithdrawalRequest } from "../domain/invariants";
-import { quoteFees } from "../services/feeQuoteService";
-import { buildWithdrawalContext } from "../services/contextService";
-import { buildWitness } from "../services/witnessService";
-import { generateProof } from "../services/proofService";
-import { prepareUserOperation, executeUserOperation } from "../services/transactionService";
+} from "@/types/withdrawal";
+import { validateWithdrawalRequest } from "@/utils/withdrawalInvariants";
+import { quoteFees } from "@/services/WithdrawalFeeQuoteService";
+import { buildWithdrawalContext } from "@/services/WithdrawalContextService";
+import { buildWitness } from "@/services/WithdrawalWitnessService";
+import { generateProof } from "@/services/WithdrawalProofService";
+import { prepareUserOperation, executeUserOperation } from "@/services/WithdrawalTransactionService";
 import { POOL_CHAIN_ID } from "@/config/chains";
 
 // ============ ENGINE STATE ============

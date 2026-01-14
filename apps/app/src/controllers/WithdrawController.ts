@@ -12,13 +12,13 @@ import { parseEther, formatEther, isAddress } from "viem";
 import { Note } from "@shinobi-cash/core";
 import { POOL_CHAIN } from "@shinobi-cash/constants";
 import { AuthController } from "@/controllers/AuthController";
-import { EnginePhase, WithdrawalEngine } from "@/features/withdraw/engine/WithdrawalEngine";
+import { EnginePhase, WithdrawalEngine } from "@/services/WithdrawalOrchestratorService";
 import {
   ExecutionResult,
   FeeQuote,
   PreparedUserOperation,
   WithdrawalRequest,
-} from "@/features/withdraw/domain/types";
+} from "@/types/withdrawal";
 
 /**
  * Withdraw error types

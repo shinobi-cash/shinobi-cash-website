@@ -10,7 +10,7 @@
 import { EncryptionService } from "@shinobi-cash/core";
 import type { IndexedDBStore } from "../adapters/IndexedDBStore";
 import type { WrappedAMK } from "../interfaces/IDataTypes";
-import type { WalletAccountId } from "@/features/auth/utils";
+import type { WalletAccountId } from "@/utils/authCrypto";
 
 export class WrappedAMKRepository {
   constructor(

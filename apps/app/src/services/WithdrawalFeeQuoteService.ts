@@ -4,11 +4,11 @@
  * Calculates withdrawal fees based on gas prices and withdrawal type.
  */
 
-import type { WithdrawalRequest, FeeQuote, WithdrawalKind } from "../domain/types";
-import { classifyWithdrawal, calculateFeesFromBPS } from "../domain/pipeline";
-import { validateFeeQuote } from "../domain/invariants";
+import type { WithdrawalRequest, FeeQuote, WithdrawalKind } from "@/types/withdrawal";
+import { classifyWithdrawal, calculateFeesFromBPS } from "@/utils/withdrawalPipeline";
+import { validateFeeQuote } from "@/utils/withdrawalInvariants";
 import { pimlicoClient } from "@/lib/clients";
-import { SAME_CHAIN_GAS_LIMITS, CROSS_CHAIN_GAS_LIMITS, WITHDRAWAL_CONFIG } from "../constants";
+import { SAME_CHAIN_GAS_LIMITS, CROSS_CHAIN_GAS_LIMITS, WITHDRAWAL_CONFIG  } from "@/features/withdraw/constants";
 
 // ============ GAS ESTIMATION ============
 

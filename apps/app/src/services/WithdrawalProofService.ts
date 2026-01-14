@@ -4,8 +4,8 @@
  * Generates ZK proofs from circuit witness.
  */
 
-import type { WithdrawalWitness, WithdrawalProof } from "../domain/types";
-import { withdrawalProofGenerator } from "@/utils/WithdrawalProofGenerator";
+import type { WithdrawalWitness, WithdrawalProof } from "@/types/withdrawal";
+import { withdrawalProofGenerator } from "@/services/ProofGeneratorService";
 import {
   buildWithdrawalCircuitWitness,
   buildCrosschainWithdrawalCircuitWitness,

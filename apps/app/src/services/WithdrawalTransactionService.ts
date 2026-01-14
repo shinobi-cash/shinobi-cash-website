@@ -9,7 +9,7 @@ import type {
   WithdrawalProof,
   PreparedUserOperation,
   ExecutionResult,
-} from "../domain/types";
+} from "@/types/withdrawal";
 import {
   getCrosschainWithdrawalSmartAccountClient,
   getWithdrawalSmartAccountClient,
@@ -24,7 +24,7 @@ import {
   executeWithdrawalUserOperation,
   type WithdrawalData,
   type CrossChainWithdrawalData,
-} from "@/features/withdraw/services/contractService";
+} from "@/services/WithdrawalContractService";
 
 // ============ USEROP PREPARATION ============
 

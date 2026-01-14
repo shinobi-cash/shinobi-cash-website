@@ -5,7 +5,7 @@
  */
 
 import type { Note, NoteChain } from "@shinobi-cash/core";
-import type { NoteFilter, ReadonlyNoteChain } from "../types";
+import type { NoteFilter, ReadonlyNoteChain } from "@/features/notes/types";
 
 /**
  * Get the last note from a note chain
@@ -91,7 +91,11 @@ export function countNoteChains(noteChains: NoteChain[], filter: NoteFilter): nu
  * @param noteChains - Array of note chains
  * @returns Object with counts for each filter type
  */
-export function getNoteChainCounts(noteChains: NoteChain[]): Record<NoteFilter, number> {
+export function getNoteChainCounts(noteChains: NoteChain[]): {
+  available: number;
+  pending: number;
+  spent: number;
+} {
   return noteChains.reduce(
     (counts, noteChain) => {
       const lastNote = getLastNote(noteChain);
@@ -106,7 +110,7 @@ export function getNoteChainCounts(noteChains: NoteChain[]): Record<NoteFilter, 
 
       return counts;
     },
-    { available: 0, pending: 0, spent: 0 } as Record<NoteFilter, number>
+    { available: 0, pending: 0, spent: 0 }
   );
 }
 

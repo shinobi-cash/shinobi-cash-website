@@ -10,9 +10,9 @@ import { ScreenHeader } from "@/components/shared/ScreenHeader";
 import { ScreenLayout } from "@/components/layouts/ScreenLayout";
 import { WithdrawalPreview } from "../components/WithdrawalPreview";
 import { WithdrawalTimeline } from "../components/WithdrawalTimeline";
-import type { EnginePhase } from "../../engine/WithdrawalEngine";
 import { useWithdrawControllerSnapshot } from "../../hooks/useWithdrawControllerSnapshot";
 import { WithdrawController, WithdrawSelectors } from "@/controllers/WithdrawController";
+import { EnginePhase } from "@/services/WithdrawalOrchestratorService";
 
 interface WithdrawalTimelineScreenProps {
   onBack: () => void;

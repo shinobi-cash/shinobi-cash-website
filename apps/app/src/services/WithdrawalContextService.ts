@@ -4,14 +4,14 @@
  * Builds withdrawal context with derivations and withdrawal data.
  */
 
-import type { WithdrawalRequest, FeeQuote, WithdrawalPipelineContext } from "../domain/types";
-import { validateWithdrawalContext } from "../domain/invariants";
+import type { WithdrawalRequest, FeeQuote, WithdrawalPipelineContext } from "@/types/withdrawal";
+import { validateWithdrawalContext } from "@/utils/withdrawalInvariants";
 import { deriveWithdrawalInputs, deriveCrosschainWithdrawalInputs } from "@shinobi-cash/core";
 import {
   createWithdrawalData,
   createCrossChainWithdrawalData,
   fetchPoolScope,
-} from "@/features/withdraw/services/contractService";
+} from "@/services/WithdrawalContractService";
 import {
   SHINOBI_CASH_RELAY_WITHDRAWAL_PAYMASTER,
   SHINOBI_CASH_CROSSCHAIN_WITHDRAWAL_PAYMASTER,

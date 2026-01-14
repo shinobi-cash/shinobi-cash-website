@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Wallet } from "lucide-react";
 import { useAccount, useChainId, useConnect, useSignTypedData } from "wagmi";
 import { AuthController } from "@/controllers/AuthController";
-import { getEIP712Message } from "../../utils";
+import { getEIP712Message } from "@/utils/authCrypto";
 
 type Status = "idle" | "connecting" | "signing" | "authenticating";
 

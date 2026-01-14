@@ -7,7 +7,7 @@ import {
   deriveKeysFromSignature,
   generateKeysFromRandomSeed,
   getWalletAccountId,
-} from "../features/auth/utils";
+} from "@/utils/authCrypto";
 
 export enum AuthError {
   PASSKEY_NOT_FOUND = "PASSKEY_NOT_FOUND",

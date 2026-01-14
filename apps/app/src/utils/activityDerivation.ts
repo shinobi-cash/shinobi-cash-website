@@ -4,9 +4,9 @@
  * Converts note chains into a flat list of activities sorted by timestamp.
  */
 
-import type { NoteChain, Note } from "@shinobi-cash/core";
-import type { Activity, ActivityType } from "../types";
+import type { Note } from "@shinobi-cash/core";
 import { ReadonlyNoteChain } from "@/features/notes/types";
+import { Activity, ActivityType } from "@/features/activity/types";
 
 /**
  * Derive activity type from note

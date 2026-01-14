@@ -16,7 +16,7 @@ import {
   getAvailableNotes,
   getLastNote,
   getNoteChainCounts,
-} from "@/features/notes/utils/noteFiltering";
+} from "@/utils/noteFiltering";
 
 /**
  * Discovery state machine

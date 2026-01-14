@@ -2,7 +2,7 @@
  * App-Specific Data Type Interfaces
  */
 
-import type { WalletAccountId } from "@/features/auth/utils";
+import type { WalletAccountId } from "@/utils/authCrypto";
 
 /**
  * Account Metadata - This is stored in IndexedDB account store

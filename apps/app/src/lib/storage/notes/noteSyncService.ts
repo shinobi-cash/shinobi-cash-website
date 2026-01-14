@@ -1,4 +1,4 @@
-import { fetchActivities } from "@/utils/IndexerUtils";
+import { fetchActivities } from "@/services/IndexerService";
 import { SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
 import { repositoryRegistry } from "../RepositoryRegistry";
 

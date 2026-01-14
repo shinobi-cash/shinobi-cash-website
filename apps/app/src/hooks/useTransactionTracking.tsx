@@ -1,6 +1,6 @@
 import { getPublicClient } from "@/lib/clients";
 import { showToast } from "@/lib/toast";
-import { fetchLatestIndexedBlock } from "@/utils/IndexerUtils";
+import { fetchLatestIndexedBlock } from "@/services/IndexerService";
 import { parseUserKey } from "@shinobi-cash/core";
 import type React from "react";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";

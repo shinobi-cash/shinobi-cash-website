@@ -5,8 +5,8 @@
 
 import { ethers } from "ethers";
 import type { AccountMetadata, AccountData } from "../interfaces/IDataTypes";
-import type { WalletAccountId } from "@/features/auth/utils";
-import { assertWalletAccountId } from "@/features/auth/utils";
+import type { WalletAccountId } from "@/utils/authCrypto";
+import { assertWalletAccountId } from "@/utils/authCrypto";
 import { IndexedDBStore } from "../adapters/IndexedDBStore";
 
 /**

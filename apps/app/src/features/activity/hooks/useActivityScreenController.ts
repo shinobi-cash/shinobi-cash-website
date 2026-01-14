@@ -11,9 +11,9 @@ import { useMemo } from "react";
 import { useSnapshot } from "valtio";
 import type { Activity, ActivityFilter, ActivityStatus } from "../types";
 import { useActivityDiscoverySnapshot } from "./useActivityDiscoverySnapshot";
-import { filterActivitiesByType } from "../utils/deriveActivities";
 import { ActivityDiscoveryController } from "@/controllers/ActivityDiscoveryController";
 import { ActivityScreenController } from "@/controllers/ActivityScreenController";
+import { filterActivitiesByType } from "@/utils/activityDerivation";
 
 // ============ PUBLIC API ============
 
