@@ -1,30 +1,42 @@
-/**
- * ScreenLayout Component
- * Flexible layout wrapper for full-screen views
- */
-
 import { ReactNode } from "react";
+import { cn } from "@workspace/ui/lib/utils";
 
 interface ScreenLayoutProps {
-  header: ReactNode;
-  children: ReactNode;
+  header?: ReactNode;
   footer?: ReactNode;
+  children: ReactNode;
+
   contentClassName?: string;
   containerClassName?: string;
+  showFooterDivider?: boolean;
 }
 
 export function ScreenLayout({
   header,
-  children,
   footer,
+  children,
   contentClassName = "px-4 py-6",
   containerClassName = "h-full",
+  showFooterDivider = true,
 }: ScreenLayoutProps) {
   return (
-    <div className={`flex flex-col ${containerClassName}`}>
+    <div className={cn("flex flex-col", containerClassName)}>
       {header}
-      <div className={`flex-1 overflow-y-auto ${contentClassName}`}>{children}</div>
-      {footer && <div className="border-t border-gray-800 px-4 py-4">{footer}</div>}
+
+      <div className={cn("flex-1 overflow-y-auto", contentClassName)}>
+        {children}
+      </div>
+
+      {footer && (
+        <div
+          className={cn(
+            showFooterDivider && "border-t border-gray-800",
+            "px-4 py-4"
+          )}
+        >
+          {footer}
+        </div>
+      )}
     </div>
   );
 }
