@@ -1,13 +1,3 @@
-/**
- * Blockchain Contract Service
- *
- * Handles smart contract interactions and account abstraction:
- * - Privacy pool contract operations
- * - UserOperation preparation and execution
- * - Smart account client management
- * - Contract data encoding/decoding
- */
-
 import {
   ShinobiCashPoolAbi,
   ShinobiCashEntrypointAbi,
@@ -22,38 +12,20 @@ import { http, createPublicClient, encodeAbiParameters, encodeFunctionData } fro
 import { type UserOperation, entryPoint07Address } from "viem/account-abstraction";
 import { SAME_CHAIN_GAS_LIMITS, CROSS_CHAIN_GAS_LIMITS } from "@/constants/withdraw";
 
-// ============ TYPES ============
-
-/**
- * Same-chain withdrawal data structure
- *
- * Note: "processooor" spelling is intentional - it matches the contract ABI.
- * The contract uses this creative spelling throughout.
- */
+// "processooor" spelling is intentional - matches the contract ABI
 export interface WithdrawalData {
   processooor: `0x${string}`;
   data: `0x${string}`;
 }
 
-/**
- * Cross-chain withdrawal data structure
- *
- * Note: "processooor" spelling is intentional - it matches the contract ABI.
- */
 export interface CrossChainWithdrawalData {
   processooor: `0x${string}`;
-  data: `0x${string}`; // Encoded CrossChainRelayData
+  data: `0x${string}`;
 }
 
-/**
- * Same-chain withdrawal proof structure
- *
- * Note: pubSignals array has exactly 8 elements in this specific order:
- * [0] nullifier, [1] newNoteCommitment, [2] newAmount, [3] newLabel,
- * [4] recipient, [5] relayData, [6] aspRoot, [7] scope
- *
- * This ordering is critical and must match the circuit output exactly.
- */
+// pubSignals order must match circuit output exactly:
+// [0] nullifier, [1] newNoteCommitment, [2] newAmount, [3] newLabel,
+// [4] recipient, [5] relayData, [6] aspRoot, [7] scope
 export interface WithdrawalProof {
   pA: [bigint, bigint];
   pB: [[bigint, bigint], [bigint, bigint]];
@@ -61,16 +33,7 @@ export interface WithdrawalProof {
   pubSignals: [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint];
 }
 
-/**
- * Cross-chain withdrawal proof structure
- *
- * Note: pubSignals array has exactly 9 elements (one more than same-chain):
- * [0] nullifier, [1] newNoteCommitment, [2] newAmount, [3] newLabel,
- * [4] recipient, [5] relayData, [6] aspRoot, [7] scope, [8] refundNullifier
- *
- * The extra refundNullifier signal is unique to cross-chain withdrawals.
- * This ordering is critical and must match the circuit output exactly.
- */
+// Cross-chain has 9 signals (extra refundNullifier at [8])
 export interface CrossChainWithdrawalProof {
   pA: [bigint, bigint];
   pB: [[bigint, bigint], [bigint, bigint]];
@@ -84,19 +47,11 @@ export interface SmartAccountConfig {
   paymasterAddress: string;
 }
 
-// ============ CONFIGURATION ============
-
-// Create public client for contract calls (using pool chain from shared constants)
 const publicClient = createPublicClient({
   chain: POOL_CHAIN as never,
   transport: http(),
 });
 
-// ============ POOL SCOPE OPERATIONS ============
-
-/**
- * Fetch privacy pool scope via contract call
- */
 export async function fetchPoolScope(): Promise<string> {
   try {
     const scope = (await publicClient.readContract({
@@ -110,15 +65,12 @@ export async function fetchPoolScope(): Promise<string> {
   } catch (error) {
     logError(error, { action: "fetchPoolScope" });
 
-    throw new AppException(Errors.blockchain.contractError("Failed to fetch pool scope from contract", error));
+    throw new AppException(
+      Errors.blockchain.contractError("Failed to fetch pool scope from contract", error)
+    );
   }
 }
 
-// ============ WITHDRAWAL DATA ENCODING ============
-
-/**
- * Create withdrawal data structure for context calculation
- */
 export function createWithdrawalData(
   recipientAddress: string,
   feeRecipient: string,
@@ -137,9 +89,6 @@ export function createWithdrawalData(
   ] as const;
 }
 
-/**
- * Encode relay call data for privacy pool withdrawal
- */
 export function encodeRelayCallData(
   withdrawalData: WithdrawalData,
   proof: WithdrawalProof,
@@ -164,9 +113,7 @@ export function encodeRelayCallData(
   });
 }
 
-/**
- * Format ZK proof from snarkjs format to contract format
- */
+// Swap pi_b coordinates for compatibility between snarkjs and Solidity verifier
 export function formatProofForContract(
   proof: {
     pi_a: string[];
@@ -196,9 +143,6 @@ export function formatProofForContract(
   };
 }
 
-/**
- * Prepare UserOperation for withdrawal
- */
 export async function prepareWithdrawalUserOperation(
   smartAccountClient: SmartAccountClient,
   relayCallData: `0x${string}`
@@ -224,13 +168,12 @@ export async function prepareWithdrawalUserOperation(
   } catch (error) {
     logError(error, { action: "prepareWithdrawalUserOperation" });
 
-    throw new AppException(Errors.blockchain.contractError("Failed to prepare withdrawal transaction", error));
+    throw new AppException(
+      Errors.blockchain.contractError("Failed to prepare withdrawal transaction", error)
+    );
   }
 }
 
-/**
- * Execute withdrawal UserOperation
- */
 export async function executeWithdrawalUserOperation(
   smartAccountClient: SmartAccountClient,
   userOperation: UserOperation,
@@ -274,15 +217,12 @@ export async function executeWithdrawalUserOperation(
       }
     }
 
-    throw new AppException(Errors.blockchain.transactionFailed("Failed to execute withdrawal transaction", error));
+    throw new AppException(
+      Errors.blockchain.transactionFailed("Failed to execute withdrawal transaction", error)
+    );
   }
 }
 
-// ============ CROSS-CHAIN WITHDRAWAL FUNCTIONS ============
-
-/**
- * Create cross-chain withdrawal data structure
- */
 export function createCrossChainWithdrawalData(
   recipientAddress: string,
   destinationChainId: number,
@@ -290,7 +230,6 @@ export function createCrossChainWithdrawalData(
   relayFeeBPS: bigint,
   solverFeeBPS: bigint
 ): readonly [`0x${string}`, `0x${string}`] {
-  // Encode destination as chainId(32 bits) + recipient(160 bits)
   const encodedDestination = (BigInt(destinationChainId) << BigInt(224)) | BigInt(recipientAddress);
 
   return [
@@ -312,9 +251,6 @@ export function createCrossChainWithdrawalData(
   ] as const;
 }
 
-/**
- * Format ZK proof from snarkjs format to cross-chain contract format
- */
 export function formatCrossChainProofForContract(
   proof: {
     pi_a: string[];
@@ -323,10 +259,6 @@ export function formatCrossChainProofForContract(
   },
   publicSignals: string[]
 ): CrossChainWithdrawalProof {
-  // Pass public signals in the exact order they come from the circuit:
-  // [0] newCommitmentHash, [1] existingNullifierHash, [2] refundCommitmentHash,
-  // [3] withdrawnValue, [4] stateRoot, [5] stateTreeDepth, [6] ASPRoot, [7] ASPTreeDepth, [8] context
-
   return {
     pA: [BigInt(proof.pi_a[0]), BigInt(proof.pi_a[1])],
     pB: [
@@ -335,23 +267,19 @@ export function formatCrossChainProofForContract(
     ],
     pC: [BigInt(proof.pi_c[0]), BigInt(proof.pi_c[1])],
     pubSignals: [
-      BigInt(publicSignals[0]), // [0] newCommitmentHash
-      BigInt(publicSignals[1]), // [1] existingNullifierHash
-      BigInt(publicSignals[2]), // [2] refundCommitmentHash
-      BigInt(publicSignals[3]), // [3] withdrawnValue
-      BigInt(publicSignals[4]), // [4] stateRoot
-      BigInt(publicSignals[5]), // [5] stateTreeDepth
-      BigInt(publicSignals[6]), // [6] ASPRoot
-      BigInt(publicSignals[7]), // [7] ASPTreeDepth
-      BigInt(publicSignals[8]), // [8] context
+      BigInt(publicSignals[0]),
+      BigInt(publicSignals[1]),
+      BigInt(publicSignals[2]),
+      BigInt(publicSignals[3]),
+      BigInt(publicSignals[4]),
+      BigInt(publicSignals[5]),
+      BigInt(publicSignals[6]),
+      BigInt(publicSignals[7]),
+      BigInt(publicSignals[8]),
     ],
   };
 }
 
-/**
- * Encode cross-chain withdrawal call data
- * Uses the new simplified API where intent creation is handled internally
- */
 export function encodeCrossChainWithdrawalCallData(
   withdrawalData: CrossChainWithdrawalData,
   proof: CrossChainWithdrawalProof,
@@ -403,9 +331,6 @@ export function encodeCrossChainWithdrawalCallData(
   });
 }
 
-/**
- * Prepare UserOperation for cross-chain withdrawal
- */
 export async function prepareCrossChainWithdrawalUserOperation(
   smartAccountClient: SmartAccountClient,
   crossChainCallData: `0x${string}`
@@ -431,6 +356,8 @@ export async function prepareCrossChainWithdrawalUserOperation(
   } catch (error) {
     logError(error, { action: "prepareCrossChainWithdrawalUserOperation" });
 
-    throw new AppException(Errors.blockchain.contractError("Failed to prepare cross-chain withdrawal transaction", error));
+    throw new AppException(
+      Errors.blockchain.contractError("Failed to prepare cross-chain withdrawal transaction", error)
+    );
   }
 }

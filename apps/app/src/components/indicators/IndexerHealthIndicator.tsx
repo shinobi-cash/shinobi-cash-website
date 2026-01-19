@@ -2,7 +2,6 @@
 
 import { useIndexerHealth } from "@/hooks/useIndexerHealth";
 
-
 export function IndexerHealthIndicator() {
   const health = useIndexerHealth();
 
@@ -20,18 +19,12 @@ export function IndexerHealthIndicator() {
       title={isHealthy ? "Indexer online" : "Indexer offline"}
     >
       <div className="relative">
-        <div
-          className={`h-2 w-2 rounded-full ${
-            isHealthy ? "bg-green-500" : "bg-red-500"
-          }`}
-        />
+        <div className={`h-2 w-2 rounded-full ${isHealthy ? "bg-green-500" : "bg-red-500"}`} />
         {isHealthy && (
           <div className="absolute inset-0 h-2 w-2 animate-ping rounded-full bg-green-500 opacity-75" />
         )}
       </div>
-      <span className="text-xs text-gray-400">
-        {isHealthy ? "Online" : "Offline"}
-      </span>
+      <span className="text-xs text-gray-400">{isHealthy ? "Online" : "Offline"}</span>
     </div>
   );
 }

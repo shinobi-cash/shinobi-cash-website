@@ -1,10 +1,7 @@
 import { useEffect, useState } from "react";
 import { checkIndexerHealth } from "@/services/IndexerService";
 
-type IndexerHealthState =
-  | { status: "loading" }
-  | { status: "healthy" }
-  | { status: "unhealthy" };
+type IndexerHealthState = { status: "loading" } | { status: "healthy" } | { status: "unhealthy" };
 
 export function useIndexerHealth(pollIntervalMs = 30_000) {
   const [state, setState] = useState<IndexerHealthState>({ status: "loading" });

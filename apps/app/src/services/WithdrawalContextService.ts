@@ -1,9 +1,3 @@
-/**
- * Context Service
- *
- * Builds withdrawal context with derivations and withdrawal data.
- */
-
 import type { WithdrawalRequest, FeeQuote, WithdrawalPipelineContext } from "@/types/withdrawal";
 import { validateWithdrawalContext } from "@/utils/withdrawalInvariants";
 import { deriveWithdrawalInputs, deriveCrosschainWithdrawalInputs } from "@shinobi-cash/core";
@@ -17,24 +11,13 @@ import {
   SHINOBI_CASH_CROSSCHAIN_WITHDRAWAL_PAYMASTER,
 } from "@shinobi-cash/constants";
 
-// ============ PUBLIC API ============
-
-/**
- * Build withdrawal context with derivations
- *
- * @param request - Withdrawal request
- * @param feeQuote - Fee quote
- * @returns Withdrawal context
- */
 export async function buildWithdrawalContext(
   request: WithdrawalRequest,
   feeQuote: FeeQuote
 ): Promise<WithdrawalPipelineContext> {
-  // 1. Fetch pool scope from contract
   const poolScopeString = await fetchPoolScope();
   const poolScope = BigInt(poolScopeString);
 
-  // 2. Create withdrawal data structure based on type
   const withdrawalData =
     feeQuote.kind === "cross-chain"
       ? createCrossChainWithdrawalData(
@@ -50,7 +33,6 @@ export async function buildWithdrawalContext(
           BigInt(feeQuote.relayFeeBPS)
         );
 
-  // 3. Derive context hash and nullifiers
   const derivation =
     feeQuote.kind === "cross-chain"
       ? deriveCrosschainWithdrawalInputs(
@@ -68,7 +50,6 @@ export async function buildWithdrawalContext(
           withdrawalData
         );
 
-  // 4. Create context
   const context: WithdrawalPipelineContext = {
     kind: feeQuote.kind,
     request,
@@ -78,8 +59,6 @@ export async function buildWithdrawalContext(
     withdrawalData,
   };
 
-  // 5. Validate before returning
   validateWithdrawalContext(context);
-
   return context;
 }

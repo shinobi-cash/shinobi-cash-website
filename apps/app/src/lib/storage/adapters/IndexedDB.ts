@@ -1,8 +1,3 @@
-/**
- * IndexedDBDatabase
- * Owns database lifecycle, schema, and dev resets.
- */
-
 const DB_NAME = "shinobi.cash";
 const DB_VERSION = 3;
 
@@ -29,7 +24,6 @@ class IndexedDBDatabase {
         const db = req.result;
         const transaction = (event.target as IDBOpenDBRequest).transaction!;
 
-        // Create new stores if they don't exist
         if (!db.objectStoreNames.contains(STORES.NOTES)) {
           db.createObjectStore(STORES.NOTES, { keyPath: "id" });
         }
@@ -42,14 +36,12 @@ class IndexedDBDatabase {
           db.createObjectStore(STORES.WRAPPED_AMK, { keyPath: "id" });
         }
 
-        // Migration: Rename old "encrypted-account" to "account-metadata"
         if (db.objectStoreNames.contains("encrypted-account")) {
           const oldStore = transaction.objectStore("encrypted-account");
           const newStore = db.objectStoreNames.contains(STORES.ACCOUNTS)
             ? transaction.objectStore(STORES.ACCOUNTS)
             : db.createObjectStore(STORES.ACCOUNTS, { keyPath: "id" });
 
-          // Copy all data from old store to new store
           const getAllRequest = oldStore.getAll();
           getAllRequest.onsuccess = () => {
             const records = getAllRequest.result;
@@ -58,11 +50,9 @@ class IndexedDBDatabase {
             });
           };
 
-          // Delete old store after migration
           db.deleteObjectStore("encrypted-account");
         }
 
-        // Remove deprecated passkey-credentials store
         if (db.objectStoreNames.contains("passkey-credentials")) {
           db.deleteObjectStore("passkey-credentials");
         }

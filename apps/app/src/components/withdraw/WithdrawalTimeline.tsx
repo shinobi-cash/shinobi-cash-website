@@ -36,11 +36,8 @@ export function WithdrawalTimeline({
 }: WithdrawalTimelineProps) {
   const explorerUrl = txHash ? getTxExplorerUrl(POOL_CHAIN.id, txHash) : null;
 
-  // Derive current status
   const isPreparing = currentPhase !== null && currentPhase !== "prepared";
   const isConfirming = txHash !== null && !isConfirmed && !error;
-
-  // ----- Hero copy -----
 
   const title = isConfirmed
     ? "Withdrawal confirmed"
@@ -62,9 +59,6 @@ export function WithdrawalTimeline({
           ? "Generating zero-knowledge proof. This may take 5-10 seconds."
           : "Submitting your withdrawal transaction.";
 
-  // ----- Timeline -----
-
-  // Check if error is a preparation error (not a transaction error)
   const isPreparationError =
     error &&
     (error.code === ErrorCode.WITHDRAWAL.FEE_ESTIMATION_FAILED ||
@@ -107,8 +101,6 @@ export function WithdrawalTimeline({
     },
   ];
 
-  // ----- Icons -----
-
   const StepIcon = ({ status }: { status: StepStatus }) => {
     if (status === "completed") return <CheckCircle className="h-6 w-6 text-green-500" />;
     if (status === "active") return <Clock className="h-6 w-6 animate-pulse text-yellow-500" />;
@@ -125,23 +117,17 @@ export function WithdrawalTimeline({
   return (
     <div className="flex flex-1 flex-col space-y-4 px-6 py-4">
       <div className="flex flex-1 flex-col items-center space-y-4">
-        {/* Hero */}
         <div className="flex flex-col items-center space-y-4 text-center">
           <StatusIcon />
-
           <h2 className="text-2xl font-bold">{title}</h2>
-
           <span className="text-5xl font-extrabold">{amount.toFixed(4)} ETH</span>
-
           <span className="text-sm font-medium text-gray-500">{subtitle}</span>
         </div>
 
-        {/* Timeline */}
         <div className="w-full max-w-md">
           <div className="relative space-y-6">
             {timeline.map((step, idx) => (
               <div key={idx} className="relative flex gap-4">
-                {/* Connector */}
                 {idx !== timeline.length - 1 && (
                   <div
                     className={cn(
@@ -155,19 +141,16 @@ export function WithdrawalTimeline({
                   />
                 )}
 
-                {/* Icon */}
                 <div className="relative z-10">
                   <StepIcon status={step.status} />
                 </div>
 
-                {/* Text */}
                 <div className="flex flex-col gap-1">
                   <h3
                     className={cn("font-semibold", step.status === "failed" ? "text-red-600" : "")}
                   >
                     {step.label}
                   </h3>
-
                   {step.errorMessage ? (
                     <p className="text-sm text-red-600">{step.errorMessage}</p>
                   ) : (
@@ -187,9 +170,7 @@ export function WithdrawalTimeline({
         </div>
       </div>
 
-      {/* Footer */}
       <div className="flex flex-col items-center gap-4">
-        {/* Close Button */}
         <Button
           onClick={onClose}
           className="h-12 w-full rounded-xl text-base font-semibold disabled:cursor-not-allowed disabled:opacity-50 sm:h-14 sm:text-lg"
@@ -197,7 +178,6 @@ export function WithdrawalTimeline({
         >
           Close
         </Button>
-
         {explorerUrl && (
           <a
             href={explorerUrl}

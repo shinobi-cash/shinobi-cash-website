@@ -23,17 +23,10 @@ export function ScreenLayout({
     <div className={cn("flex flex-col", containerClassName)}>
       {header}
 
-      <div className={cn("flex-1 overflow-y-auto", contentClassName)}>
-        {children}
-      </div>
+      <div className={cn("flex-1 overflow-y-auto", contentClassName)}>{children}</div>
 
       {footer && (
-        <div
-          className={cn(
-            showFooterDivider && "border-t border-gray-800",
-            "px-4 py-4"
-          )}
-        >
+        <div className={cn(showFooterDivider && "border-t border-gray-800", "px-4 py-4")}>
           {footer}
         </div>
       )}

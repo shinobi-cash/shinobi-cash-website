@@ -58,9 +58,7 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
       </div>
 
       <div className="hidden shrink-0 md:block">
-        <Footer
-          indicators={ <IndexerHealthIndicator />  }
-        />
+        <Footer indicators={<IndexerHealthIndicator />} />
       </div>
     </div>
   );

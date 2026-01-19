@@ -101,7 +101,10 @@ export function useErrorDisplay(
  */
 function getErrorMessage(error: AppError): string {
   // Precondition errors are already user-facing
-  if (error.code === ErrorCode.DEPOSIT.PRECONDITION || error.code === ErrorCode.WITHDRAWAL.PRECONDITION) {
+  if (
+    error.code === ErrorCode.DEPOSIT.PRECONDITION ||
+    error.code === ErrorCode.WITHDRAWAL.PRECONDITION
+  ) {
     return error.message;
   }
 

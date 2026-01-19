@@ -13,15 +13,13 @@ export const DASHBOARD_TABS = [
 
 export type DashboardTab = (typeof DASHBOARD_TABS)[number];
 
-
 export function DashboardTabs() {
   const pathname = usePathname();
 
   return (
     <div className="flex gap-1 rounded-lg bg-gray-800/50 p-1">
       {DASHBOARD_TABS.map((tab) => {
-        const isActive =
-          pathname === tab.href || pathname.startsWith(`${tab.href}/`);
+        const isActive = pathname === tab.href || pathname.startsWith(`${tab.href}/`);
 
         return (
           <Link

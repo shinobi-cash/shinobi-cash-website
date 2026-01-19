@@ -1,12 +1,3 @@
-/**
- * Unified Error System
- *
- * Single source of truth for all application errors.
- * Provides consistent error shape, typed codes, and factory functions.
- */
-
-// ============ ERROR CATEGORIES ============
-
 export type ErrorCategory =
   | "AUTH"
   | "BLOCKCHAIN"
@@ -14,8 +5,6 @@ export type ErrorCategory =
   | "INDEXER"
   | "DEPOSIT"
   | "WITHDRAWAL";
-
-// ============ ERROR CODES (per category) ============
 
 export const ErrorCode = {
   AUTH: {
@@ -66,8 +55,6 @@ export const ErrorCode = {
   },
 } as const;
 
-// ============ UNIFIED ERROR INTERFACE ============
-
 export interface AppError {
   category: ErrorCategory;
   code: string;
@@ -75,8 +62,6 @@ export interface AppError {
   cause?: unknown;
   context?: Record<string, unknown>;
 }
-
-// ============ ERROR CLASS (for throwing) ============
 
 export class AppException extends Error implements AppError {
   readonly category: ErrorCategory;
@@ -91,10 +76,7 @@ export class AppException extends Error implements AppError {
     this.code = error.code;
     this.cause = error.cause;
     this.context = error.context;
-
-    if (Error.captureStackTrace) {
-      Error.captureStackTrace(this, this.constructor);
-    }
+    if (Error.captureStackTrace) Error.captureStackTrace(this, this.constructor);
   }
 
   toJSON(): AppError {
@@ -108,27 +90,16 @@ export class AppException extends Error implements AppError {
   }
 }
 
-// ============ FACTORY FUNCTION ============
-
 function createError(
   category: ErrorCategory,
   code: string,
   message: string,
   options?: { cause?: unknown; context?: Record<string, unknown> }
 ): AppError {
-  return {
-    category,
-    code,
-    message,
-    cause: options?.cause,
-    context: options?.context,
-  };
+  return { category, code, message, cause: options?.cause, context: options?.context };
 }
 
-// ============ ERROR FACTORIES ============
-
 export const Errors = {
-  // Auth errors
   auth: {
     cancelled: (cause?: unknown) =>
       createError("AUTH", ErrorCode.AUTH.CANCELLED, "Authentication cancelled", { cause }),
@@ -142,7 +113,6 @@ export const Errors = {
       }),
   },
 
-  // Blockchain errors
   blockchain: {
     userRejected: (cause?: unknown) =>
       createError("BLOCKCHAIN", ErrorCode.BLOCKCHAIN.USER_REJECTED, "Transaction was cancelled", {
@@ -172,7 +142,6 @@ export const Errors = {
       createError("BLOCKCHAIN", ErrorCode.BLOCKCHAIN.TIMEOUT, "Transaction timed out", { cause }),
   },
 
-  // Network errors
   network: {
     requestFailed: (message = "Network request failed", cause?: unknown) =>
       createError("NETWORK", ErrorCode.NETWORK.REQUEST_FAILED, message, { cause }),
@@ -181,7 +150,6 @@ export const Errors = {
     offline: () => createError("NETWORK", ErrorCode.NETWORK.OFFLINE, "No internet connection"),
   },
 
-  // Indexer errors
   indexer: {
     fetchFailed: (message = "Failed to fetch data", cause?: unknown) =>
       createError("INDEXER", ErrorCode.INDEXER.FETCH_FAILED, message, { cause }),
@@ -195,7 +163,6 @@ export const Errors = {
       }),
   },
 
-  // Deposit errors
   deposit: {
     precondition: (message: string) =>
       createError("DEPOSIT", ErrorCode.DEPOSIT.PRECONDITION, message),
@@ -221,7 +188,6 @@ export const Errors = {
       }),
   },
 
-  // Withdrawal errors
   withdrawal: {
     precondition: (message: string) =>
       createError("WITHDRAWAL", ErrorCode.WITHDRAWAL.PRECONDITION, message),
@@ -270,7 +236,6 @@ export const Errors = {
       createError("WITHDRAWAL", ErrorCode.WITHDRAWAL.INSUFFICIENT_BALANCE, message),
   },
 
-  // Generic factory for custom errors
   custom: (
     category: ErrorCategory,
     code: string,
@@ -279,13 +244,9 @@ export const Errors = {
   ) => createError(category, code, message, options),
 };
 
-// ============ HELPER TO THROW ============
-
 export function throwError(error: AppError): never {
   throw new AppException(error);
 }
-
-// ============ TYPE GUARDS ============
 
 export function isAppError(error: unknown): error is AppError {
   return (
@@ -301,8 +262,6 @@ export function isAppException(error: unknown): error is AppException {
   return error instanceof AppException;
 }
 
-// ============ USER CANCELLATION CHECK ============
-
 const CANCELLATION_PATTERNS = [
   "cancel",
   "cancelled",
@@ -317,19 +276,16 @@ const CANCELLATION_PATTERNS = [
 ];
 
 export function isUserCancellation(error: unknown): boolean {
-  // Check AppError
   if (isAppError(error)) {
     if (error.code === ErrorCode.AUTH.CANCELLED) return true;
     if (error.code === ErrorCode.BLOCKCHAIN.USER_REJECTED) return true;
   }
 
-  // Check Error message
   if (error instanceof Error) {
     const msg = error.message.toLowerCase();
     return CANCELLATION_PATTERNS.some((pattern) => msg.includes(pattern));
   }
 
-  // Check string
   if (typeof error === "string") {
     const msg = error.toLowerCase();
     return CANCELLATION_PATTERNS.some((pattern) => msg.includes(pattern));
@@ -338,66 +294,36 @@ export function isUserCancellation(error: unknown): boolean {
   return false;
 }
 
-// ============ USER MESSAGE EXTRACTION ============
-
 export function getUserMessage(error: unknown, fallback = "An unexpected error occurred"): string {
-  // AppError already has user-friendly message
-  if (isAppError(error)) {
-    return error.message;
-  }
+  if (isAppError(error)) return error.message;
 
-  // Standard Error - try to extract friendly message
   if (error instanceof Error) {
     const msg = error.message.toLowerCase();
 
-    // User actions
-    if (msg.includes("user rejected") || msg.includes("user denied")) {
+    if (msg.includes("user rejected") || msg.includes("user denied"))
       return "Transaction was cancelled";
-    }
-
-    // Balance errors
-    if (msg.includes("insufficient funds") || msg.includes("insufficient balance")) {
+    if (msg.includes("insufficient funds") || msg.includes("insufficient balance"))
       return "Insufficient funds for this transaction";
-    }
-
-    // Contract errors
-    if (msg.includes("minimumdepositamount")) {
-      return "Deposit amount is below the minimum required";
-    }
-    if (msg.includes("contractpaused") || msg.includes("pausable: paused")) {
+    if (msg.includes("minimumdepositamount")) return "Deposit amount is below the minimum required";
+    if (msg.includes("contractpaused") || msg.includes("pausable: paused"))
       return "Contract is temporarily paused";
-    }
-
-    // Gas errors
-    if (msg.includes("gas required exceeds allowance") || msg.includes("out of gas")) {
+    if (msg.includes("gas required exceeds allowance") || msg.includes("out of gas"))
       return "Transaction would fail - insufficient gas";
-    }
-
-    // Network errors
-    if (msg.includes("network") || msg.includes("failed to fetch")) {
+    if (msg.includes("network") || msg.includes("failed to fetch"))
       return "Network error. Please check your connection.";
-    }
-    if (msg.includes("timeout") || msg.includes("timed out")) {
+    if (msg.includes("timeout") || msg.includes("timed out"))
       return "Request timed out. Please try again.";
-    }
 
-    // Contract call errors (viem format)
     if (msg.includes("contract call:") || msg.includes("contract function")) {
-      // Try to extract custom error name
       const customErrorMatch = error.message.match(/Error:\s*(\w+)\(\)/);
       if (customErrorMatch) {
-        const errorName = customErrorMatch[1];
-        const readable = errorName.replace(/([A-Z])/g, " $1").trim();
+        const readable = customErrorMatch[1].replace(/([A-Z])/g, " $1").trim();
         return `Transaction failed: ${readable}`;
       }
-      // Generic revert
-      if (msg.includes("reverted")) {
-        return "Transaction failed. Please try again.";
-      }
+      if (msg.includes("reverted")) return "Transaction failed. Please try again.";
       return "Contract call failed. Please try again.";
     }
 
-    // Revert - try to extract error name
     if (msg.includes("reverted")) {
       const match = error.message.match(/Error:\s*(\w+)\(\)/);
       if (match) {
@@ -407,42 +333,29 @@ export function getUserMessage(error: unknown, fallback = "An unexpected error o
       return "Transaction would fail - please check your input";
     }
 
-    // Return original if not too technical (short and no hex addresses)
-    if (error.message.length < 100 && !msg.includes("0x")) {
-      return error.message;
-    }
+    if (error.message.length < 100 && !msg.includes("0x")) return error.message;
   }
 
   return fallback;
 }
-
-// ============ ERROR LOGGING ============
 
 const errorCache = new Map<string, number>();
 const DEDUPE_WINDOW_MS = 2000;
 
 export function logError(
   error: unknown,
-  context?: {
-    action?: string;
-    suppressed?: boolean;
-    [key: string]: unknown;
-  }
+  context?: { action?: string; suppressed?: boolean; [key: string]: unknown }
 ): void {
   if (context?.suppressed) return;
 
-  // Deduplicate
   const errorMsg = error instanceof Error ? error.message : String(error);
   const cacheKey = `${context?.action ?? "unknown"}:${errorMsg}`;
   const now = Date.now();
   const lastLogged = errorCache.get(cacheKey);
 
-  if (lastLogged && now - lastLogged < DEDUPE_WINDOW_MS) {
-    return;
-  }
+  if (lastLogged && now - lastLogged < DEDUPE_WINDOW_MS) return;
   errorCache.set(cacheKey, now);
 
-  // Clean old entries
   if (errorCache.size > 100) {
     const cutoff = now - DEDUPE_WINDOW_MS * 5;
     for (const [key, timestamp] of errorCache.entries()) {
@@ -450,9 +363,7 @@ export function logError(
     }
   }
 
-  // Log
   const prefix = context?.action ? `[${context.action}]` : "[Error]";
-
   if (isAppError(error)) {
     console.warn(`${prefix} [${error.category}/${error.code}]`, error.message, context);
   } else if (error instanceof Error) {

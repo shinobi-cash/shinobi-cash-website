@@ -9,12 +9,15 @@ import { getTxExplorerUrl } from "@/config/chains";
 import { cn } from "@workspace/ui/lib/utils";
 import { type AppError, getUserMessage, isUserCancellation } from "@/lib/errors";
 
-type DepositStatus =
-  | "submitting"
-  | "confirming"
-  | "confirmed-onchain"
-  | "failed"
-  | "error";
+type DepositStatus = "submitting" | "confirming" | "confirmed-onchain" | "failed" | "error";
+type StepStatus = "completed" | "active" | "pending" | "failed";
+
+interface TimelineItem {
+  label: string;
+  status: StepStatus;
+  description: string;
+  errorMessage?: string;
+}
 
 interface DepositTimelineScreenProps {
   noteAmount: number;
@@ -25,15 +28,6 @@ interface DepositTimelineScreenProps {
   onClose: () => void;
 }
 
-type StepStatus = "completed" | "active" | "pending" | "failed";
-
-interface TimelineItem {
-  label: string;
-  status: StepStatus;
-  description: string;
-  errorMessage?: string;
-}
-
 export function DepositTimelineScreen({
   noteAmount,
   status,
@@ -42,27 +36,20 @@ export function DepositTimelineScreen({
   failedReason,
   onClose,
 }: DepositTimelineScreenProps) {
-  // Privacy indexer tracking (for indexing step)
   const { trackingStatus } = useTransactionTracking();
+  const explorerUrl = txHash ? getTxExplorerUrl(1, txHash) : null;
 
-  const explorerUrl = txHash ? getTxExplorerUrl(1, txHash) : null; // TODO: get chainId from controller
-
-  // Derived states
   const isSubmitting = status === "submitting";
   const isConfirming = status === "confirming";
   const isConfirmedOnChain = status === "confirmed-onchain";
   const isFailed = status === "failed";
   const isError = status === "error";
 
-  // Privacy indexer status (after on-chain confirmation)
   const isIndexing = trackingStatus === "waiting" && isConfirmedOnChain;
   const isIndexed = trackingStatus === "synced";
 
-  // Error handling
   const isUserCancelled = error && isUserCancellation(error);
   const hasError = isUserCancelled || isFailed || isError;
-
-  // ----- Hero copy -----
 
   const title = isIndexed
     ? "Deposit complete"
@@ -76,7 +63,6 @@ export function DepositTimelineScreen({
             ? "Confirm in wallet"
             : "Processing deposit";
 
-  // Subtitle: generic message, error details shown in timeline step
   const subtitle = isIndexed
     ? "Your deposit is complete and ready for withdrawal."
     : hasError
@@ -89,9 +75,6 @@ export function DepositTimelineScreen({
             ? "Please confirm in your wallet."
             : "This may take a few moments.";
 
-  // ----- Timeline (simplified to 3 steps) -----
-
-  // Determine which step failed
   const failedAtStep = isUserCancelled
     ? "confirm"
     : isError
@@ -100,8 +83,6 @@ export function DepositTimelineScreen({
         ? "processing"
         : null;
 
-  // Step 1: Confirm in wallet
-  // - Completed once we have txHash or are past submitting
   const confirmWalletStatus: StepStatus =
     failedAtStep === "confirm"
       ? "failed"
@@ -111,9 +92,6 @@ export function DepositTimelineScreen({
           ? "active"
           : "pending";
 
-  // Step 2: Processing deposit (covers: tx broadcast, on-chain confirm, indexing)
-  // - Completed when fully indexed
-  // - Active when confirming or indexing
   const processingStatus: StepStatus =
     failedAtStep === "processing"
       ? "failed"
@@ -125,10 +103,8 @@ export function DepositTimelineScreen({
             ? "active"
             : "pending";
 
-  // Step 3: Deposit complete
   const completeStatus: StepStatus = isIndexed ? "completed" : "pending";
 
-  // Build error message
   const getErrorMessage = (): string | undefined => {
     if (!hasError) return undefined;
     if (isUserCancelled) return "You cancelled the transaction.";
@@ -157,8 +133,6 @@ export function DepositTimelineScreen({
     },
   ];
 
-  // ----- Icons -----
-
   const StepIcon = ({ status }: { status: StepStatus }) => {
     if (status === "completed") return <CheckCircle className="h-6 w-6 text-green-500" />;
     if (status === "active") return <Clock className="h-6 w-6 animate-pulse text-yellow-500" />;
@@ -178,23 +152,17 @@ export function DepositTimelineScreen({
       contentClassName="space-y-4 px-6 py-4"
     >
       <div className="flex flex-1 flex-col items-center space-y-4">
-        {/* Hero */}
         <div className="flex flex-col items-center space-y-4 text-center">
           <StatusIcon />
-
           <h2 className="text-2xl font-bold">{title}</h2>
-
           <span className="text-5xl font-extrabold">{noteAmount.toFixed(4)} ETH</span>
-
           <span className="text-sm font-medium text-gray-500">{subtitle}</span>
         </div>
 
-        {/* Timeline */}
         <div className="w-full max-w-md">
           <div className="relative space-y-6">
             {timeline.map((step, idx) => (
               <div key={idx} className="relative flex gap-4">
-                {/* Connector */}
                 {idx !== timeline.length - 1 && (
                   <div
                     className={cn(
@@ -208,19 +176,16 @@ export function DepositTimelineScreen({
                   />
                 )}
 
-                {/* Icon */}
                 <div className="relative z-10">
                   <StepIcon status={step.status} />
                 </div>
 
-                {/* Text */}
                 <div className="flex flex-col gap-1">
                   <h3
                     className={cn("font-semibold", step.status === "failed" ? "text-red-600" : "")}
                   >
                     {step.label}
                   </h3>
-
                   {step.errorMessage ? (
                     <p className="text-sm text-red-600">{step.errorMessage}</p>
                   ) : (
@@ -240,9 +205,7 @@ export function DepositTimelineScreen({
         </div>
       </div>
 
-      {/* Footer */}
       <div className="flex flex-col items-center gap-4">
-        {/* Confirm Button */}
         <Button
           onClick={onClose}
           className="h-12 w-full rounded-xl text-base font-semibold disabled:cursor-not-allowed disabled:opacity-50 sm:h-14 sm:text-lg"
@@ -250,7 +213,6 @@ export function DepositTimelineScreen({
         >
           Close
         </Button>
-
         {explorerUrl && !isSubmitting && (
           <a
             href={explorerUrl}

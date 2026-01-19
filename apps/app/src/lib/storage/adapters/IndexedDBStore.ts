@@ -1,11 +1,3 @@
-/**
- * IndexedDBStore
- * Store-scoped IndexedDB adapter with encryption binding.
- *
- * Responsibilities:
- * - CRUD for ONE store
- * - Encryption key session
- */
 import { EncryptionService } from "@shinobi-cash/core";
 import { indexedDBDatabase, StoreName, STORES } from "./IndexedDB";
 import { IEncryptedStorageAdapter } from "./types";
@@ -16,8 +8,6 @@ export class IndexedDBStore<T = unknown> implements IEncryptedStorageAdapter<T> 
   constructor(private readonly storeName: StoreName) {
     this.encryptionService = new EncryptionService();
   }
-
-  /* ---------- Session / Encryption ---------- */
 
   async initializeSession(key: CryptoKey): Promise<void> {
     this.encryptionService.setEncryptionKey(key);
@@ -35,14 +25,10 @@ export class IndexedDBStore<T = unknown> implements IEncryptedStorageAdapter<T> 
     return this.encryptionService;
   }
 
-  /* ---------- Internal ---------- */
-
   private async getStore(mode: IDBTransactionMode): Promise<IDBObjectStore> {
     const db = await indexedDBDatabase.open();
     return db.transaction(this.storeName, mode).objectStore(this.storeName);
   }
-
-  /* ---------- CRUD ---------- */
 
   async has(key: string): Promise<boolean> {
     const value = await this.get(key);
@@ -86,10 +72,7 @@ export class IndexedDBStore<T = unknown> implements IEncryptedStorageAdapter<T> 
   }
 }
 
-// Create store-specific adapters with their own encryption services
 export const notesStorageAdapter = new IndexedDBStore(STORES.NOTES);
 export const accountStorageAdapter = new IndexedDBStore(STORES.ACCOUNTS);
 export const AMKStorageAdapter = new IndexedDBStore(STORES.WRAPPED_AMK);
-
-// Export notes encryption service for repositories (they need to access it directly)
 export const sharedEncryptionService = new EncryptionService();

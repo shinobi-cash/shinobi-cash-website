@@ -1,15 +1,5 @@
-/**
- * Activity Screen Controller
- *
- * UI-only controller for activity screen state.
- * Owns filters and selection only.
- * No domain logic.
- */
-
 import { ActivityFilter } from "@/types/activity";
 import { proxy } from "valtio";
-
-// ============ STATE ============
 
 interface ActivityScreenState {
   activeFilter: ActivityFilter;
@@ -21,8 +11,6 @@ const state = proxy<ActivityScreenState>({
   selectedActivityId: null,
 });
 
-// ============ SELECTORS ============
-
 export const ActivityScreenSelectors = {
   getActiveFilter(): ActivityFilter {
     return state.activeFilter;
@@ -32,8 +20,6 @@ export const ActivityScreenSelectors = {
     return state.selectedActivityId;
   },
 };
-
-// ============ CONTROLLER ============
 
 export const ActivityScreenController = {
   state,

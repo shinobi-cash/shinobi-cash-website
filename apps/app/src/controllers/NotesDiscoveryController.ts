@@ -12,11 +12,7 @@ import { AuthController } from "@/controllers/AuthController";
 
 import type { Note } from "@shinobi-cash/core";
 import { NotesError, NotesStatus, ReadonlyNoteChain } from "@/types/notes";
-import {
-  getAvailableNotes,
-  getLastNote,
-  getNoteChainCounts,
-} from "@/utils/noteFiltering";
+import { getAvailableNotes, getLastNote, getNoteChainCounts } from "@/utils/noteFiltering";
 
 /**
  * Discovery state machine

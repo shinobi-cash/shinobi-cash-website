@@ -67,7 +67,10 @@ export function initializeSentry() {
 
       // Don't report user cancellations
       if (isAppError(error)) {
-        if (error.code === ErrorCode.BLOCKCHAIN.USER_REJECTED || error.code === ErrorCode.AUTH.CANCELLED) {
+        if (
+          error.code === ErrorCode.BLOCKCHAIN.USER_REJECTED ||
+          error.code === ErrorCode.AUTH.CANCELLED
+        ) {
           return null;
         }
 

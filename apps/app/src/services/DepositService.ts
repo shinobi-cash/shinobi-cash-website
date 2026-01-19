@@ -1,8 +1,3 @@
-/**
- * Deposit Service - Pure business logic (no React)
- * Extracted from hooks to be used by both DepositController and React adapters
- */
-
 import { formatEther, parseEther, type PublicClient, type WalletClient } from "viem";
 import { estimateContractGas, waitForTransactionReceipt } from "viem/actions";
 import { SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
@@ -19,12 +14,9 @@ import {
 import { resolveDepositRoute, buildDepositCallParams } from "@/utils/depositRoute";
 import { getUserMessage, logError } from "@/lib/errors";
 
-const GAS_BUFFER = BigInt(120); // 20% buffer for safety
+const GAS_BUFFER = BigInt(120);
 const DIVISOR = BigInt(100);
 
-/**
- * Commitment note data structure
- */
 export interface CashNoteData {
   poolAddress: string;
   depositIndex: number;
@@ -32,34 +24,15 @@ export interface CashNoteData {
   precommitment: bigint;
 }
 
-/**
- * Gas estimation result
- */
 export interface GasEstimate {
   gasCostEth: string;
   gasCostWei: bigint;
   gasLimit: bigint;
 }
 
-/**
- * Transaction tracking status
- */
 export type TransactionStatus = "confirming" | "confirmed" | "failed";
 
-/**
- * Pure deposit service (no React dependencies)
- */
 export const depositService = {
-  /**
-   * Generate deposit commitment
-   * Composes crypto primitives + storage (no repository wrapper needed)
-   *
-   * @param accountKey - User's account key
-   * @param publicKey - User's public key
-   * @param lastUsedIndex - Last used deposit index (from controller or -1 if none)
-   * @returns Commitment note data
-   * @throws Error if generation fails
-   */
   async generateCommitment(
     accountKey: bigint,
     publicKey: string,
@@ -67,32 +40,24 @@ export const depositService = {
   ): Promise<CashNoteData> {
     try {
       const poolAddress = SHINOBI_CASH_ETH_POOL.address;
-
-      // 1. Calculate next deposit index
-      // If lastUsedIndex provided by controller, use it
-      // Otherwise fallback to storage (cold start scenario)
       let depositIndex = 0;
 
       if (lastUsedIndex >= 0) {
-        // Controller has notes, use provided index
         depositIndex = lastUsedIndex + 1;
       } else {
-        // Fallback: read from storage directly (cold start)
         const notesRepo = new NotesRepository(notesStorageAdapter, sharedEncryptionService);
         const cached = await notesRepo.getCachedNotes(publicKey, poolAddress);
         depositIndex = cached?.lastUsedIndex !== undefined ? cached.lastUsedIndex + 1 : 0;
       }
 
-      // 2. Compose core crypto primitives directly (no repository wrapper)
       const nullifier = deriveDepositNullifier(accountKey, poolAddress, depositIndex);
       const secret = deriveDepositSecret(accountKey, poolAddress, depositIndex);
       const precommitment = derivePrecommitment(nullifier, secret);
 
-      // 3. Return structured result for deposit transaction
       return {
         poolAddress,
         depositIndex,
-        changeIndex: 0, // Deposits always have changeIndex 0
+        changeIndex: 0,
         precommitment: BigInt(precommitment),
       };
     } catch (error) {
@@ -107,18 +72,6 @@ export const depositService = {
     }
   },
 
-  /**
-   * Estimate gas for deposit transaction
-   * Extracted from useDepositGasEstimate
-   *
-   * @param amount - Deposit amount in ETH (string)
-   * @param noteData - Commitment note data
-   * @param chainId - Chain ID for the deposit
-   * @param publicClient - Viem public client
-   * @param gasPrice - Current gas price
-   * @returns Gas estimate with cost in ETH and wei
-   * @throws Error if estimation fails
-   */
   async estimateGas(
     amount: string,
     noteData: CashNoteData,
@@ -137,9 +90,8 @@ export const depositService = {
         functionName: callParams.functionName,
         args: callParams.args,
         value: valueWei,
-      } as never); // Type assertion needed due to viem's complex type inference
+      } as never);
 
-      // Apply buffer and calculate cost
       const bufferedGas = (gasLimit * GAS_BUFFER) / DIVISOR;
       const totalWei = bufferedGas * gasPrice;
 
@@ -156,17 +108,6 @@ export const depositService = {
     }
   },
 
-  /**
-   * Submit deposit transaction
-   * Extracted from useDepositTransaction
-   *
-   * @param amount - Deposit amount in ETH (string)
-   * @param noteData - Commitment note data
-   * @param chainId - Chain ID for the deposit
-   * @param walletClient - Viem wallet client
-   * @returns Transaction hash
-   * @throws Error if submission fails
-   */
   async submitTransaction(
     amount: string,
     noteData: CashNoteData,
@@ -196,27 +137,17 @@ export const depositService = {
     }
   },
 
-  /**
-   * Track transaction status until confirmed or failed
-   * Uses explicit status updates via callback
-   *
-   * @param txHash - Transaction hash to track
-   * @param publicClient - Viem public client
-   * @param onStatusChange - Callback for status updates
-   */
   async trackTransaction(
     txHash: `0x${string}`,
     publicClient: PublicClient,
     onStatusChange: (status: TransactionStatus, reason?: string) => void
   ): Promise<void> {
     try {
-      // Wait for transaction receipt (throws on timeout)
       const receipt = await waitForTransactionReceipt(publicClient, {
         hash: txHash,
-        timeout: 60_000, // 60 seconds
+        timeout: 60_000,
       });
 
-      // Check if transaction succeeded
       if (receipt.status === "success") {
         onStatusChange("confirmed");
       } else {
