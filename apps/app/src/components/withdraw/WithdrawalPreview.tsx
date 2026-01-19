@@ -21,7 +21,6 @@ interface WithdrawalPreviewProps {
 }
 
 export function WithdrawalPreview({
-  onBack,
   onConfirm,
   withdrawAmount,
   executionFee,
@@ -52,7 +51,7 @@ export function WithdrawalPreview({
 
         <div className="text-center">
           <h1 className="text-2xl font-bold">
-            You'll receive {formatEthAmount(youReceive, { decimals: 4 })} ETH
+            You&apos;ll receive {formatEthAmount(youReceive, { decimals: 4 })} ETH
           </h1>
 
           {receiveUsd !== null && (

@@ -5,7 +5,7 @@
  */
 
 import { Loader2, ChevronDown } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { Button } from "@workspace/ui/components/button";
 import { POOL_CHAIN } from "@shinobi-cash/constants";
 import { TokenAmountInput } from "@/components/shared/TokenAmountInput";
@@ -18,7 +18,7 @@ import { FeeBreakdown } from "@/components/shared/FeeBreakdown";
 import { NoteSelectionScreen } from "@/components/screens/NoteSelectionScreen";
 import { WithdrawalTimelineScreen } from "@/components/screens/WithdrawalTimelineScreen";
 import { showToast } from "@/lib/toast";
-import { getUserMessage } from "@/lib/errors/errorHandler";
+import { useErrorDisplay } from "@/hooks/useErrorDisplay";
 import { RecipientAddressInputScreen } from "@/components/screens/RecipientAddressInputScreen";
 import { DISPLAY_DECIMALS, ETH_ASSET } from "@/constants/withdraw";
 import { formatEthAmount } from "@/utils/formatters";
@@ -42,8 +42,8 @@ export function WithdrawalForm({ onTransactionSuccess }: WithdrawalFormProps) {
   // Read-only snapshot from controller (React adapter)
   const state = useWithdrawController();
 
-  // Track shown errors to prevent duplicate toasts
-  const shownErrorsRef = useRef(new Set<string>());
+  // Centralized error display
+  useErrorDisplay(state.lastError, state.state.status === "idle");
 
   // Auto-preview: Schedule lightweight fee preview when inputs change (debounced 500ms)
   useEffect(() => {
@@ -58,27 +58,6 @@ export function WithdrawalForm({ onTransactionSuccess }: WithdrawalFormProps) {
       onTransactionSuccess?.();
     }
   }, [state.state.status, onTransactionSuccess]);
-
-  // Handle error toasts (UI side effect with domain-specific messages)
-  useEffect(() => {
-    if (state.lastError) {
-      const errorKey = `${state.lastError.type}:${state.lastError.message}`;
-      if (!shownErrorsRef.current.has(errorKey)) {
-        shownErrorsRef.current.add(errorKey);
-
-        let errorMessage: string;
-        if (state.lastError.type === "proof") {
-          errorMessage = "Proof generation failed";
-        } else if (state.lastError.type === "transaction") {
-          errorMessage = getUserMessage(new Error(state.lastError.message));
-        } else {
-          errorMessage = getUserMessage(new Error(state.lastError.message));
-        }
-
-        showToast.error(errorMessage, { duration: 5000 });
-      }
-    }
-  }, [state.lastError]);
 
   // Interaction Contract Fix: Review = instant validation + navigation (NO work)
   const handleReviewWithdrawal = () => {

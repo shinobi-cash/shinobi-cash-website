@@ -3,7 +3,7 @@
 import { CheckCircle, Clock, Hourglass, XCircle } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
 import { cn } from "@workspace/ui/lib/utils";
-import { getUserMessage } from "@/lib/errors/errorHandler";
+import { type AppError, getUserMessage, ErrorCode } from "@/lib/errors";
 import { getTxExplorerUrl } from "@/config/chains";
 import { POOL_CHAIN } from "@shinobi-cash/constants";
 import { EnginePhase } from "@/services/WithdrawalOrchestratorService";
@@ -21,7 +21,7 @@ interface WithdrawalTimelineProps {
   amount: number;
   currentPhase: EnginePhase | null;
   txHash: string | null;
-  error: { type: string; message: string } | null;
+  error: AppError | null;
   isConfirmed: boolean;
   onClose: () => void;
 }
@@ -64,48 +64,41 @@ export function WithdrawalTimeline({
 
   // ----- Timeline -----
 
+  // Check if error is a preparation error (not a transaction error)
+  const isPreparationError =
+    error &&
+    (error.code === ErrorCode.WITHDRAWAL.FEE_ESTIMATION_FAILED ||
+      error.code === ErrorCode.WITHDRAWAL.PRECONDITION ||
+      error.code === ErrorCode.WITHDRAWAL.CONTEXT_FAILED ||
+      error.code === ErrorCode.WITHDRAWAL.WITNESS_FAILED ||
+      error.code === ErrorCode.WITHDRAWAL.PROOF_FAILED);
+
+  const isTransactionError = error && error.code === ErrorCode.WITHDRAWAL.TRANSACTION_FAILED;
+
   const timeline: TimelineItem[] = [
     {
       label: "Preparing withdrawal",
-      status:
-        error &&
-        (error.type === "fees" ||
-          error.type === "precondition" ||
-          error.type === "context" ||
-          error.type === "witness" ||
-          error.type === "proof")
-          ? "failed"
-          : currentPhase === "prepared" || txHash
-            ? "completed"
-            : isPreparing
-              ? "active"
-              : "pending",
+      status: isPreparationError
+        ? "failed"
+        : currentPhase === "prepared" || txHash
+          ? "completed"
+          : isPreparing
+            ? "active"
+            : "pending",
       description: "Calculating fees and generating privacy proof. This may take 5-10 seconds.",
-      errorMessage:
-        error &&
-        (error.type === "fees" ||
-          error.type === "precondition" ||
-          error.type === "context" ||
-          error.type === "witness" ||
-          error.type === "proof")
-          ? getUserMessage(new Error(error.message))
-          : undefined,
+      errorMessage: isPreparationError ? getUserMessage(error) : undefined,
     },
     {
       label: "Submitting transaction",
-      status:
-        error && error.type === "transaction"
-          ? "failed"
-          : txHash
-            ? "completed"
-            : currentPhase === "prepared"
-              ? "active"
-              : "pending",
+      status: isTransactionError
+        ? "failed"
+        : txHash
+          ? "completed"
+          : currentPhase === "prepared"
+            ? "active"
+            : "pending",
       description: "Broadcasting to network.",
-      errorMessage:
-        error && error.type === "transaction"
-          ? getUserMessage(new Error(error.message))
-          : undefined,
+      errorMessage: isTransactionError ? getUserMessage(error) : undefined,
     },
     {
       label: "Withdrawal confirmed",
@@ -118,7 +111,7 @@ export function WithdrawalTimeline({
 
   const StepIcon = ({ status }: { status: StepStatus }) => {
     if (status === "completed") return <CheckCircle className="h-6 w-6 text-green-500" />;
-    if (status === "active") return <Clock className="h-6 w-6 text-yellow-500" />;
+    if (status === "active") return <Clock className="h-6 w-6 animate-pulse text-yellow-500" />;
     if (status === "failed") return <XCircle className="h-6 w-6 text-red-500" />;
     return <div className="h-6 w-6 rounded-full border-2 border-gray-200" />;
   };
@@ -126,7 +119,7 @@ export function WithdrawalTimeline({
   const StatusIcon = () => {
     if (isConfirmed) return <CheckCircle className="h-12 w-12 text-green-500" />;
     if (error) return <XCircle className="h-12 w-12 text-red-500" />;
-    return <Hourglass className="h-12 w-12 text-gray-300" />;
+    return <Hourglass className="h-12 w-12 animate-pulse text-gray-400" />;
   };
 
   return (
