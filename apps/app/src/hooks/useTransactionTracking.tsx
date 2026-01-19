@@ -5,7 +5,7 @@ import { parseUserKey } from "@shinobi-cash/core";
 import type React from "react";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { logError } from "@/lib/errors";
-import { accountService } from "@/lib/storage/account/AccountService";
+import { accountService } from "@/services/AccountService";
 import { NotesDiscoveryController } from "@/controllers/NotesDiscoveryController";
 
 export type TrackingStatus = "idle" | "pending" | "waiting" | "synced" | "failed";

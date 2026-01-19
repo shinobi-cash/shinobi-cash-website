@@ -6,7 +6,7 @@
  * No domain logic.
  */
 
-import { ActivityFilter } from "@/features/activity/types";
+import { ActivityFilter } from "@/types/activity";
 import { proxy } from "valtio";
 
 // ============ STATE ============

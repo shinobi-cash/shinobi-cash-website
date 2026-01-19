@@ -3,17 +3,17 @@
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { AmountDisplay } from "@/components/shared/AmountDisplay";
-import { NoteChainScreen } from "@/features/notes/ui/screens/NoteChainScreen";
-import { NotesSection } from "@/features/notes/ui/components/NotesSection";
+import { NoteChainScreen } from "@/components/screens/NoteChainScreen";
+import { NotesSection } from "@/components/notes/NotesSection";
 import { NoteChain } from "@shinobi-cash/core";
-import { useNotesScreenController } from "@/features/notes/hooks/useNotesScreenController";
+import { useNotesScreen } from "@/hooks/useNotesScreen";
 import { useScreenNavigation } from "@/hooks/useScreenNavigation";
 
 type NoteScreen = "detail";
 
 export default function NotesPage() {
   const router = useRouter();
-  const controller = useNotesScreenController();
+  const controller = useNotesScreen();
   const screens = useScreenNavigation<NoteScreen>();
 
   // Calculate total balance from available notes

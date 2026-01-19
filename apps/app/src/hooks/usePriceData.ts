@@ -13,8 +13,8 @@
  */
 
 import { useQuery } from "@tanstack/react-query";
-import { fetchTokenPrice } from "@/lib/prices/priceService";
-import type { TokenSymbol } from "@/lib/prices/types";
+import { fetchTokenPrice } from "@/services/PriceService";
+import type { TokenSymbol } from "@/types/price";
 
 export interface UsePriceDataResult {
   /** Current USD price for the token (null if loading or error) */

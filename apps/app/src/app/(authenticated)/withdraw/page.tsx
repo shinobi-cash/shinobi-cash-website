@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { WithdrawalForm } from "@/features/withdraw/ui/components/WithdrawalForm";
+import { WithdrawalForm } from "@/components/withdraw/WithdrawalForm";
 
 export default function WithdrawPage() {
   const router = useRouter();

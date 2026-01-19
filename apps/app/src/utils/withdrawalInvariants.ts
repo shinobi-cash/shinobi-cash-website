@@ -4,7 +4,7 @@
  * Runtime assertions and validation logic to ensure withdrawal correctness.
  */
 
-import { WITHDRAWAL_CONFIG } from "@/features/withdraw/constants";
+import { WITHDRAWAL_CONFIG } from "@/constants/withdraw";
 import { FeeQuote, WithdrawalPipelineContext, WithdrawalRequest } from "@/types/withdrawal";
 
 // ============ VALIDATION ERRORS ============

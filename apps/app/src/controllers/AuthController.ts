@@ -1,6 +1,6 @@
-import { accountService } from "@/lib/storage/account/AccountService";
+import { accountService } from "@/services/AccountService";
 import { repositoryRegistry } from "@/lib/storage/RepositoryRegistry";
-import { keyDerivationService } from "@/lib/storage/services/KeyDerivationService";
+import { keyDerivationService } from "@/services/KeyDerivationService";
 import { parseUserKey } from "@shinobi-cash/core";
 import { proxy } from "valtio";
 import {

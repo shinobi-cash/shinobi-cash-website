@@ -5,7 +5,7 @@
  */
 
 import type { Note, NoteChain } from "@shinobi-cash/core";
-import type { NoteFilter, ReadonlyNoteChain } from "@/features/notes/types";
+import type { NoteFilter, ReadonlyNoteChain } from "@/types/notes";
 
 /**
  * Get the last note from a note chain

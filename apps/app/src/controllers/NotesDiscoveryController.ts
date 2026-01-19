@@ -11,7 +11,7 @@ import { SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
 import { AuthController } from "@/controllers/AuthController";
 
 import type { Note } from "@shinobi-cash/core";
-import { NotesError, NotesStatus, ReadonlyNoteChain } from "@/features/notes/types";
+import { NotesError, NotesStatus, ReadonlyNoteChain } from "@/types/notes";
 import {
   getAvailableNotes,
   getLastNote,

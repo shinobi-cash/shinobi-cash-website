@@ -7,7 +7,7 @@
 import { TokenAmountInput } from "./TokenAmountInput";
 import { usePriceData } from "@/hooks/usePriceData";
 import { formatUsdAmount } from "@/utils/formatters";
-import type { TokenSymbol } from "@/lib/prices/types";
+import type { TokenSymbol } from "@/types/price";
 import type { ReactNode } from "react";
 
 interface TokenAmountInputWithBalanceProps {

@@ -6,7 +6,7 @@
 
 import { proxy } from "valtio";
 import type { NoteChain } from "@shinobi-cash/core";
-import { NoteChainView, NoteFilter, ReadonlyNoteChain } from "@/features/notes/types";
+import { NoteChainView, NoteFilter, ReadonlyNoteChain } from "@/types/notes";
 import {
   filterNoteChains,
   getLastNote,

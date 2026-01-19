@@ -1,6 +1,6 @@
 "use client";
 
-import { DepositForm } from "@/features/deposit/ui/components/DepositForm";
+import { DepositForm } from "@/components/deposit/DepositForm";
 
 export default function DepositPage() {
   return (

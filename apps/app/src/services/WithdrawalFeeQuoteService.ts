@@ -8,7 +8,7 @@ import type { WithdrawalRequest, FeeQuote, WithdrawalKind } from "@/types/withdr
 import { classifyWithdrawal, calculateFeesFromBPS } from "@/utils/withdrawalPipeline";
 import { validateFeeQuote } from "@/utils/withdrawalInvariants";
 import { pimlicoClient } from "@/lib/clients";
-import { SAME_CHAIN_GAS_LIMITS, CROSS_CHAIN_GAS_LIMITS, WITHDRAWAL_CONFIG  } from "@/features/withdraw/constants";
+import { SAME_CHAIN_GAS_LIMITS, CROSS_CHAIN_GAS_LIMITS, WITHDRAWAL_CONFIG  } from "@/constants/withdraw";
 
 // ============ GAS ESTIMATION ============
 

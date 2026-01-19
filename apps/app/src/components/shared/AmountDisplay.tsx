@@ -18,7 +18,7 @@
 
 import { usePriceData } from "@/hooks/usePriceData";
 import { formatEthAmount, formatUsdAmount, type EthFormattingOptions } from "@/utils/formatters";
-import type { TokenSymbol } from "@/lib/prices/types";
+import type { TokenSymbol } from "@/types/price";
 
 export interface AmountDisplayProps {
   /** Amount in ETH (can be wei string, ETH number, bigint) */

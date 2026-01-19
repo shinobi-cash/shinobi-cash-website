@@ -5,8 +5,8 @@
  */
 
 import type { Note } from "@shinobi-cash/core";
-import { ReadonlyNoteChain } from "@/features/notes/types";
-import { Activity, ActivityType } from "@/features/activity/types";
+import { ReadonlyNoteChain } from "@/types/notes";
+import { Activity, ActivityType } from "@/types/activity";
 
 /**
  * Derive activity type from note

@@ -1,6 +1,6 @@
 "use client";
 
-import { ProfileMenu } from "@/features/auth/ui/components/ProfileMenu";
+import { ProfileMenu } from "@/components/auth/ProfileMenu";
 import AppLogo from "../AppLogo";
 
 interface HeaderProps {

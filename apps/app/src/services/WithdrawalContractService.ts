@@ -20,7 +20,7 @@ import type { SmartAccountClient } from "permissionless";
 import { BlockchainError, BLOCKCHAIN_ERROR_CODES, logError } from "@/lib/errors";
 import { http, createPublicClient, encodeAbiParameters, encodeFunctionData } from "viem";
 import { type UserOperation, entryPoint07Address } from "viem/account-abstraction";
-import { SAME_CHAIN_GAS_LIMITS, CROSS_CHAIN_GAS_LIMITS } from "@/features/withdraw/constants";
+import { SAME_CHAIN_GAS_LIMITS, CROSS_CHAIN_GAS_LIMITS } from "@/constants/withdraw";
 
 // ============ TYPES ============
 

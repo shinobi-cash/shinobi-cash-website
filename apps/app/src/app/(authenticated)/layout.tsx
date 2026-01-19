@@ -1,12 +1,12 @@
 "use client";
 
-import { AuthScreen } from "@/features/auth/ui/screens/AuthScreen";
+import { AuthScreen } from "@/components/screens/AuthScreen";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { DashboardTabs } from "@/components/layout/DashboardTabs";
 import { useSnapshot } from "valtio";
 import { AuthController } from "@/controllers/AuthController";
-import { IndexerHealthIndicator } from "@/components/indicator/IndexerHealthIndicator";
+import { IndexerHealthIndicator } from "@/components/indicators/IndexerHealthIndicator";
 
 /**
  * Authenticated Layout
@@ -17,7 +17,6 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
   const state = useSnapshot(AuthController.state);
   const isAuthenticated = state.state.status === "authenticated";
 
-  console.log({ isAuthenticated });
   // Show auth screen if not authenticated
   if (!isAuthenticated) {
     return (

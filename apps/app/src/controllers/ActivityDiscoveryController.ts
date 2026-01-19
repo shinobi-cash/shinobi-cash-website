@@ -7,9 +7,9 @@
 
 import { proxy } from "valtio";
 
-import type { ReadonlyNoteChain } from "@/features/notes/types";
+import type { ReadonlyNoteChain } from "@/types/notes";
 import { NotesDiscoverySelectors } from "@/controllers/NotesDiscoveryController";
-import { Activity, ActivityStatus } from "@/features/activity/types";
+import { Activity, ActivityStatus } from "@/types/activity";
 import {
   deriveActivitiesFromNoteChains,
   getActivityCounts,

@@ -6,7 +6,7 @@
 
 import { usePriceData } from "@/hooks/usePriceData";
 import { formatUsdAmount } from "@/utils/formatters";
-import type { TokenSymbol } from "@/lib/prices/types";
+import type { TokenSymbol } from "@/types/price";
 import { ChevronDown } from "lucide-react";
 
 interface FeeBreakdownProps {
