@@ -13,7 +13,6 @@ import { AssetChainSelectorScreen } from "@/components/screens/AssetChainSelecto
 import { FeeBreakdown } from "@/components/shared/FeeBreakdown";
 import { NoteSelectionScreen } from "@/components/screens/NoteSelectionScreen";
 import { WithdrawalTimelineScreen } from "@/components/screens/WithdrawalTimelineScreen";
-import { showToast } from "@/lib/toast";
 import { RecipientAddressInputScreen } from "@/components/screens/RecipientAddressInputScreen";
 import { DISPLAY_DECIMALS, ETH_ASSET } from "@/constants/withdraw";
 import { formatEthAmount } from "@/utils/formatters";
@@ -40,13 +39,8 @@ export function WithdrawalForm() {
     }
   }, [state.amount, state.recipientAddress, state.selectedNote, state.destinationChainId]);
 
-  // Interaction Contract Fix: Review = instant validation + navigation (NO work)
+  // Review = instant navigation (validation handled by button state)
   const handleReviewWithdrawal = () => {
-    if (!WithdrawSelectors.canWithdraw()) {
-      showToast.error("Please fill all required fields");
-      return;
-    }
-    // Just navigate to preview/timeline screen (instant, uses preview fee quote)
     screens.navigate("timeline");
   };
 
@@ -219,6 +213,12 @@ export function WithdrawalForm() {
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Previewing fees...
               </div>
+            ) : !state.selectedNote ? (
+              "Select a Note"
+            ) : !state.amount.trim() ? (
+              "Enter Amount"
+            ) : !state.recipientAddress ? (
+              "Enter Recipient Address"
             ) : (
               "Review Withdrawal"
             )}
