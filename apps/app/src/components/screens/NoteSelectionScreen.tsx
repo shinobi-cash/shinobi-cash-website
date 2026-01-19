@@ -35,17 +35,17 @@ export function NoteSelectionScreen({
     <ScreenLayout header={<ScreenHeader title="Select Note" onBack={onBack} />} contentClassName="">
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       ) : availableNotes.length === 0 ? (
         <div className="flex flex-col items-center justify-center px-4 py-12">
-          <div className="text-center text-gray-400">
+          <div className="text-center text-muted-foreground">
             <p className="mb-2 text-lg font-medium">No notes available</p>
             <p className="text-sm">Make a deposit to create a note</p>
           </div>
         </div>
       ) : (
-        <div className="divide-y divide-gray-800">
+        <div className="divide-y divide-border">
           {availableNotes.map((note) => {
             const isSelected = selectedNote?.label === note.label;
             const amount = formatEthAmount(note.amount);
@@ -61,7 +61,7 @@ export function NoteSelectionScreen({
                 className={`flex w-full items-center gap-3 px-4 py-4 transition-colors ${
                   isSelected
                     ? "border-l-4 border-orange-600 bg-orange-600/20"
-                    : "border-l-4 border-transparent hover:bg-gray-800/50"
+                    : "border-l-4 border-transparent hover:bg-muted/50"
                 }`}
               >
                 {/* Asset Icon */}
@@ -80,7 +80,7 @@ export function NoteSelectionScreen({
                 {/* Note Info */}
                 <div className="min-w-0 flex-1 text-left">
                   <div className="mb-1 flex items-center justify-between">
-                    <span className="text-base font-semibold text-white">
+                    <span className="text-base font-semibold text-foreground">
                       {Number.parseFloat(amount).toFixed(4)} {asset.symbol}
                     </span>
                     {note.isActivated && (
@@ -89,7 +89,7 @@ export function NoteSelectionScreen({
                       </span>
                     )}
                   </div>
-                  <div className="truncate text-xs text-gray-400">
+                  <div className="truncate text-xs text-muted-foreground">
                     Note #{note.depositIndex}.{note.changeIndex}
                   </div>
                 </div>

@@ -9,7 +9,7 @@ interface HeaderProps {
 
 export function Header({ rightSlot }: HeaderProps) {
   return (
-    <header className="mx-auto flex items-center justify-between rounded-xl border border-gray-800 bg-black/50 px-4 py-3 backdrop-blur-sm sm:rounded-2xl sm:px-6 lg:px-8">
+    <header className="mx-auto flex items-center justify-between rounded-xl border border-border bg-background/50 px-4 py-3 backdrop-blur-sm sm:rounded-2xl sm:px-6 lg:px-8">
       <div className="flex gap-6">
         <AppLogo />
       </div>

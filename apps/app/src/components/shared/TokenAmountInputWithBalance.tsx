@@ -57,19 +57,19 @@ export function TokenAmountInputWithBalance({
       {/* USD Value (left) + Balance & Max Button (right) - Same line */}
       <div className="flex items-center justify-between text-sm">
         {/* USD Value */}
-        <span className="text-gray-400">
+        <span className="text-muted-foreground">
           {hasValidAmount &&
             (isLoading ? "Loading price..." : amountUsd ? `≈ ${formatUsdAmount(amountUsd)}` : "")}
         </span>
 
         {/* Balance and Max Button */}
         <div className="flex items-center gap-2">
-          <span className="text-gray-400">
+          <span className="text-muted-foreground">
             Balance: {formattedBalance} {assetSymbol}
           </span>
           <button
             onClick={onMaxClick}
-            className="rounded-lg bg-gray-700 px-3 py-1 text-sm font-medium text-white transition-colors hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg bg-muted px-3 py-1 text-sm font-medium text-foreground transition-colors hover:bg-muted/80 disabled:cursor-not-allowed disabled:opacity-50"
             disabled={disabled || !hasBalance}
           >
             Max

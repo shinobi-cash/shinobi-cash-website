@@ -17,6 +17,7 @@ interface TimelineItem {
   status: StepStatus;
   description: string;
   errorMessage?: string;
+  link?: { url: string; text: string };
 }
 
 interface DepositTimelineScreenProps {
@@ -130,6 +131,7 @@ export function DepositTimelineScreen({
       label: "Deposit complete",
       status: completeStatus,
       description: "Your funds are ready for withdrawal.",
+      link: explorerUrl && isIndexed ? { url: explorerUrl, text: "View receipt" } : undefined,
     },
   ];
 
@@ -137,18 +139,32 @@ export function DepositTimelineScreen({
     if (status === "completed") return <CheckCircle className="h-6 w-6 text-green-500" />;
     if (status === "active") return <Clock className="h-6 w-6 animate-pulse text-yellow-500" />;
     if (status === "failed") return <XCircle className="h-6 w-6 text-red-500" />;
-    return <div className="h-6 w-6 rounded-full border-2 border-gray-200" />;
+    return <div className="h-6 w-6 rounded-full border-2 border-border" />;
   };
 
   const StatusIcon = () => {
     if (isIndexed) return <CheckCircle className="h-12 w-12 text-green-500" />;
     if (hasError) return <XCircle className="h-12 w-12 text-red-500" />;
-    return <Hourglass className="h-12 w-12 animate-pulse text-gray-400" />;
+    return <Hourglass className="h-12 w-12 animate-pulse text-muted-foreground" />;
   };
+
+  // Back button only enabled after success or failure
+  const canGoBack = isIndexed || hasError;
+
+  const footerContent = (
+    <Button
+      onClick={onClose}
+      className="h-12 w-full rounded-xl text-base font-semibold disabled:cursor-not-allowed disabled:opacity-50 sm:h-14 sm:text-lg"
+      size="lg"
+    >
+      Close
+    </Button>
+  );
 
   return (
     <ScreenLayout
-      header={<ScreenHeader title="Transaction details" onBack={onClose} />}
+      header={<ScreenHeader title="Transaction details" onBack={onClose} backDisabled={!canGoBack} />}
+      footer={footerContent}
       contentClassName="space-y-4 px-6 py-4"
     >
       <div className="flex flex-1 flex-col items-center space-y-4">
@@ -156,7 +172,7 @@ export function DepositTimelineScreen({
           <StatusIcon />
           <h2 className="text-2xl font-bold">{title}</h2>
           <span className="text-5xl font-extrabold">{noteAmount.toFixed(4)} ETH</span>
-          <span className="text-sm font-medium text-gray-500">{subtitle}</span>
+          <span className="text-sm font-medium text-muted-foreground">{subtitle}</span>
         </div>
 
         <div className="w-full max-w-md">
@@ -171,7 +187,7 @@ export function DepositTimelineScreen({
                         ? "bg-green-100"
                         : step.status === "failed"
                           ? "bg-red-100"
-                          : "bg-gray-100"
+                          : "bg-muted"
                     )}
                   />
                 )}
@@ -192,10 +208,23 @@ export function DepositTimelineScreen({
                     <p
                       className={cn(
                         "text-sm",
-                        step.status === "pending" ? "text-gray-300" : "text-gray-500"
+                        step.status === "pending" ? "text-muted-foreground/70" : "text-muted-foreground"
                       )}
                     >
                       {step.description}
+                      {step.link && (
+                        <>
+                          {" "}
+                          <a
+                            href={step.link.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-medium text-orange-500 hover:underline"
+                          >
+                            {step.link.text}
+                          </a>
+                        </>
+                      )}
                     </p>
                   )}
                 </div>
@@ -203,26 +232,6 @@ export function DepositTimelineScreen({
             ))}
           </div>
         </div>
-      </div>
-
-      <div className="flex flex-col items-center gap-4">
-        <Button
-          onClick={onClose}
-          className="h-12 w-full rounded-xl text-base font-semibold disabled:cursor-not-allowed disabled:opacity-50 sm:h-14 sm:text-lg"
-          size="lg"
-        >
-          Close
-        </Button>
-        {explorerUrl && !isSubmitting && (
-          <a
-            href={explorerUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm font-bold text-gray-900 hover:underline"
-          >
-            View receipt
-          </a>
-        )}
       </div>
     </ScreenLayout>
   );

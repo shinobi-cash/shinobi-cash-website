@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { checkIndexerHealth } from "@/services/IndexerService";
+import { checkIndexerHealth } from "@/utils/indexer";
 
 type IndexerHealthState = { status: "loading" } | { status: "healthy" } | { status: "unhealthy" };
 

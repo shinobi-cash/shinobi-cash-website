@@ -5,7 +5,8 @@
  * - Timeline mode: Shows 6-step progress tracking engine phases
  */
 
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
+import { Button } from "@workspace/ui/components/button";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";
 import { ScreenLayout } from "@/components/layout/ScreenLayout";
 import { WithdrawalPreview } from "@/components/withdraw/WithdrawalPreview";
@@ -13,6 +14,8 @@ import { WithdrawalTimeline } from "@/components/withdraw/WithdrawalTimeline";
 import { useWithdrawController } from "@/hooks/useWithdrawController";
 import { WithdrawController, WithdrawSelectors } from "@/controllers/WithdrawController";
 import { EnginePhase } from "@/services/WithdrawalOrchestratorService";
+import { useTransactionTracking } from "@/hooks/useTransactionTracking";
+import { POOL_CHAIN } from "@shinobi-cash/constants";
 
 interface WithdrawalTimelineScreenProps {
   onBack: () => void;
@@ -22,6 +25,9 @@ interface WithdrawalTimelineScreenProps {
 export function WithdrawalTimelineScreen({ onBack, onConfirm }: WithdrawalTimelineScreenProps) {
   // Read controller state
   const state = useWithdrawController();
+
+  // Transaction tracking for indexing status
+  const { trackTransaction, trackingStatus } = useTransactionTracking();
 
   // Handle close from timeline mode (after work is done)
   // Reset controller state and close the screen
@@ -66,10 +72,22 @@ export function WithdrawalTimelineScreen({ onBack, onConfirm }: WithdrawalTimeli
     return null;
   }, [state.state]);
 
-  const isConfirmed = state.state.status === "confirmed";
-  const error = state.state.status === "error" ? state.state.error : state.lastError;
+  // Track transaction for indexing when txHash becomes available
+  useEffect(() => {
+    if (txHash) {
+      trackTransaction(txHash, POOL_CHAIN.id);
+    }
+  }, [txHash, trackTransaction]);
 
-  const title = screenMode === "preview" ? "Transaction Preview" : "Withdrawal Progress";
+  const isConfirmed = state.state.status === "confirmed";
+  const isIndexed = trackingStatus === "synced";
+  const hasError = state.state.status === "error";
+  const error = hasError ? state.state.error : state.lastError;
+
+  const title = screenMode === "preview" ? "Transaction Preview" : "Transaction details";
+
+  // Back button enabled in preview mode, or after success/failure in timeline mode
+  const canGoBack = screenMode === "preview" || isIndexed || hasError;
 
   const withdrawAmount = state.amount;
   const youReceive = WithdrawSelectors.getYouReceive();
@@ -80,8 +98,26 @@ export function WithdrawalTimelineScreen({ onBack, onConfirm }: WithdrawalTimeli
   const isCrossChain = WithdrawSelectors.isCrossChain();
   const isProcessing = state.state.status === "preparing" || state.state.status === "submitting";
 
+  const timelineFooter = (
+    <Button
+      onClick={handleTimelineClose}
+      className="h-12 w-full rounded-xl text-base font-semibold disabled:cursor-not-allowed disabled:opacity-50 sm:h-14 sm:text-lg"
+      size="lg"
+    >
+      Close
+    </Button>
+  );
+
   return (
-    <ScreenLayout header={<ScreenHeader title={title} onBack={onBack} />}>
+    <ScreenLayout
+      header={<ScreenHeader title={title} onBack={onBack} backDisabled={!canGoBack} />}
+      footer={screenMode === "timeline" ? timelineFooter : undefined}
+      contentClassName={
+        screenMode === "timeline"
+          ? "space-y-4 px-6 py-4"
+          : "space-y-4 px-6 py-4 font-sans text-white"
+      }
+    >
       {screenMode === "preview" ? (
         <WithdrawalPreview
           onBack={onBack}
@@ -102,7 +138,8 @@ export function WithdrawalTimelineScreen({ onBack, onConfirm }: WithdrawalTimeli
           txHash={txHash}
           error={error}
           isConfirmed={isConfirmed}
-          onClose={handleTimelineClose}
+          isIndexed={isIndexed}
+          trackingStatus={trackingStatus}
         />
       )}
     </ScreenLayout>

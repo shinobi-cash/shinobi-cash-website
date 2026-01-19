@@ -12,13 +12,13 @@ import { quoteFees } from "@/utils/withdrawalFees";
 import {
   prepareUserOperation,
   executeUserOperation,
-} from "@/services/WithdrawalTransactionService";
+} from "@/utils/withdrawalTransaction";
 import {
   createWithdrawalData,
   createCrossChainWithdrawalData,
   fetchPoolScope,
-} from "@/services/WithdrawalContractService";
-import { fetchASPData, fetchStateTreeLeaves } from "@/services/IndexerService";
+} from "@/utils/withdrawalContract";
+import { fetchASPData, fetchStateTreeLeaves } from "@/utils/indexer";
 import { withdrawalProofGenerator } from "@/services/ProofGeneratorService";
 import {
   deriveWithdrawalInputs,

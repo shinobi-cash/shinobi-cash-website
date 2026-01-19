@@ -89,9 +89,9 @@ export function ProfileMenu() {
               <MoreHorizontalIcon />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56 border-gray-700 bg-gray-900 p-1">
+          <DropdownMenuContent align="end" className="w-56 border-border bg-background p-1">
             <DropdownMenuGroup>
-              <DropdownMenuLabel className="px-2 text-xs font-semibold text-gray-500">
+              <DropdownMenuLabel className="px-2 text-xs font-semibold text-muted-foreground">
                 Notes
               </DropdownMenuLabel>
               <DropdownMenuItem>
@@ -104,16 +104,16 @@ export function ProfileMenu() {
                 />
               </DropdownMenuItem>
             </DropdownMenuGroup>
-            <DropdownMenuSeparator className="bg-gray-800" />
+            <DropdownMenuSeparator className="bg-muted" />
             <DropdownMenuGroup>
-              <DropdownMenuLabel className="px-2 text-xs font-semibold text-gray-500">
+              <DropdownMenuLabel className="px-2 text-xs font-semibold text-muted-foreground">
                 Account
               </DropdownMenuLabel>
               {canAddPasskey && (
                 <>
                   <DropdownMenuItem
                     onClick={handleAddPasskey}
-                    className="cursor-pointer text-gray-300 hover:bg-gray-800 hover:text-white focus:bg-gray-800 focus:text-white"
+                    className="cursor-pointer text-muted-foreground hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground"
                   >
                     <FingerprintIcon className="h-4 w-4" />
                     Add Passkey
@@ -124,7 +124,7 @@ export function ProfileMenu() {
               {passkeyEnabled && (
                 <DropdownMenuItem
                   onClick={handleRemovePasskey}
-                  className="cursor-pointer text-yellow-400 hover:bg-gray-800 hover:text-yellow-300 focus:bg-gray-800 focus:text-yellow-300"
+                  className="cursor-pointer text-yellow-400 hover:bg-muted hover:text-yellow-300 focus:bg-muted focus:text-yellow-300"
                 >
                   <FingerprintIcon className="h-4 w-4" />
                   Remove Passkey
@@ -134,7 +134,7 @@ export function ProfileMenu() {
               {isConnected && (
                 <DropdownMenuItem
                   onClick={handleDisconnectWallet}
-                  className="cursor-pointer text-gray-300 hover:bg-gray-800 hover:text-white focus:bg-gray-800 focus:text-white"
+                  className="cursor-pointer text-muted-foreground hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground"
                 >
                   <WalletIcon className="h-4 w-4" />
                   Disconnect Wallet
@@ -143,7 +143,7 @@ export function ProfileMenu() {
 
               <DropdownMenuItem
                 onClick={handleLogout}
-                className="cursor-pointer text-red-400 hover:bg-gray-800 hover:text-red-300 focus:bg-gray-800 focus:text-red-300"
+                className="cursor-pointer text-red-400 hover:bg-muted hover:text-red-300 focus:bg-muted focus:text-red-300"
               >
                 <LogOut className="h-4 w-4" />
                 Logout

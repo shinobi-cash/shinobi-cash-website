@@ -32,7 +32,7 @@ export function TokenAmountInput({
 
   return (
     <div
-      className={`flex w-full items-center gap-3 overflow-hidden rounded-lg border border-gray-700 bg-gray-800/50 p-3 ${className}`}
+      className={`flex w-full items-center gap-3 overflow-hidden rounded-lg border border-border bg-muted/50 p-3 ${className}`}
     >
       <input
         type="text"
@@ -40,7 +40,7 @@ export function TokenAmountInput({
         value={amount}
         onChange={(e) => handleChange(e.target.value)}
         placeholder={placeholder}
-        className="min-w-0 flex-1 border-none bg-transparent px-0 py-2 text-3xl font-semibold text-white placeholder:text-gray-600 focus:outline-none disabled:cursor-not-allowed disabled:opacity-70 sm:text-4xl md:text-5xl"
+        className="min-w-0 flex-1 border-none bg-transparent px-0 py-2 text-3xl font-semibold text-foreground placeholder:text-muted-foreground focus:outline-none disabled:cursor-not-allowed disabled:opacity-70 sm:text-4xl md:text-5xl"
         disabled={disabled}
       />
 

@@ -66,13 +66,13 @@ export function RemovePasskeyModal({ open, onOpenChange, onRemoved }: RemovePass
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-linear-to-br border-gray-700 from-gray-900 via-gray-900 sm:max-w-md">
+      <DialogContent className="border-border bg-background sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-white">
             <AlertTriangle className="h-5 w-5 text-yellow-500" />
             Remove Passkey?
           </DialogTitle>
-          <DialogDescription className="text-gray-400">
+          <DialogDescription className="text-muted-foreground">
             This will remove biometric unlock from this device. You&apos;ll need to use your wallet
             to sign in. You can add a new passkey later if needed.
           </DialogDescription>
@@ -86,19 +86,19 @@ export function RemovePasskeyModal({ open, onOpenChange, onRemoved }: RemovePass
             </div>
           )}
 
-          <div className="rounded-lg border border-gray-700 bg-gray-800/50 p-4">
-            <h4 className="mb-2 text-sm font-medium text-gray-300">What will be removed:</h4>
-            <ul className="space-y-1 text-sm text-gray-400">
+          <div className="rounded-lg border border-border bg-muted/50 p-4">
+            <h4 className="mb-2 text-sm font-medium text-muted-foreground">What will be removed:</h4>
+            <ul className="space-y-1 text-sm text-muted-foreground">
               <li className="flex items-center gap-2">
-                <span className="text-gray-600">•</span>
+                <span className="text-muted-foreground">•</span>
                 Biometric authentication data
               </li>
               <li className="flex items-center gap-2">
-                <span className="text-gray-600">•</span>
+                <span className="text-muted-foreground">•</span>
                 Quick unlock on this device
               </li>
               <li className="flex items-center gap-2">
-                <span className="text-gray-600">•</span>
+                <span className="text-muted-foreground">•</span>
                 Passkey credential
               </li>
             </ul>

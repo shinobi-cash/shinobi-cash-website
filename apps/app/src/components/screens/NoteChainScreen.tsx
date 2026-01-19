@@ -50,15 +50,15 @@ export function NoteChainScreen({ noteChain, onBack, onWithdrawClick }: NoteChai
       <div className="space-y-6">
         <div className="space-y-6">
           {/* Balance Summary */}
-          <div className="rounded-xl border border-gray-700 bg-gray-800 p-4 text-center shadow">
-            <p className="mb-1 text-sm font-medium text-gray-400">Current Balance</p>
+          <div className="rounded-xl border border-border bg-muted p-4 text-center shadow">
+            <p className="mb-1 text-sm font-medium text-muted-foreground">Current Balance</p>
             <div className="mb-2">
               <AmountDisplay
                 amount={lastNote.amount}
                 layout="stacked"
                 ethOptions={{ maxDecimals: 6 }}
                 ethClassName="text-2xl font-bold tabular-nums text-white"
-                usdClassName="text-sm text-gray-400 mt-1"
+                usdClassName="text-sm text-muted-foreground mt-1"
               />
             </div>
             <div
@@ -112,7 +112,7 @@ export function NoteChainScreen({ noteChain, onBack, onWithdrawClick }: NoteChai
                   <div className="relative pb-8">
                     {!isLast && (
                       <span
-                        className="absolute left-2 top-2 -ml-px h-full w-0.5 border border-gray-700"
+                        className="absolute left-2 top-2 -ml-px h-full w-0.5 border border-border"
                         aria-hidden="true"
                       />
                     )}
@@ -158,11 +158,11 @@ export function NoteChainScreen({ noteChain, onBack, onWithdrawClick }: NoteChai
                               layout="inline"
                               ethOptions={{ maxDecimals: 6 }}
                               showUsd={true}
-                              className="text-xs text-gray-500"
-                              usdClassName="text-xs text-gray-500"
+                              className="text-xs text-muted-foreground"
+                              usdClassName="text-xs text-muted-foreground"
                             />
                           </div>
-                          <p className="whitespace-nowrap text-xs text-gray-400">
+                          <p className="whitespace-nowrap text-xs text-muted-foreground">
                             {formatTimestamp(note.timestamp)}
                           </p>
                         </div>

@@ -1,5 +1,5 @@
 import { proxy } from "valtio";
-import { depositService, type CashNoteData, type GasEstimate } from "@/services/DepositService";
+import { depositService, type CashNoteData, type GasEstimate } from "@/utils/deposit";
 import { formatDepositAmountsForDisplay } from "@/utils/depositFees";
 import { isDepositSupported } from "@/utils/depositRoute";
 import { DEPOSIT_FEES, POOL_CHAIN } from "@shinobi-cash/constants";

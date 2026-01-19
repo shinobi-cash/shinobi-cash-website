@@ -14,7 +14,7 @@ export function InputLabel({ label, labelRight }: InputLabelProps) {
 
   return (
     <div className="flex items-center justify-between">
-      {label && <label className="text-sm text-gray-400">{label}</label>}
+      {label && <label className="text-sm text-muted-foreground">{label}</label>}
       {labelRight}
     </div>
   );

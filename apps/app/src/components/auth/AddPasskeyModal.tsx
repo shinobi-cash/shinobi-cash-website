@@ -68,13 +68,13 @@ export function AddPasskeyModal({ open, onOpenChange }: AddPasskeyModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-linear-to-br border-gray-700 from-gray-900 via-gray-900 sm:max-w-md">
+      <DialogContent className="border-border bg-background sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-white">
             <Fingerprint className="h-5 w-5 text-blue-500" />
             Enable Quick Unlock
           </DialogTitle>
-          <DialogDescription className="text-gray-400">
+          <DialogDescription className="text-muted-foreground">
             Use fingerprint or face unlock to skip wallet signatures on reload. Stored securely on
             this device only.
           </DialogDescription>

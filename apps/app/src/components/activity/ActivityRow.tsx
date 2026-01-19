@@ -24,7 +24,7 @@ export function ActivityRow({ activity, onClick }: ActivityRowProps) {
   return (
     <button
       type="button"
-      className="w-full cursor-pointer rounded-lg border border-gray-700 bg-gray-800/50 px-3 py-3 text-left transition-all duration-150 hover:bg-gray-800/70"
+      className="w-full cursor-pointer rounded-lg border border-border bg-muted/50 px-3 py-3 text-left transition-all duration-150 hover:bg-muted/70"
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
     >
@@ -39,7 +39,7 @@ export function ActivityRow({ activity, onClick }: ActivityRowProps) {
               ethOptions={{ maxDecimals: 6 }}
               className="gap-1.5"
               ethClassName="text-white font-semibold text-base"
-              usdClassName="text-gray-400 text-xs"
+              usdClassName="text-muted-foreground text-xs"
             />
           </div>
         </div>
@@ -47,7 +47,7 @@ export function ActivityRow({ activity, onClick }: ActivityRowProps) {
         {/* Bottom row: Chain info, status, timestamp */}
         <div className="flex items-center justify-between gap-2 text-xs">
           {/* Chain info */}
-          <div className="flex items-center gap-1.5 text-gray-400">
+          <div className="flex items-center gap-1.5 text-muted-foreground">
             {isCrossChain ? (
               <>
                 <span>{originChainName}</span>
@@ -66,7 +66,7 @@ export function ActivityRow({ activity, onClick }: ActivityRowProps) {
                 Pending
               </span>
             )}
-            <span className="text-gray-400">{formatTimestamp(activity.timestamp)}</span>
+            <span className="text-muted-foreground">{formatTimestamp(activity.timestamp)}</span>
           </div>
         </div>
       </div>

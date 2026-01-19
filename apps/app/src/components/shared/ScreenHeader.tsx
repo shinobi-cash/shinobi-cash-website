@@ -10,23 +10,25 @@ interface ScreenHeaderProps {
   title: string;
   subtitle?: string;
   onBack: () => void;
+  backDisabled?: boolean;
 }
 
-export function ScreenHeader({ title, subtitle, onBack }: ScreenHeaderProps) {
+export function ScreenHeader({ title, subtitle, onBack, backDisabled }: ScreenHeaderProps) {
   return (
-    <div className="flex items-center gap-3 border-b border-gray-800 px-4 py-3">
+    <div className="flex items-center gap-3 border-b border-border px-4 py-3">
       <Button
         variant="ghost"
         size="sm"
         onClick={onBack}
-        className="hover:bg-app-surface-hover h-8 w-8 p-0 transition-colors duration-200"
+        disabled={backDisabled}
+        className="hover:bg-app-surface-hover h-8 w-8 p-0 transition-colors duration-200 disabled:opacity-50"
         aria-label="Go back"
       >
         <ChevronLeft className="text-app-secondary h-4 w-4" />
       </Button>
       <div>
         <h2 className="text-lg font-semibold text-white">{title}</h2>
-        {subtitle && <p className="text-xs text-gray-400">{subtitle}</p>}
+        {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
       </div>
     </div>
   );

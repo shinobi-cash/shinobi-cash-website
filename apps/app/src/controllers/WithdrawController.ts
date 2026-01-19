@@ -146,7 +146,7 @@ const allowedTransitions: Record<WithdrawState["status"], WithdrawState["status"
   preparing: ["ready", "error"],
   ready: ["submitting", "preparing", "idle"],
   submitting: ["confirmed", "error"],
-  confirmed: [],
+  confirmed: ["idle"],
   error: ["idle", "preparing"],
 };
 

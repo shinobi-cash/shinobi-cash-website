@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 
-import { fetchActivities } from "@/services/IndexerService";
+import { fetchActivities } from "@/utils/indexer";
 
 let intervalId: number | null = null;
 

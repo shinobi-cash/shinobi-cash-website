@@ -42,11 +42,11 @@ export function WithdrawalPreview({
     SHINOBI_CASH_SUPPORTED_CHAINS.find((c) => c.id === destinationChainId) ?? POOL_CHAIN;
 
   return (
-    <div className="flex flex-1 flex-col space-y-4 px-6 py-4 font-sans text-white">
+    <>
       {/* Hero */}
       <div className="flex flex-col items-center space-y-4">
-        <div className="flex items-center justify-center rounded-full bg-purple-600">
-          <ArrowDownUp className="h-12 w-12" />
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-purple-600">
+          <ArrowDownUp className="h-8 w-8" />
         </div>
 
         <div className="text-center">
@@ -63,7 +63,7 @@ export function WithdrawalPreview({
       {/* Assets */}
       <div className="w-full space-y-3">
         {/* From */}
-        <div className="flex items-center gap-4 rounded-3xl border bg-gray-800/90 p-4">
+        <div className="flex items-center gap-4 rounded-3xl border bg-muted/90 p-4">
           <ShinobiCashNote />
 
           <div className="flex flex-1 flex-col">
@@ -82,7 +82,7 @@ export function WithdrawalPreview({
         </div>
 
         {/* To */}
-        <div className="flex items-center gap-4 rounded-3xl border bg-gray-800/90 p-4">
+        <div className="flex items-center gap-4 rounded-3xl border bg-muted/90 p-4">
           <AssetChain assetSymbol="ETH" chainId={destinationChainId} />
 
           <div className="flex flex-1 flex-col">
@@ -132,7 +132,7 @@ export function WithdrawalPreview({
           )}
         </Button>
       </div>
-    </div>
+    </>
   );
 }
 

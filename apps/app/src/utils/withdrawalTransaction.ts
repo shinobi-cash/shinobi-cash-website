@@ -16,7 +16,7 @@ import {
   prepareWithdrawalUserOperation,
   prepareCrossChainWithdrawalUserOperation,
   executeWithdrawalUserOperation,
-} from "@/services/WithdrawalContractService";
+} from "@/utils/withdrawalContract";
 
 export async function prepareUserOperation(
   context: WithdrawalPipelineContext,

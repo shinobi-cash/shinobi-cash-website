@@ -54,8 +54,8 @@ export function DepositPreviewScreen({
     >
       {/* Hero */}
       <div className="flex flex-col items-center space-y-4">
-        <div className="flex items-center justify-center rounded-full bg-blue-600">
-          <Shield className="h-12 w-12" />
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-600">
+          <Shield className="h-8 w-8" />
         </div>
 
         <div className="text-center">
@@ -70,7 +70,7 @@ export function DepositPreviewScreen({
       {/* Assets */}
       <div className="w-full space-y-3">
         {/* From */}
-        <div className="flex items-center gap-4 rounded-3xl border bg-gray-800/90 p-4">
+        <div className="flex items-center gap-4 rounded-3xl border bg-muted/90 p-4">
           <AssetChain assetSymbol="ETH" chainId={originChainId} />
 
           <div className="flex flex-1 flex-col">
@@ -89,11 +89,11 @@ export function DepositPreviewScreen({
         </div>
 
         {/* To */}
-        <div className="flex items-center gap-4 rounded-3xl border bg-gray-800/90 p-4">
+        <div className="flex items-center gap-4 rounded-3xl border bg-muted/90 p-4">
           <ShinobiCashNote />
 
           <div className="flex flex-1 flex-col">
-            <span className="text-xs font-medium uppercase text-zinc-500">You receives</span>
+            <span className="text-xs font-medium uppercase text-zinc-500">You receive</span>
             <span className="text-lg font-bold">Note</span>
           </div>
 

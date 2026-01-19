@@ -63,7 +63,7 @@ export function ActivityFilterDropdown({
           {ACTIVITY_FILTER_LABELS[activeFilter]}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48 border-gray-700 bg-gray-900 p-1">
+      <DropdownMenuContent align="end" className="w-48 border-border bg-background p-1">
         {FILTER_OPTIONS.map((option) => {
           const count = getCount(option.value);
           const isActive = activeFilter === option.value;
@@ -74,15 +74,15 @@ export function ActivityFilterDropdown({
               onClick={() => onFilterChange(option.value)}
               className={`cursor-pointer justify-between ${
                 isActive
-                  ? "bg-gray-800 text-white"
-                  : "text-gray-300 hover:bg-gray-800 hover:text-white focus:bg-gray-800 focus:text-white"
+                  ? "bg-muted text-foreground"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground"
               }`}
             >
               <span className="flex items-center gap-2">
                 {isActive && <div className={`h-1.5 w-1.5 rounded-full ${option.dotColor}`} />}
                 {ACTIVITY_FILTER_LABELS[option.value]}
               </span>
-              <span className="text-xs text-gray-400">({count})</span>
+              <span className="text-xs text-muted-foreground">({count})</span>
             </DropdownMenuItem>
           );
         })}

@@ -20,7 +20,7 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
   // Show auth screen if not authenticated
   if (!isAuthenticated) {
     return (
-      <div className="bg-linear-to-br flex min-h-dvh flex-col overflow-y-auto from-gray-900 via-gray-900 to-black">
+      <div className="flex min-h-dvh flex-col overflow-y-auto">
         <div className="p-4">
           <Header />
         </div>
@@ -40,7 +40,7 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
 
   // Authenticated layout with card UI
   return (
-    <div className="bg-linear-to-br flex min-h-dvh flex-col overflow-y-auto from-gray-900 via-gray-900 to-black">
+    <div className="flex min-h-dvh flex-col overflow-y-auto">
       <div className="p-4">
         <Header />
       </div>
@@ -53,7 +53,7 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
           </div>
 
           {/* Card Content */}
-          <div className="rounded-xl border bg-gray-900/70">{children}</div>
+          <div className="rounded-xl border border-border bg-card/70">{children}</div>
         </div>
       </div>
 

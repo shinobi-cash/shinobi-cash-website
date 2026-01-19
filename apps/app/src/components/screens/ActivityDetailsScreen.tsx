@@ -44,14 +44,14 @@ export function ActivityDetailsScreen({ activity, onBack }: ActivityDetailsScree
     >
       <div className="space-y-4">
         {/* Amount Card */}
-        <div className="rounded-xl border border-gray-700 bg-gray-800 p-4 text-center shadow">
-          <p className="text-sm font-medium text-gray-400">Amount</p>
+        <div className="rounded-xl border border-border bg-muted p-4 text-center shadow">
+          <p className="text-sm font-medium text-muted-foreground">Amount</p>
           <AmountDisplay
             amount={activity.amount}
             layout="stacked"
             ethOptions={{ maxDecimals: 6 }}
             ethClassName="text-2xl font-bold tabular-nums text-white"
-            usdClassName="text-sm text-gray-400 mt-1"
+            usdClassName="text-sm text-muted-foreground mt-1"
           />
         </div>
 
@@ -76,10 +76,10 @@ export function ActivityDetailsScreen({ activity, onBack }: ActivityDetailsScree
         <div className="space-y-2">
           <h3 className="text-sm font-semibold text-white">Transaction Details</h3>
           {isCrossChain ? (
-            <div className="space-y-2 rounded-lg border border-gray-700 bg-gray-800/50 p-2 text-sm font-medium">
+            <div className="space-y-2 rounded-lg border border-border bg-muted/50 p-2 text-sm font-medium">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex flex-1 flex-col items-center space-y-2">
-                  <span className="font-medium text-gray-400">Origin</span>
+                  <span className="font-medium text-muted-foreground">Origin</span>
                   <span className="text-center font-semibold text-white">{originChainName}</span>
                   <a
                     href={getTxExplorerUrl(activity.originChainId, activity.originTransactionHash)}
@@ -94,9 +94,9 @@ export function ActivityDetailsScreen({ activity, onBack }: ActivityDetailsScree
                     <ExternalLink className="h-3 w-3" />
                   </a>
                 </div>
-                <ArrowRight className="h-4 w-4 flex-shrink-0 text-gray-500" />
+                <ArrowRight className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
                 <div className="flex flex-1 flex-col items-center space-y-2">
-                  <span className="font-medium text-gray-400">Destination</span>
+                  <span className="font-medium text-muted-foreground">Destination</span>
                   <span className="text-center font-semibold text-white">{destChainName}</span>
                   <a
                     href={getTxExplorerUrl(
@@ -117,14 +117,14 @@ export function ActivityDetailsScreen({ activity, onBack }: ActivityDetailsScree
               </div>
             </div>
           ) : (
-            <div className="space-y-2 rounded-lg border border-gray-700 bg-gray-800/50 p-2 text-sm font-medium">
+            <div className="space-y-2 rounded-lg border border-border bg-muted/50 p-2 text-sm font-medium">
               <div className="flex items-center justify-between">
-                <span className="text-gray-400">{isCrossChain ? "Origin Chain" : "Chain"}</span>
+                <span className="text-muted-foreground">{isCrossChain ? "Origin Chain" : "Chain"}</span>
                 <span className="text-white">{originChainName}</span>
               </div>
 
               <div className="flex items-center justify-between">
-                <span className="text-gray-400">Transaction</span>
+                <span className="text-muted-foreground">Transaction</span>
                 <a
                   href={getTxExplorerUrl(activity.originChainId, activity.originTransactionHash)}
                   target="_blank"
@@ -140,7 +140,7 @@ export function ActivityDetailsScreen({ activity, onBack }: ActivityDetailsScree
               </div>
 
               <div className="flex items-center justify-between">
-                <span className="text-gray-400">Timestamp</span>
+                <span className="text-muted-foreground">Timestamp</span>
                 <span className="text-right text-white">{fullTimestamp}</span>
               </div>
             </div>
@@ -151,14 +151,14 @@ export function ActivityDetailsScreen({ activity, onBack }: ActivityDetailsScree
         <div className="space-y-2">
           <h3 className="text-sm font-semibold text-white">Note Details</h3>
 
-          <div className="space-y-2 rounded-lg border border-gray-700 bg-gray-800/50 p-2 text-sm">
+          <div className="space-y-2 rounded-lg border border-border bg-muted/50 p-2 text-sm">
             <div className="flex items-center justify-between">
-              <span className="text-gray-400">Note Index</span>
+              <span className="text-muted-foreground">Note Index</span>
               <span className="font-mono text-white">{activity.id}</span>
             </div>
 
             <div className="flex items-start justify-between">
-              <span className="text-gray-400">Pool Address</span>
+              <span className="text-muted-foreground">Pool Address</span>
               <span className="break-all font-mono text-white">
                 {activity.poolAddress.slice(0, 6)}...{activity.poolAddress.slice(-4)}
               </span>
@@ -166,7 +166,7 @@ export function ActivityDetailsScreen({ activity, onBack }: ActivityDetailsScree
 
             {activity.label && (
               <div className="flex items-start justify-between">
-                <span className="text-gray-400">Label</span>
+                <span className="text-muted-foreground">Label</span>
                 <span className="break-all font-mono text-white">
                   {activity.label.slice(0, 10)}...{activity.label.slice(-8)}
                 </span>
@@ -176,7 +176,7 @@ export function ActivityDetailsScreen({ activity, onBack }: ActivityDetailsScree
         </div>
 
         {/* Related Note Chain */}
-        <div className="flex items-center justify-between rounded-xl border border-gray-700 bg-gray-800/50 p-2">
+        <div className="flex items-center justify-between rounded-xl border border-border bg-muted/50 p-2">
           <p className="text-sm font-medium text-white">Related Note Chain</p>
           <Button
             variant="outline"
