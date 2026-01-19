@@ -8,11 +8,21 @@ import { useTransactionTracking } from "@/hooks/useTransactionTracking";
 import { getTxExplorerUrl } from "@/config/chains";
 import { cn } from "@workspace/ui/lib/utils";
 import { getUserMessage, isUserCancellation } from "@/lib/errors/errorHandler";
+import type { DepositError } from "@/controllers/DepositController";
+
+type DepositStatus =
+  | "submitting"
+  | "confirming"
+  | "confirmed-onchain"
+  | "failed"
+  | "error";
 
 interface DepositTimelineScreenProps {
   noteAmount: number;
-  isWalletSubmitting: boolean;
-  walletError: string | null;
+  status: DepositStatus;
+  txHash: string | null;
+  error: DepositError | null;
+  failedReason: string | null;
   onClose: () => void;
 }
 
@@ -27,70 +37,106 @@ interface TimelineItem {
 
 export function DepositTimelineScreen({
   noteAmount,
-  isWalletSubmitting,
-  walletError,
+  status,
+  txHash,
+  error,
+  failedReason,
   onClose,
 }: DepositTimelineScreenProps) {
-  // Timeline UI tracks *privacy indexing only*
-  // On-chain confirmation is owned by DepositController (confirmed-onchain state)
-  const { trackingStatus, trackedTxHash, trackedChainId } = useTransactionTracking();
+  // Privacy indexer tracking (for indexing step)
+  const { trackingStatus } = useTransactionTracking();
 
-  const explorerUrl =
-    trackedTxHash && trackedChainId ? getTxExplorerUrl(trackedChainId, trackedTxHash) : null;
+  const explorerUrl = txHash ? getTxExplorerUrl(1, txHash) : null; // TODO: get chainId from controller
 
-  // Privacy indexer status (NOT on-chain confirmation)
-  const isIndexing = trackingStatus === "waiting";
-  const isIndexed = trackingStatus === "synced"; // Privacy pool has indexed the deposit
-  const isOnChainFailed = trackingStatus === "failed";
-  const isWalletCancelled = walletError && isUserCancellation(walletError);
+  // Derived states
+  const isSubmitting = status === "submitting";
+  const isConfirming = status === "confirming";
+  const isConfirmedOnChain = status === "confirmed-onchain";
+  const isFailed = status === "failed";
+  const isError = status === "error";
+
+  // Privacy indexer status (after on-chain confirmation)
+  const isIndexing = trackingStatus === "waiting" && isConfirmedOnChain;
+  const isIndexed = trackingStatus === "synced";
+
+  // Error handling
+  const isUserCancelled = error && isUserCancellation(error.message);
+  const isTransactionError = error?.type === "transaction";
 
   // ----- Hero copy -----
 
   const title = isIndexed
     ? "Deposit confirmed"
-    : isWalletCancelled
+    : isUserCancelled
       ? "Transaction cancelled"
-      : isOnChainFailed
-        ? "Deposit failed"
-        : isWalletSubmitting
-          ? "Confirm in wallet"
-          : "Processing deposit";
+      : isFailed
+        ? "Transaction failed"
+        : isError
+          ? "Deposit failed"
+          : isConfirmedOnChain
+            ? "Confirming deposit"
+            : isConfirming
+              ? "Processing deposit"
+              : isSubmitting
+                ? "Confirm in wallet"
+                : "Processing deposit";
 
   const subtitle = isIndexed
     ? "Your deposit note has been created and secured privately."
-    : isWalletCancelled
+    : isUserCancelled
       ? "You cancelled the transaction in your wallet."
-      : isOnChainFailed
-        ? getUserMessage(walletError)
-        : isWalletSubmitting
-          ? "Please confirm the transaction in your wallet."
-          : "This usually takes a few moments.";
+      : isFailed
+        ? failedReason || "Transaction failed on-chain."
+        : isError
+          ? getUserMessage(new Error(error?.message || "Unknown error"))
+          : isConfirmedOnChain
+            ? "Transaction confirmed. Waiting for privacy indexing."
+            : isConfirming
+              ? "Waiting for transaction confirmation."
+              : isSubmitting
+                ? "Please confirm the transaction in your wallet."
+                : "This usually takes a few moments.";
 
   // ----- Timeline -----
 
   const timeline: TimelineItem[] = [
     {
       label: "Wallet confirmation",
-      status: isWalletCancelled
+      status: isUserCancelled
         ? "failed"
-        : trackedTxHash
+        : txHash
           ? "completed"
-          : isWalletSubmitting
+          : isSubmitting
             ? "active"
             : "pending",
       description: "Approve the deposit transaction in your wallet.",
-      errorMessage: isWalletCancelled ? getUserMessage(walletError) : undefined,
+      errorMessage: isUserCancelled ? getUserMessage(new Error(error?.message)) : undefined,
     },
     {
       label: "Transaction submitted",
-      status: isOnChainFailed
-        ? "failed"
-        : trackedTxHash
-          ? isIndexing || isIndexed
+      status:
+        isTransactionError && !isUserCancelled
+          ? "failed"
+          : txHash
             ? "completed"
-            : "active"
-          : "pending",
+            : "pending",
       description: "Your transaction is broadcast to the network.",
+      errorMessage:
+        isTransactionError && !isUserCancelled
+          ? getUserMessage(new Error(error?.message))
+          : undefined,
+    },
+    {
+      label: "On-chain confirmation",
+      status: isFailed
+        ? "failed"
+        : isConfirmedOnChain || isIndexing || isIndexed
+          ? "completed"
+          : isConfirming
+            ? "active"
+            : "pending",
+      description: "Waiting for blockchain confirmation.",
+      errorMessage: isFailed ? failedReason || "Transaction reverted" : undefined,
     },
     {
       label: "Deposit indexing",
@@ -115,7 +161,7 @@ export function DepositTimelineScreen({
 
   const StatusIcon = () => {
     if (isIndexed) return <CheckCircle className="h-12 w-12 text-green-500" />;
-    if (isWalletCancelled || isOnChainFailed) return <XCircle className="h-12 w-12 text-red-500" />;
+    if (isUserCancelled || isFailed || isError) return <XCircle className="h-12 w-12 text-red-500" />;
     return <Hourglass className="h-12 w-12 text-gray-300" />;
   };
 
@@ -198,7 +244,7 @@ export function DepositTimelineScreen({
           Close
         </Button>
 
-        {explorerUrl && !isWalletSubmitting && (
+        {explorerUrl && !isSubmitting && (
           <a
             href={explorerUrl}
             target="_blank"

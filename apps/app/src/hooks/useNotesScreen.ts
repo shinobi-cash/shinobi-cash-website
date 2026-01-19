@@ -35,7 +35,10 @@ export interface NotesScreenControllerAPI {
   isLoading: boolean;
   isRefreshing: boolean;
 
-  // Available notes (for balance calculation)
+  // Balance (derived from available notes)
+  totalBalance: bigint;
+
+  // Available notes
   availableNotes: Note[];
 
   // Selected note chain (domain data)
@@ -77,6 +80,13 @@ export function useNotesScreen(): NotesScreenControllerAPI {
     [discoveryState.noteChains, screenState.activeFilter]
   );
 
+  // Calculate total balance from available notes
+  const totalBalance = useMemo(() => {
+    return viewState.availableNotes.reduce((total, note) => {
+      return total + BigInt(note.amount);
+    }, BigInt(0));
+  }, [viewState.availableNotes]);
+
   return {
     // UI status (from domain)
     status: viewState.status,
@@ -95,6 +105,9 @@ export function useNotesScreen(): NotesScreenControllerAPI {
     // Loading states (canonical)
     isLoading: viewState.isLoading,
     isRefreshing: viewState.isRefreshing,
+
+    // Balance
+    totalBalance,
 
     // Available notes (canonical)
     availableNotes: viewState.availableNotes,

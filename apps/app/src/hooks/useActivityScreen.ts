@@ -29,6 +29,11 @@ export interface ActivityScreenControllerAPI {
   activeFilter: ActivityFilter;
   setFilter: (filter: ActivityFilter) => void;
 
+  // Selection state
+  selectedActivity: Activity | null;
+  selectActivity: (activityId: string) => void;
+  clearSelection: () => void;
+
   // Counts
   totalCount: number;
   depositCount: number;
@@ -61,6 +66,12 @@ export function useActivityScreen(): ActivityScreenControllerAPI {
     [activities, screenState.activeFilter]
   );
 
+  // Find selected activity
+  const selectedActivity = useMemo(() => {
+    if (!screenState.selectedActivityId) return null;
+    return (activities as Activity[]).find((a) => a.id === screenState.selectedActivityId) ?? null;
+  }, [screenState.selectedActivityId, activities]);
+
   return {
     // Status
     status,
@@ -72,6 +83,11 @@ export function useActivityScreen(): ActivityScreenControllerAPI {
     // Filter
     activeFilter: screenState.activeFilter,
     setFilter: ActivityScreenController.setFilter,
+
+    // Selection
+    selectedActivity,
+    selectActivity: ActivityScreenController.selectActivity,
+    clearSelection: ActivityScreenController.clearSelection,
 
     // Counts
     totalCount: counts.total,

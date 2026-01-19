@@ -137,14 +137,35 @@ export function DepositForm({ asset }: DepositFormProps) {
   // Deposit Timeline Screen
   if (screens.is("timeline")) {
     const depositAmounts = state.state.status === "ready" ? state.state.amounts : { noteAmount: 0 };
-    const isSubmitting = state.state.status === "submitting";
-    const txError = state.state.status === "error" ? state.state.error.message : null;
+
+    // Map controller state to timeline props
+    const timelineStatus = (() => {
+      const s = state.state.status;
+      if (s === "submitting") return "submitting" as const;
+      if (s === "confirming") return "confirming" as const;
+      if (s === "confirmed-onchain") return "confirmed-onchain" as const;
+      if (s === "failed") return "failed" as const;
+      if (s === "error") return "error" as const;
+      return "submitting" as const; // Default for other states
+    })();
+
+    const txHash =
+      state.state.status === "confirming" ||
+      state.state.status === "confirmed-onchain" ||
+      state.state.status === "failed"
+        ? state.state.txHash
+        : null;
+
+    const error = state.state.status === "error" ? state.state.error : null;
+    const failedReason = state.state.status === "failed" ? state.state.reason : null;
 
     return (
       <DepositTimelineScreen
         noteAmount={depositAmounts.noteAmount}
-        isWalletSubmitting={isSubmitting}
-        walletError={txError}
+        status={timelineStatus}
+        txHash={txHash}
+        error={error}
+        failedReason={failedReason}
         onClose={() => {
           DepositController.reset();
           screens.close();

@@ -11,6 +11,7 @@ import { Button } from "@workspace/ui/components/button";
 import { AmountDisplay } from "@/components/shared/AmountDisplay";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";
 import { ScreenLayout } from "@/components/layout/ScreenLayout";
+import { NotesScreenSelectors } from "@/controllers/NotesScreenController";
 
 interface NoteChainScreenProps {
   noteChain: NoteChain | null;
@@ -22,12 +23,7 @@ export function NoteChainScreen({ noteChain, onBack, onWithdrawClick }: NoteChai
   if (!noteChain) return null;
 
   const lastNote = noteChain[noteChain.length - 1];
-  const canWithdraw =
-    lastNote.status === "unspent" &&
-    lastNote.amount &&
-    BigInt(lastNote.amount) > BigInt(0) &&
-    lastNote.isActivated &&
-    !!onWithdrawClick;
+  const canWithdraw = NotesScreenSelectors.canWithdrawFromChain(noteChain) && !!onWithdrawClick;
 
   return (
     <ScreenLayout

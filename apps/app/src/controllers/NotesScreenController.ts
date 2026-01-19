@@ -74,6 +74,21 @@ export const NotesScreenSelectors = {
    * Get active filter
    */
   getActiveFilter: (): NoteFilter => state.activeFilter,
+
+  /**
+   * Check if a note chain can be withdrawn
+   * Business logic: must be unspent, activated, and have positive balance
+   */
+  canWithdrawFromChain(noteChain: NoteChain): boolean {
+    if (!noteChain || noteChain.length === 0) return false;
+    const lastNote = noteChain[noteChain.length - 1];
+    return (
+      lastNote.status === "unspent" &&
+      lastNote.isActivated === true &&
+      Boolean(lastNote.amount) &&
+      BigInt(lastNote.amount) > BigInt(0)
+    );
+  },
 };
 
 /**
