@@ -17,7 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@workspace/ui/components/dialog";
-import { toast } from "sonner";
+import { showToast } from "@/lib/toast";
 import { usePasskeyAuth } from "@/hooks/usePasskeyAuth";
 
 interface RemovePasskeyModalProps {
@@ -36,9 +36,7 @@ export function RemovePasskeyModal({ open, onOpenChange, onRemoved }: RemovePass
     clearError,
   } = usePasskeyAuth({
     onSuccess: () => {
-      toast.success("Passkey removed", {
-        description: "Biometric unlock has been disabled for this account.",
-      });
+      showToast.success("Passkey removed. Biometric unlock has been disabled.");
       onRemoved?.();
       onOpenChange(false);
     },

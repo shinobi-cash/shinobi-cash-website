@@ -5,6 +5,8 @@ import { Wallet } from "lucide-react";
 import { useAccount, useChainId, useConnect, useSignTypedData } from "wagmi";
 import { AuthController } from "@/controllers/AuthController";
 import { getEIP712Message } from "@/utils/authCrypto";
+import { showToast } from "@/lib/toast";
+import { getUserMessage, isUserCancellation } from "@/lib/errors";
 
 type Status = "idle" | "connecting" | "signing" | "authenticating";
 
@@ -46,7 +48,11 @@ export function WalletAuth() {
       });
     } catch (e) {
       setStatus("idle");
-      console.log("Error SigniIn With Wallet", e);
+
+      // Don't show toast for user cancellations (rejected signature, closed wallet)
+      if (!isUserCancellation(e)) {
+        showToast.error(getUserMessage(e, "Sign in failed. Please try again."));
+      }
     }
   };
 
