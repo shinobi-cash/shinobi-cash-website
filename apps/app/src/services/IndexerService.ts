@@ -5,13 +5,7 @@
 
 import { IPFS_GATEWAY_URL } from "@shinobi-cash/constants";
 import type { Activity, StateTreeLeaf, ASPApprovalList } from "@shinobi-cash/data";
-import {
-  IndexerError,
-  INDEXER_ERROR_CODES,
-  NetworkError,
-  NETWORK_ERROR_CODES,
-  logError,
-} from "@/lib/errors";
+import { Errors, AppException, logError } from "@/lib/errors";
 
 // Re-export SDK types for compatibility
 export type { Activity, StateTreeLeaf, ASPApprovalList };
@@ -74,15 +68,7 @@ export async function fetchActivities(
     return result.data;
   } catch (error) {
     logError(error, { action: "fetchActivities", poolId: poolAddress });
-
-    throw new IndexerError(
-      INDEXER_ERROR_CODES.FETCH_FAILED,
-      "Failed to fetch activities from indexer",
-      {
-        cause: error,
-        context: { poolAddress, limit, orderDirection },
-      }
-    );
+    throw new AppException(Errors.indexer.fetchFailed("Failed to fetch activities", error));
   }
 }
 
@@ -112,15 +98,7 @@ export async function fetchStateTreeLeaves(poolId: string): Promise<StateTreeLea
     return result.data;
   } catch (error) {
     logError(error, { action: "fetchStateTreeLeaves", poolId });
-
-    throw new IndexerError(
-      INDEXER_ERROR_CODES.FETCH_FAILED,
-      "Failed to fetch state tree data from indexer",
-      {
-        cause: error,
-        context: { poolId },
-      }
-    );
+    throw new AppException(Errors.indexer.fetchFailed("Failed to fetch state tree", error));
   }
 }
 
@@ -152,18 +130,13 @@ export async function fetchLatestASPRoot(): Promise<{
 
     return result.data;
   } catch (error) {
-    // If already an IndexerError, re-throw
-    if (error instanceof IndexerError) {
+    // If already an AppException, re-throw
+    if (error instanceof AppException) {
       throw error;
     }
 
     logError(error, { action: "fetchLatestASPRoot" });
-
-    throw new IndexerError(
-      INDEXER_ERROR_CODES.FETCH_FAILED,
-      "Failed to fetch ASP root from indexer",
-      { cause: error }
-    );
+    throw new AppException(Errors.indexer.fetchFailed("Failed to fetch ASP root", error));
   }
 }
 
@@ -176,16 +149,8 @@ export async function fetchApprovedLabelsFromIPFS(ipfsCID: string): Promise<stri
     const ipfsResponse = await fetch(`${IPFS_GATEWAY_URL}${ipfsCID}`);
 
     if (!ipfsResponse.ok) {
-      throw new NetworkError(
-        NETWORK_ERROR_CODES.REQUEST_FAILED,
-        `Failed to fetch from IPFS: ${ipfsResponse.statusText}`,
-        {
-          context: {
-            ipfsCID,
-            status: ipfsResponse.status,
-            statusText: ipfsResponse.statusText,
-          },
-        }
+      throw new AppException(
+        Errors.network.requestFailed(`Failed to fetch from IPFS: ${ipfsResponse.statusText}`)
       );
     }
 
@@ -196,26 +161,19 @@ export async function fetchApprovedLabelsFromIPFS(ipfsCID: string): Promise<stri
       !approvalList.cumulativeApprovedLabels ||
       !Array.isArray(approvalList.cumulativeApprovedLabels)
     ) {
-      throw new IndexerError(
-        INDEXER_ERROR_CODES.INVALID_RESPONSE,
-        "Invalid approval list format from IPFS",
-        { context: { ipfsCID, approvalList } }
-      );
+      throw new AppException(Errors.indexer.invalidResponse());
     }
 
     return approvalList.cumulativeApprovedLabels;
   } catch (error) {
     // If already a typed error, re-throw
-    if (error instanceof NetworkError || error instanceof IndexerError) {
+    if (error instanceof AppException) {
       throw error;
     }
 
     logError(error, { action: "fetchApprovedLabelsFromIPFS", ipfsCID });
-
-    throw new NetworkError(
-      NETWORK_ERROR_CODES.REQUEST_FAILED,
-      "Failed to fetch approved labels from IPFS",
-      { cause: error, context: { ipfsCID } }
+    throw new AppException(
+      Errors.network.requestFailed("Failed to fetch approved labels from IPFS", error)
     );
   }
 }
@@ -240,15 +198,12 @@ export async function fetchASPData() {
     };
   } catch (error) {
     // Re-throw typed errors (they already have good messages)
-    if (error instanceof IndexerError || error instanceof NetworkError) {
+    if (error instanceof AppException) {
       throw error;
     }
 
     logError(error, { action: "fetchASPData" });
-
-    throw new IndexerError(INDEXER_ERROR_CODES.FETCH_FAILED, "Failed to fetch ASP data", {
-      cause: error,
-    });
+    throw new AppException(Errors.indexer.fetchFailed("Failed to fetch ASP data", error));
   }
 }
 

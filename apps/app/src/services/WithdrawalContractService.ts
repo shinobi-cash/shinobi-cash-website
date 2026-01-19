@@ -17,7 +17,7 @@ import {
 } from "@shinobi-cash/constants";
 import { pimlicoClient } from "@/lib/clients";
 import type { SmartAccountClient } from "permissionless";
-import { BlockchainError, BLOCKCHAIN_ERROR_CODES, logError } from "@/lib/errors";
+import { AppException, Errors, logError } from "@/lib/errors";
 import { http, createPublicClient, encodeAbiParameters, encodeFunctionData } from "viem";
 import { type UserOperation, entryPoint07Address } from "viem/account-abstraction";
 import { SAME_CHAIN_GAS_LIMITS, CROSS_CHAIN_GAS_LIMITS } from "@/constants/withdraw";
@@ -110,11 +110,7 @@ export async function fetchPoolScope(): Promise<string> {
   } catch (error) {
     logError(error, { action: "fetchPoolScope" });
 
-    throw new BlockchainError(
-      BLOCKCHAIN_ERROR_CODES.CONTRACT_ERROR,
-      "Failed to fetch pool scope from contract",
-      { cause: error }
-    );
+    throw new AppException(Errors.blockchain.contractError("Failed to fetch pool scope from contract", error));
   }
 }
 
@@ -228,11 +224,7 @@ export async function prepareWithdrawalUserOperation(
   } catch (error) {
     logError(error, { action: "prepareWithdrawalUserOperation" });
 
-    throw new BlockchainError(
-      BLOCKCHAIN_ERROR_CODES.CONTRACT_ERROR,
-      "Failed to prepare withdrawal transaction",
-      { cause: error }
-    );
+    throw new AppException(Errors.blockchain.contractError("Failed to prepare withdrawal transaction", error));
   }
 }
 
@@ -274,27 +266,15 @@ export async function executeWithdrawalUserOperation(
       const msg = error.message.toLowerCase();
 
       if (msg.includes("user rejected") || msg.includes("user denied")) {
-        throw new BlockchainError(
-          BLOCKCHAIN_ERROR_CODES.USER_REJECTED,
-          "Transaction was cancelled",
-          { cause: error }
-        );
+        throw new AppException(Errors.blockchain.userRejected(error));
       }
 
       if (msg.includes("insufficient funds")) {
-        throw new BlockchainError(
-          BLOCKCHAIN_ERROR_CODES.INSUFFICIENT_FUNDS,
-          "Insufficient funds for transaction",
-          { cause: error }
-        );
+        throw new AppException(Errors.blockchain.insufficientFunds(error));
       }
     }
 
-    throw new BlockchainError(
-      BLOCKCHAIN_ERROR_CODES.TRANSACTION_FAILED,
-      "Failed to execute withdrawal transaction",
-      { cause: error }
-    );
+    throw new AppException(Errors.blockchain.transactionFailed("Failed to execute withdrawal transaction", error));
   }
 }
 
@@ -451,10 +431,6 @@ export async function prepareCrossChainWithdrawalUserOperation(
   } catch (error) {
     logError(error, { action: "prepareCrossChainWithdrawalUserOperation" });
 
-    throw new BlockchainError(
-      BLOCKCHAIN_ERROR_CODES.CONTRACT_ERROR,
-      "Failed to prepare cross-chain withdrawal transaction",
-      { cause: error }
-    );
+    throw new AppException(Errors.blockchain.contractError("Failed to prepare cross-chain withdrawal transaction", error));
   }
 }
