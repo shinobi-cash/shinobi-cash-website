@@ -1,9 +1,5 @@
-/**
- * Account Repository - Account data storage operations
- * Wallet-based accounts only (passkey is an unlock method, not an account type)
- */
-
 import { ethers } from "ethers";
+import { accountStorageAdapter } from "../adapters/IndexedDBStore";
 import type { AccountMetadata, AccountData } from "../interfaces/IDataTypes";
 import type { WalletAccountId } from "@/utils/authCrypto";
 import { assertWalletAccountId } from "@/utils/authCrypto";
@@ -130,3 +126,5 @@ export class AccountRepository {
     return index;
   }
 }
+
+export const accountRepo = new AccountRepository(accountStorageAdapter);

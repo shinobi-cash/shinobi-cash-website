@@ -1,10 +1,3 @@
-/**
- * NotesRepository
- * NOTE:
- * This module is designed to be Web Worker compatible.
- * Do not introduce direct storage or DOM dependencies.
- */
-
 import {
   EncryptionService,
   type CachedNoteData,
@@ -16,7 +9,7 @@ import {
   type ActivityFetcher,
   type DiscoveryState,
 } from "@shinobi-cash/core";
-import type { IndexedDBStore } from "../adapters/IndexedDBStore";
+import { type IndexedDBStore, notesStorageAdapter, sharedEncryptionService } from "../adapters/IndexedDBStore";
 import type { EncryptedNotesData } from "../interfaces/IDataTypes";
 
 export class NotesRepository {
@@ -183,3 +176,5 @@ export class NotesRepository {
     return await engine.sync(publicKey, poolAddress, accountKey, options);
   }
 }
+
+export const notesRepo = new NotesRepository(notesStorageAdapter, sharedEncryptionService);

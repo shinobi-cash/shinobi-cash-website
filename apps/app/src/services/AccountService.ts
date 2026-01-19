@@ -1,5 +1,10 @@
 import { keyDerivationService } from "@/services/KeyDerivationService";
-import { accountRepo, sessionRepo, wrappedAMKRepo } from "@/lib/storage/RepositoryRegistry";
+import { accountRepo } from "@/lib/storage/repositories/AccountRepository";
+import { wrappedAMKRepo } from "@/lib/storage/repositories/WrappedAMKRepository";
+import {
+  addPasskeyToSession,
+  removePasskeyFromSession,
+} from "@/lib/storage/repositories/SessionRepository";
 import {
   AMKStorageAdapter,
   notesStorageAdapter,
@@ -120,7 +125,7 @@ export class AccountService {
       credentialId: accountData.credentialId,
     };
 
-    await sessionRepo.addPasskeyToSession(credentialId);
+    await addPasskeyToSession(credentialId);
 
     try {
       await AMKStorageAdapter.initializeSession(passkeyKEK);
@@ -138,7 +143,7 @@ export class AccountService {
       console.error("[AccountService] Passkey enablement failed, rolling back:", error);
 
       try {
-        await sessionRepo.removePasskeyFromSession();
+        await removePasskeyFromSession();
         await wrappedAMKRepo.deleteWrappedAMK(accountData.accountId, "passkey");
         await accountRepo.storeAccountData(originalMetadata);
       } catch (rollbackError) {
@@ -165,7 +170,7 @@ export class AccountService {
         credentialId: undefined,
       };
       await accountRepo.storeAccountData(updatedMetadata);
-      await sessionRepo.removePasskeyFromSession();
+      await removePasskeyFromSession();
     } catch (error) {
       console.error("[AccountService] Failed to remove passkey unlock:", error);
       throw new Error(

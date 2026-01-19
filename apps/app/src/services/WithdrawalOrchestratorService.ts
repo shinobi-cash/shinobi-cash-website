@@ -8,7 +8,7 @@ import type {
   ExecutionResult,
 } from "@/types/withdrawal";
 import { validateWithdrawalRequest, validateWithdrawalContext } from "@/utils/withdrawalInvariants";
-import { quoteFees } from "@/services/WithdrawalFeeQuoteService";
+import { quoteFees } from "@/utils/withdrawalFees";
 import {
   prepareUserOperation,
   executeUserOperation,

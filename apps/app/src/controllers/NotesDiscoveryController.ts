@@ -1,6 +1,6 @@
 import { proxy } from "valtio";
 import type { NoteChain, DiscoveryProgress, Note } from "@shinobi-cash/core";
-import { notesRepo } from "@/lib/storage/RepositoryRegistry";
+import { notesRepo } from "@/lib/storage/repositories/NotesRepository";
 import { fetchActivities } from "@/services/IndexerService";
 import { SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
 import { AuthController } from "@/controllers/AuthController";

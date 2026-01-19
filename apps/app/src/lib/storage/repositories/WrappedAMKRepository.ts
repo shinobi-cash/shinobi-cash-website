@@ -1,14 +1,5 @@
-/**
- * Wrapped AMK Repository
- * Handles envelope encryption: AMK encrypted with multiple KEKs
- *
- * Invariant: KEKs NEVER encrypt account data directly.
- * KEKs ONLY encrypt the AMK (privateKey).
- * Each auth method stores its own wrapped version of the AMK.
- */
-
 import { EncryptionService } from "@shinobi-cash/core";
-import type { IndexedDBStore } from "../adapters/IndexedDBStore";
+import { type IndexedDBStore, AMKStorageAdapter } from "../adapters/IndexedDBStore";
 import type { WrappedAMK } from "../interfaces/IDataTypes";
 import type { WalletAccountId } from "@/utils/authCrypto";
 
@@ -136,3 +127,8 @@ function isWrappedAMK(value: unknown): value is WrappedAMK {
     typeof v.createdAt === "number"
   );
 }
+
+export const wrappedAMKRepo = new WrappedAMKRepository(
+  AMKStorageAdapter,
+  AMKStorageAdapter.getEncryptionService()
+);

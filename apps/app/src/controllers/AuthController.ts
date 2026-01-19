@@ -1,5 +1,11 @@
 import { accountService } from "@/services/AccountService";
-import { accountRepo, sessionRepo } from "@/lib/storage/RepositoryRegistry";
+import { accountRepo } from "@/lib/storage/repositories/AccountRepository";
+import {
+  getStoredSessionInfo,
+  updateSessionLastAuth,
+  clearSessionInfo,
+  storeSessionInfo,
+} from "@/lib/storage/repositories/SessionRepository";
 import { keyDerivationService } from "@/services/KeyDerivationService";
 import { parseUserKey } from "@shinobi-cash/core";
 import { proxy } from "valtio";
@@ -51,7 +57,7 @@ export const AuthController = {
 
   async bootstrap() {
     try {
-      const session = await sessionRepo.getStoredSessionInfo();
+      const session = await getStoredSessionInfo();
 
       if (session?.credentialId) {
         const kek = await keyDerivationService.deriveKEKFromPasskey(
@@ -62,7 +68,7 @@ export const AuthController = {
         await accountService.loginWithPasskeyKEK(session.accountId, kek);
 
         // If we reach here, login succeeded (would throw otherwise)
-        await sessionRepo.updateSessionLastAuth();
+        await updateSessionLastAuth();
 
         // Check passkey status after successful login
         const passkeyEnabled = await this.isPasskeyEnabled();
@@ -102,7 +108,7 @@ export const AuthController = {
   },
 
   async logout() {
-    await sessionRepo.clearSessionInfo();
+    await clearSessionInfo();
     accountService.clearInMemorySession();
     this.state.state = { status: "unauthenticated" };
     this._clearCrypto();
@@ -139,7 +145,7 @@ export const AuthController = {
     const metadata = await accountService.getAccountMetadata();
 
     // Store session with credentialId in single atomic operation
-    await sessionRepo.storeSessionInfo(accountId, {
+    await storeSessionInfo(accountId, {
       credentialId: metadata?.credentialId,
     });
 
