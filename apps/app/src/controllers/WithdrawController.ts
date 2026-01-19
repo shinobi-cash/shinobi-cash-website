@@ -19,18 +19,7 @@ import {
   PreparedUserOperation,
   WithdrawalRequest,
 } from "@/types/withdrawal";
-
-/**
- * Withdraw error types
- */
-export type WithdrawError =
-  | { type: "precondition"; message: string } // Validation before operation
-  | { type: "fees"; message: string } // Fee estimation failure
-  | { type: "context"; message: string } // Context building failure
-  | { type: "witness"; message: string } // Witness generation failure
-  | { type: "proof"; message: string } // ZK proof generation failure
-  | { type: "transaction"; message: string } // UserOp submission failure
-  | { type: "confirmation"; message: string }; // Chain confirmation failure
+import { type AppError, Errors, getUserMessage } from "@/lib/errors";
 
 /**
  * Explicit state machine (matches actual withdrawal flow)
@@ -44,7 +33,7 @@ type WithdrawState =
   | { status: "ready"; preparedUserOp: PreparedUserOperation }
   | { status: "submitting" } // Executing UserOp via bundler (includes confirmation wait)
   | { status: "confirmed"; txHash: `0x${string}`; executionResult: ExecutionResult }
-  | { status: "error"; error: WithdrawError };
+  | { status: "error"; error: AppError };
 
 /**
  * Notes context (from useCachedNotes, read-only)
@@ -71,7 +60,7 @@ interface WithdrawControllerState {
   previewFeeQuote: FeeQuote | null;
 
   // Last error (informational, not blocking)
-  lastError: WithdrawError | null;
+  lastError: AppError | null;
 
   // External contexts (updated by React adapter)
   notes: NotesContext; // Read-only, never mutated by controller
@@ -319,10 +308,7 @@ export const WithdrawController = {
 
     // Basic validation (non-blocking)
     if (address && !isAddress(address)) {
-      state.lastError = {
-        type: "precondition",
-        message: "Invalid recipient address",
-      };
+      state.lastError = Errors.withdrawal.invalidRecipient();
       return;
     }
 
@@ -413,10 +399,7 @@ export const WithdrawController = {
     } catch (error) {
       if (current !== previewId) return;
 
-      state.lastError = {
-        type: "fees",
-        message: error instanceof Error ? error.message : "Fee preview failed",
-      };
+      state.lastError = Errors.withdrawal.feeEstimationFailed(error);
       transition({ status: "idle" });
     }
   },
@@ -434,7 +417,7 @@ export const WithdrawController = {
     if (!this._validateInputs()) {
       transition({
         status: "error",
-        error: { type: "precondition", message: "Invalid inputs" },
+        error: Errors.withdrawal.precondition("Invalid inputs"),
       });
       resetEngine();
       return;
@@ -460,10 +443,7 @@ export const WithdrawController = {
 
       transition({
         status: "error",
-        error: {
-          type: "proof",
-          message: error instanceof Error ? error.message : "Preparation failed",
-        },
+        error: Errors.withdrawal.proofFailed(error),
       });
       resetEngine();
     }
@@ -532,12 +512,11 @@ export const WithdrawController = {
 
       log.debug("Withdrawal confirmed", { txHash: result.transactionHash });
     } catch (error) {
+      // Extract user-friendly message from the error
+      const userMessage = getUserMessage(error, "Withdrawal failed");
       transition({
         status: "error",
-        error: {
-          type: "transaction",
-          message: error instanceof Error ? error.message : "Submission failed",
-        },
+        error: Errors.withdrawal.transactionFailed(userMessage, error),
       });
       resetEngine();
     }
@@ -595,10 +574,9 @@ export const WithdrawController = {
       const amountWei = parseEther(amount);
       const noteAmountWei = parseEther(selectedNote.amount.toString());
       if (amountWei > noteAmountWei) {
-        state.lastError = {
-          type: "precondition",
-          message: `Amount exceeds note balance (${parseFloat(selectedNote.amount.toString()).toFixed(4)} ETH)`,
-        };
+        state.lastError = Errors.withdrawal.insufficientBalance(
+          `Amount exceeds note balance (${parseFloat(selectedNote.amount.toString()).toFixed(4)} ETH)`
+        );
         return false;
       }
     } catch {

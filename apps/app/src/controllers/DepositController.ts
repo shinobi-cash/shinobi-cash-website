@@ -15,16 +15,7 @@ import { DEPOSIT_FEES, POOL_CHAIN } from "@shinobi-cash/constants";
 import type { PublicClient, WalletClient } from "viem";
 import { AuthController } from "@/controllers/AuthController";
 import { NotesDiscoverySelectors } from "@/controllers/NotesDiscoveryController";
-
-/**
- * Deposit error types
- */
-export type DepositError =
-  | { type: "precondition"; message: string } // Validation errors before operation starts
-  | { type: "commitment"; message: string }
-  | { type: "gas"; message: string }
-  | { type: "transaction"; message: string }
-  | { type: "tracking"; message: string };
+import { type AppError, Errors, getUserMessage } from "@/lib/errors";
 
 /**
  * Deposit amounts (note amount + fees)
@@ -46,7 +37,7 @@ type DepositState =
   | { status: "confirming"; txHash: `0x${string}` }
   | { status: "confirmed-onchain"; txHash: `0x${string}` }
   | { status: "failed"; txHash: `0x${string}`; reason: string }
-  | { status: "error"; error: DepositError };
+  | { status: "error"; error: AppError };
 
 /**
  * Wallet context (snapshot from React)
@@ -71,6 +62,9 @@ interface DepositControllerState {
   // Input
   amount: string;
 
+  // Preserved amounts (kept after prepare for display during transaction flow)
+  lastPreparedAmounts: DepositAmounts | null;
+
   // External contexts (updated by React adapter)
   wallet: WalletContext;
 }
@@ -78,6 +72,7 @@ interface DepositControllerState {
 const state = proxy<DepositControllerState>({
   state: { status: "idle" },
   amount: "",
+  lastPreparedAmounts: null,
   wallet: {
     isConnected: false,
     address: undefined,
@@ -236,7 +231,7 @@ export const DepositController = {
     if (!amount || !crypto.cryptoReady || !crypto.publicKey || !crypto.accountKey) {
       transition({
         status: "error",
-        error: { type: "precondition", message: "Crypto context not ready" },
+        error: Errors.deposit.precondition("Crypto context not ready"),
       });
       return;
     }
@@ -244,7 +239,7 @@ export const DepositController = {
     if (!wallet.publicClient || !wallet.gasPrice) {
       transition({
         status: "error",
-        error: { type: "precondition", message: "Network not ready" },
+        error: Errors.deposit.precondition("Network not ready"),
       });
       return;
     }
@@ -279,10 +274,7 @@ export const DepositController = {
           if (current !== prepareId) return; // Check before transition
           transition({
             status: "error",
-            error: {
-              type: "commitment",
-              message: error instanceof Error ? error.message : "Failed to generate commitment",
-            },
+            error: Errors.deposit.commitmentFailed(error),
           });
           return;
         }
@@ -315,10 +307,7 @@ export const DepositController = {
       if (current !== prepareId) return; // Check before transition
       transition({
         status: "error",
-        error: {
-          type: "gas",
-          message: error instanceof Error ? error.message : "Gas estimation failed",
-        },
+        error: Errors.deposit.gasEstimationFailed(error),
       });
       return;
     }
@@ -336,13 +325,18 @@ export const DepositController = {
       ? (parseFloat(amount) * DEPOSIT_FEES.DEFAULT_SOLVER_FEE_BPS) / 10_000
       : 0;
 
+    const preparedAmounts = {
+      ...amounts,
+      solverFee,
+    };
+
+    // Preserve amounts for display during transaction flow
+    state.lastPreparedAmounts = preparedAmounts;
+
     // Update state to ready
     transition({
       status: "ready",
-      amounts: {
-        ...amounts,
-        solverFee,
-      },
+      amounts: preparedAmounts,
       gasEstimate,
       noteData,
     });
@@ -368,7 +362,7 @@ export const DepositController = {
     if (!wallet.walletClient) {
       transition({
         status: "error",
-        error: { type: "transaction", message: "Wallet not connected" },
+        error: Errors.deposit.transactionFailed("Wallet not connected"),
       });
       return;
     }
@@ -392,12 +386,11 @@ export const DepositController = {
       // Track transaction (async, don't await)
       this._trackTransaction(txHash);
     } catch (error) {
+      // Extract user-friendly message from the error
+      const userMessage = getUserMessage(error, "Transaction failed");
       transition({
         status: "error",
-        error: {
-          type: "transaction",
-          message: error instanceof Error ? error.message : "Transaction failed",
-        },
+        error: Errors.deposit.transactionFailed(userMessage, error),
       });
     }
   },
@@ -408,6 +401,7 @@ export const DepositController = {
    */
   reset() {
     state.amount = "";
+    state.lastPreparedAmounts = null;
     transition({ status: "idle" });
     log.debug("Controller reset");
   },
@@ -446,7 +440,7 @@ export const DepositController = {
     if (!wallet.publicClient) {
       transition({
         status: "error",
-        error: { type: "tracking", message: "Public client not available" },
+        error: Errors.deposit.trackingFailed(),
       });
       return;
     }

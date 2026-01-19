@@ -8,14 +8,7 @@ import {
   generateKeysFromRandomSeed,
   getWalletAccountId,
 } from "@/utils/authCrypto";
-
-export enum AuthError {
-  PASSKEY_NOT_FOUND = "PASSKEY_NOT_FOUND",
-  PASSKEY_FAILED = "PASSKEY_FAILED",
-  ACCOUNT_NOT_FOUND = "ACCOUNT_NOT_FOUND",
-  ACCOUNT_ALREADY_EXISTS = "ACCOUNT_ALREADY_EXISTS",
-  UNKNOWN = "UNKNOWN",
-}
+import { type AppError } from "@/lib/errors";
 
 /**
  * Crypto context (public key + account key)
@@ -37,7 +30,7 @@ type AuthState =
   | { status: "booting" }
   | { status: "unauthenticated" }
   | { status: "authenticated"; session: AuthSession }
-  | { status: "error"; error: AuthError };
+  | { status: "error"; error: AppError };
 
 interface AuthControllerState {
   state: AuthState;
