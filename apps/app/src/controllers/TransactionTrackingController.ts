@@ -1,6 +1,5 @@
 import { proxy } from "valtio";
 import { getPublicClient } from "@/lib/clients";
-import { showToast } from "@/lib/toast";
 import { fetchLatestIndexedBlock } from "@/utils/indexer";
 import { logError } from "@/lib/errors/errors";
 import { NotesDiscoveryController } from "@/controllers/NotesDiscoveryController";
@@ -65,13 +64,7 @@ async function waitForReceipt(txHash: string, chainId: number) {
       timeout: 60_000,
     });
 
-    const shortHash = `${txHash.slice(0, 6)}...${txHash.slice(-4)}`;
-
     if (receipt.status === "success") {
-      showToast.success(`${shortHash} • Transaction successful! Indexing...`, {
-        duration: 4000,
-      });
-
       state.transaction = {
         hash: txHash,
         chainId,
@@ -82,17 +75,11 @@ async function waitForReceipt(txHash: string, chainId: number) {
       // Start polling for indexing
       startIndexingPoll();
     } else {
-      showToast.error(`${shortHash} • Transaction failed`, {
-        duration: 5000,
-      });
       state.status = "failed";
       scheduleAutoClear(5000);
     }
   } catch (error) {
-    showToast.handleError(error, {
-      action: "Transaction",
-      fallbackMessage: "Transaction timeout",
-    });
+    logError(error, { action: "waitForReceipt", txHash });
     state.status = "failed";
     scheduleAutoClear(5000);
   }
@@ -114,7 +101,6 @@ function startIndexingPoll() {
     try {
       const indexed = await fetchLatestIndexedBlock();
       if (indexed && Number(indexed.blockNumber) >= state.transaction.blockNumber) {
-        showToast.success("Transaction indexed!", { duration: 3000 });
         state.status = "synced";
 
         // Trigger notes refresh
@@ -154,11 +140,6 @@ export const TransactionTrackingController = {
    */
   trackTransaction(txHash: string, chainId: number) {
     clearTracking();
-
-    const shortHash = `${txHash.slice(0, 6)}...${txHash.slice(-4)}`;
-    showToast.success(`${shortHash} • Confirming transaction...`, {
-      duration: 3000,
-    });
 
     state.transaction = { hash: txHash, chainId, blockNumber: null };
     state.status = "pending";

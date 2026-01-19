@@ -14,7 +14,6 @@ import { FeeBreakdown } from "@/components/shared/FeeBreakdown";
 import { NoteSelectionScreen } from "@/components/screens/NoteSelectionScreen";
 import { WithdrawalTimelineScreen } from "@/components/screens/WithdrawalTimelineScreen";
 import { showToast } from "@/lib/toast";
-import { useErrorDisplay } from "@/hooks/useErrorDisplay";
 import { RecipientAddressInputScreen } from "@/components/screens/RecipientAddressInputScreen";
 import { DISPLAY_DECIMALS, ETH_ASSET } from "@/constants/withdraw";
 import { formatEthAmount } from "@/utils/formatters";
@@ -33,9 +32,6 @@ export function WithdrawalForm() {
 
   // Read-only snapshot from controller (React adapter)
   const state = useWithdrawController();
-
-  // Centralized error display
-  useErrorDisplay(state.lastError, state.state.status === "idle");
 
   // Auto-preview: Schedule lightweight fee preview when inputs change (debounced 500ms)
   useEffect(() => {

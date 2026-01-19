@@ -19,7 +19,6 @@ import { AssetChainSelectorScreen } from "@/components/screens/AssetChainSelecto
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { modal } from "@/context";
 import { useDepositController } from "@/hooks/useDepositController";
-import { useErrorDisplay } from "@/hooks/useErrorDisplay";
 import { useTransactionTracking } from "@/hooks/useTransactionTracking";
 import { DepositController, DepositSelectors } from "@/controllers/DepositController";
 import { AuthController } from "@/controllers/AuthController";
@@ -64,10 +63,6 @@ export function DepositForm({ asset }: DepositFormProps) {
   // Subscribe to AuthController for crypto state
   const authState = useSnapshot(AuthController.state);
   const cryptoReady = authState.crypto.cryptoReady;
-
-  // Centralized error display
-  const error = state.state.status === "error" ? state.state.error : null;
-  useErrorDisplay(error, state.state.status === "idle");
 
   // Copy address handler
   const handleCopyAddress = async () => {
