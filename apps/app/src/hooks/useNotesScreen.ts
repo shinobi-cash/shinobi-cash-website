@@ -67,7 +67,9 @@ export function useNotesScreen(): NotesScreenControllerAPI {
 
   const viewState = useMemo(
     () => NotesDiscoverySelectors.getViewState(),
-    [discoveryState.noteChains, discoveryState.state.status]
+    // Re-compute when discovery state or note chains change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [discoveryState.state.status, discoveryState.noteChains]
   );
 
   // Get filtered views (from screen controller)
