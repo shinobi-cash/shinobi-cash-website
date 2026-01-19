@@ -1,10 +1,5 @@
-/**
- * Toast utility functions using sonner
- * Provides consistent toast messaging across the app
- */
-
 import { toast } from "sonner";
-import { getUserMessage, isUserCancellation, logError } from "./errors";
+import { getUserMessage, isUserCancellation, logError } from "./errors/errors";
 
 export const showToast = {
   success: (message: string, options?: Parameters<typeof toast.success>[1]) => {

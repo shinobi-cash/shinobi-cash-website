@@ -6,7 +6,7 @@ import { useAccount, useChainId, useConnect, useSignTypedData } from "wagmi";
 import { AuthController } from "@/controllers/AuthController";
 import { getEIP712Message } from "@/utils/authCrypto";
 import { showToast } from "@/lib/toast";
-import { getUserMessage, isUserCancellation } from "@/lib/errors";
+import { getUserMessage, isUserCancellation } from "@/lib/errors/errors";
 
 type Status = "idle" | "connecting" | "signing" | "authenticating";
 

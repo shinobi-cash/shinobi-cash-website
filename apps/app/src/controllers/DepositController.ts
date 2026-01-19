@@ -6,7 +6,7 @@ import { DEPOSIT_FEES, POOL_CHAIN } from "@shinobi-cash/constants";
 import type { PublicClient, WalletClient } from "viem";
 import { AuthController } from "@/controllers/AuthController";
 import { NotesDiscoverySelectors } from "@/controllers/NotesDiscoveryController";
-import { type AppError, Errors, getUserMessage } from "@/lib/errors";
+import { type AppError, Errors, getUserMessage } from "@/lib/errors/errors";
 
 export interface DepositAmounts {
   noteAmount: number;

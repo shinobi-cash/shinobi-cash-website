@@ -10,7 +10,7 @@
 
 import { useEffect, useRef } from "react";
 import { showToast } from "@/lib/toast";
-import { type AppError, isUserCancellation, ErrorCode } from "@/lib/errors";
+import { type AppError, isUserCancellation, ErrorCode } from "@/lib/errors/errors";
 
 /**
  * Error code to user-friendly message mapping

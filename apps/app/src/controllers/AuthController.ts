@@ -1,5 +1,5 @@
 import { accountService } from "@/services/AccountService";
-import { repositoryRegistry } from "@/lib/storage/RepositoryRegistry";
+import { accountRepo, sessionRepo } from "@/lib/storage/RepositoryRegistry";
 import { keyDerivationService } from "@/services/KeyDerivationService";
 import { parseUserKey } from "@shinobi-cash/core";
 import { proxy } from "valtio";
@@ -8,7 +8,7 @@ import {
   generateKeysFromRandomSeed,
   getWalletAccountId,
 } from "@/utils/authCrypto";
-import { type AppError } from "@/lib/errors";
+import { type AppError } from "@/lib/errors/errors";
 
 /**
  * Crypto context (public key + account key)
@@ -49,11 +49,9 @@ const state = proxy<AuthControllerState>({
 export const AuthController = {
   state,
 
-  // ================= BOOTSTRAP =================
-
   async bootstrap() {
     try {
-      const session = await repositoryRegistry.sessionRepo.getStoredSessionInfo();
+      const session = await sessionRepo.getStoredSessionInfo();
 
       if (session?.credentialId) {
         const kek = await keyDerivationService.deriveKEKFromPasskey(
@@ -64,7 +62,7 @@ export const AuthController = {
         await accountService.loginWithPasskeyKEK(session.accountId, kek);
 
         // If we reach here, login succeeded (would throw otherwise)
-        await repositoryRegistry.sessionRepo.updateSessionLastAuth();
+        await sessionRepo.updateSessionLastAuth();
 
         // Check passkey status after successful login
         const passkeyEnabled = await this.isPasskeyEnabled();
@@ -104,13 +102,11 @@ export const AuthController = {
   },
 
   async logout() {
-    await repositoryRegistry.sessionRepo.clearSessionInfo();
+    await sessionRepo.clearSessionInfo();
     accountService.clearInMemorySession();
     this.state.state = { status: "unauthenticated" };
     this._clearCrypto();
   },
-
-  // ================= WALLET SIGN-IN =================
 
   async signInWithWallet({
     walletAddress,
@@ -129,7 +125,7 @@ export const AuthController = {
       walletAddress
     );
 
-    const exists = await repositoryRegistry.accountRepo.accountExists(accountId);
+    const exists = await accountRepo.accountExists(accountId);
 
     if (!exists) {
       const keys = generateKeysFromRandomSeed(keyGenSeed);
@@ -143,7 +139,7 @@ export const AuthController = {
     const metadata = await accountService.getAccountMetadata();
 
     // Store session with credentialId in single atomic operation
-    await repositoryRegistry.sessionRepo.storeSessionInfo(accountId, {
+    await sessionRepo.storeSessionInfo(accountId, {
       credentialId: metadata?.credentialId,
     });
 
@@ -170,8 +166,6 @@ export const AuthController = {
     };
   },
 
-  // ================= PASSKEY ENABLE =================
-
   async enablePasskey(): Promise<void> {
     await accountService.enablePasskeyForCurrentAccount();
 
@@ -180,8 +174,6 @@ export const AuthController = {
       this.state.state.session.passkeyEnabled = true;
     }
   },
-
-  // ================= PASSKEY REMOVE =================
 
   async removePasskey(): Promise<void> {
     await accountService.removePasskeyForCurrentAccount();
@@ -192,12 +184,6 @@ export const AuthController = {
     }
   },
 
-  // ================= PASSKEY STATUS =================
-
-  /**
-   * Check if passkey unlock is enabled for current account
-   * @returns true if passkey is enabled (credentialId exists), false otherwise
-   */
   async isPasskeyEnabled(): Promise<boolean> {
     try {
       const accountData = await accountService.getAccountMetadata();
@@ -207,12 +193,6 @@ export const AuthController = {
     }
   },
 
-  // ================= INTERNAL HELPERS =================
-
-  /**
-   * Clear crypto context (called on logout or auth errors)
-   * @internal
-   */
   _clearCrypto(): void {
     this.state.crypto = {
       publicKey: null,

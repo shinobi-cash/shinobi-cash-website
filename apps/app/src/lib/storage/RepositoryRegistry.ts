@@ -1,8 +1,3 @@
-/**
- * file: shinobi-cash-website/apps/app/src/lib/storage/RepositoryRegistry.ts
- * RepositoryRegistry
- */
-
 import { sessionStorageAdapter } from "./adapters/SessionStorageAdapter";
 import {
   accountStorageAdapter,
@@ -15,30 +10,10 @@ import { NotesRepository } from "./repositories/NotesRepository";
 import { SessionRepository } from "./repositories/SessionRepository";
 import { WrappedAMKRepository } from "./repositories/WrappedAMKRepository";
 
-class RepositoryRegistry {
-  /**
-   * Exposes NotesRepository.
-   * Discovery logic is intentionally NOT proxied here
-   * to keep NoteSyncEngine worker-compatible.
-   */
-  public readonly notesRepo: NotesRepository;
-
-  public readonly accountRepo: AccountRepository;
-
-  public readonly wrappedAMK: WrappedAMKRepository;
-
-  public readonly sessionRepo: SessionRepository;
-
-  constructor() {
-    this.notesRepo = new NotesRepository(notesStorageAdapter, sharedEncryptionService);
-    this.accountRepo = new AccountRepository(accountStorageAdapter);
-    this.sessionRepo = new SessionRepository(sessionStorageAdapter);
-    this.wrappedAMK = new WrappedAMKRepository(
-      AMKStorageAdapter,
-      AMKStorageAdapter.getEncryptionService()
-    );
-  }
-}
-
-// Export singleton instance
-export const repositoryRegistry = new RepositoryRegistry();
+export const notesRepo = new NotesRepository(notesStorageAdapter, sharedEncryptionService);
+export const accountRepo = new AccountRepository(accountStorageAdapter);
+export const sessionRepo = new SessionRepository(sessionStorageAdapter);
+export const wrappedAMKRepo = new WrappedAMKRepository(
+  AMKStorageAdapter,
+  AMKStorageAdapter.getEncryptionService()
+);

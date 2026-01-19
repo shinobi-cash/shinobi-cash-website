@@ -7,7 +7,7 @@ import {
 } from "@shinobi-cash/constants";
 import { pimlicoClient } from "@/lib/clients";
 import type { SmartAccountClient } from "permissionless";
-import { AppException, Errors, logError } from "@/lib/errors";
+import { AppException, Errors, logError } from "@/lib/errors/errors";
 import { http, createPublicClient, encodeAbiParameters, encodeFunctionData } from "viem";
 import { type UserOperation, entryPoint07Address } from "viem/account-abstraction";
 import { SAME_CHAIN_GAS_LIMITS, CROSS_CHAIN_GAS_LIMITS } from "@/constants/withdraw";
@@ -23,10 +23,9 @@ export interface CrossChainWithdrawalData {
   data: `0x${string}`;
 }
 
-// pubSignals order must match circuit output exactly:
-// [0] nullifier, [1] newNoteCommitment, [2] newAmount, [3] newLabel,
-// [4] recipient, [5] relayData, [6] aspRoot, [7] scope
-export interface WithdrawalProof {
+// Contract-ready proof format with bigints for Solidity
+// pubSignals: [nullifier, newNoteCommitment, newAmount, newLabel, recipient, relayData, aspRoot, scope]
+export interface ContractProof {
   pA: [bigint, bigint];
   pB: [[bigint, bigint], [bigint, bigint]];
   pC: [bigint, bigint];
@@ -34,7 +33,7 @@ export interface WithdrawalProof {
 }
 
 // Cross-chain has 9 signals (extra refundNullifier at [8])
-export interface CrossChainWithdrawalProof {
+export interface ContractCrossChainProof {
   pA: [bigint, bigint];
   pB: [[bigint, bigint], [bigint, bigint]];
   pC: [bigint, bigint];
@@ -91,7 +90,7 @@ export function createWithdrawalData(
 
 export function encodeRelayCallData(
   withdrawalData: WithdrawalData,
-  proof: WithdrawalProof,
+  proof: ContractProof,
   scope: bigint
 ): `0x${string}` {
   return encodeFunctionData({
@@ -121,11 +120,11 @@ export function formatProofForContract(
     pi_c: string[];
   },
   publicSignals: string[]
-): WithdrawalProof {
+): ContractProof {
   return {
     pA: [BigInt(proof.pi_a[0]), BigInt(proof.pi_a[1])],
     pB: [
-      // Swap coordinates for pi_b - this is required for compatibility between snarkjs and Solidity verifier
+      // Swap coordinates for pi_b - required for snarkjs/Solidity verifier compatibility
       [BigInt(proof.pi_b[0][1]), BigInt(proof.pi_b[0][0])],
       [BigInt(proof.pi_b[1][1]), BigInt(proof.pi_b[1][0])],
     ],
@@ -258,7 +257,7 @@ export function formatCrossChainProofForContract(
     pi_c: string[];
   },
   publicSignals: string[]
-): CrossChainWithdrawalProof {
+): ContractCrossChainProof {
   return {
     pA: [BigInt(proof.pi_a[0]), BigInt(proof.pi_a[1])],
     pB: [
@@ -282,7 +281,7 @@ export function formatCrossChainProofForContract(
 
 export function encodeCrossChainWithdrawalCallData(
   withdrawalData: CrossChainWithdrawalData,
-  proof: CrossChainWithdrawalProof,
+  proof: ContractCrossChainProof,
   scope: bigint
 ): `0x${string}` {
   return encodeFunctionData({

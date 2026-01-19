@@ -1,5 +1,5 @@
 import { keyDerivationService } from "@/services/KeyDerivationService";
-import { repositoryRegistry } from "@/lib/storage/RepositoryRegistry";
+import { accountRepo, sessionRepo, wrappedAMKRepo } from "@/lib/storage/RepositoryRegistry";
 import {
   AMKStorageAdapter,
   notesStorageAdapter,
@@ -30,8 +30,8 @@ export class AccountService {
     try {
       const kekCryptoKey: CryptoKey = await this.importWalletKEK(encryptionKey);
       await AMKStorageAdapter.initializeSession(kekCryptoKey);
-      await repositoryRegistry.wrappedAMK.storeWrappedAMK(accountId, "wallet", privateKey);
-      await repositoryRegistry.accountRepo.storeAccountData({ accountId });
+      await wrappedAMKRepo.storeWrappedAMK(accountId, "wallet", privateKey);
+      await accountRepo.storeAccountData({ accountId });
       await this.initializeAccountSession(accountId, privateKey);
     } catch (error) {
       this.clearInMemorySession();
@@ -61,7 +61,7 @@ export class AccountService {
     if (!accountId) {
       throw new Error("No current account context");
     }
-    const record = await repositoryRegistry.accountRepo.getStoredAccountRecord(accountId);
+    const record = await accountRepo.getStoredAccountRecord(accountId);
     return record ? record.profile : null;
   }
 
@@ -74,7 +74,7 @@ export class AccountService {
     if (!useAMK) {
       throw new Error("No AMK available - session not initialized or AMK not provided");
     }
-    return repositoryRegistry.accountRepo.getAccountMetadata(accountId, useAMK);
+    return accountRepo.getAccountMetadata(accountId, useAMK);
   }
 
   async isPasskeyUnlockEnabled(): Promise<boolean> {
@@ -120,11 +120,11 @@ export class AccountService {
       credentialId: accountData.credentialId,
     };
 
-    await repositoryRegistry.sessionRepo.addPasskeyToSession(credentialId);
+    await sessionRepo.addPasskeyToSession(credentialId);
 
     try {
       await AMKStorageAdapter.initializeSession(passkeyKEK);
-      await repositoryRegistry.wrappedAMK.storeWrappedAMK(
+      await wrappedAMKRepo.storeWrappedAMK(
         accountData.accountId,
         "passkey",
         accountData.privateKey
@@ -133,14 +133,14 @@ export class AccountService {
         accountId: accountData.accountId,
         credentialId,
       };
-      await repositoryRegistry.accountRepo.storeAccountData(updatedMetadata);
+      await accountRepo.storeAccountData(updatedMetadata);
     } catch (error) {
       console.error("[AccountService] Passkey enablement failed, rolling back:", error);
 
       try {
-        await repositoryRegistry.sessionRepo.removePasskeyFromSession();
-        await repositoryRegistry.wrappedAMK.deleteWrappedAMK(accountData.accountId, "passkey");
-        await repositoryRegistry.accountRepo.storeAccountData(originalMetadata);
+        await sessionRepo.removePasskeyFromSession();
+        await wrappedAMKRepo.deleteWrappedAMK(accountData.accountId, "passkey");
+        await accountRepo.storeAccountData(originalMetadata);
       } catch (rollbackError) {
         console.error("[AccountService] Rollback failed:", rollbackError);
       }
@@ -159,13 +159,13 @@ export class AccountService {
     }
 
     try {
-      await repositoryRegistry.wrappedAMK.deleteWrappedAMK(accountData.accountId, "passkey");
+      await wrappedAMKRepo.deleteWrappedAMK(accountData.accountId, "passkey");
       const updatedMetadata: AccountMetadata = {
         accountId: accountData.accountId,
         credentialId: undefined,
       };
-      await repositoryRegistry.accountRepo.storeAccountData(updatedMetadata);
-      await repositoryRegistry.sessionRepo.removePasskeyFromSession();
+      await accountRepo.storeAccountData(updatedMetadata);
+      await sessionRepo.removePasskeyFromSession();
     } catch (error) {
       console.error("[AccountService] Failed to remove passkey unlock:", error);
       throw new Error(
@@ -178,7 +178,7 @@ export class AccountService {
     const kek = await this.importWalletKEK(encryptionKey);
     await AMKStorageAdapter.initializeSession(kek);
 
-    const amk = await repositoryRegistry.wrappedAMK.unwrapAMK(accountId, "wallet");
+    const amk = await wrappedAMKRepo.unwrapAMK(accountId, "wallet");
     if (!amk) throw new Error("AMK unwrap failed");
 
     await this.initializeAccountSession(accountId, amk);
@@ -187,7 +187,7 @@ export class AccountService {
   async loginWithPasskeyKEK(accountId: WalletAccountId, kek: CryptoKey): Promise<void> {
     await AMKStorageAdapter.initializeSession(kek);
 
-    const amk = await repositoryRegistry.wrappedAMK.unwrapAMK(accountId, "passkey");
+    const amk = await wrappedAMKRepo.unwrapAMK(accountId, "passkey");
 
     if (!amk) {
       throw new Error("AMK unwrap failed for passkey");

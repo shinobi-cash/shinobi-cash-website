@@ -3,7 +3,7 @@
 import { CheckCircle, Clock, Hourglass, XCircle } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
 import { cn } from "@workspace/ui/lib/utils";
-import { type AppError, getUserMessage, ErrorCode } from "@/lib/errors";
+import { type AppError, getUserMessage, ErrorCode } from "@/lib/errors/errors";
 import { getTxExplorerUrl } from "@/config/chains";
 import { POOL_CHAIN } from "@shinobi-cash/constants";
 import { EnginePhase } from "@/services/WithdrawalOrchestratorService";

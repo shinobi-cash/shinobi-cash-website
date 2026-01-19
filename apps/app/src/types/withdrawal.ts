@@ -1,27 +1,10 @@
-/**
- * Withdrawal Domain Types
- *
- * Core types representing the withdrawal pipeline stages.
- * These types are immutable and represent explicit artifacts at each stage.
- */
-
 import type { Note } from "@shinobi-cash/core";
 import type { WithdrawalDerivation, CrosschainWithdrawalDerivation } from "@shinobi-cash/core";
 import type { SmartAccountClient } from "permissionless";
 import type { UserOperation } from "viem/account-abstraction";
 
-// ============ WITHDRAWAL CLASSIFICATION ============
-
-/**
- * Classification of withdrawal type
- */
 export type WithdrawalKind = "same-chain" | "cross-chain";
 
-// ============ PIPELINE STAGE TYPES ============
-
-/**
- * Stage 1: Initial withdrawal request from user
- */
 export interface WithdrawalRequest {
   note: Note;
   withdrawAmountWei: bigint;
@@ -30,9 +13,6 @@ export interface WithdrawalRequest {
   destinationChainId?: number;
 }
 
-/**
- * Stage 2: Fee quote after gas price estimation
- */
 export interface FeeQuote {
   kind: WithdrawalKind;
   relayFeeBPS: number;
@@ -47,13 +27,6 @@ export interface FeeQuote {
   };
 }
 
-/**
- * Stage 3: Withdrawal pipeline context with derivations
- *
- * Note: Renamed from WithdrawalContext to avoid confusion with:
- * - Core crypto WithdrawalDerivation (cryptographic context)
- * - UI-level view models
- */
 export interface WithdrawalPipelineContext {
   kind: WithdrawalKind;
   request: WithdrawalRequest;
@@ -63,9 +36,6 @@ export interface WithdrawalPipelineContext {
   withdrawalData: readonly [`0x${string}`, `0x${string}`];
 }
 
-/**
- * Stage 4: Complete witness for ZK proof generation
- */
 export interface WithdrawalWitness {
   context: WithdrawalPipelineContext;
   stateTreeLeaves: bigint[];
@@ -77,9 +47,6 @@ export interface WithdrawalWitness {
   };
 }
 
-/**
- * Stage 5: Generated ZK proof
- */
 export interface WithdrawalProof {
   witness: WithdrawalWitness;
   proof: {
@@ -90,9 +57,6 @@ export interface WithdrawalProof {
   publicSignals: string[];
 }
 
-/**
- * Stage 6: Prepared UserOperation ready for execution
- */
 export interface PreparedUserOperation {
   context: WithdrawalPipelineContext;
   proof: WithdrawalProof;
@@ -100,22 +64,11 @@ export interface PreparedUserOperation {
   smartAccountClient: SmartAccountClient;
 }
 
-/**
- * Stage 7: Execution result
- */
 export interface ExecutionResult {
   transactionHash: string;
   success: boolean;
 }
 
-// ============ HELPER TYPES ============
-
-/**
- * External data dependencies
- *
- * Note: poolScope is NOT included here - it's fetched separately in
- * contextService as the single source of truth.
- */
 export interface ExternalData {
   stateTreeLeaves: { leafValue: string }[];
   aspData: {

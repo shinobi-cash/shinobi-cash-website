@@ -1,12 +1,7 @@
-/**
- * Notes Discovery Controller - Domain Layer
- * Single source of truth for all discovered notes
- */
-
 import { proxy } from "valtio";
 import type { NoteChain, DiscoveryProgress } from "@shinobi-cash/core";
 import { discoverNotes } from "@/services/NoteDiscoveryService";
-import { repositoryRegistry } from "@/lib/storage/RepositoryRegistry";
+import { notesRepo } from "@/lib/storage/RepositoryRegistry";
 import { SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
 import { AuthController } from "@/controllers/AuthController";
 
@@ -204,7 +199,7 @@ export const NotesDiscoveryController = {
 
     try {
       log.debug("Loading cached notes...");
-      const cached = await repositoryRegistry.notesRepo.getCachedNotes(
+      const cached = await notesRepo.getCachedNotes(
         crypto.publicKey,
         SHINOBI_CASH_ETH_POOL.address
       );

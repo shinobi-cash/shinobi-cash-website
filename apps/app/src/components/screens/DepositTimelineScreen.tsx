@@ -7,7 +7,7 @@ import { ScreenLayout } from "@/components/layout/ScreenLayout";
 import { useTransactionTracking } from "@/hooks/useTransactionTracking";
 import { getTxExplorerUrl } from "@/config/chains";
 import { cn } from "@workspace/ui/lib/utils";
-import { type AppError, getUserMessage, isUserCancellation } from "@/lib/errors";
+import { type AppError, getUserMessage, isUserCancellation } from "@/lib/errors/errors";
 
 type DepositStatus = "submitting" | "confirming" | "confirmed-onchain" | "failed" | "error";
 type StepStatus = "completed" | "active" | "pending" | "failed";

@@ -16,52 +16,38 @@ import {
   prepareWithdrawalUserOperation,
   prepareCrossChainWithdrawalUserOperation,
   executeWithdrawalUserOperation,
-  type WithdrawalData,
-  type CrossChainWithdrawalData,
 } from "@/services/WithdrawalContractService";
 
 export async function prepareUserOperation(
   context: WithdrawalPipelineContext,
   proof: WithdrawalProof
 ): Promise<PreparedUserOperation> {
-  const formattedProof =
-    context.kind === "cross-chain"
-      ? formatCrossChainProofForContract(proof.proof, proof.publicSignals)
-      : formatProofForContract(proof.proof, proof.publicSignals);
+  const withdrawalData = {
+    processooor: context.withdrawalData[0],
+    data: context.withdrawalData[1],
+  };
 
-  const withdrawalStruct =
-    context.kind === "cross-chain"
-      ? ({
-          processooor: context.withdrawalData[0] as `0x${string}`,
-          data: context.withdrawalData[1] as `0x${string}`,
-        } as CrossChainWithdrawalData)
-      : ({
-          processooor: context.withdrawalData[0] as `0x${string}`,
-          data: context.withdrawalData[1] as `0x${string}`,
-        } as WithdrawalData);
+  const isCrossChain = context.kind === "cross-chain";
 
-  const callData =
-    context.kind === "cross-chain"
-      ? encodeCrossChainWithdrawalCallData(
-          withdrawalStruct as CrossChainWithdrawalData,
-          formattedProof as any,
-          context.poolScope
-        )
-      : encodeRelayCallData(
-          withdrawalStruct as WithdrawalData,
-          formattedProof as any,
-          context.poolScope
-        );
+  const callData = isCrossChain
+    ? encodeCrossChainWithdrawalCallData(
+        withdrawalData,
+        formatCrossChainProofForContract(proof.proof, proof.publicSignals),
+        context.poolScope
+      )
+    : encodeRelayCallData(
+        withdrawalData,
+        formatProofForContract(proof.proof, proof.publicSignals),
+        context.poolScope
+      );
 
-  const smartAccountClient =
-    context.kind === "cross-chain"
-      ? await getCrosschainWithdrawalSmartAccountClient()
-      : await getWithdrawalSmartAccountClient();
+  const smartAccountClient = isCrossChain
+    ? await getCrosschainWithdrawalSmartAccountClient()
+    : await getWithdrawalSmartAccountClient();
 
-  const userOperation =
-    context.kind === "cross-chain"
-      ? await prepareCrossChainWithdrawalUserOperation(smartAccountClient, callData)
-      : await prepareWithdrawalUserOperation(smartAccountClient, callData);
+  const userOperation = isCrossChain
+    ? await prepareCrossChainWithdrawalUserOperation(smartAccountClient, callData)
+    : await prepareWithdrawalUserOperation(smartAccountClient, callData);
 
   return { context, proof, userOperation, smartAccountClient };
 }

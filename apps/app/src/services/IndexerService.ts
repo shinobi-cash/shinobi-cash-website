@@ -1,6 +1,6 @@
 import { IPFS_GATEWAY_URL } from "@shinobi-cash/constants";
 import type { Activity, StateTreeLeaf, ASPApprovalList } from "@shinobi-cash/data";
-import { Errors, AppException, logError } from "@/lib/errors";
+import { Errors, AppException, logError } from "@/lib/errors/errors";
 
 export type { Activity, StateTreeLeaf, ASPApprovalList };
 

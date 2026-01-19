@@ -1,7 +1,3 @@
-/**
- * Singleton Client Instances
- */
-
 import { BUNDLER_URL } from "@/config/constants";
 import {
   WITHDRAWAL_ACCOUNT_PRIVATE_KEY,
@@ -17,23 +13,15 @@ import { http, createPublicClient } from "viem";
 import { entryPoint07Address } from "viem/account-abstraction";
 import { privateKeyToAccount } from "viem/accounts";
 
-/**
- * Get public client for specific chain
- * @returns Public client for the specified chain
- */
 export function getPublicClient(chainId: number) {
   const chain = SHINOBI_CASH_SUPPORTED_CHAINS.find((chain) => chain.id === chainId);
-  if (chain == undefined) {
+  if (!chain) {
     throw new Error(`Unsupported chain ${chainId}`);
   }
-  const client = createPublicClient({
+  return createPublicClient({
     chain: chain as never,
     transport: http(),
   });
-  if (!client) {
-    throw new Error(`No public client configured for chain ${chainId}`);
-  }
-  return client;
 }
 
 export const pimlicoClient = createPimlicoClient({
@@ -44,10 +32,6 @@ export const pimlicoClient = createPimlicoClient({
   },
 });
 
-/**
- * Factory function to create a smart account client with specified paymaster
- * Extracted common logic to reduce duplication
- */
 async function createWithdrawalSmartAccountClient(paymasterAddress: `0x${string}`) {
   const account = privateKeyToAccount(WITHDRAWAL_ACCOUNT_PRIVATE_KEY);
   const publicClient = createPublicClient({
@@ -66,20 +50,18 @@ async function createWithdrawalSmartAccountClient(paymasterAddress: `0x${string}
     account: simpleAccount,
     bundlerTransport: http(BUNDLER_URL),
     paymaster: {
-      // Provide stub data for gas estimation - just hardcode high gas values
       async getPaymasterStubData() {
         return {
           paymaster: paymasterAddress,
-          paymasterData: "0x" as `0x${string}`, // Empty paymaster data
-          paymasterPostOpGasLimit: BigInt(35000), // Above the 32,000 minimum
+          paymasterData: "0x" as `0x${string}`,
+          paymasterPostOpGasLimit: BigInt(35000),
         };
       },
-      // Provide real paymaster data for actual transaction
       async getPaymasterData() {
         return {
           paymaster: paymasterAddress,
-          paymasterData: "0x" as `0x${string}`, // Empty - paymaster validates via callData
-          paymasterPostOpGasLimit: BigInt(35000), // Above the 32,000 minimum
+          paymasterData: "0x" as `0x${string}`,
+          paymasterPostOpGasLimit: BigInt(35000),
         };
       },
     },
@@ -87,16 +69,10 @@ async function createWithdrawalSmartAccountClient(paymasterAddress: `0x${string}
   return smartAccountClient;
 }
 
-/**
- * Get smart account client for same-chain withdrawals
- */
 export async function getWithdrawalSmartAccountClient() {
   return createWithdrawalSmartAccountClient(SHINOBI_CASH_RELAY_WITHDRAWAL_PAYMASTER.address);
 }
 
-/**
- * Get smart account client for cross-chain withdrawals
- */
 export async function getCrosschainWithdrawalSmartAccountClient() {
   return createWithdrawalSmartAccountClient(SHINOBI_CASH_CROSSCHAIN_WITHDRAWAL_PAYMASTER.address);
 }

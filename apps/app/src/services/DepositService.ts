@@ -12,7 +12,7 @@ import {
   sharedEncryptionService,
 } from "@/lib/storage/adapters/IndexedDBStore";
 import { resolveDepositRoute, buildDepositCallParams } from "@/utils/depositRoute";
-import { getUserMessage, logError } from "@/lib/errors";
+import { getUserMessage, logError } from "@/lib/errors/errors";
 
 const GAS_BUFFER = BigInt(120);
 const DIVISOR = BigInt(100);

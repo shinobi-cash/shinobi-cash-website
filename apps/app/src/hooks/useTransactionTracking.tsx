@@ -4,7 +4,7 @@ import { fetchLatestIndexedBlock } from "@/services/IndexerService";
 import { parseUserKey } from "@shinobi-cash/core";
 import type React from "react";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-import { logError } from "@/lib/errors";
+import { logError } from "@/lib/errors/errors";
 import { accountService } from "@/services/AccountService";
 import { NotesDiscoveryController } from "@/controllers/NotesDiscoveryController";
 

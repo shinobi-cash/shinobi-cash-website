@@ -9,7 +9,7 @@
  */
 
 import * as Sentry from "@sentry/react";
-import { isAppError, isAppException, ErrorCode } from "@/lib/errors";
+import { isAppError, isAppException, ErrorCode } from "@/lib/errors/errors";
 
 /**
  * Initialize Sentry monitoring

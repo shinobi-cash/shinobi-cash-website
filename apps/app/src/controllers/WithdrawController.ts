@@ -10,7 +10,7 @@ import {
   PreparedUserOperation,
   WithdrawalRequest,
 } from "@/types/withdrawal";
-import { type AppError, Errors, getUserMessage } from "@/lib/errors";
+import { type AppError, Errors, getUserMessage } from "@/lib/errors/errors";
 
 type WithdrawState =
   | { status: "idle" }
