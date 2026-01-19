@@ -4,14 +4,6 @@ export type ReadonlyNoteChain = readonly Readonly<Note>[];
 
 export type NotesStatus = "idle" | "loading" | "error" | "empty" | "ready";
 
-export const NOTES_STATUS_LABELS: Record<NotesStatus, string> = {
-  idle: "Notes",
-  loading: "Discovering notes...",
-  error: "Failed to load notes",
-  empty: "No notes found",
-  ready: "Notes",
-};
-
 export type NotesError =
   | { type: "discovery"; message: string }
   | { type: "storage"; message: string }
