@@ -7,8 +7,7 @@ import { ScreenLayout } from "@/components/layout/ScreenLayout";
 import { useTransactionTracking } from "@/hooks/useTransactionTracking";
 import { getTxExplorerUrl } from "@/config/chains";
 import { cn } from "@workspace/ui/lib/utils";
-import { getUserMessage, isUserCancellation } from "@/lib/errors/errorHandler";
-import type { DepositError } from "@/controllers/DepositController";
+import { type AppError, getUserMessage, isUserCancellation } from "@/lib/errors";
 
 type DepositStatus =
   | "submitting"
@@ -21,7 +20,7 @@ interface DepositTimelineScreenProps {
   noteAmount: number;
   status: DepositStatus;
   txHash: string | null;
-  error: DepositError | null;
+  error: AppError | null;
   failedReason: string | null;
   onClose: () => void;
 }
@@ -60,93 +59,101 @@ export function DepositTimelineScreen({
   const isIndexed = trackingStatus === "synced";
 
   // Error handling
-  const isUserCancelled = error && isUserCancellation(error.message);
-  const isTransactionError = error?.type === "transaction";
+  const isUserCancelled = error && isUserCancellation(error);
+  const hasError = isUserCancelled || isFailed || isError;
 
   // ----- Hero copy -----
 
   const title = isIndexed
-    ? "Deposit confirmed"
-    : isUserCancelled
-      ? "Transaction cancelled"
-      : isFailed
-        ? "Transaction failed"
-        : isError
-          ? "Deposit failed"
-          : isConfirmedOnChain
-            ? "Confirming deposit"
-            : isConfirming
-              ? "Processing deposit"
-              : isSubmitting
-                ? "Confirm in wallet"
-                : "Processing deposit";
+    ? "Deposit complete"
+    : hasError
+      ? "Deposit failed"
+      : isConfirmedOnChain || isIndexing
+        ? "Confirming deposit"
+        : isConfirming
+          ? "Processing deposit"
+          : isSubmitting
+            ? "Confirm in wallet"
+            : "Processing deposit";
 
+  // Subtitle: generic message, error details shown in timeline step
   const subtitle = isIndexed
-    ? "Your deposit note has been created and secured privately."
-    : isUserCancelled
-      ? "You cancelled the transaction in your wallet."
-      : isFailed
-        ? failedReason || "Transaction failed on-chain."
-        : isError
-          ? getUserMessage(new Error(error?.message || "Unknown error"))
-          : isConfirmedOnChain
-            ? "Transaction confirmed. Waiting for privacy indexing."
-            : isConfirming
-              ? "Waiting for transaction confirmation."
-              : isSubmitting
-                ? "Please confirm the transaction in your wallet."
-                : "This usually takes a few moments.";
+    ? "Your deposit is complete and ready for withdrawal."
+    : hasError
+      ? "Something went wrong. See details below."
+      : isConfirmedOnChain || isIndexing
+        ? "Almost done. Finalizing your deposit."
+        : isConfirming
+          ? "Waiting for confirmation."
+          : isSubmitting
+            ? "Please confirm in your wallet."
+            : "This may take a few moments.";
 
-  // ----- Timeline -----
+  // ----- Timeline (simplified to 3 steps) -----
+
+  // Determine which step failed
+  const failedAtStep = isUserCancelled
+    ? "confirm"
+    : isError
+      ? "confirm"
+      : isFailed
+        ? "processing"
+        : null;
+
+  // Step 1: Confirm in wallet
+  // - Completed once we have txHash or are past submitting
+  const confirmWalletStatus: StepStatus =
+    failedAtStep === "confirm"
+      ? "failed"
+      : txHash || isConfirming || isConfirmedOnChain || isFailed
+        ? "completed"
+        : isSubmitting
+          ? "active"
+          : "pending";
+
+  // Step 2: Processing deposit (covers: tx broadcast, on-chain confirm, indexing)
+  // - Completed when fully indexed
+  // - Active when confirming or indexing
+  const processingStatus: StepStatus =
+    failedAtStep === "processing"
+      ? "failed"
+      : isIndexed
+        ? "completed"
+        : isConfirming || isConfirmedOnChain || isIndexing
+          ? "active"
+          : confirmWalletStatus === "completed"
+            ? "active"
+            : "pending";
+
+  // Step 3: Deposit complete
+  const completeStatus: StepStatus = isIndexed ? "completed" : "pending";
+
+  // Build error message
+  const getErrorMessage = (): string | undefined => {
+    if (!hasError) return undefined;
+    if (isUserCancelled) return "You cancelled the transaction.";
+    if (isFailed) return failedReason || "Transaction failed on-chain.";
+    if (error) return getUserMessage(error);
+    return undefined;
+  };
 
   const timeline: TimelineItem[] = [
     {
-      label: "Wallet confirmation",
-      status: isUserCancelled
-        ? "failed"
-        : txHash
-          ? "completed"
-          : isSubmitting
-            ? "active"
-            : "pending",
-      description: "Approve the deposit transaction in your wallet.",
-      errorMessage: isUserCancelled ? getUserMessage(new Error(error?.message)) : undefined,
+      label: "Confirm in wallet",
+      status: confirmWalletStatus,
+      description: "Approve the transaction in your wallet.",
+      errorMessage: failedAtStep === "confirm" ? getErrorMessage() : undefined,
     },
     {
-      label: "Transaction submitted",
-      status:
-        isTransactionError && !isUserCancelled
-          ? "failed"
-          : txHash
-            ? "completed"
-            : "pending",
-      description: "Your transaction is broadcast to the network.",
-      errorMessage:
-        isTransactionError && !isUserCancelled
-          ? getUserMessage(new Error(error?.message))
-          : undefined,
+      label: "Processing deposit",
+      status: processingStatus,
+      description: "Confirming and securing your deposit.",
+      errorMessage: failedAtStep === "processing" ? getErrorMessage() : undefined,
     },
     {
-      label: "On-chain confirmation",
-      status: isFailed
-        ? "failed"
-        : isConfirmedOnChain || isIndexing || isIndexed
-          ? "completed"
-          : isConfirming
-            ? "active"
-            : "pending",
-      description: "Waiting for blockchain confirmation.",
-      errorMessage: isFailed ? failedReason || "Transaction reverted" : undefined,
-    },
-    {
-      label: "Deposit indexing",
-      status: isIndexed ? "completed" : isIndexing ? "active" : "pending",
-      description: "Your deposit note is indexed privately.",
-    },
-    {
-      label: "Deposit secured",
-      status: isIndexed ? "completed" : "pending",
-      description: "Your funds are now secured and ready for private withdrawal.",
+      label: "Deposit complete",
+      status: completeStatus,
+      description: "Your funds are ready for withdrawal.",
     },
   ];
 
@@ -154,15 +161,15 @@ export function DepositTimelineScreen({
 
   const StepIcon = ({ status }: { status: StepStatus }) => {
     if (status === "completed") return <CheckCircle className="h-6 w-6 text-green-500" />;
-    if (status === "active") return <Clock className="h-6 w-6 text-yellow-500" />;
+    if (status === "active") return <Clock className="h-6 w-6 animate-pulse text-yellow-500" />;
     if (status === "failed") return <XCircle className="h-6 w-6 text-red-500" />;
     return <div className="h-6 w-6 rounded-full border-2 border-gray-200" />;
   };
 
   const StatusIcon = () => {
     if (isIndexed) return <CheckCircle className="h-12 w-12 text-green-500" />;
-    if (isUserCancelled || isFailed || isError) return <XCircle className="h-12 w-12 text-red-500" />;
-    return <Hourglass className="h-12 w-12 text-gray-300" />;
+    if (hasError) return <XCircle className="h-12 w-12 text-red-500" />;
+    return <Hourglass className="h-12 w-12 animate-pulse text-gray-400" />;
   };
 
   return (

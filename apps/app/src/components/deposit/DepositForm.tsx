@@ -3,8 +3,8 @@
  * Pure UI component that delegates all logic to useDepositController
  */
 
-import { Copy, Check, Loader2 } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { Copy, Check, Loader2, CircleQuestionMarkIcon } from "lucide-react";
+import { useState, useEffect } from "react";
 import { useChainId, useSwitchChain } from "wagmi";
 import { useSnapshot } from "valtio";
 import { Button } from "@workspace/ui/components/button";
@@ -16,12 +16,11 @@ import { SectionDivider } from "@/components/shared/SectionDivider";
 import { FeeBreakdown } from "@/components/shared/FeeBreakdown";
 import { AssetChainSelector } from "@/components/shared/AssetChainSelector";
 import { AssetChainSelectorScreen } from "@/components/screens/AssetChainSelectorScreen";
-import { CircleQuestionMarkIcon } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { modal } from "@/context";
-import { showToast } from "@/lib/toast";
-import { getUserMessage } from "@/lib/errors/errorHandler";
 import { useDepositController } from "@/hooks/useDepositController";
+import { useErrorDisplay } from "@/hooks/useErrorDisplay";
+import { useTransactionTracking } from "@/hooks/useTransactionTracking";
 import { DepositController, DepositSelectors } from "@/controllers/DepositController";
 import { AuthController } from "@/controllers/AuthController";
 import { DepositPreviewScreen } from "@/components/screens/DepositPreviewScreen";
@@ -59,44 +58,16 @@ export function DepositForm({ asset }: DepositFormProps) {
   // Read-only snapshot from controller
   const state = useDepositController();
 
+  // Transaction tracking for indexing status
+  const { trackTransaction } = useTransactionTracking();
+
   // Subscribe to AuthController for crypto state
   const authState = useSnapshot(AuthController.state);
   const cryptoReady = authState.crypto.cryptoReady;
 
-  // Track shown errors to prevent duplicate toasts
-  const shownErrorsRef = useRef(new Set<string>());
-
-  // Handle error toasts (UI side effect with domain-specific messages)
-  useEffect(() => {
-    if (state.state.status === "error") {
-      const error = state.state.error;
-      const errorKey = `${error.type}:${error.message}`;
-
-      if (!shownErrorsRef.current.has(errorKey)) {
-        shownErrorsRef.current.add(errorKey);
-
-        let errorMessage: string;
-        if (error.type === "precondition") {
-          errorMessage = error.message; // Preconditions are user-facing messages
-        } else if (error.type === "gas") {
-          errorMessage = getUserMessage(new Error(error.message));
-        } else if (error.type === "commitment") {
-          errorMessage = "Note generation failed";
-        } else {
-          errorMessage = getUserMessage(new Error(error.message));
-        }
-
-        showToast.error(errorMessage, { duration: 5000 });
-      }
-    }
-  }, [state.state]);
-
-  // Clear shown errors when status resets (UX hygiene)
-  useEffect(() => {
-    if (state.state.status === "idle") {
-      shownErrorsRef.current.clear();
-    }
-  }, [state.state.status]);
+  // Centralized error display
+  const error = state.state.status === "error" ? state.state.error : null;
+  useErrorDisplay(error, state.state.status === "idle");
 
   // Copy address handler
   const handleCopyAddress = async () => {
@@ -127,6 +98,20 @@ export function DepositForm({ asset }: DepositFormProps) {
     }
   }, [state.amount, state.wallet.isConnected, cryptoReady, state.wallet.chainId]);
 
+  // Track transaction for indexing status when txHash becomes available
+  const txHash =
+    state.state.status === "confirming" ||
+    state.state.status === "confirmed-onchain" ||
+    state.state.status === "failed"
+      ? state.state.txHash
+      : null;
+
+  useEffect(() => {
+    if (txHash) {
+      trackTransaction(txHash, state.wallet.chainId);
+    }
+  }, [txHash, state.wallet.chainId, trackTransaction]);
+
   const handleReviewDeposit = () => {
     // Already prepared, just navigate
     if (state.state.status === "ready") {
@@ -136,7 +121,8 @@ export function DepositForm({ asset }: DepositFormProps) {
 
   // Deposit Timeline Screen
   if (screens.is("timeline")) {
-    const depositAmounts = state.state.status === "ready" ? state.state.amounts : { noteAmount: 0 };
+    // Use preserved amounts from controller (survives state transitions)
+    const noteAmount = state.lastPreparedAmounts?.noteAmount ?? 0;
 
     // Map controller state to timeline props
     const timelineStatus = (() => {
@@ -149,19 +135,12 @@ export function DepositForm({ asset }: DepositFormProps) {
       return "submitting" as const; // Default for other states
     })();
 
-    const txHash =
-      state.state.status === "confirming" ||
-      state.state.status === "confirmed-onchain" ||
-      state.state.status === "failed"
-        ? state.state.txHash
-        : null;
-
     const error = state.state.status === "error" ? state.state.error : null;
     const failedReason = state.state.status === "failed" ? state.state.reason : null;
 
     return (
       <DepositTimelineScreen
-        noteAmount={depositAmounts.noteAmount}
+        noteAmount={noteAmount}
         status={timelineStatus}
         txHash={txHash}
         error={error}
