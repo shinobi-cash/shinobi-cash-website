@@ -9,7 +9,7 @@
  */
 
 import * as Sentry from "@sentry/react";
-import { AppError } from "@/lib/errors";
+import { isAppError, isAppException, ErrorCode } from "@/lib/errors";
 
 /**
  * Initialize Sentry monitoring
@@ -66,13 +66,13 @@ export function initializeSentry() {
       const error = hint.originalException;
 
       // Don't report user cancellations
-      if (error instanceof AppError) {
-        if (error.code === "USER_REJECTED" || error.code === "PASSKEY_CANCELLED") {
+      if (isAppError(error)) {
+        if (error.code === ErrorCode.BLOCKCHAIN.USER_REJECTED || error.code === ErrorCode.AUTH.CANCELLED) {
           return null;
         }
 
         // Don't report operational network errors (expected when offline)
-        if (error.isOperational && error.category === "NETWORK") {
+        if (error.category === "NETWORK") {
           return null;
         }
       }
@@ -129,10 +129,10 @@ export function initializeSentry() {
  */
 export function reportErrorToSentry(error: unknown, context?: Record<string, unknown>): void {
   // Set context tags for filtering/searching in Sentry
-  if (error instanceof AppError) {
+  if (isAppError(error)) {
     Sentry.setTag("error_category", error.category);
     Sentry.setTag("error_code", error.code);
-    Sentry.setTag("is_operational", error.isOperational);
+    Sentry.setTag("is_exception", String(isAppException(error)));
   }
 
   // Set custom context data

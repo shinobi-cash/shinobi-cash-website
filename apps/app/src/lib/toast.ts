@@ -4,7 +4,7 @@
  */
 
 import { toast } from "sonner";
-import { getUserMessage, isUserCancellation, logError } from "./errors/errorHandler";
+import { getUserMessage, isUserCancellation, logError } from "./errors";
 
 export const showToast = {
   success: (message: string, options?: Parameters<typeof toast.success>[1]) => {
