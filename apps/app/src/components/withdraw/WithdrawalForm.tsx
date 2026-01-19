@@ -1,8 +1,4 @@
-/**
- * Withdrawal Form - New Controller Pattern
- * Pure UI component using WithdrawController via snapshot adapter
- * Follows interaction contract: Review = instant, Confirm = work starts
- */
+"use client";
 
 import { Loader2, ChevronDown } from "lucide-react";
 import { useEffect } from "react";
@@ -30,11 +26,7 @@ import { WithdrawController, WithdrawSelectors } from "@/controllers/WithdrawCon
 
 type WithdrawScreen = "noteSelection" | "recipientInput" | "destinationSelection" | "timeline";
 
-interface WithdrawalFormProps {
-  onTransactionSuccess?: () => void;
-}
-
-export function WithdrawalForm({ onTransactionSuccess }: WithdrawalFormProps) {
+export function WithdrawalForm() {
   const asset = ETH_ASSET;
 
   const screens = useScreenNavigation<WithdrawScreen>();
@@ -51,13 +43,6 @@ export function WithdrawalForm({ onTransactionSuccess }: WithdrawalFormProps) {
       WithdrawController.schedulePreview();
     }
   }, [state.amount, state.recipientAddress, state.selectedNote, state.destinationChainId]);
-
-  // Notify parent on successful transaction (but don't auto-close - let user see success message)
-  useEffect(() => {
-    if (state.state.status === "confirmed") {
-      onTransactionSuccess?.();
-    }
-  }, [state.state.status, onTransactionSuccess]);
 
   // Interaction Contract Fix: Review = instant validation + navigation (NO work)
   const handleReviewWithdrawal = () => {

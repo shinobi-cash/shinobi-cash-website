@@ -1,11 +1,9 @@
 import { proxy } from "valtio";
-import type { NoteChain, DiscoveryProgress } from "@shinobi-cash/core";
-import { discoverNotes } from "@/services/NoteDiscoveryService";
+import type { NoteChain, DiscoveryProgress, Note } from "@shinobi-cash/core";
 import { notesRepo } from "@/lib/storage/RepositoryRegistry";
+import { fetchActivities } from "@/services/IndexerService";
 import { SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
 import { AuthController } from "@/controllers/AuthController";
-
-import type { Note } from "@shinobi-cash/core";
 import { NotesError, NotesStatus, ReadonlyNoteChain } from "@/types/notes";
 import { getAvailableNotes, getLastNote, getNoteChainCounts } from "@/utils/noteFiltering";
 
@@ -253,10 +251,14 @@ export const NotesDiscoveryController = {
     transition({ status: "discovering" });
 
     try {
-      const result = await discoverNotes(
+      const result = await notesRepo.discoverNotes(
         crypto.publicKey,
         SHINOBI_CASH_ETH_POOL.address,
         crypto.accountKey,
+        async (poolAddress, limit, cursor, orderDirection) => {
+          const result = await fetchActivities(poolAddress, limit, cursor, orderDirection);
+          return { items: result.items, pageInfo: result.pageInfo };
+        },
         {
           signal: abortController.signal,
           onProgress: (progress) => {
