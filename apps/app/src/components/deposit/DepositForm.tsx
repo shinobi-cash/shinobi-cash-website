@@ -149,6 +149,7 @@ export function DepositForm({ asset }: DepositFormProps) {
         txHash={txHash}
         error={error}
         failedReason={failedReason}
+        originChainId={state.wallet.chainId}
         onClose={() => {
           DepositController.reset();
           screens.close();
@@ -167,6 +168,8 @@ export function DepositForm({ asset }: DepositFormProps) {
       state.state.status === "ready" ? state.state.gasEstimate : { gasCostEth: "0" };
     const isSubmitting = state.state.status === "submitting";
 
+    const isCrossChain = chainId !== POOL_CHAIN.id;
+
     return (
       <DepositPreviewScreen
         onBack={screens.close}
@@ -180,6 +183,7 @@ export function DepositForm({ asset }: DepositFormProps) {
         poolAddress={SHINOBI_CASH_ETH_POOL.address}
         userAddress={state.wallet.address}
         isProcessing={isSubmitting}
+        isCrossChain={isCrossChain}
       />
     );
   }

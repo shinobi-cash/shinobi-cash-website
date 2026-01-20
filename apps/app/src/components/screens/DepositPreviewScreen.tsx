@@ -1,12 +1,13 @@
 "use client";
 
-import { Loader2, Shield } from "lucide-react";
+import { Loader2, Shield, Globe, Clock } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";
 import { ScreenLayout } from "@/components/layout/ScreenLayout";
+import { LabelWithHover } from "@/components/shared/LabelWithHover";
 import { usePriceData } from "@/hooks/usePriceData";
 import { formatUsdAmount, formatSmallEthAmount } from "@/utils/formatters";
-import { POOL_CHAIN, SHINOBI_CASH_SUPPORTED_CHAINS } from "@shinobi-cash/constants";
+import { POOL_CHAIN, SHINOBI_CASH_SUPPORTED_CHAINS, CROSSCHAIN_DEPOSIT_TIMING } from "@shinobi-cash/constants";
 import { ShinobiCashNote, AssetChain } from "@/components/shared/AssetChain";
 
 interface DepositPreviewScreenProps {
@@ -21,6 +22,7 @@ interface DepositPreviewScreenProps {
   poolAddress: string;
   userAddress: string;
   isProcessing: boolean;
+  isCrossChain: boolean;
 }
 
 export function DepositPreviewScreen({
@@ -32,12 +34,20 @@ export function DepositPreviewScreen({
   solverFee,
   originChainId,
   isProcessing,
+  isCrossChain,
 }: DepositPreviewScreenProps) {
   const depositAmountNum = Number.parseFloat(depositAmount) || 0;
   const gasCostNum = Number.parseFloat(gasCostEth) || 0;
 
-  const depositNoteAmount = depositAmountNum - complianceFee - gasCostNum - solverFee;
-  const vettingFeePercent = depositAmountNum > 0 ? (complianceFee / depositAmountNum) * 100 : 0;
+  // Fee calculation:
+  // 1. Solver fee is deducted on origin chain (cross-chain only)
+  // 2. Vetting fee (1%) is deducted on pool chain from net amount
+  // 3. Gas is paid separately, NOT deducted from note amount
+  const netAfterSolverFee = depositAmountNum - solverFee;
+  const depositNoteAmount = netAfterSolverFee - complianceFee;
+
+  // Vetting fee is calculated on net amount after solver fee, not original deposit
+  const vettingFeePercent = netAfterSolverFee > 0 ? (complianceFee / netAfterSolverFee) * 100 : 0;
 
   const { usdPrice } = usePriceData("ETH");
 
@@ -45,9 +55,24 @@ export function DepositPreviewScreen({
   const noteUsd = usdPrice !== null ? depositNoteAmount * usdPrice : null;
   const vettingFeeUsd = usdPrice !== null ? complianceFee * usdPrice : null;
   const gasFeeUsd = usdPrice !== null ? gasCostNum * usdPrice : null;
+  const solverFeeUsd = usdPrice !== null && solverFee > 0 ? solverFee * usdPrice : null;
 
   const originChain =
     SHINOBI_CASH_SUPPORTED_CHAINS.find((c) => c.id === originChainId) ?? POOL_CHAIN;
+
+  // Format timing for display
+  const formatDuration = (seconds: number) => {
+    if (seconds >= 3600) {
+      const hours = Math.floor(seconds / 3600);
+      return `${hours} hour${hours > 1 ? "s" : ""}`;
+    }
+    const minutes = Math.floor(seconds / 60);
+    return `${minutes} minute${minutes > 1 ? "s" : ""}`;
+  };
+
+  const fillDeadline = formatDuration(CROSSCHAIN_DEPOSIT_TIMING.FILL_DEADLINE_SECONDS);
+  // TODO: Use once expiry is closer to fill deadline
+  // const refundWindow = formatDuration(CROSSCHAIN_DEPOSIT_TIMING.EXPIRY_SECONDS);
 
   return (
     <ScreenLayout
@@ -66,7 +91,7 @@ export function DepositPreviewScreen({
             You'll deposit {formatSmallEthAmount(depositAmountNum)} ETH
           </h1>
 
-          {depositUsd !== null && <p className="text-md text-zinc-500">~{formatUsdAmount(depositUsd)}</p>}
+          {/* {depositUsd !== null && <p className="text-md text-zinc-500">~{formatUsdAmount(depositUsd)}</p>} */}
         </div>
       </div>
 
@@ -113,25 +138,76 @@ export function DepositPreviewScreen({
 
       {/* Details */}
       <div className="w-full space-y-2">
-        <DetailRow label="Origin" value={originChain.name} />
-        <DetailRow
-          label={`Vetting Fee (${vettingFeePercent.toFixed(0)}%)`}
-          value={`${formatSmallEthAmount(complianceFee)} ETH${vettingFeeUsd !== null ? ` (~${formatUsdAmount(vettingFeeUsd)})` : ""}`}
-        />
-        <DetailRow
-          label="Network Gas Fee"
-          value={`${formatSmallEthAmount(gasCostNum)} ETH${gasFeeUsd !== null ? ` (~${formatUsdAmount(gasFeeUsd)})` : ""}`}
-        />
-        {/*TODO:Improvement Route will only be possible when deposit is crosschain which get filled by Shinobi Solver */}
-        {/* <DetailRow
+        {/* Route indicator for cross-chain */}
+        {isCrossChain && (
+          <DetailRow
             label="Route"
             value={
               <span className="flex items-center gap-1.5 text-blue-400">
                 <Globe className="h-4 w-4" />
-                Shinobi Relay
+                Shinobi Solver
               </span>
             }
-          /> */}
+          />
+        )}
+
+        <DetailRow label="Origin" value={originChain.name} />
+        <DetailRow label="Destination" value={POOL_CHAIN.name} />
+
+        {/* Solver fee for cross-chain */}
+        {isCrossChain && solverFee > 0 && (
+          <DetailRow
+            label="Solver Fee (5%)"
+            value={
+              <FeeValue
+                amount={solverFee}
+                usdValue={solverFeeUsd}
+              />
+            }
+          />
+        )}
+
+        <DetailRow
+          label={`Vetting Fee (${vettingFeePercent.toFixed(0)}%)`}
+          value={
+            <FeeValue
+              amount={complianceFee}
+              usdValue={vettingFeeUsd}
+            />
+          }
+        />
+        <DetailRow
+          label="Network Gas"
+          value={
+            <FeeValue
+              amount={gasCostNum}
+              usdValue={gasFeeUsd}
+            />
+          }
+        />
+
+        {/* Cross-chain timing info */}
+        {isCrossChain && (
+          <DetailRow
+            label="Fill Deadline"
+            value={
+              <span className="flex items-center gap-1.5">
+                <Clock className="h-3.5 w-3.5 text-zinc-500" />
+                {fillDeadline}
+              </span>
+            }
+          />
+          // TODO: Show refundable after once expiry is closer to fill deadline
+          // <DetailRow
+          //   label="Refundable After"
+          //   value={
+          //     <span className="flex items-center gap-1.5">
+          //       <RotateCcw className="h-3.5 w-3.5 text-zinc-500" />
+          //       {refundWindow}
+          //     </span>
+          //   }
+          // />
+        )}
       </div>
 
       {/* Footer */}
@@ -165,4 +241,18 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
       <span className="text-[15px] font-medium text-zinc-200">{value}</span>
     </div>
   );
+}
+
+function FeeValue({ amount, usdValue }: { amount: number; usdValue: number | null }) {
+  const ethText = `${formatSmallEthAmount(amount)} ETH`;
+
+  if (usdValue !== null) {
+    return (
+      <LabelWithHover hoverText={ethText} className="cursor-help">
+        ~{formatUsdAmount(usdValue)}
+      </LabelWithHover>
+    );
+  }
+
+  return <>{ethText}</>;
 }

@@ -32,6 +32,7 @@ interface DepositTimelineScreenProps {
   txHash: string | null;
   error: AppError | null;
   failedReason: string | null;
+  originChainId: number;
   onClose: () => void;
 }
 
@@ -41,10 +42,11 @@ export function DepositTimelineScreen({
   txHash,
   error,
   failedReason,
+  originChainId,
   onClose,
 }: DepositTimelineScreenProps) {
   const { trackingStatus } = useTransactionTracking();
-  const explorerUrl = txHash ? getTxExplorerUrl(1, txHash) : null;
+  const explorerUrl = txHash ? getTxExplorerUrl(originChainId, txHash) : null;
 
   const isSubmitting = status === "submitting";
   const isConfirming = status === "confirming";

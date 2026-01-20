@@ -101,13 +101,35 @@ export function formatTimestamp(timestamp: string | bigint): string {
 }
 
 export function formatUsdAmount(amount: number, decimals?: number): string {
-  // Auto-detect decimals: use 3 for small non-zero amounts, 2 for zero or larger amounts
-  const effectiveDecimals = decimals ?? (amount > 0 && amount < 0.1 ? 3 : 2);
+  // For zero or explicit decimals, use fixed formatting
+  if (amount === 0 || decimals !== undefined) {
+    const effectiveDecimals = decimals ?? 2;
+    return `$${amount.toLocaleString("en-US", {
+      minimumFractionDigits: effectiveDecimals,
+      maximumFractionDigits: effectiveDecimals,
+    })}`;
+  }
 
-  return `$${amount.toLocaleString("en-US", {
-    minimumFractionDigits: effectiveDecimals,
-    maximumFractionDigits: effectiveDecimals,
-  })}`;
+  // For amounts >= $0.01, use 2 decimals
+  if (amount >= 0.01) {
+    return `$${amount.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+  }
+
+  // For small amounts, show significant digits (similar to formatSmallEthAmount)
+  const str = amount.toFixed(18);
+  const match = str.match(/^0\.(0*)([1-9]\d*)/);
+
+  if (!match) {
+    return `$${amount.toFixed(2)}`;
+  }
+
+  const leadingZeros = match[1].length;
+  const decimalsNeeded = leadingZeros + 2; // Show 2 significant digits
+
+  return `$${amount.toFixed(Math.min(decimalsNeeded, 8))}`;
 }
 
 /**

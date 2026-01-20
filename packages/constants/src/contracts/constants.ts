@@ -40,6 +40,14 @@ export const DEPOSIT_FEES = {
 } as const;
 
 /**
+ * Cross-chain deposit timing parameters (from contract defaults)
+ */
+export const CROSSCHAIN_DEPOSIT_TIMING = {
+  FILL_DEADLINE_SECONDS: 3600, // 1 hour - solver must fill within this time
+  EXPIRY_SECONDS: 86400, // 24 hours - user can refund after this time if not filled
+} as const;
+
+/**
  * Gas limits for Account Abstraction operations
  */
 export const GAS_LIMITS = {

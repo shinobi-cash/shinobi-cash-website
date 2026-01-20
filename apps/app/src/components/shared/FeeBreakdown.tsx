@@ -8,6 +8,7 @@ import { usePriceData } from "@/hooks/usePriceData";
 import { formatUsdAmount } from "@/utils/formatters";
 import type { TokenSymbol } from "@/types/price";
 import { ChevronDown } from "lucide-react";
+import { LabelWithHover } from "./LabelWithHover";
 
 interface FeeBreakdownProps {
   /** Execution fee - accepts string (for estimates) or number (for exact values) */
@@ -56,6 +57,28 @@ export function FeeBreakdown({
   // Prefix for amounts
   const prefix = showAsDeduction ? "-" : "~";
 
+  // Format token amount (e.g., "~0.0001 ETH")
+  const formatTokenAmount = (amount: number): string =>
+    `${prefix}${amount.toFixed(decimals)} ${assetSymbol}`;
+
+  // Render fee value: USD shown, ETH on hover (if USD available)
+  const renderFeeValue = (
+    feeAmount: number,
+    feeUsd: number | null,
+    estimating = false
+  ) => {
+    if (estimating) return "Estimating...";
+    const tokenText = formatTokenAmount(feeAmount);
+    if (feeUsd !== null) {
+      return (
+        <LabelWithHover hoverText={tokenText} className="cursor-help">
+          {prefix}{formatUsdAmount(feeUsd)}
+        </LabelWithHover>
+      );
+    }
+    return tokenText;
+  };
+
   return (
     <div className="mb-2">
       <details className="overflow-hidden">
@@ -64,7 +87,7 @@ export function FeeBreakdown({
           <div className="flex items-center gap-2">
             {!isEstimating && totalFeesUsd !== null && (
               <span className="text-muted-foreground text-sm">
-                ≈ {formatUsdAmount(totalFeesUsd, 4)}
+                {prefix}{formatUsdAmount(totalFeesUsd)}
               </span>
             )}
             <ChevronDown className="hover:bg-muted/80 h-4 w-4" />
@@ -72,40 +95,17 @@ export function FeeBreakdown({
         </summary>
         <div className="space-y-2 pt-2">
           <div className="flex items-center justify-between text-sm">
-            <div className="flex flex-col">
-              <span className="text-muted-foreground">Execution Fee</span>
-              <span className="text-muted-foreground text-xs">Network gas</span>
-            </div>
-            <div className="flex flex-col items-end gap-0.5">
-              <span className="text-orange-400">
-                {isEstimating
-                  ? "Estimating..."
-                  : `${prefix}${executionFeeNumber.toFixed(decimals)} ${assetSymbol}`}
-              </span>
-              {!isEstimating && executionFeeUsd !== null && (
-                <span className="text-muted-foreground text-xs">
-                  ≈ {formatUsdAmount(executionFeeUsd, 4)}
-                </span>
-              )}
-            </div>
+            <span className="text-muted-foreground">Network Gas</span>
+            <span className="text-orange-400">
+              {renderFeeValue(executionFeeNumber, executionFeeUsd, isEstimating)}
+            </span>
           </div>
           {isCrossChain && solverFee !== undefined && solverFee > 0 && (
             <div className="flex items-center justify-between text-sm">
-              <div className="flex flex-col">
-                <span className="text-muted-foreground">Solver Fee</span>
-                <span className="text-muted-foreground text-xs">Cross-chain</span>
-              </div>
-              <div className="flex flex-col items-end gap-0.5">
-                <span className="text-orange-400">
-                  {prefix}
-                  {solverFee.toFixed(decimals)} {assetSymbol}
-                </span>
-                {solverFeeUsd !== null && (
-                  <span className="text-muted-foreground text-xs">
-                    ≈ {formatUsdAmount(solverFeeUsd)}
-                  </span>
-                )}
-              </div>
+              <span className="text-muted-foreground">Solver Fee (5%)</span>
+              <span className="text-orange-400">
+                {renderFeeValue(solverFee, solverFeeUsd)}
+              </span>
             </div>
           )}
         </div>
