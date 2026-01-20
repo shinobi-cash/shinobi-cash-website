@@ -154,11 +154,11 @@ importers:
   apps/explorer:
     dependencies:
       '@shinobi-cash/constants':
-        specifier: ^0.0.2
-        version: 0.0.2
+        specifier: workspace:*
+        version: link:../../packages/constants
       '@shinobi-cash/data':
-        specifier: ^0.0.2
-        version: 0.0.2(graphql@16.12.0)
+        specifier: workspace:*
+        version: link:../../packages/data
       '@tanstack/react-query':
         specifier: ^5.62.14
         version: 5.90.12(react@19.2.3)
@@ -2182,12 +2182,6 @@ packages:
     engines: {node: '>=18'}
     peerDependencies:
       react: ^16.14.0 || 17.x || 18.x || 19.x
-
-  '@shinobi-cash/constants@0.0.2':
-    resolution: {integrity: sha512-IX3H9RiXJI4+qO4XwyhdzbX43JIj1/0pBxhVnOOlWl4XwVAwjplJiIILHouMwMM3/Ptfh0l/aYH24UxSjok4KQ==}
-
-  '@shinobi-cash/data@0.0.2':
-    resolution: {integrity: sha512-ujfnlacz39ZVrZ4afNp68Lf+KuSv+s6ikL6U2Xes+tSXYAA64bNSzsMRrL0gCpFlhQvJIg/lCDnDh5m4484MaQ==}
 
   '@socket.io/component-emitter@3.1.2':
     resolution: {integrity: sha512-9BCxFwvbGg/RsZK9tjXd8s4UcwR0MWeFQ1XEKIQVVvAGJyINdrqKMcTRyLoK8Rse1GjzLV9cwjWV1olXRWEXVA==}
@@ -8931,15 +8925,6 @@ snapshots:
       '@sentry/core': 10.30.0
       hoist-non-react-statics: 3.3.2
       react: 19.2.3
-
-  '@shinobi-cash/constants@0.0.2': {}
-
-  '@shinobi-cash/data@0.0.2(graphql@16.12.0)':
-    dependencies:
-      '@shinobi-cash/constants': 0.0.2
-      graphql-request: 7.2.0(graphql@16.12.0)
-    transitivePeerDependencies:
-      - graphql
 
   '@socket.io/component-emitter@3.1.2': {}
 
