@@ -10,7 +10,6 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import React, { type ReactNode } from "react";
 import { cookieToInitialState, WagmiProvider, type Config } from "wagmi";
 import { Toaster } from "@workspace/ui/components/sonner";
-import { Particles } from "@workspace/ui/components/particles";
 import { RuntimeBootstrap } from "./RuntimeBootstrap";
 
 // Set up queryClient
@@ -49,13 +48,6 @@ function ContextProvider({ children, cookies }: { children: ReactNode; cookies: 
           <WagmiProvider config={wagmiAdapter.wagmiConfig as Config} initialState={initialState}>
             <QueryClientProvider client={queryClient}>
               <RuntimeBootstrap />
-              <Particles
-                className="pointer-events-none fixed inset-0"
-                quantity={100}
-                ease={80}
-                color="#f97316"
-                refresh={true}
-              />
               {children}
               <Toaster />
             </QueryClientProvider>
