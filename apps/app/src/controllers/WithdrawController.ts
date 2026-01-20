@@ -4,6 +4,7 @@ import { Note } from "@shinobi-cash/core";
 import { POOL_CHAIN } from "@shinobi-cash/constants";
 import { AuthController } from "@/controllers/AuthController";
 import { EnginePhase, WithdrawalEngine } from "@/services/WithdrawalOrchestratorService";
+import { createStateMachine } from "@/utils/stateMachine";
 import {
   ExecutionResult,
   FeeQuote,
@@ -141,24 +142,23 @@ let prepareId = 0;
 let previewId = 0;
 let previewTimeout: ReturnType<typeof setTimeout> | null = null;
 
-const allowedTransitions: Record<WithdrawState["status"], WithdrawState["status"][]> = {
-  idle: ["previewing", "preparing"],
-  previewing: ["idle", "preparing"],
-  preparing: ["ready", "error"],
-  ready: ["submitting", "preparing", "idle"],
-  submitting: ["confirmed", "error"],
-  confirmed: ["indexed", "idle"],
-  indexed: ["idle"],
-  error: ["idle", "preparing"],
-};
-
-function transition(next: WithdrawState) {
-  const current = state.state.status;
-  if (process.env.NODE_ENV !== "production" && !allowedTransitions[current].includes(next.status)) {
-    console.warn(`[WithdrawController] Invalid transition: ${current} → ${next.status}`);
-  }
-  state.state = next;
-}
+const { transition } = createStateMachine<WithdrawState>({
+  name: "WithdrawController",
+  allowedTransitions: {
+    idle: ["previewing", "preparing"],
+    previewing: ["idle", "preparing"],
+    preparing: ["ready", "error"],
+    ready: ["submitting", "preparing", "idle"],
+    submitting: ["confirmed", "error"],
+    confirmed: ["indexed", "idle"],
+    indexed: ["idle"],
+    error: ["idle", "preparing"],
+  },
+  getState: () => state.state,
+  setState: (next) => {
+    state.state = next;
+  },
+});
 
 export const WithdrawController = {
   state,

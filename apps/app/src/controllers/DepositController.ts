@@ -2,6 +2,7 @@ import { proxy } from "valtio";
 import { depositService, type CashNoteData, type GasEstimate } from "@/utils/deposit";
 import { formatDepositAmountsForDisplay } from "@/utils/depositFees";
 import { isDepositSupported } from "@/utils/depositRoute";
+import { createStateMachine } from "@/utils/stateMachine";
 import { DEPOSIT_FEES, POOL_CHAIN } from "@shinobi-cash/constants";
 import type { PublicClient, WalletClient } from "viem";
 import { AuthController } from "@/controllers/AuthController";
@@ -78,25 +79,24 @@ export const DepositSelectors = {
 let prepareId = 0;
 let prepareTimeout: ReturnType<typeof setTimeout> | null = null;
 
-const allowedTransitions: Record<DepositState["status"], DepositState["status"][]> = {
-  idle: ["preparing"],
-  preparing: ["ready", "error"],
-  ready: ["submitting", "preparing", "idle"],
-  submitting: ["confirming", "error"],
-  confirming: ["confirmed-onchain", "failed"],
-  "confirmed-onchain": ["indexed"],
-  indexed: ["idle"],
-  failed: ["preparing", "idle"],
-  error: ["idle", "preparing"],
-};
-
-function transition(next: DepositState) {
-  const current = state.state.status;
-  if (process.env.NODE_ENV !== "production" && !allowedTransitions[current].includes(next.status)) {
-    console.warn(`[DepositController] Invalid transition: ${current} → ${next.status}`);
-  }
-  state.state = next;
-}
+const { transition } = createStateMachine<DepositState>({
+  name: "DepositController",
+  allowedTransitions: {
+    idle: ["preparing"],
+    preparing: ["ready", "error"],
+    ready: ["submitting", "preparing", "idle"],
+    submitting: ["confirming", "error"],
+    confirming: ["confirmed-onchain", "failed"],
+    "confirmed-onchain": ["indexed"],
+    indexed: ["idle"],
+    failed: ["preparing", "idle"],
+    error: ["idle", "preparing"],
+  },
+  getState: () => state.state,
+  setState: (next) => {
+    state.state = next;
+  },
+});
 
 export const DepositController = {
   state,

@@ -2,6 +2,7 @@ import { proxy } from "valtio";
 import type { NoteChain, DiscoveryProgress, Note } from "@shinobi-cash/core";
 import { notesRepo } from "@/lib/storage/repositories/NotesRepository";
 import { fetchActivities } from "@/utils/indexer";
+import { createStateMachine } from "@/utils/stateMachine";
 import { SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
 import { AuthController } from "@/controllers/AuthController";
 import { NotesError, NotesStatus, ReadonlyNoteChain } from "@/types/notes";
@@ -75,20 +76,27 @@ const log = {
   },
 };
 
-/**
- * State transition helper
- */
-function transition(newState: DiscoveryState) {
-  log.debug("Transition:", state.state.status, "→", newState.status);
-  state.state = newState;
+const { transition } = createStateMachine<DiscoveryState>({
+  name: "NotesDiscoveryController",
+  allowedTransitions: {
+    idle: ["discovering", "ready"],
+    discovering: ["ready", "error"],
+    ready: ["discovering"],
+    error: ["idle", "discovering"],
+  },
+  getState: () => state.state,
+  setState: (next) => {
+    log.debug("Transition:", state.state.status, "→", next.status);
+    state.state = next;
 
-  // Clear last error on non-error transitions
-  if (newState.status !== "error") {
-    state.lastError = null;
-  } else {
-    state.lastError = newState.error;
-  }
-}
+    // Clear last error on non-error transitions
+    if (next.status !== "error") {
+      state.lastError = null;
+    } else {
+      state.lastError = next.error;
+    }
+  },
+});
 
 /**
  * Selectors - Derived views from canonical state
