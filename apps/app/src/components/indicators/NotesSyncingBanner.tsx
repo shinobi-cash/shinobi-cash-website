@@ -1,14 +1,13 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
 import { useSnapshot } from "valtio";
 import { NotesDiscoveryController } from "@/controllers/NotesDiscoveryController";
 
 /**
- * Shows a banner when notes are syncing for the first time (no cache)
- * Disappears once notes are ready or if there's cached data
+ * Shows a centered loader when notes are syncing for the first time (no cache)
+ * Similar to auth's "Initializing..." screen
  */
-export function NotesSyncingBanner() {
+export function NotesSyncingScreen() {
   const state = useSnapshot(NotesDiscoveryController.state);
 
   const isDiscovering = state.state.status === "discovering";
@@ -20,9 +19,9 @@ export function NotesSyncingBanner() {
   }
 
   return (
-    <div className="flex items-center justify-center gap-2 rounded-lg border border-border bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
-      <Loader2 className="h-4 w-4 animate-spin" />
-      <span>Syncing your notes...</span>
+    <div className="flex flex-col items-center justify-center p-8">
+      <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-border border-t-orange-500" />
+      <h2 className="text-lg font-semibold">Syncing notes...</h2>
     </div>
   );
 }

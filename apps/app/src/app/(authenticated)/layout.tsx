@@ -7,7 +7,8 @@ import { DashboardTabs } from "@/components/layout/DashboardTabs";
 import { useSnapshot } from "valtio";
 import { AuthController } from "@/controllers/AuthController";
 import { IndexerHealthIndicator } from "@/components/indicators/IndexerHealthIndicator";
-import { NotesSyncingBanner } from "@/components/indicators/NotesSyncingBanner";
+import { NotesSyncingScreen } from "@/components/indicators/NotesSyncingBanner";
+import { NotesDiscoveryController } from "@/controllers/NotesDiscoveryController";
 
 /**
  * Authenticated Layout
@@ -16,7 +17,10 @@ import { NotesSyncingBanner } from "@/components/indicators/NotesSyncingBanner";
  */
 export default function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const state = useSnapshot(AuthController.state);
+  const notesState = useSnapshot(NotesDiscoveryController.state);
+
   const isAuthenticated = state.state.status === "authenticated";
+  const isNotesSyncing = notesState.state.status === "discovering" && notesState.noteChains.length === 0;
 
   // Show auth screen if not authenticated
   if (!isAuthenticated) {
@@ -53,13 +57,10 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
             <DashboardTabs />
           </div>
 
-          {/* Notes Syncing Banner */}
-          <div className="px-4">
-            <NotesSyncingBanner />
-          </div>
-
           {/* Card Content */}
-          <div className="rounded-xl border border-border bg-card/70">{children}</div>
+          <div className="rounded-xl border border-border bg-card/70">
+            {isNotesSyncing ? <NotesSyncingScreen /> : children}
+          </div>
         </div>
       </div>
 
