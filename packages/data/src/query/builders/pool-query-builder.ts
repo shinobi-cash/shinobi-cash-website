@@ -35,8 +35,10 @@ export class PoolQueryBuilder extends BaseQueryBuilder<
 
     return `
       query ${queryName}($id: String!) {
-        pool(id: $id) {
-          ${fields}
+        pools(where: { id: $id }, limit: 1) {
+          items {
+            ${fields}
+          }
         }
       }
     `;
@@ -72,15 +74,15 @@ export class PoolQueryBuilder extends BaseQueryBuilder<
   }
 
   /**
-   * Override execute to handle single entity response
+   * Override execute to handle Ponder pagination response
    */
   async execute(): Promise<Pool[]> {
     const query = this.buildDynamicQuery();
     const variables = this.buildVariables();
-    const result = await this.client.executeQuery<{ pool: Pool }>(query, variables);
+    const result = await this.client.executeQuery<{ pools: { items: Pool[] } }>(query, variables);
 
-    // Return as array for consistency with base class
-    return result.pool ? [result.pool] : [];
+    // Return items array from Ponder pagination response
+    return result.pools?.items ?? [];
   }
 
   /**
