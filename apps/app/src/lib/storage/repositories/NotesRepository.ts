@@ -47,7 +47,7 @@ export class NotesRepository {
         notes: cached.notes,
         lastUsedIndex: cached.lastUsedDepositIndex,
         newNotesFound: 0,
-        lastProcessedCursor: cached.lastProcessedCursor,
+        lastProcessedOffset: cached.lastProcessedOffset,
       };
     }
 
@@ -61,7 +61,7 @@ export class NotesRepository {
     publicKey: string,
     poolAddress: string,
     notes: NoteChain[],
-    lastProcessedCursor?: string
+    lastProcessedOffset?: number
   ): Promise<void> {
     if (!this.encryptionService.isKeyAvailable()) {
       throw new Error("Session not initialized");
@@ -69,7 +69,7 @@ export class NotesRepository {
 
     const lastUsedIndex =
       notes.length > 0 ? Math.max(...notes.map((chain) => chain[0].depositIndex)) : -1;
-    await this.storeData(publicKey, poolAddress, notes, lastUsedIndex, lastProcessedCursor);
+    await this.storeData(publicKey, poolAddress, notes, lastUsedIndex, lastProcessedOffset);
   }
 
   /**
@@ -80,7 +80,7 @@ export class NotesRepository {
     poolAddress: string,
     notes: NoteChain[],
     lastUsedDepositIndex: number,
-    lastProcessedCursor?: string
+    lastProcessedOffset?: number
   ): Promise<void> {
     const sensitiveData: CachedNoteData = {
       poolAddress,
@@ -88,7 +88,7 @@ export class NotesRepository {
       notes,
       lastUsedDepositIndex,
       lastSyncTime: Date.now(),
-      lastProcessedCursor,
+      lastProcessedOffset,
     };
 
     const encrypted = await this.encryptionService.encrypt(sensitiveData);
@@ -167,12 +167,12 @@ export class NotesRepository {
         return {
           notes: cached.notes,
           lastUsedIndex: cached.lastUsedIndex,
-          cursor: cached.lastProcessedCursor,
+          offset: cached.lastProcessedOffset,
         };
       },
 
       saveState: async (pubKey: string, pool: string, state: DiscoveryState) => {
-        await this.storeDiscoveredNotes(pubKey, pool, state.notes, state.cursor);
+        await this.storeDiscoveredNotes(pubKey, pool, state.notes, state.offset);
       },
     });
 

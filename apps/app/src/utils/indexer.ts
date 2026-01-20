@@ -9,7 +9,6 @@ export interface PaginatedResponse<T> {
   pageInfo: {
     hasNextPage: boolean;
     hasPreviousPage: boolean;
-    endCursor?: string;
   };
 }
 
@@ -28,7 +27,7 @@ export interface ASPApprovalListLegacy {
 export async function fetchActivities(
   poolAddress?: string,
   limit = 100,
-  after?: string,
+  offset?: number,
   orderDirection: "asc" | "desc" = "desc"
 ) {
   try {
@@ -37,7 +36,7 @@ export async function fetchActivities(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         endpoint: "activities",
-        params: { poolAddress, limit, after, orderDirection },
+        params: { poolAddress, limit, offset, orderDirection },
       }),
     });
 
