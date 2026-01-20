@@ -14,21 +14,21 @@ interface ActivityTypeBadgeProps {
 
 const TYPE_STYLES: Record<ActivityType, { bg: string; text: string; dot: string; icon: string }> = {
   deposit: {
-    bg: "bg-green-100 dark:bg-green-900/30",
-    text: "text-green-800 dark:text-green-400",
-    dot: "bg-green-500",
+    bg: "bg-emerald-400/10",
+    text: "text-emerald-400",
+    dot: "bg-emerald-400",
     icon: "🟢",
   },
   withdrawal: {
-    bg: "bg-blue-100 dark:bg-blue-900/30",
-    text: "text-blue-800 dark:text-blue-400",
-    dot: "bg-blue-500",
+    bg: "bg-rose-400/10",
+    text: "text-rose-400",
+    dot: "bg-rose-400",
     icon: "🔵",
   },
   refund: {
-    bg: "bg-yellow-100 dark:bg-yellow-900/30",
-    text: "text-yellow-800 dark:text-yellow-400",
-    dot: "bg-yellow-500",
+    bg: "bg-yellow-400/10",
+    text: "text-yellow-400",
+    dot: "bg-yellow-400",
     icon: "🟡",
   },
 };

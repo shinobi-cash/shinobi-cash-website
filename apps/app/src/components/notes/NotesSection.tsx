@@ -23,8 +23,8 @@ export function NotesSection({ controller, onNoteChainClick }: NotesSectionProps
       onClick={() => controller.setFilter(filter)}
       className={`flex-1 px-4 py-2 text-sm font-semibold transition-colors ${
         controller.activeFilter === filter
-          ? `text-app-primary border-b-2 ${borderColor}`
-          : "text-app-secondary hover:text-app-primary"
+          ? `text-white border-b-2 ${borderColor}`
+          : "text-neutral-400 hover:text-white"
       }`}
     >
       {NOTE_FILTER_LABELS[filter]} ({count})
@@ -36,8 +36,8 @@ export function NotesSection({ controller, onNoteChainClick }: NotesSectionProps
       return (
         <div className="flex items-center justify-center py-8">
           <div className="text-center">
-            <p className="text-app-secondary mb-1">Unable to load notes</p>
-            <p className="text-app-tertiary text-sm">Please check your connection and try again</p>
+            <p className="text-neutral-400 mb-1">Unable to load notes</p>
+            <p className="text-neutral-500 text-sm">Please check your connection and try again</p>
           </div>
         </div>
       );
@@ -47,8 +47,8 @@ export function NotesSection({ controller, onNoteChainClick }: NotesSectionProps
       return (
         <div className="flex items-center justify-center py-8">
           <div className="text-center">
-            <RefreshCw className="text-app-secondary mx-auto mb-2 h-6 w-6 animate-spin" />
-            <p className="text-app-secondary">Discovering your notes...</p>
+            <RefreshCw className="text-neutral-400 mx-auto mb-2 h-6 w-6 animate-spin" />
+            <p className="text-neutral-400">Discovering your notes...</p>
           </div>
         </div>
       );
@@ -60,8 +60,8 @@ export function NotesSection({ controller, onNoteChainClick }: NotesSectionProps
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
             <span className="mb-2 block text-2xl">💰</span>
-            <p className="text-app-secondary mb-1">No deposits yet</p>
-            <p className="text-app-tertiary text-sm">
+            <p className="text-neutral-400 mb-1">No deposits yet</p>
+            <p className="text-neutral-500 text-sm">
               Make your first private deposit to get started
             </p>
           </div>
@@ -77,22 +77,22 @@ export function NotesSection({ controller, onNoteChainClick }: NotesSectionProps
             {controller.activeFilter === "available" ? (
               <>
                 <span className="mb-2 block text-2xl">💸</span>
-                <p className="text-app-secondary mb-1">No available funds</p>
-                <p className="text-app-tertiary text-sm">All your deposits have been spent</p>
+                <p className="text-neutral-400 mb-1">No available funds</p>
+                <p className="text-neutral-500 text-sm">All your deposits have been spent</p>
               </>
             ) : controller.activeFilter === "pending" ? (
               <>
                 <span className="mb-2 block text-2xl">⏳</span>
-                <p className="text-app-secondary mb-1">No pending deposits</p>
-                <p className="text-app-tertiary text-sm">
+                <p className="text-neutral-400 mb-1">No pending deposits</p>
+                <p className="text-neutral-500 text-sm">
                   All cross-chain deposits have been filled
                 </p>
               </>
             ) : (
               <>
                 <span className="mb-2 block text-2xl">🔒</span>
-                <p className="text-app-secondary mb-1">No spent deposits</p>
-                <p className="text-app-tertiary text-sm">Your deposits are still available</p>
+                <p className="text-neutral-400 mb-1">No spent deposits</p>
+                <p className="text-neutral-500 text-sm">Your deposits are still available</p>
               </>
             )}
           </div>
@@ -107,9 +107,9 @@ export function NotesSection({ controller, onNoteChainClick }: NotesSectionProps
     <div className="flex min-h-0 flex-1 flex-col space-y-2">
       <div className="flex-shrink-0">
         <div className="flex">
-          {renderFilterButton("available", controller.availableCount, "border-green-500")}
-          {renderFilterButton("pending", controller.pendingCount, "border-yellow-500")}
-          {renderFilterButton("spent", controller.spentCount, "border-red-500")}
+          {renderFilterButton("available", controller.availableCount, "border-emerald-400")}
+          {renderFilterButton("pending", controller.pendingCount, "border-yellow-400")}
+          {renderFilterButton("spent", controller.spentCount, "border-rose-400")}
         </div>
       </div>
 
@@ -121,7 +121,7 @@ export function NotesSection({ controller, onNoteChainClick }: NotesSectionProps
           {controller.filteredNoteViews.length > 0 && (
             <>
               {controller.filteredNoteViews.map((view) => (
-                <div key={view.key} className="border-app-border border-b last:border-b-0">
+                <div key={view.key} className="border-white/10 border-b last:border-b-0">
                   <NoteRow note={view.lastNote} onClick={() => onNoteChainClick(view.chain)} />
                 </div>
               ))}

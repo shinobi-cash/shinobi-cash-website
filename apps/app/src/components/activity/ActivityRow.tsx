@@ -24,7 +24,7 @@ export function ActivityRow({ activity, onClick }: ActivityRowProps) {
   return (
     <button
       type="button"
-      className="border-border bg-muted/50 hover:bg-muted/70 w-full cursor-pointer rounded-lg border px-3 py-3 text-left transition-all duration-150"
+      className="border-white/10 bg-white/[0.02] hover:bg-white/[0.04] w-full cursor-pointer rounded-lg border px-3 py-3 text-left transition-all duration-150"
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
     >
@@ -39,7 +39,7 @@ export function ActivityRow({ activity, onClick }: ActivityRowProps) {
               ethOptions={{ maxDecimals: 6 }}
               className="gap-1.5"
               ethClassName="text-white font-semibold text-base"
-              usdClassName="text-muted-foreground text-xs"
+              usdClassName="text-neutral-500 text-xs"
             />
           </div>
         </div>
@@ -47,7 +47,7 @@ export function ActivityRow({ activity, onClick }: ActivityRowProps) {
         {/* Bottom row: Chain info, status, timestamp */}
         <div className="flex items-center justify-between gap-2 text-xs">
           {/* Chain info */}
-          <div className="text-muted-foreground flex items-center gap-1.5">
+          <div className="text-neutral-400 flex items-center gap-1.5">
             {isCrossChain ? (
               <>
                 <span>{originChainName}</span>
@@ -62,11 +62,11 @@ export function ActivityRow({ activity, onClick }: ActivityRowProps) {
           {/* Status and timestamp */}
           <div className="flex items-center gap-2">
             {!activity.isActivated && (
-              <span className="rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
+              <span className="rounded-full bg-yellow-400/10 px-2 py-0.5 text-xs font-medium text-yellow-400">
                 Pending
               </span>
             )}
-            <span className="text-muted-foreground">{formatTimestamp(activity.timestamp)}</span>
+            <span className="text-neutral-400">{formatTimestamp(activity.timestamp)}</span>
           </div>
         </div>
       </div>
