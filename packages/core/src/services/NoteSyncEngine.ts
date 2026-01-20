@@ -30,7 +30,7 @@ export interface ActivityPage {
   items: Activity[];
   pageInfo: {
     hasNextPage: boolean;
-    endCursor?: string;
+    hasPreviousPage: boolean;
   };
 }
 
@@ -40,7 +40,7 @@ export interface ActivityPage {
 export type ActivityFetcher = (
   poolAddress: string,
   limit: number,
-  cursor?: string,
+  offset?: number,
   orderDirection?: 'asc' | 'desc',
 ) => Promise<ActivityPage>;
 
@@ -52,7 +52,7 @@ export interface PersistenceCallbacks {
   loadState: (publicKey: string, poolAddress: string) => Promise<{
     notes: NoteChain[];
     lastUsedIndex: number;
-    cursor?: string;
+    offset?: number;
   } | null>;
 
   /** Save current state to storage */
@@ -97,7 +97,7 @@ export class NoteSyncEngine {
     // Load initial state
     const cached = await this.persistence.loadState(publicKey, poolAddress);
     let state: DiscoveryState = cached
-      ? initializeDiscoveryState(cached.notes, cached.lastUsedIndex, cached.cursor)
+      ? initializeDiscoveryState(cached.notes, cached.lastUsedIndex, cached.offset)
       : initializeDiscoveryState([], -1, undefined);
 
     const progress: DiscoveryProgress = {
@@ -105,7 +105,7 @@ export class NoteSyncEngine {
       currentPageActivityCount: 0,
       depositsChecked: 0,
       depositsMatched: 0,
-      lastCursor: state.cursor,
+      lastOffset: state.offset,
       complete: false,
     };
 
@@ -119,16 +119,17 @@ export class NoteSyncEngine {
       if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
 
       // Fetch next page
-      const page = await this.fetcher(poolAddress, pageSize, state.cursor, 'asc');
+      const page = await this.fetcher(poolAddress, pageSize, state.offset, 'asc');
 
-      // Apply state transition
+      // Apply state transition - calculate next offset
+      const nextOffset = (state.offset ?? 0) + page.items.length;
       state = applyActivityPage(
         state,
         page.items,
         accountKey,
         poolAddress,
         policy,
-        page.pageInfo.endCursor,
+        nextOffset,
       );
 
       pagesProcessed++;
@@ -137,7 +138,7 @@ export class NoteSyncEngine {
       progress.pagesProcessed = pagesProcessed;
       progress.currentPageActivityCount = page.items.length;
       progress.depositsMatched = state.newDepositsFound;
-      progress.lastCursor = state.cursor;
+      progress.lastOffset = state.offset;
       onProgress?.(progress);
 
       // Persist state (crash resilience)
@@ -158,7 +159,7 @@ export class NoteSyncEngine {
       notes: state.notes,
       lastUsedIndex: state.nextDepositIndex - 1,
       newNotesFound: state.newDepositsFound,
-      lastProcessedCursor: state.cursor,
+      lastProcessedOffset: state.offset,
     };
   }
 

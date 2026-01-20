@@ -34,13 +34,13 @@ import { dev } from '../utils/dev.js';
  *
  * @param notes - Previously discovered note chains
  * @param lastUsedIndex - Last deposit index used
- * @param cursor - Pagination cursor for resume
+ * @param offset - Pagination offset for resume
  * @returns Initial discovery state
  */
 export function initializeDiscoveryState(
   notes: NoteChain[],
   lastUsedIndex: number,
-  cursor?: string,
+  offset?: number,
 ): DiscoveryState {
   // Find all live deposits (unspent with positive amount)
   const liveDeposits: LiveDeposit[] = [];
@@ -66,7 +66,7 @@ export function initializeDiscoveryState(
     notes,
     nextDepositIndex: lastUsedIndex + 1,
     liveDeposits,
-    cursor,
+    offset,
     newDepositsFound: 0,
   };
 }
@@ -82,7 +82,7 @@ export function initializeDiscoveryState(
  * @param accountKey - User's account key
  * @param poolAddress - Pool contract address
  * @param policy - Discovery policy
- * @param newCursor - Pagination cursor for next page
+ * @param newOffset - Pagination offset for next page
  * @returns NEW discovery state with activities applied
  */
 export function applyActivityPage(
@@ -91,7 +91,7 @@ export function applyActivityPage(
   accountKey: bigint,
   poolAddress: string,
   policy: DiscoveryPolicy,
-  newCursor?: string,
+  newOffset?: number,
 ): DiscoveryState {
   dev.log(`[DiscoveryState] Processing page with ${activities.length} activities`);
 
@@ -132,7 +132,7 @@ export function applyActivityPage(
     notes: finalNotes,
     nextDepositIndex,
     liveDeposits: newLiveDeposits,
-    cursor: newCursor,
+    offset: newOffset,
     newDepositsFound: state.newDepositsFound + depositsFound,
   };
 }

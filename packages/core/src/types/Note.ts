@@ -149,8 +149,8 @@ export interface CachedNoteData {
   /** Timestamp of last sync/discovery */
   lastSyncTime: number;
 
-  /** Cursor for resumable discovery pagination */
-  lastProcessedCursor?: string;
+  /** Offset for resumable discovery pagination */
+  lastProcessedOffset?: number;
 }
 
 /**

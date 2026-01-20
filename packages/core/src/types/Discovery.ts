@@ -43,8 +43,8 @@ export interface DiscoveryState {
   /** Live deposits being tracked for extension */
   liveDeposits: LiveDeposit[];
 
-  /** Pagination cursor for resume */
-  cursor?: string;
+  /** Pagination offset for resume */
+  offset?: number;
 
   /** Number of new deposits found in this session */
   newDepositsFound: number;
@@ -63,8 +63,8 @@ export interface DiscoveryResult {
   /** Number of new notes found in this discovery session */
   newNotesFound: number;
 
-  /** Pagination cursor for resuming discovery */
-  lastProcessedCursor?: string;
+  /** Pagination offset for resuming discovery */
+  lastProcessedOffset?: number;
 }
 
 /**
@@ -84,8 +84,8 @@ export interface DiscoveryProgress {
   /** Number of deposits matched to this account */
   depositsMatched: number;
 
-  /** Last pagination cursor processed */
-  lastCursor?: string;
+  /** Last pagination offset processed */
+  lastOffset?: number;
 
   /** Whether the discovery scan is complete */
   complete: boolean;
