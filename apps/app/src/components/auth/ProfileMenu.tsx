@@ -7,7 +7,6 @@ import { isPasskeySupported } from "@/utils/environment";
 import {
   LogOut,
   WalletIcon,
-  RefreshCw,
   FingerprintIcon,
   MoreHorizontalIcon,
   CircleUserRound,
@@ -22,12 +21,9 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu";
 
-import { Switch } from "@workspace/ui/components/switch";
-import { useAutoSync } from "@/hooks/useAutoSync";
 import { AddPasskeyModal } from "./AddPasskeyModal";
 import { RemovePasskeyModal } from "./RemovePasskeyModal";
 import { useSnapshot } from "valtio";
@@ -39,7 +35,6 @@ export function ProfileMenu() {
   const { disconnect } = useDisconnect();
   const [showAddPasskeyModal, setShowAddPasskeyModal] = useState(false);
   const [showRemovePasskeyModal, setShowRemovePasskeyModal] = useState(false);
-  const { autoSyncEnabled, setAutoSyncEnabled } = useAutoSync();
 
   const isAuthenticated = state.state.status === "authenticated";
 
@@ -90,21 +85,6 @@ export function ProfileMenu() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="border-border bg-background w-56 p-1">
-            <DropdownMenuGroup>
-              <DropdownMenuLabel className="text-muted-foreground px-2 text-xs font-semibold">
-                Notes
-              </DropdownMenuLabel>
-              <DropdownMenuItem>
-                <RefreshCw />
-                Auto Sync
-                <Switch
-                  checked={autoSyncEnabled}
-                  onCheckedChange={setAutoSyncEnabled}
-                  className="data-[state=checked]:bg-orange-500"
-                />
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator className="bg-muted" />
             <DropdownMenuGroup>
               <DropdownMenuLabel className="text-muted-foreground px-2 text-xs font-semibold">
                 Account
