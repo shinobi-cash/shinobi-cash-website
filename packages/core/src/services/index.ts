@@ -6,6 +6,7 @@
 export {
   initializeDiscoveryState,
   applyActivityPage,
+  reconcileExistingDeposits,
 } from './DiscoveryStateService.js';
 
 export {

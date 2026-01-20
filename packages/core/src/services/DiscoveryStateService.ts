@@ -138,12 +138,14 @@ export function applyActivityPage(
 }
 
 /**
- * Phase 1: Reconcile existing deposits
+ * Reconcile existing deposits with fresh activities
  *
  * Updates ASP status for cached deposits when status changes.
  * Uses precommitmentHash for O(1) lookups.
+ *
+ * Exported for use in NoteSyncEngine bootstrap reconciliation.
  */
-function reconcileExistingDeposits(
+export function reconcileExistingDeposits(
   notes: NoteChain[],
   activities: Activity[],
   accountKey: bigint,

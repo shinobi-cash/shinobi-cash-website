@@ -20,7 +20,7 @@ import type {
   DiscoveryPolicy,
 } from '../types/Discovery.js';
 import type { NoteChain } from '../types/Note.js';
-import { initializeDiscoveryState, applyActivityPage } from './DiscoveryStateService.js';
+import { initializeDiscoveryState, applyActivityPage, reconcileExistingDeposits } from './DiscoveryStateService.js';
 import { DEFAULT_DISCOVERY_POLICY } from '../types/Discovery.js';
 
 /**
@@ -99,6 +99,30 @@ export class NoteSyncEngine {
     let state: DiscoveryState = cached
       ? initializeDiscoveryState(cached.notes, cached.lastUsedIndex, cached.offset)
       : initializeDiscoveryState([], -1, undefined);
+
+    // Bootstrap reconciliation: catch ASP status changes for cached notes
+    // When resuming from cached offset, recent activities (with status updates) are skipped
+    // Fetch recent activities in DESC order to reconcile existing notes before continuing
+    if (state.notes.length > 0) {
+      const recentActivities = await this.fetcher(poolAddress, pageSize, 0, 'desc');
+      if (recentActivities.items.length > 0) {
+        state = {
+          ...state,
+          notes: reconcileExistingDeposits(
+            state.notes,
+            recentActivities.items,
+            accountKey,
+            poolAddress,
+          ),
+        };
+        // Re-initialize live deposits after reconciliation (status may have changed)
+        state = initializeDiscoveryState(
+          state.notes,
+          state.nextDepositIndex - 1,
+          state.offset,
+        );
+      }
+    }
 
     const progress: DiscoveryProgress = {
       pagesProcessed: 0,

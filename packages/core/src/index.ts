@@ -154,6 +154,7 @@ export {
   // Discovery state management
   initializeDiscoveryState,
   applyActivityPage,
+  reconcileExistingDeposits,
   NoteSyncEngine,
   type ActivityPage,
   type ActivityFetcher,
