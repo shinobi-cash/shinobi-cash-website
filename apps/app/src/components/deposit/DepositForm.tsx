@@ -58,7 +58,14 @@ export function DepositForm({ asset }: DepositFormProps) {
   const state = useDepositController();
 
   // Transaction tracking for indexing status
-  const { trackTransaction } = useTransactionTracking();
+  const { trackTransaction, onTransactionIndexed } = useTransactionTracking();
+
+  // Listen for indexed event to update controller
+  useEffect(() => {
+    return onTransactionIndexed(() => {
+      DepositController.markIndexed();
+    });
+  }, [onTransactionIndexed]);
 
   // Subscribe to AuthController for crypto state
   const authState = useSnapshot(AuthController.state);
@@ -97,6 +104,7 @@ export function DepositForm({ asset }: DepositFormProps) {
   const txHash =
     state.state.status === "confirming" ||
     state.state.status === "confirmed-onchain" ||
+    state.state.status === "indexed" ||
     state.state.status === "failed"
       ? state.state.txHash
       : null;
@@ -125,6 +133,7 @@ export function DepositForm({ asset }: DepositFormProps) {
       if (s === "submitting") return "submitting" as const;
       if (s === "confirming") return "confirming" as const;
       if (s === "confirmed-onchain") return "confirmed-onchain" as const;
+      if (s === "indexed") return "indexed" as const;
       if (s === "failed") return "failed" as const;
       if (s === "error") return "error" as const;
       return "submitting" as const; // Default for other states

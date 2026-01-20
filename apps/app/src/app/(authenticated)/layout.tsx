@@ -7,6 +7,7 @@ import { DashboardTabs } from "@/components/layout/DashboardTabs";
 import { useSnapshot } from "valtio";
 import { AuthController } from "@/controllers/AuthController";
 import { IndexerHealthIndicator } from "@/components/indicators/IndexerHealthIndicator";
+import { NotesSyncingBanner } from "@/components/indicators/NotesSyncingBanner";
 
 /**
  * Authenticated Layout
@@ -50,6 +51,11 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
           {/* Card Top Bar */}
           <div className="flex items-center justify-between gap-4 px-4 pt-4">
             <DashboardTabs />
+          </div>
+
+          {/* Notes Syncing Banner */}
+          <div className="px-4">
+            <NotesSyncingBanner />
           </div>
 
           {/* Card Content */}

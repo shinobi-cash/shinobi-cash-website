@@ -172,19 +172,23 @@ export const NotesDiscoveryController = {
 
   /**
    * Bootstrap discovery controller
-   * Loads cached notes from storage, does NOT trigger discovery
-   * Discovery is handled by background worker
+   * Loads cached notes from storage, then triggers initial discovery
    */
   async bootstrap(): Promise<void> {
     const crypto = AuthController.state.crypto;
     if (!crypto.publicKey) return;
 
+    // Load cache first for immediate UI
     await NotesDiscoveryController._loadCache();
 
     // If we have cached notes, mark ready immediately
     if (state.noteChains.length > 0) {
       transition({ status: "ready" });
     }
+
+    // Always trigger discovery to sync latest notes
+    // This runs in background and updates state when complete
+    NotesDiscoveryController.discover();
   },
 
   /**

@@ -9,7 +9,7 @@ import { getTxExplorerUrl } from "@/config/chains";
 import { cn } from "@workspace/ui/lib/utils";
 import { type AppError, getUserMessage, isUserCancellation } from "@/lib/errors/errors";
 
-type DepositStatus = "submitting" | "confirming" | "confirmed-onchain" | "failed" | "error";
+type DepositStatus = "submitting" | "confirming" | "confirmed-onchain" | "indexed" | "failed" | "error";
 type StepStatus = "completed" | "active" | "pending" | "failed";
 
 interface TimelineItem {
@@ -43,11 +43,12 @@ export function DepositTimelineScreen({
   const isSubmitting = status === "submitting";
   const isConfirming = status === "confirming";
   const isConfirmedOnChain = status === "confirmed-onchain";
+  const isIndexed = status === "indexed";
   const isFailed = status === "failed";
   const isError = status === "error";
 
+  // Show indexing state while confirmed but not yet indexed
   const isIndexing = trackingStatus === "waiting" && isConfirmedOnChain;
-  const isIndexed = trackingStatus === "synced";
 
   const isUserCancelled = error && isUserCancellation(error);
   const hasError = isUserCancelled || isFailed || isError;

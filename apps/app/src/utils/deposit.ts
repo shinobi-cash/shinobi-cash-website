@@ -112,12 +112,21 @@ export const depositService = {
     amount: string,
     noteData: CashNoteData,
     chainId: number,
-    walletClient: WalletClient
+    walletClient: WalletClient,
+    gasPrice?: bigint
   ): Promise<`0x${string}`> {
     try {
       const amountWei = parseEther(amount);
       const route = resolveDepositRoute(chainId);
       const callParams = buildDepositCallParams(route, noteData.precommitment);
+
+      // Add 50% buffer to gas price to handle L2 gas fluctuations
+      const gasParams = gasPrice
+        ? {
+            maxFeePerGas: (gasPrice * BigInt(150)) / BigInt(100),
+            maxPriorityFeePerGas: (gasPrice * BigInt(150)) / BigInt(100),
+          }
+        : {};
 
       const hash = await walletClient.writeContract({
         address: callParams.address,
@@ -127,6 +136,7 @@ export const depositService = {
         value: amountWei,
         chain: walletClient.chain,
         account: walletClient.account!,
+        ...gasParams,
       });
 
       return hash;

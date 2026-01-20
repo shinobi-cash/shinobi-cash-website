@@ -27,7 +27,14 @@ export function WithdrawalTimelineScreen({ onBack, onConfirm }: WithdrawalTimeli
   const state = useWithdrawController();
 
   // Transaction tracking for indexing status
-  const { trackTransaction, trackingStatus } = useTransactionTracking();
+  const { trackTransaction, trackingStatus, onTransactionIndexed } = useTransactionTracking();
+
+  // Listen for indexed event to update controller
+  useEffect(() => {
+    return onTransactionIndexed(() => {
+      WithdrawController.markIndexed();
+    });
+  }, [onTransactionIndexed]);
 
   // Handle close from timeline mode (after work is done)
   // Reset controller state and close the screen
@@ -38,7 +45,7 @@ export function WithdrawalTimelineScreen({ onBack, onConfirm }: WithdrawalTimeli
 
   // Determine screen mode based on FSM state
   // Preview mode: Before work starts (idle, previewing)
-  // Timeline mode: During/after work (preparing, submitting, confirmed, error)
+  // Timeline mode: During/after work (preparing, submitting, confirmed, indexed, error)
   const screenMode = useMemo(() => {
     const status = state.state.status;
     if (
@@ -46,6 +53,7 @@ export function WithdrawalTimelineScreen({ onBack, onConfirm }: WithdrawalTimeli
       status === "ready" ||
       status === "submitting" ||
       status === "confirmed" ||
+      status === "indexed" ||
       status === "error"
     ) {
       return "timeline";
@@ -66,7 +74,7 @@ export function WithdrawalTimelineScreen({ onBack, onConfirm }: WithdrawalTimeli
 
   // Get transaction details
   const txHash = useMemo(() => {
-    if (state.state.status === "confirmed") {
+    if (state.state.status === "confirmed" || state.state.status === "indexed") {
       return state.state.txHash;
     }
     return null;
@@ -79,8 +87,8 @@ export function WithdrawalTimelineScreen({ onBack, onConfirm }: WithdrawalTimeli
     }
   }, [txHash, trackTransaction]);
 
-  const isConfirmed = state.state.status === "confirmed";
-  const isIndexed = trackingStatus === "synced";
+  const isConfirmed = state.state.status === "confirmed" || state.state.status === "indexed";
+  const isIndexed = state.state.status === "indexed";
   const hasError = state.state.status === "error";
   const error = hasError ? state.state.error : state.lastError;
 

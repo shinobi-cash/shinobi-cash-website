@@ -19,6 +19,7 @@ type WithdrawState =
   | { status: "ready"; preparedUserOp: PreparedUserOperation }
   | { status: "submitting" }
   | { status: "confirmed"; txHash: `0x${string}`; executionResult: ExecutionResult }
+  | { status: "indexed"; txHash: `0x${string}`; executionResult: ExecutionResult }
   | { status: "error"; error: AppError };
 
 export interface NotesContext {
@@ -146,7 +147,8 @@ const allowedTransitions: Record<WithdrawState["status"], WithdrawState["status"
   preparing: ["ready", "error"],
   ready: ["submitting", "preparing", "idle"],
   submitting: ["confirmed", "error"],
-  confirmed: ["idle"],
+  confirmed: ["indexed", "idle"],
+  indexed: ["idle"],
   error: ["idle", "preparing"],
 };
 
@@ -308,6 +310,16 @@ export const WithdrawController = {
     if (state.state.status === "error") {
       resetEngine();
       await this.prepare();
+    }
+  },
+
+  markIndexed(): void {
+    if (state.state.status === "confirmed") {
+      transition({
+        status: "indexed",
+        txHash: state.state.txHash,
+        executionResult: state.state.executionResult,
+      });
     }
   },
 

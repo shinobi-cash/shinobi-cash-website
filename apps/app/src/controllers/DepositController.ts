@@ -21,6 +21,7 @@ type DepositState =
   | { status: "submitting" }
   | { status: "confirming"; txHash: `0x${string}` }
   | { status: "confirmed-onchain"; txHash: `0x${string}` }
+  | { status: "indexed"; txHash: `0x${string}` }
   | { status: "failed"; txHash: `0x${string}`; reason: string }
   | { status: "error"; error: AppError };
 
@@ -83,7 +84,8 @@ const allowedTransitions: Record<DepositState["status"], DepositState["status"][
   ready: ["submitting", "preparing", "idle"],
   submitting: ["confirming", "error"],
   confirming: ["confirmed-onchain", "failed"],
-  "confirmed-onchain": [],
+  "confirmed-onchain": ["indexed"],
+  indexed: ["idle"],
   failed: ["preparing", "idle"],
   error: ["idle", "preparing"],
 };
@@ -210,7 +212,8 @@ export const DepositController = {
         amount,
         noteData,
         wallet.chainId,
-        wallet.walletClient
+        wallet.walletClient,
+        wallet.gasPrice
       );
       transition({ status: "confirming", txHash });
       this._trackTransaction(txHash);
@@ -229,6 +232,12 @@ export const DepositController = {
   async retry() {
     if (state.state.status === "error" || state.state.status === "failed") {
       await this.prepare();
+    }
+  },
+
+  markIndexed() {
+    if (state.state.status === "confirmed-onchain") {
+      transition({ status: "indexed", txHash: state.state.txHash });
     }
   },
 
