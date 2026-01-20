@@ -30,9 +30,6 @@ export interface AmountDisplayProps {
   /** ETH formatting options */
   ethOptions?: EthFormattingOptions;
 
-  /** Number of decimal places for USD (defaults to 2) */
-  usdDecimals?: number;
-
   /** Show USD value (defaults to true) */
   showUsd?: boolean;
 
@@ -56,7 +53,6 @@ export function AmountDisplay({
   amount,
   symbol = "ETH",
   ethOptions,
-  usdDecimals = 2,
   showUsd = true,
   layout = "inline",
   className = "",
@@ -92,7 +88,7 @@ export function AmountDisplay({
 
       {/* USD Value (only if enabled and available) */}
       {showUsd && usdValue !== null && (
-        <span className={usdClassName}>≈ {formatUsdAmount(usdValue, usdDecimals)}</span>
+        <span className={usdClassName}>~{formatUsdAmount(usdValue)}</span>
       )}
     </div>
   );

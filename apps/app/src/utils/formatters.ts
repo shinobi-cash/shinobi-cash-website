@@ -38,15 +38,21 @@ export function formatEthAmount(
 
     // Convert wei to ETH string
     const ethString = formatEther(weiAmount);
+    const num = Number.parseFloat(ethString);
 
     // Apply decimal formatting
     if (options.decimals !== undefined) {
       // Fixed decimal places
-      const num = Number.parseFloat(ethString);
       return num.toFixed(options.decimals);
     }
+
     // Dynamic decimal formatting
     const { minDecimals = 0, maxDecimals = 18 } = options;
+
+    // For small amounts, use significant digits formatting
+    if (num > 0 && num < 0.01) {
+      return formatSmallEthAmount(num, 2);
+    }
 
     // Remove trailing zeros but respect minimum decimals
     let formatted = ethString.replace(/\.?0+$/, "") || "0";
@@ -94,9 +100,38 @@ export function formatTimestamp(timestamp: string | bigint): string {
   return formatDistance(new Date(numericTimestamp * 1000), new Date(), { addSuffix: true });
 }
 
-export function formatUsdAmount(amount: number, decimals = 2): string {
+export function formatUsdAmount(amount: number, decimals?: number): string {
+  // Auto-detect decimals for small amounts if not specified
+  const effectiveDecimals = decimals ?? (amount < 0.1 ? 3 : 2);
+
   return `$${amount.toLocaleString("en-US", {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
+    minimumFractionDigits: effectiveDecimals,
+    maximumFractionDigits: effectiveDecimals,
   })}`;
+}
+
+/**
+ * Format small ETH amounts with significant digits
+ * e.g. 0.00000824788188 -> "0.0000082"
+ * Shows leading zeros + specified significant digits
+ */
+export function formatSmallEthAmount(
+  amount: string | number,
+  significantDigits = 2
+): string {
+  const num = typeof amount === "string" ? Number.parseFloat(amount) : amount;
+
+  if (num === 0 || Number.isNaN(num)) return "0";
+  if (num >= 0.01) return num.toFixed(4); // Normal formatting for larger amounts
+
+  // For small numbers, find first non-zero digit and show significantDigits after
+  const str = num.toFixed(18);
+  const match = str.match(/^0\.(0*)([1-9]\d*)/);
+
+  if (!match) return num.toFixed(6);
+
+  const leadingZeros = match[1].length;
+  const decimalsNeeded = leadingZeros + significantDigits;
+
+  return num.toFixed(Math.min(decimalsNeeded, 18));
 }

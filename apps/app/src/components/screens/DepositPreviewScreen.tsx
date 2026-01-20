@@ -5,7 +5,7 @@ import { Button } from "@workspace/ui/components/button";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";
 import { ScreenLayout } from "@/components/layout/ScreenLayout";
 import { usePriceData } from "@/hooks/usePriceData";
-import { formatEthAmount, formatUsdAmount } from "@/utils/formatters";
+import { formatUsdAmount, formatSmallEthAmount } from "@/utils/formatters";
 import { POOL_CHAIN, SHINOBI_CASH_SUPPORTED_CHAINS } from "@shinobi-cash/constants";
 import { ShinobiCashNote, AssetChain } from "@/components/shared/AssetChain";
 
@@ -37,12 +37,14 @@ export function DepositPreviewScreen({
   const gasCostNum = Number.parseFloat(gasCostEth) || 0;
 
   const depositNoteAmount = depositAmountNum - complianceFee - gasCostNum - solverFee;
+  const vettingFeePercent = depositAmountNum > 0 ? (complianceFee / depositAmountNum) * 100 : 0;
 
   const { usdPrice } = usePriceData("ETH");
 
   const depositUsd = usdPrice !== null ? depositAmountNum * usdPrice : null;
-
   const noteUsd = usdPrice !== null ? depositNoteAmount * usdPrice : null;
+  const vettingFeeUsd = usdPrice !== null ? complianceFee * usdPrice : null;
+  const gasFeeUsd = usdPrice !== null ? gasCostNum * usdPrice : null;
 
   const originChain =
     SHINOBI_CASH_SUPPORTED_CHAINS.find((c) => c.id === originChainId) ?? POOL_CHAIN;
@@ -60,10 +62,10 @@ export function DepositPreviewScreen({
 
         <div className="text-center">
           <h1 className="text-2xl font-bold">
-            You’ll deposit {formatEthAmount(depositNoteAmount, { decimals: 4 })} ETH
+            You'll deposit {formatSmallEthAmount(depositAmountNum)} ETH
           </h1>
 
-          {noteUsd !== null && <p className="text-md text-zinc-500">{formatUsdAmount(noteUsd)}</p>}
+          {depositUsd !== null && <p className="text-md text-zinc-500">~{formatUsdAmount(depositUsd)}</p>}
         </div>
       </div>
 
@@ -80,10 +82,10 @@ export function DepositPreviewScreen({
 
           <div className="flex flex-col items-end">
             <span className="text-lg font-bold">
-              {formatEthAmount(depositAmountNum, { decimals: 4 })} ETH
+              {formatSmallEthAmount(depositAmountNum)} ETH
             </span>
             {depositUsd !== null && (
-              <span className="text-xs text-zinc-500">{formatUsdAmount(depositUsd)}</span>
+              <span className="text-xs text-zinc-500">~{formatUsdAmount(depositUsd)}</span>
             )}
           </div>
         </div>
@@ -99,10 +101,10 @@ export function DepositPreviewScreen({
 
           <div className="flex flex-col items-end">
             <span className="text-lg font-bold">
-              {formatEthAmount(depositNoteAmount, { decimals: 4 })} ETH
+              {formatSmallEthAmount(depositNoteAmount)} ETH
             </span>
             {noteUsd !== null && (
-              <span className="text-xs text-zinc-500">{formatUsdAmount(noteUsd)}</span>
+              <span className="text-xs text-zinc-500">~{formatUsdAmount(noteUsd)}</span>
             )}
           </div>
         </div>
@@ -111,8 +113,14 @@ export function DepositPreviewScreen({
       {/* Details */}
       <div className="w-full space-y-2">
         <DetailRow label="Origin" value={originChain.name} />
-        <DetailRow label="Vetting Fee" value={`${formatEthAmount(complianceFee)} ETH`} />
-        <DetailRow label="Network Gas Fee" value={`${formatEthAmount(gasCostNum)} ETH`} />
+        <DetailRow
+          label={`Vetting Fee (${vettingFeePercent.toFixed(0)}%)`}
+          value={`${formatSmallEthAmount(complianceFee)} ETH${vettingFeeUsd !== null ? ` (~${formatUsdAmount(vettingFeeUsd)})` : ""}`}
+        />
+        <DetailRow
+          label="Network Gas Fee"
+          value={`${formatSmallEthAmount(gasCostNum)} ETH${gasFeeUsd !== null ? ` (~${formatUsdAmount(gasFeeUsd)})` : ""}`}
+        />
         {/*TODO:Improvement Route will only be possible when deposit is crosschain which get filled by Shinobi Solver */}
         {/* <DetailRow
             label="Route"

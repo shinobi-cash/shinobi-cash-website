@@ -3,7 +3,7 @@
 import { Loader2, ArrowDownUp } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
 import { usePriceData } from "@/hooks/usePriceData";
-import { formatEthAmount, formatUsdAmount, formatHash } from "@/utils/formatters";
+import { formatUsdAmount, formatHash, formatSmallEthAmount } from "@/utils/formatters";
 import { POOL_CHAIN, SHINOBI_CASH_SUPPORTED_CHAINS } from "@shinobi-cash/constants";
 import { ShinobiCashNote, AssetChain } from "@/components/shared/AssetChain";
 
@@ -37,6 +37,8 @@ export function WithdrawalPreview({
 
   const withdrawUsd = usdPrice !== null ? withdrawAmountNum * usdPrice : null;
   const receiveUsd = usdPrice !== null ? youReceive * usdPrice : null;
+  const executionFeeUsd = usdPrice !== null ? executionFee * usdPrice : null;
+  const solverFeeUsd = usdPrice !== null ? solverFee * usdPrice : null;
 
   const destinationChain =
     SHINOBI_CASH_SUPPORTED_CHAINS.find((c) => c.id === destinationChainId) ?? POOL_CHAIN;
@@ -51,11 +53,11 @@ export function WithdrawalPreview({
 
         <div className="text-center">
           <h1 className="text-2xl font-bold">
-            You&apos;ll receive {formatEthAmount(youReceive, { decimals: 4 })} ETH
+            You&apos;ll receive {formatSmallEthAmount(youReceive)} ETH
           </h1>
 
           {receiveUsd !== null && (
-            <p className="text-md text-zinc-500">{formatUsdAmount(receiveUsd)}</p>
+            <p className="text-md text-zinc-500">~{formatUsdAmount(receiveUsd)}</p>
           )}
         </div>
       </div>
@@ -73,10 +75,10 @@ export function WithdrawalPreview({
 
           <div className="flex flex-col items-end">
             <span className="text-lg font-bold">
-              {formatEthAmount(withdrawAmountNum, { decimals: 4 })} ETH
+              {formatSmallEthAmount(withdrawAmountNum)} ETH
             </span>
             {withdrawUsd !== null && (
-              <span className="text-xs text-zinc-500">{formatUsdAmount(withdrawUsd)}</span>
+              <span className="text-xs text-zinc-500">~{formatUsdAmount(withdrawUsd)}</span>
             )}
           </div>
         </div>
@@ -92,10 +94,10 @@ export function WithdrawalPreview({
 
           <div className="flex flex-col items-end">
             <span className="text-lg font-bold">
-              {formatEthAmount(youReceive, { decimals: 4 })} ETH
+              {formatSmallEthAmount(youReceive)} ETH
             </span>
             {receiveUsd !== null && (
-              <span className="text-xs text-zinc-500">{formatUsdAmount(receiveUsd)}</span>
+              <span className="text-xs text-zinc-500">~{formatUsdAmount(receiveUsd)}</span>
             )}
           </div>
         </div>
@@ -107,10 +109,13 @@ export function WithdrawalPreview({
         <DetailRow label="Recipient" value={formatHash(recipientAddress)} />
         <DetailRow
           label={isCrossChain ? "Relay Fee (Max)" : "Execution Fee (Max)"}
-          value={`${formatEthAmount(executionFee)} ETH`}
+          value={`${formatSmallEthAmount(executionFee)} ETH${executionFeeUsd !== null ? ` (~${formatUsdAmount(executionFeeUsd)})` : ""}`}
         />
         {isCrossChain && solverFee > 0 && (
-          <DetailRow label="Solver Fee" value={`${formatEthAmount(solverFee)} ETH`} />
+          <DetailRow
+            label="Solver Fee"
+            value={`${formatSmallEthAmount(solverFee)} ETH${solverFeeUsd !== null ? ` (~${formatUsdAmount(solverFeeUsd)})` : ""}`}
+          />
         )}
       </div>
 
