@@ -24,20 +24,28 @@ export class PoolQueryBuilder extends BaseQueryBuilder<
   }
 
   protected buildDynamicQuery(): string {
-    const fields = this.config.selectedFields?.join('\n      ') || this.getDefaultFields();
     const id = this.config.where?.id;
 
     if (!id) {
       throw new Error('Pool queries require an id. Use .byId(poolId) to specify the pool.');
     }
 
-    const queryName = `GetPool`;
-
+    // Query both poolConfigViews and poolStatsViews to get full pool data
     return `
-      query ${queryName}($id: String!) {
-        pools(where: { id: $id }, limit: 1) {
+      query GetPool($poolAddress: String!, $poolId: String!) {
+        poolConfigViews(where: { poolAddress: $poolAddress }, limit: 1) {
           items {
-            ${fields}
+            poolAddress
+            chainId
+            asset
+            scope
+            timestamp
+          }
+        }
+        poolStatsViews(where: { poolId: $poolId }, limit: 1) {
+          items {
+            depositCount
+            totalDeposited
           }
         }
       }
@@ -48,7 +56,9 @@ export class PoolQueryBuilder extends BaseQueryBuilder<
     const variables: GraphQLVariables = {};
 
     if (this.config.where?.id) {
-      variables.id = this.config.where.id;
+      // Both views need the pool address/id
+      variables.poolAddress = this.config.where.id;
+      variables.poolId = this.config.where.id;
     }
 
     return variables;
@@ -74,15 +84,44 @@ export class PoolQueryBuilder extends BaseQueryBuilder<
   }
 
   /**
-   * Override execute to handle Ponder pagination response
+   * Override execute to combine poolConfigViews and poolStatsViews
    */
   async execute(): Promise<Pool[]> {
     const query = this.buildDynamicQuery();
     const variables = this.buildVariables();
-    const result = await this.client.executeQuery<{ pools: { items: Pool[] } }>(query, variables);
 
-    // Return items array from Ponder pagination response
-    return result.pools?.items ?? [];
+    interface PoolConfigItem {
+      poolAddress: string;
+      timestamp: string;
+    }
+
+    interface PoolStatsItem {
+      depositCount: string;
+      totalDeposited: string;
+    }
+
+    const result = await this.client.executeQuery<{
+      poolConfigViews: { items: PoolConfigItem[] };
+      poolStatsViews: { items: PoolStatsItem[] };
+    }>(query, variables);
+
+    const config = result.poolConfigViews?.items?.[0];
+    const stats = result.poolStatsViews?.items?.[0];
+
+    if (!config) {
+      return [];
+    }
+
+    // Combine config and stats into Pool entity
+    const pool: Pool = {
+      id: config.poolAddress,
+      createdAt: BigInt(config.timestamp),
+      totalDeposits: stats?.totalDeposited ? BigInt(stats.totalDeposited) : BigInt(0),
+      totalWithdrawals: BigInt(0), // Not tracked in current views
+      depositCount: stats?.depositCount ? BigInt(stats.depositCount) : BigInt(0),
+    };
+
+    return [pool];
   }
 
   /**
