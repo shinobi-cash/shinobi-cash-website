@@ -25,6 +25,7 @@ export function RecipientAddressInputScreen({
 }: RecipientAddressInputScreenProps) {
   return (
     <ScreenLayout
+      containerClassName="h-[600px]"
       header={<ScreenHeader title="Recipient Address" onBack={onBack} />}
       footer={
         <Button

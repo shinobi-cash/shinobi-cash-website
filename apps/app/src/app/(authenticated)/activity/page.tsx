@@ -19,7 +19,7 @@ export default function ActivityPage() {
   }
 
   return (
-    <div className="flex h-[550px] w-full flex-col">
+    <div className="flex h-[600px] w-full flex-col">
       {/* Header with Filter - Fixed */}
       <div className="shrink-0 border-b border-gray-800 px-4 py-3">
         <div className="flex items-center justify-between">

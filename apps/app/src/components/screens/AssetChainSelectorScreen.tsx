@@ -57,7 +57,7 @@ export function AssetChainSelectorScreen({
   };
 
   return (
-    <div className="flex flex-col">
+    <div className="flex h-full flex-col">
       {/* Search Inputs */}
       <div className="border-border flex border-b">
         <div className="border-border w-1/2 border-r">
@@ -87,7 +87,7 @@ export function AssetChainSelectorScreen({
       </div>
 
       {/* Two Column Layout */}
-      <div className="flex h-64 overflow-hidden">
+      <div className="flex min-h-0 flex-1 overflow-hidden">
         {/* Left Column - Chains */}
         <div className="border-border w-1/2 overflow-y-auto border-r-2">
           {filteredChains.map((chain) => (

@@ -118,6 +118,7 @@ export function WithdrawalTimelineScreen({ onBack, onConfirm }: WithdrawalTimeli
 
   return (
     <ScreenLayout
+      containerClassName="h-[600px]"
       header={<ScreenHeader title={title} onBack={onBack} backDisabled={!canGoBack} />}
       footer={screenMode === "timeline" ? timelineFooter : undefined}
       contentClassName={

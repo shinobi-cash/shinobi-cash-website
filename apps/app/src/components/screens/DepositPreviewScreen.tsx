@@ -51,6 +51,7 @@ export function DepositPreviewScreen({
 
   return (
     <ScreenLayout
+      containerClassName="h-[600px]"
       header={<ScreenHeader title="Transaction Preview" onBack={onBack} />}
       contentClassName="space-y-4 px-6 py-4 font-sans text-white"
     >

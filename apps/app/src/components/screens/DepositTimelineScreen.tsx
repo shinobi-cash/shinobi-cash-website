@@ -143,16 +143,16 @@ export function DepositTimelineScreen({
   ];
 
   const StepIcon = ({ status }: { status: StepStatus }) => {
-    if (status === "completed") return <CheckCircle className="h-6 w-6 text-green-500" />;
-    if (status === "active") return <Clock className="h-6 w-6 animate-pulse text-yellow-500" />;
-    if (status === "failed") return <XCircle className="h-6 w-6 text-red-500" />;
-    return <div className="border-border h-6 w-6 rounded-full border-2" />;
+    if (status === "completed") return <CheckCircle className="h-6 w-6 text-emerald-400" />;
+    if (status === "active") return <Clock className="h-6 w-6 animate-pulse text-yellow-400" />;
+    if (status === "failed") return <XCircle className="h-6 w-6 text-rose-400" />;
+    return <div className="border-white/10 h-6 w-6 rounded-full border-2" />;
   };
 
   const StatusIcon = () => {
-    if (isIndexed) return <CheckCircle className="h-12 w-12 text-green-500" />;
-    if (hasError) return <XCircle className="h-12 w-12 text-red-500" />;
-    return <Hourglass className="text-muted-foreground h-12 w-12 animate-pulse" />;
+    if (isIndexed) return <CheckCircle className="h-12 w-12 text-emerald-400" />;
+    if (hasError) return <XCircle className="h-12 w-12 text-rose-400" />;
+    return <Hourglass className="text-neutral-400 h-12 w-12 animate-pulse" />;
   };
 
   // Back button only enabled after success or failure
@@ -170,6 +170,7 @@ export function DepositTimelineScreen({
 
   return (
     <ScreenLayout
+      containerClassName="h-[600px]"
       header={
         <ScreenHeader title="Transaction details" onBack={onClose} backDisabled={!canGoBack} />
       }
@@ -181,7 +182,7 @@ export function DepositTimelineScreen({
           <StatusIcon />
           <h2 className="text-2xl font-bold">{title}</h2>
           <span className="text-5xl font-extrabold">{noteAmount.toFixed(4)} ETH</span>
-          <span className="text-muted-foreground text-sm font-medium">{subtitle}</span>
+          <span className="text-neutral-400 text-sm font-medium">{subtitle}</span>
         </div>
 
         <div className="w-full max-w-md">
@@ -193,10 +194,10 @@ export function DepositTimelineScreen({
                     className={cn(
                       "absolute left-[11px] top-6 h-full w-[2px]",
                       step.status === "completed"
-                        ? "bg-green-100"
+                        ? "bg-emerald-400/20"
                         : step.status === "failed"
-                          ? "bg-red-100"
-                          : "bg-muted"
+                          ? "bg-rose-400/20"
+                          : "bg-white/10"
                     )}
                   />
                 )}
@@ -207,19 +208,19 @@ export function DepositTimelineScreen({
 
                 <div className="flex flex-col gap-1">
                   <h3
-                    className={cn("font-semibold", step.status === "failed" ? "text-red-600" : "")}
+                    className={cn("font-semibold", step.status === "failed" ? "text-rose-400" : "")}
                   >
                     {step.label}
                   </h3>
                   {step.errorMessage ? (
-                    <p className="text-sm text-red-600">{step.errorMessage}</p>
+                    <p className="text-sm text-rose-400">{step.errorMessage}</p>
                   ) : (
                     <p
                       className={cn(
                         "text-sm",
                         step.status === "pending"
-                          ? "text-muted-foreground/70"
-                          : "text-muted-foreground"
+                          ? "text-neutral-500"
+                          : "text-neutral-400"
                       )}
                     >
                       {step.description}
@@ -230,7 +231,7 @@ export function DepositTimelineScreen({
                             href={step.link.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="font-medium text-orange-500 hover:underline"
+                            className="font-medium text-white hover:underline"
                           >
                             {step.link.text}
                           </a>

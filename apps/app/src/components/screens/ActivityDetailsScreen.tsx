@@ -39,7 +39,7 @@ export function ActivityDetailsScreen({ activity, onBack }: ActivityDetailsScree
       header={
         <ScreenHeader title={`${ACTIVITY_TYPE_LABELS[activity.type]} Details`} onBack={onBack} />
       }
-      containerClassName="h-[550px] w-full"
+      containerClassName="h-[600px] w-full"
       contentClassName="px-4 py-4"
     >
       <div className="space-y-4">
