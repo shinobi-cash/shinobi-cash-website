@@ -88,7 +88,7 @@ export function AmountDisplay({
 
       {/* USD Value (only if enabled and available) */}
       {showUsd && usdValue !== null && (
-        <span className={usdClassName}>~{formatUsdAmount(usdValue)}</span>
+        <span className={usdClassName}>(~{formatUsdAmount(usdValue)})</span>
       )}
     </div>
   );

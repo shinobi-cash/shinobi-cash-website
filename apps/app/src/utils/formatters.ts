@@ -101,8 +101,8 @@ export function formatTimestamp(timestamp: string | bigint): string {
 }
 
 export function formatUsdAmount(amount: number, decimals?: number): string {
-  // Auto-detect decimals for small amounts if not specified
-  const effectiveDecimals = decimals ?? (amount < 0.1 ? 3 : 2);
+  // Auto-detect decimals: use 3 for small non-zero amounts, 2 for zero or larger amounts
+  const effectiveDecimals = decimals ?? (amount > 0 && amount < 0.1 ? 3 : 2);
 
   return `$${amount.toLocaleString("en-US", {
     minimumFractionDigits: effectiveDecimals,
