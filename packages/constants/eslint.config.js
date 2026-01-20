@@ -1,0 +1,1 @@
+module.exports = require('@prepaid-gas/eslint-config/library');

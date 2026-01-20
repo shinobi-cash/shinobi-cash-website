@@ -99,7 +99,7 @@ export async function POST(request: Request) {
 
       case "health": {
         const health = await serverClient.healthCheck();
-        data = { status: health.status === "ok" || health.status === "healthy" };
+        data = { status: health.status === "healthy" };
         cacheTTL = CACHE_CONFIG.health;
         break;
       }

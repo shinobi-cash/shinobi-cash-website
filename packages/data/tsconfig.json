@@ -1,0 +1,12 @@
+{
+  "extends": "@shinobi-cash/typescript-config/base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "incremental": false,
+    "rootDir": "src",
+    "target": "ES2020",
+    "lib": ["ES2020"]
+  },
+  "include": ["src/**/*"],
+  "exclude": ["dist", "node_modules"]
+}

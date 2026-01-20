@@ -1,0 +1,11 @@
+{
+  "extends": "@shinobi-cash/typescript-config/base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "incremental": false,
+    "rootDir": "src",
+    "skipLibCheck": true
+  },
+  "include": ["src/**/*"],
+  "exclude": ["dist", "node_modules", "../../node_modules"]
+}
