@@ -187,7 +187,7 @@ export function DepositForm({ asset }: DepositFormProps) {
   // Asset/Chain Selector Screen
   if (screens.is("assetSelector")) {
     return (
-      <ScreenLayout header={<ScreenHeader title="Select Asset & Chain" onBack={screens.close} />}>
+      <ScreenLayout containerClassName="h-[600px]" header={<ScreenHeader title="Select Asset & Chain" onBack={screens.close} />}>
         <AssetChainSelectorScreen
           selectedChainId={chainId}
           onChainChange={(newChainId) => {
@@ -211,11 +211,11 @@ export function DepositForm({ asset }: DepositFormProps) {
               <Button
                 onClick={handleCopyAddress}
                 variant="ghost"
-                className="flex h-auto items-center gap-1.5 p-0 text-sm text-purple-400 transition-colors hover:text-purple-300"
+                className="flex h-auto items-center gap-1.5 p-0 text-sm text-neutral-400 transition-colors hover:text-white"
               >
                 {state.wallet.address.slice(0, 6)}...{state.wallet.address.slice(-4)}
                 {copiedAddress ? (
-                  <Check className="h-3 w-3 text-green-500" />
+                  <Check className="h-3 w-3 text-emerald-400" />
                 ) : (
                   <Copy className="h-3 w-3" />
                 )}
@@ -224,7 +224,7 @@ export function DepositForm({ asset }: DepositFormProps) {
               <Button
                 variant="ghost"
                 onClick={handleConnectWallet}
-                className="h-auto p-0 text-sm text-purple-400 transition-colors hover:text-purple-300"
+                className="h-auto p-0 text-sm text-neutral-400 transition-colors hover:text-white"
               >
                 Connect Wallet
               </Button>

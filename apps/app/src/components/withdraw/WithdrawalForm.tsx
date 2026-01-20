@@ -88,7 +88,7 @@ export function WithdrawalForm() {
   // Show destination selection screen
   if (screens.is("destinationSelection")) {
     return (
-      <ScreenLayout header={<ScreenHeader title="Select Asset & Chain" onBack={screens.close} />}>
+      <ScreenLayout containerClassName="h-[600px]" header={<ScreenHeader title="Select Asset & Chain" onBack={screens.close} />}>
         <AssetChainSelectorScreen
           selectedChainId={state.destinationChainId}
           onChainChange={(newChainId) => {
@@ -117,7 +117,7 @@ export function WithdrawalForm() {
             <Button
               onClick={() => screens.navigate("noteSelection")}
               variant={"ghost"}
-              className="flex h-auto items-center gap-1 p-0 text-sm text-purple-400 transition-colors hover:text-purple-300"
+              className="flex h-auto items-center gap-1 p-0 text-sm text-neutral-400 transition-colors hover:text-white"
               disabled={isProcessing}
             >
               {state.selectedNote ? (
@@ -155,7 +155,7 @@ export function WithdrawalForm() {
             <Button
               onClick={() => screens.navigate("recipientInput")}
               variant={"ghost"}
-              className="flex h-auto items-center gap-1 p-0 text-sm text-purple-400 transition-colors hover:text-purple-300"
+              className="flex h-auto items-center gap-1 p-0 text-sm text-neutral-400 transition-colors hover:text-white"
               disabled={isProcessing || !state.selectedNote}
             >
               {state.recipientAddress ? (
