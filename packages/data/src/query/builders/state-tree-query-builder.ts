@@ -38,7 +38,7 @@ export class StateTreeQueryBuilder extends BaseQueryBuilder<
       orderByClause,
       orderDirectionClause,
       'limit: $limit',
-      this.config.skip ? 'after: $after' : '',
+      this.config.skip !== undefined ? 'offset: $offset' : '',
     ]
       .filter(Boolean)
       .join(', ');
@@ -54,8 +54,6 @@ export class StateTreeQueryBuilder extends BaseQueryBuilder<
           pageInfo {
             hasNextPage
             hasPreviousPage
-            startCursor
-            endCursor
           }
         }
       }
@@ -67,8 +65,8 @@ export class StateTreeQueryBuilder extends BaseQueryBuilder<
       limit: this.config.first || 1000, // Higher default for tree construction
     };
 
-    if (this.config.skip) {
-      variables.after = this.config.skip.toString();
+    if (this.config.skip !== undefined) {
+      variables.offset = this.config.skip;
     }
 
     if (this.config.where) {
@@ -94,8 +92,8 @@ export class StateTreeQueryBuilder extends BaseQueryBuilder<
   private getVariableDeclarations(): string {
     const declarations = ['$limit: Int!'];
 
-    if (this.config.skip) {
-      declarations.push('$after: String');
+    if (this.config.skip !== undefined) {
+      declarations.push('$offset: Int');
     }
 
     if (this.config.where) {
@@ -266,11 +264,11 @@ export class StateTreeQueryBuilder extends BaseQueryBuilder<
 
     const allLeaves: StateTreeLeaf[] = [];
     let hasMore = true;
-    let cursor: string | undefined = undefined;
+    let offset = 0;
 
     while (hasMore) {
-      if (cursor) {
-        this.skip(Number(cursor));
+      if (offset > 0) {
+        this.skip(offset);
       }
 
       const query = this.buildDynamicQuery();
@@ -278,7 +276,7 @@ export class StateTreeQueryBuilder extends BaseQueryBuilder<
       const result = await this.client.executeQuery<{
         merkleTreeLeafs: {
           items: StateTreeLeaf[];
-          pageInfo: { hasNextPage: boolean; endCursor?: string };
+          pageInfo: { hasNextPage: boolean; hasPreviousPage: boolean };
         };
       }>(query, variables);
 
@@ -286,7 +284,7 @@ export class StateTreeQueryBuilder extends BaseQueryBuilder<
       allLeaves.push(...items);
 
       hasMore = pageInfo.hasNextPage;
-      cursor = pageInfo.endCursor;
+      offset += items.length;
     }
 
     return allLeaves;

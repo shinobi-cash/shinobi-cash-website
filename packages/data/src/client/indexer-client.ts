@@ -460,8 +460,6 @@ export class IndexerClient {
           pageInfo {
             hasNextPage
             hasPreviousPage
-            endCursor
-            startCursor
           }
         }
       }
@@ -546,7 +544,7 @@ export class IndexerClient {
    * @param options.poolId - The pool ID to get activities for
    * @param options.limit - Number of activities to fetch (default: 100)
    * @param options.orderDirection - Sort direction: 'asc' or 'desc' (default: 'desc')
-   * @param options.after - Cursor for pagination (from previous pageInfo.endCursor)
+   * @param options.offset - Number of items to skip for pagination (default: 0)
    * @returns Promise resolving to paginated response with activities and page info
    *
    * @example
@@ -559,12 +557,12 @@ export class IndexerClient {
    * console.log(firstPage.items); // Array of activities
    * console.log(firstPage.pageInfo.hasNextPage); // true/false
    *
-   * // Get next page using cursor
+   * // Get next page using offset
    * if (firstPage.pageInfo.hasNextPage) {
    *   const nextPage = await client.getActivities({
    *     poolId: '0x5543b250b8a44513BA91C0346BeE40890FfD7D18',
    *     limit: 100,
-   *     after: firstPage.pageInfo.endCursor
+   *     offset: 100
    *   });
    * }
    * ```
@@ -573,18 +571,18 @@ export class IndexerClient {
     poolId: string;
     limit?: number;
     orderDirection?: 'asc' | 'desc';
-    after?: string;
+    offset?: number;
   }): Promise<import('../types/indexer.js').PaginatedResponse<import('../types/indexer.js').Activity>> {
-    const { poolId, limit = 100, orderDirection = 'desc', after } = options;
+    const { poolId, limit = 100, orderDirection = 'desc', offset } = options;
 
     const query = `
-      query GetActivities($poolId: String!, $limit: Int!, $orderDirection: String!, $after: String) {
+      query GetActivities($poolId: String!, $limit: Int!, $orderDirection: String!, $offset: Int) {
         activitys(
           where: { poolId: $poolId }
           orderBy: "timestamp"
           orderDirection: $orderDirection
           limit: $limit
-          after: $after
+          offset: $offset
         ) {
           items {
             id
@@ -618,14 +616,12 @@ export class IndexerClient {
           pageInfo {
             hasNextPage
             hasPreviousPage
-            endCursor
-            startCursor
           }
         }
       }
     `;
 
-    const variables = { poolId, limit, orderDirection, after };
+    const variables = { poolId, limit, orderDirection, offset };
 
     // Raw response from GraphQL (all numeric fields are strings)
     interface RawActivity {

@@ -51,7 +51,7 @@ export class ActivityQueryBuilder<
       orderByClause,
       orderDirectionClause,
       'limit: $limit',
-      this.config.skip ? 'after: $after' : '',
+      this.config.skip !== undefined ? 'offset: $offset' : '',
     ]
       .filter(Boolean)
       .join(', ');
@@ -67,8 +67,6 @@ export class ActivityQueryBuilder<
           pageInfo {
             hasNextPage
             hasPreviousPage
-            startCursor
-            endCursor
           }
         }
       }
@@ -80,8 +78,8 @@ export class ActivityQueryBuilder<
       limit: this.config.first || 100,
     };
 
-    if (this.config.skip) {
-      variables.after = this.config.skip.toString();
+    if (this.config.skip !== undefined) {
+      variables.offset = this.config.skip;
     }
 
     if (this.config.where) {
@@ -107,8 +105,8 @@ export class ActivityQueryBuilder<
   private getVariableDeclarations(): string {
     const declarations = ['$limit: Int!'];
 
-    if (this.config.skip) {
-      declarations.push('$after: String');
+    if (this.config.skip !== undefined) {
+      declarations.push('$offset: Int');
     }
 
     if (this.config.where) {

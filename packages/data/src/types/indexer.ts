@@ -507,8 +507,6 @@ export interface StateTreeFilters {
 export interface PageInfo {
   hasNextPage: boolean;
   hasPreviousPage: boolean;
-  startCursor?: string;
-  endCursor?: string;
 }
 
 export interface PaginatedResponse<T> {

@@ -43,7 +43,7 @@ export class ASPQueryBuilder extends BaseQueryBuilder<
       orderByClause,
       orderDirectionClause,
       'limit: $limit',
-      this.config.skip ? 'after: $after' : '',
+      this.config.skip !== undefined ? 'offset: $offset' : '',
     ]
       .filter(Boolean)
       .join(', ');
@@ -59,8 +59,6 @@ export class ASPQueryBuilder extends BaseQueryBuilder<
           pageInfo {
             hasNextPage
             hasPreviousPage
-            startCursor
-            endCursor
           }
         }
       }
@@ -72,8 +70,8 @@ export class ASPQueryBuilder extends BaseQueryBuilder<
       limit: this.config.first || 10,
     };
 
-    if (this.config.skip) {
-      variables.after = this.config.skip.toString();
+    if (this.config.skip !== undefined) {
+      variables.offset = this.config.skip;
     }
 
     if (this.config.where) {
@@ -99,8 +97,8 @@ export class ASPQueryBuilder extends BaseQueryBuilder<
   private getVariableDeclarations(): string {
     const declarations = ['$limit: Int!'];
 
-    if (this.config.skip) {
-      declarations.push('$after: String');
+    if (this.config.skip !== undefined) {
+      declarations.push('$offset: Int');
     }
 
     if (this.config.where) {
