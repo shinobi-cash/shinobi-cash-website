@@ -15,20 +15,19 @@ interface ScreenHeaderProps {
 
 export function ScreenHeader({ title, subtitle, onBack, backDisabled }: ScreenHeaderProps) {
   return (
-    <div className="border-border flex items-center gap-3 border-b px-4 py-3">
+    <div className="flex items-center gap-3 px-4 py-3">
       <Button
-        variant="ghost"
-        size="sm"
+        size="icon-sm"
         onClick={onBack}
         disabled={backDisabled}
-        className="hover:bg-app-surface-hover h-8 w-8 p-0 transition-colors duration-200 disabled:opacity-50"
+        className="bg-transparent hover:bg-white/10"
         aria-label="Go back"
       >
-        <ChevronLeft className="text-app-secondary h-4 w-4" />
+        <ChevronLeft className="h-4 w-4 text-neutral-400" />
       </Button>
       <div>
         <h2 className="text-lg font-semibold text-white">{title}</h2>
-        {subtitle && <p className="text-muted-foreground text-xs">{subtitle}</p>}
+        {subtitle && <p className="text-neutral-400 text-xs">{subtitle}</p>}
       </div>
     </div>
   );
