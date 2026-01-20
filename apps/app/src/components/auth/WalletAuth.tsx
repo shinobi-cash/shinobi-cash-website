@@ -61,20 +61,20 @@ export function WalletAuth() {
       {status === "idle" ? (
         <button
           onClick={start}
-          className="border-border bg-background/50 hover:bg-muted flex w-full max-w-sm flex-col items-start rounded-lg border p-4 text-left"
+          className="border-white/10 bg-white/[0.02] hover:bg-white/[0.04] flex w-full max-w-sm flex-col items-start rounded-lg border p-4 text-left"
         >
           <div className="mb-2 flex items-center gap-2">
-            <Wallet className="h-5 w-5 text-orange-500" />
-            <span className="text-foreground font-medium">Sign in with Wallet</span>
+            <Wallet className="h-5 w-5 text-white" />
+            <span className="text-white font-medium">Sign in with Wallet</span>
           </div>
-          <p className="text-muted-foreground text-xs">
+          <p className="text-neutral-400 text-xs">
             Sign with your wallet to access your account.
           </p>
         </button>
       ) : (
         <>
-          <div className="border-border mb-4 h-12 w-12 animate-spin rounded-full border-4 border-t-orange-500" />
-          <p className="text-muted-foreground text-sm">
+          <div className="border-white/10 mb-4 h-12 w-12 animate-spin rounded-full border-4 border-t-white" />
+          <p className="text-neutral-400 text-sm">
             {
               {
                 connecting: "Connecting wallet…",
