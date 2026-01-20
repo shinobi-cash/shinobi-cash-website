@@ -10,6 +10,7 @@ import { filterActivitiesByType } from "@/utils/activityDerivation";
 
 export interface ActivityScreenControllerAPI {
   status: ActivityStatus;
+  syncError: string | null; // Set when we have cached data but sync failed
   activities: readonly Activity[];
   filteredActivities: readonly Activity[];
   activeFilter: ActivityFilter;
@@ -33,6 +34,7 @@ export function useActivityScreen(): ActivityScreenControllerAPI {
   const activities = discoverySnapshot.activities;
   const counts = discoverySnapshot.counts;
   const status = discoverySnapshot.status;
+  const syncError = discoverySnapshot.syncError;
 
   const filteredActivities = useMemo(
     () => filterActivitiesByType(activities as Activity[], screenState.activeFilter),
@@ -46,6 +48,7 @@ export function useActivityScreen(): ActivityScreenControllerAPI {
 
   return {
     status,
+    syncError,
     activities,
     filteredActivities,
     activeFilter: screenState.activeFilter,

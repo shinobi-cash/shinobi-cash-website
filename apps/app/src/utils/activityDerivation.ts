@@ -19,12 +19,22 @@ function getActivityType(note: Note): ActivityType {
 
 /**
  * Convert a single note to an activity
+ * For withdrawals, pass the previous note to calculate withdrawn amount
  */
-function noteToActivity(note: Note): Activity {
+function noteToActivity(note: Note, prevNote?: Note): Activity {
+  const type = getActivityType(note);
+
+  // For withdrawals, calculate the actual withdrawn amount (prevAmount - currentAmount)
+  // For deposits/refunds, use the note amount directly
+  const amount =
+    type === "withdrawal" && prevNote
+      ? (BigInt(prevNote.amount) - BigInt(note.amount)).toString()
+      : note.amount;
+
   return {
     id: `${note.depositIndex}-${note.changeIndex}`,
-    type: getActivityType(note),
-    amount: note.amount,
+    type,
+    amount,
     timestamp: note.timestamp,
     blockNumber: note.blockNumber,
     status: note.status,
@@ -47,16 +57,21 @@ function noteToActivity(note: Note): Activity {
  *
  * Flattens all notes from all chains and converts them to activities,
  * sorted by timestamp (newest first).
+ *
+ * For withdrawals, calculates the actual withdrawn amount by comparing
+ * with the previous note in the chain.
  */
 export function deriveActivitiesFromNoteChains(
   noteChains: readonly ReadonlyNoteChain[]
 ): Activity[] {
   const activities: Activity[] = [];
 
-  // Flatten all notes from all chains
+  // Process each chain, tracking previous note for withdrawal amount calculation
   for (const chain of noteChains) {
-    for (const note of chain) {
-      activities.push(noteToActivity(note));
+    for (let i = 0; i < chain.length; i++) {
+      const note = chain[i];
+      const prevNote = i > 0 ? chain[i - 1] : undefined;
+      activities.push(noteToActivity(note, prevNote));
     }
   }
 

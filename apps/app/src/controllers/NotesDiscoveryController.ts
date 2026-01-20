@@ -50,6 +50,10 @@ interface NotesDiscoveryViewState {
   isLoading: boolean;
   isRefreshing: boolean;
   isEmpty: boolean;
+
+  // Sync error when we have cached data but discovery failed
+  // UI should show warning banner when this is set
+  syncError: string | null;
 }
 
 const state = proxy<NotesDiscoveryControllerState>({
@@ -144,19 +148,34 @@ export const NotesDiscoverySelectors = {
   isIdle: (): boolean => state.state.status === "idle",
 
   getViewState(): NotesDiscoveryViewState {
-    const { noteChains, state: discoveryState } = state;
+    const { noteChains, state: discoveryState, lastError } = state;
 
     const counts = getNoteChainCounts(noteChains);
     const availableNotes = getAvailableNotes(noteChains);
 
     const isDiscovering = discoveryState.status === "discovering";
     const isEmpty = noteChains.length === 0;
+    const hasError = discoveryState.status === "error";
 
+    // Determine status: prioritize showing cached data over error state
+    // Only show error if we have no cached data at all
     let status: NotesStatus = "ready";
-    if (discoveryState.status === "idle") status = "idle";
-    else if (discoveryState.status === "error") status = "error";
-    else if (isDiscovering && isEmpty) status = "loading";
-    else if (isEmpty) status = "empty";
+    let syncError: string | null = null;
+
+    if (discoveryState.status === "idle") {
+      status = "idle";
+    } else if (hasError && isEmpty) {
+      // No cached data and error - show full error state
+      status = "error";
+    } else if (hasError && !isEmpty) {
+      // Have cached data but sync failed - show data with warning
+      status = "ready";
+      syncError = lastError?.message ?? "Unable to sync with server";
+    } else if (isDiscovering && isEmpty) {
+      status = "loading";
+    } else if (isEmpty) {
+      status = "empty";
+    }
 
     return {
       status,
@@ -166,6 +185,7 @@ export const NotesDiscoverySelectors = {
       isLoading: isDiscovering && isEmpty,
       isRefreshing: isDiscovering && !isEmpty,
       isEmpty,
+      syncError,
     };
   },
 };

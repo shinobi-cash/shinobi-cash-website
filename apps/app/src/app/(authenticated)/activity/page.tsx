@@ -1,8 +1,10 @@
 "use client";
 
+import { AlertTriangle } from "lucide-react";
 import { ActivityFilterDropdown } from "@/components/activity/ActivityFilterDropdown";
 import { ActivityList } from "@/components/activity/ActivityList";
 import { ActivityDetailsScreen } from "@/components/screens/ActivityDetailsScreen";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { useActivityScreen } from "@/hooks/useActivityScreen";
 
 export default function ActivityPage() {
@@ -23,7 +25,21 @@ export default function ActivityPage() {
       {/* Header with Filter - Fixed */}
       <div className="shrink-0 border-b border-gray-800 px-4 py-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-white">Recent Activity</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-semibold text-white">Recent Activity</h2>
+            {controller.syncError && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button type="button" className="rounded p-1 hover:bg-white/10">
+                    <AlertTriangle className="h-4 w-4 text-yellow-400" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-xs">Unable to sync. Showing cached data.</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </div>
           <ActivityFilterDropdown
             activeFilter={controller.activeFilter}
             onFilterChange={controller.setFilter}

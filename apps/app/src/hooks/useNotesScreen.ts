@@ -20,6 +20,7 @@ export interface NotesScreenControllerAPI {
   // Status
   status: NotesStatus;
   lastError: NotesError | null;
+  syncError: string | null; // Set when we have cached data but sync failed
 
   // Filtered views
   filteredNoteViews: NoteChainView[];
@@ -93,6 +94,7 @@ export function useNotesScreen(): NotesScreenControllerAPI {
     // UI status (from domain)
     status: viewState.status,
     lastError: discoveryState.lastError,
+    syncError: viewState.syncError,
 
     // Filtered views
     filteredNoteViews,

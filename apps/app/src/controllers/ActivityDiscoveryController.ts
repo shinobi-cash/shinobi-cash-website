@@ -14,6 +14,8 @@ interface ActivityDiscoveryState {
     withdrawal: number;
     refund: number;
   };
+  // Sync error when we have cached data but sync failed
+  syncError: string | null;
 }
 
 const state = proxy<ActivityDiscoveryState>({
@@ -25,12 +27,14 @@ const state = proxy<ActivityDiscoveryState>({
     withdrawal: 0,
     refund: 0,
   },
+  syncError: null,
 });
 
 export const ActivityDiscoverySelectors = {
   getActivities: (): readonly Activity[] => state.activities,
   getCounts: () => state.counts,
   getStatus: () => state.status,
+  getSyncError: () => state.syncError,
 };
 
 export const ActivityDiscoveryController = {
@@ -41,6 +45,8 @@ export const ActivityDiscoveryController = {
     const activities = deriveActivitiesFromNoteChains(noteChains);
     const counts = getActivityCounts(activities);
 
+    // Determine status: propagate from notes view
+    // Note: notesView.status will be "ready" if we have cached data even on sync error
     const status: ActivityStatus =
       notesView.status === "idle"
         ? { type: "idle" }
@@ -55,6 +61,8 @@ export const ActivityDiscoveryController = {
     state.activities = activities;
     state.counts = counts;
     state.status = status;
+    // Propagate sync error from notes discovery
+    state.syncError = notesView.syncError;
   },
 
   reset(): void {
@@ -66,5 +74,6 @@ export const ActivityDiscoveryController = {
       refund: 0,
     };
     state.status = { type: "idle" };
+    state.syncError = null;
   },
 };
