@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 
-import { fetchActivities } from "@/utils/indexer";
+import { fetchActivitiesForWorker } from "@/utils/indexer";
 
 let intervalId: number | null = null;
 
@@ -14,7 +14,7 @@ self.onmessage = async (event) => {
 
     intervalId = self.setInterval(async () => {
       try {
-        const result = await fetchActivities(poolAddress, 100);
+        const result = await fetchActivitiesForWorker(poolAddress, 100);
         self.postMessage({
           type: "SYNC_RESULT",
           payload: result,

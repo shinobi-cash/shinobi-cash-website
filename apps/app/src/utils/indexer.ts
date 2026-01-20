@@ -1,6 +1,24 @@
 import { IPFS_GATEWAY_URL } from "@shinobi-cash/constants";
 import type { Activity, StateTreeLeaf, ASPApprovalList } from "@shinobi-cash/data";
 import { Errors, AppException, logError } from "@/lib/errors/errors";
+import { AuthController } from "@/controllers/AuthController";
+
+/**
+ * Check if user is authenticated
+ * Guards all indexer calls to prevent unauthenticated API requests
+ */
+function isAuthenticated(): boolean {
+  return AuthController.state.state.status === "authenticated";
+}
+
+/**
+ * Assert authenticated or throw
+ */
+function assertAuthenticated() {
+  if (!isAuthenticated()) {
+    throw new AppException(Errors.auth.failed("Not authenticated"));
+  }
+}
 
 export type { Activity, StateTreeLeaf, ASPApprovalList };
 
@@ -24,36 +42,58 @@ export interface ASPApprovalListLegacy {
   description: string;
 }
 
+/**
+ * Internal fetch activities - no auth check
+ * Used by web workers which can't access main thread auth state
+ * Worker lifecycle is managed by AppRuntime (only runs when authenticated)
+ */
+async function fetchActivitiesInternal(
+  poolAddress?: string,
+  limit = 100,
+  offset?: number,
+  orderDirection: "asc" | "desc" = "desc"
+) {
+  const response = await fetch("/api/indexer", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      endpoint: "activities",
+      params: { poolAddress, limit, offset, orderDirection },
+    }),
+  });
+
+  const result = await response.json();
+
+  if (!result.success) {
+    throw new Error(result.error || "Failed to fetch activities");
+  }
+
+  return result.data;
+}
+
 export async function fetchActivities(
   poolAddress?: string,
   limit = 100,
   offset?: number,
   orderDirection: "asc" | "desc" = "desc"
 ) {
+  assertAuthenticated();
   try {
-    const response = await fetch("/api/indexer", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        endpoint: "activities",
-        params: { poolAddress, limit, offset, orderDirection },
-      }),
-    });
-
-    const result = await response.json();
-
-    if (!result.success) {
-      throw new Error(result.error || "Failed to fetch activities");
-    }
-
-    return result.data;
+    return await fetchActivitiesInternal(poolAddress, limit, offset, orderDirection);
   } catch (error) {
     logError(error, { action: "fetchActivities", poolId: poolAddress });
     throw new AppException(Errors.indexer.fetchFailed("Failed to fetch activities", error));
   }
 }
 
+/**
+ * Worker-safe fetch activities
+ * For use in web workers where auth state is managed by main thread lifecycle
+ */
+export { fetchActivitiesInternal as fetchActivitiesForWorker };
+
 export async function fetchStateTreeLeaves(poolId: string): Promise<StateTreeLeaf[]> {
+  assertAuthenticated();
   try {
     const response = await fetch("/api/indexer", {
       method: "POST",
@@ -82,6 +122,7 @@ export async function fetchLatestASPRoot(): Promise<{
   ipfsCID: string;
   timestamp: string;
 }> {
+  assertAuthenticated();
   try {
     const response = await fetch("/api/indexer", {
       method: "POST",
@@ -109,6 +150,7 @@ export async function fetchLatestASPRoot(): Promise<{
 }
 
 export async function fetchApprovedLabelsFromIPFS(ipfsCID: string): Promise<string[]> {
+  assertAuthenticated();
   try {
     const ipfsResponse = await fetch(`${IPFS_GATEWAY_URL}${ipfsCID}`);
 
@@ -150,6 +192,9 @@ export async function fetchASPData() {
 }
 
 export async function checkIndexerHealth(): Promise<boolean> {
+  if (!isAuthenticated()) {
+    return false;
+  }
   try {
     const response = await fetch("/api/indexer", {
       method: "POST",
@@ -170,6 +215,9 @@ export async function fetchLatestIndexedBlock(): Promise<{
   blockNumber: string;
   timestamp: string;
 } | null> {
+  if (!isAuthenticated()) {
+    return null;
+  }
   try {
     const response = await fetch("/api/indexer", {
       method: "POST",
