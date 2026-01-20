@@ -17,7 +17,7 @@ export function DashboardTabs() {
   const pathname = usePathname();
 
   return (
-    <div className="flex gap-1 rounded-lg bg-muted/50 p-1">
+    <div className="bg-muted/50 flex gap-1 rounded-lg p-1">
       {DASHBOARD_TABS.map((tab) => {
         const isActive = pathname === tab.href || pathname.startsWith(`${tab.href}/`);
 

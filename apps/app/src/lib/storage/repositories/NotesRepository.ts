@@ -9,7 +9,11 @@ import {
   type ActivityFetcher,
   type DiscoveryState,
 } from "@shinobi-cash/core";
-import { type IndexedDBStore, notesStorageAdapter, sharedEncryptionService } from "../adapters/IndexedDBStore";
+import {
+  type IndexedDBStore,
+  notesStorageAdapter,
+  sharedEncryptionService,
+} from "../adapters/IndexedDBStore";
 import type { EncryptedNotesData } from "../interfaces/IDataTypes";
 
 export class NotesRepository {

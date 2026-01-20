@@ -27,7 +27,7 @@ export function AssetChain({ assetSymbol, chainId, className = "" }: AssetChainP
           <Image src={assetIcon} alt={assetSymbol} width={24} height={24} className="h-6 w-6" />
         </div>
         {/* Chain badge - smaller, overlayed on bottom-right */}
-        <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-background bg-white">
+        <div className="border-background absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 bg-white">
           <Image src={chainIcon} alt="Chain" width={12} height={12} className="h-3 w-3" />
         </div>
       </div>

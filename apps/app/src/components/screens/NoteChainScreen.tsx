@@ -50,8 +50,8 @@ export function NoteChainScreen({ noteChain, onBack, onWithdrawClick }: NoteChai
       <div className="space-y-6">
         <div className="space-y-6">
           {/* Balance Summary */}
-          <div className="rounded-xl border border-border bg-muted p-4 text-center shadow">
-            <p className="mb-1 text-sm font-medium text-muted-foreground">Current Balance</p>
+          <div className="border-border bg-muted rounded-xl border p-4 text-center shadow">
+            <p className="text-muted-foreground mb-1 text-sm font-medium">Current Balance</p>
             <div className="mb-2">
               <AmountDisplay
                 amount={lastNote.amount}
@@ -112,7 +112,7 @@ export function NoteChainScreen({ noteChain, onBack, onWithdrawClick }: NoteChai
                   <div className="relative pb-8">
                     {!isLast && (
                       <span
-                        className="absolute left-2 top-2 -ml-px h-full w-0.5 border border-border"
+                        className="border-border absolute left-2 top-2 -ml-px h-full w-0.5 border"
                         aria-hidden="true"
                       />
                     )}
@@ -158,11 +158,11 @@ export function NoteChainScreen({ noteChain, onBack, onWithdrawClick }: NoteChai
                               layout="inline"
                               ethOptions={{ maxDecimals: 6 }}
                               showUsd={true}
-                              className="text-xs text-muted-foreground"
+                              className="text-muted-foreground text-xs"
                               usdClassName="text-xs text-muted-foreground"
                             />
                           </div>
-                          <p className="whitespace-nowrap text-xs text-muted-foreground">
+                          <p className="text-muted-foreground whitespace-nowrap text-xs">
                             {formatTimestamp(note.timestamp)}
                           </p>
                         </div>

@@ -9,7 +9,13 @@ import { getTxExplorerUrl } from "@/config/chains";
 import { cn } from "@workspace/ui/lib/utils";
 import { type AppError, getUserMessage, isUserCancellation } from "@/lib/errors/errors";
 
-type DepositStatus = "submitting" | "confirming" | "confirmed-onchain" | "indexed" | "failed" | "error";
+type DepositStatus =
+  | "submitting"
+  | "confirming"
+  | "confirmed-onchain"
+  | "indexed"
+  | "failed"
+  | "error";
 type StepStatus = "completed" | "active" | "pending" | "failed";
 
 interface TimelineItem {
@@ -140,13 +146,13 @@ export function DepositTimelineScreen({
     if (status === "completed") return <CheckCircle className="h-6 w-6 text-green-500" />;
     if (status === "active") return <Clock className="h-6 w-6 animate-pulse text-yellow-500" />;
     if (status === "failed") return <XCircle className="h-6 w-6 text-red-500" />;
-    return <div className="h-6 w-6 rounded-full border-2 border-border" />;
+    return <div className="border-border h-6 w-6 rounded-full border-2" />;
   };
 
   const StatusIcon = () => {
     if (isIndexed) return <CheckCircle className="h-12 w-12 text-green-500" />;
     if (hasError) return <XCircle className="h-12 w-12 text-red-500" />;
-    return <Hourglass className="h-12 w-12 animate-pulse text-muted-foreground" />;
+    return <Hourglass className="text-muted-foreground h-12 w-12 animate-pulse" />;
   };
 
   // Back button only enabled after success or failure
@@ -164,7 +170,9 @@ export function DepositTimelineScreen({
 
   return (
     <ScreenLayout
-      header={<ScreenHeader title="Transaction details" onBack={onClose} backDisabled={!canGoBack} />}
+      header={
+        <ScreenHeader title="Transaction details" onBack={onClose} backDisabled={!canGoBack} />
+      }
       footer={footerContent}
       contentClassName="space-y-4 px-6 py-4"
     >
@@ -173,7 +181,7 @@ export function DepositTimelineScreen({
           <StatusIcon />
           <h2 className="text-2xl font-bold">{title}</h2>
           <span className="text-5xl font-extrabold">{noteAmount.toFixed(4)} ETH</span>
-          <span className="text-sm font-medium text-muted-foreground">{subtitle}</span>
+          <span className="text-muted-foreground text-sm font-medium">{subtitle}</span>
         </div>
 
         <div className="w-full max-w-md">
@@ -209,7 +217,9 @@ export function DepositTimelineScreen({
                     <p
                       className={cn(
                         "text-sm",
-                        step.status === "pending" ? "text-muted-foreground/70" : "text-muted-foreground"
+                        step.status === "pending"
+                          ? "text-muted-foreground/70"
+                          : "text-muted-foreground"
                       )}
                     >
                       {step.description}

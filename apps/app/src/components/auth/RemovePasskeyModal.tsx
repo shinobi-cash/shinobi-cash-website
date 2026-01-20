@@ -86,9 +86,11 @@ export function RemovePasskeyModal({ open, onOpenChange, onRemoved }: RemovePass
             </div>
           )}
 
-          <div className="rounded-lg border border-border bg-muted/50 p-4">
-            <h4 className="mb-2 text-sm font-medium text-muted-foreground">What will be removed:</h4>
-            <ul className="space-y-1 text-sm text-muted-foreground">
+          <div className="border-border bg-muted/50 rounded-lg border p-4">
+            <h4 className="text-muted-foreground mb-2 text-sm font-medium">
+              What will be removed:
+            </h4>
+            <ul className="text-muted-foreground space-y-1 text-sm">
               <li className="flex items-center gap-2">
                 <span className="text-muted-foreground">•</span>
                 Biometric authentication data

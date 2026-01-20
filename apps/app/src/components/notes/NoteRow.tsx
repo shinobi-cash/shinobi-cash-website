@@ -14,7 +14,7 @@ export function NoteRow({ note, onClick }: NoteRowProps) {
   return (
     <button
       type="button"
-      className="w-full cursor-pointer rounded-lg border border-b border-border bg-muted/50 px-2 py-2 text-left transition-all duration-150 sm:px-3 sm:py-3"
+      className="border-border bg-muted/50 w-full cursor-pointer rounded-lg border border-b px-2 py-2 text-left transition-all duration-150 sm:px-3 sm:py-3"
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
     >

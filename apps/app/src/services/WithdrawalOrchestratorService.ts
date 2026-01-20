@@ -9,10 +9,7 @@ import type {
 } from "@/types/withdrawal";
 import { validateWithdrawalRequest, validateWithdrawalContext } from "@/utils/withdrawalInvariants";
 import { quoteFees } from "@/utils/withdrawalFees";
-import {
-  prepareUserOperation,
-  executeUserOperation,
-} from "@/utils/withdrawalTransaction";
+import { prepareUserOperation, executeUserOperation } from "@/utils/withdrawalTransaction";
 import {
   createWithdrawalData,
   createCrossChainWithdrawalData,

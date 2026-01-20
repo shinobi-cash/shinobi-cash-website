@@ -1,6 +1,9 @@
 import { useSnapshot } from "valtio";
 import { useCallback } from "react";
-import { TransactionTrackingController, type TrackingStatus } from "@/controllers/TransactionTrackingController";
+import {
+  TransactionTrackingController,
+  type TrackingStatus,
+} from "@/controllers/TransactionTrackingController";
 
 interface TransactionTrackingHook {
   trackTransaction: (txHash: string, chainId: number) => void;

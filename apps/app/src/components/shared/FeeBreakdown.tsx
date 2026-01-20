@@ -60,19 +60,21 @@ export function FeeBreakdown({
     <div className="mb-2">
       <details className="overflow-hidden">
         <summary className="flex cursor-pointer items-center justify-between py-3 transition-colors">
-          <span className="text-sm font-medium text-muted-foreground">Fees</span>
+          <span className="text-muted-foreground text-sm font-medium">Fees</span>
           <div className="flex items-center gap-2">
             {!isEstimating && totalFeesUsd !== null && (
-              <span className="text-sm text-muted-foreground">≈ {formatUsdAmount(totalFeesUsd, 4)}</span>
+              <span className="text-muted-foreground text-sm">
+                ≈ {formatUsdAmount(totalFeesUsd, 4)}
+              </span>
             )}
-            <ChevronDown className="h-4 w-4 hover:bg-muted/80" />
+            <ChevronDown className="hover:bg-muted/80 h-4 w-4" />
           </div>
         </summary>
         <div className="space-y-2 pt-2">
           <div className="flex items-center justify-between text-sm">
             <div className="flex flex-col">
               <span className="text-muted-foreground">Execution Fee</span>
-              <span className="text-xs text-muted-foreground">Network gas</span>
+              <span className="text-muted-foreground text-xs">Network gas</span>
             </div>
             <div className="flex flex-col items-end gap-0.5">
               <span className="text-orange-400">
@@ -81,7 +83,7 @@ export function FeeBreakdown({
                   : `${prefix}${executionFeeNumber.toFixed(decimals)} ${assetSymbol}`}
               </span>
               {!isEstimating && executionFeeUsd !== null && (
-                <span className="text-xs text-muted-foreground">
+                <span className="text-muted-foreground text-xs">
                   ≈ {formatUsdAmount(executionFeeUsd, 4)}
                 </span>
               )}
@@ -91,7 +93,7 @@ export function FeeBreakdown({
             <div className="flex items-center justify-between text-sm">
               <div className="flex flex-col">
                 <span className="text-muted-foreground">Solver Fee</span>
-                <span className="text-xs text-muted-foreground">Cross-chain</span>
+                <span className="text-muted-foreground text-xs">Cross-chain</span>
               </div>
               <div className="flex flex-col items-end gap-0.5">
                 <span className="text-orange-400">
@@ -99,7 +101,9 @@ export function FeeBreakdown({
                   {solverFee.toFixed(decimals)} {assetSymbol}
                 </span>
                 {solverFeeUsd !== null && (
-                  <span className="text-xs text-muted-foreground">≈ {formatUsdAmount(solverFeeUsd)}</span>
+                  <span className="text-muted-foreground text-xs">
+                    ≈ {formatUsdAmount(solverFeeUsd)}
+                  </span>
                 )}
               </div>
             </div>

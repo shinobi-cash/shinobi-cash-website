@@ -6,9 +6,9 @@
 export function SectionDivider() {
   return (
     <div className="flex justify-center">
-      <div className="rounded-full border border-border bg-background p-2">
+      <div className="border-border bg-background rounded-full border p-2">
         <svg
-          className="h-5 w-5 text-muted-foreground"
+          className="text-muted-foreground h-5 w-5"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"

@@ -59,28 +59,28 @@ export function AssetChainSelectorScreen({
   return (
     <div className="flex flex-col">
       {/* Search Inputs */}
-      <div className="flex border-b border-border">
-        <div className="w-1/2 border-r border-border">
+      <div className="border-border flex border-b">
+        <div className="border-border w-1/2 border-r">
           <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2" />
             <input
               type="text"
               value={searchChain}
               onChange={(e) => setSearchChain(e.target.value)}
               placeholder="Search chains"
-              className="h-10 w-full rounded-lg border border-border bg-muted pl-10 pr-3 text-sm text-foreground transition-colors placeholder:text-muted-foreground focus:border-purple-600 focus:outline-none"
+              className="border-border bg-muted text-foreground placeholder:text-muted-foreground h-10 w-full rounded-lg border pl-10 pr-3 text-sm transition-colors focus:border-purple-600 focus:outline-none"
             />
           </div>
         </div>
         <div className="w-1/2 px-4 py-4">
           <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2" />
             <input
               type="text"
               value={searchToken}
               onChange={(e) => setSearchToken(e.target.value)}
               placeholder="Search tokens"
-              className="h-10 w-full rounded-lg border border-border bg-muted pl-10 pr-3 text-sm text-foreground transition-colors placeholder:text-muted-foreground focus:border-purple-600 focus:outline-none"
+              className="border-border bg-muted text-foreground placeholder:text-muted-foreground h-10 w-full rounded-lg border pl-10 pr-3 text-sm transition-colors focus:border-purple-600 focus:outline-none"
             />
           </div>
         </div>
@@ -89,7 +89,7 @@ export function AssetChainSelectorScreen({
       {/* Two Column Layout */}
       <div className="flex h-64 overflow-hidden">
         {/* Left Column - Chains */}
-        <div className="w-1/2 overflow-y-auto border-r-2 border-border">
+        <div className="border-border w-1/2 overflow-y-auto border-r-2">
           {filteredChains.map((chain) => (
             <button
               key={chain.id}
@@ -97,7 +97,7 @@ export function AssetChainSelectorScreen({
               className={`flex w-full items-center gap-3 px-4 py-3 transition-colors ${
                 selectedChainId === chain.id
                   ? "border-l-4 border-orange-600 bg-orange-600/20"
-                  : "border-l-4 border-transparent hover:bg-muted/50"
+                  : "hover:bg-muted/50 border-l-4 border-transparent"
               }`}
             >
               <div className="flex-shrink-0">
@@ -109,13 +109,13 @@ export function AssetChainSelectorScreen({
                   className="h-8 w-8 rounded-lg"
                 />
               </div>
-              <span className="text-left text-sm font-medium text-foreground">
+              <span className="text-foreground text-left text-sm font-medium">
                 {getChainName(chain.id)}
               </span>
             </button>
           ))}
           {filteredChains.length === 0 && (
-            <div className="py-8 text-center text-sm text-muted-foreground">No chains found</div>
+            <div className="text-muted-foreground py-8 text-center text-sm">No chains found</div>
           )}
         </div>
 
@@ -125,7 +125,7 @@ export function AssetChainSelectorScreen({
             <button
               key={asset.symbol}
               onClick={() => handleSelectToken(asset)}
-              className="flex w-full items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/50"
+              className="hover:bg-muted/50 flex w-full items-center gap-3 px-4 py-3 transition-colors"
             >
               <div className="relative flex-shrink-0">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600">
@@ -137,7 +137,7 @@ export function AssetChainSelectorScreen({
                     className="h-6 w-6"
                   />
                 </div>
-                <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-background bg-white">
+                <div className="border-background absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 bg-white">
                   <Image
                     src={getChainIcon(selectedChainId)}
                     alt="Chain"
@@ -148,13 +148,15 @@ export function AssetChainSelectorScreen({
                 </div>
               </div>
               <div className="flex min-w-0 flex-col items-start">
-                <div className="w-full truncate text-sm font-medium text-foreground">{asset.name}</div>
-                <div className="text-xs text-muted-foreground">{asset.symbol}</div>
+                <div className="text-foreground w-full truncate text-sm font-medium">
+                  {asset.name}
+                </div>
+                <div className="text-muted-foreground text-xs">{asset.symbol}</div>
               </div>
             </button>
           ))}
           {filteredTokens.length === 0 && (
-            <div className="py-8 text-center text-sm text-muted-foreground">No tokens found</div>
+            <div className="text-muted-foreground py-8 text-center text-sm">No tokens found</div>
           )}
         </div>
       </div>

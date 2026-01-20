@@ -21,12 +21,12 @@ export function SyncIndicatorView({
       <button
         onClick={onSync}
         disabled={isSyncing}
-        className="group relative cursor-pointer rounded-lg p-2 transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+        className="hover:bg-muted group relative cursor-pointer rounded-lg p-2 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
         aria-label={isSyncing ? "Syncing..." : "Sync now"}
         title="Manual sync only (auto-sync disabled)"
       >
         <RotateCw
-          className={`h-4 w-4 text-muted-foreground ${
+          className={`text-muted-foreground h-4 w-4 ${
             isSyncing ? "animate-spin" : "group-hover:text-foreground"
           }`}
         />

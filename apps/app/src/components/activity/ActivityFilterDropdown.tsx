@@ -63,7 +63,7 @@ export function ActivityFilterDropdown({
           {ACTIVITY_FILTER_LABELS[activeFilter]}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48 border-border bg-background p-1">
+      <DropdownMenuContent align="end" className="border-border bg-background w-48 p-1">
         {FILTER_OPTIONS.map((option) => {
           const count = getCount(option.value);
           const isActive = activeFilter === option.value;
@@ -82,7 +82,7 @@ export function ActivityFilterDropdown({
                 {isActive && <div className={`h-1.5 w-1.5 rounded-full ${option.dotColor}`} />}
                 {ACTIVITY_FILTER_LABELS[option.value]}
               </span>
-              <span className="text-xs text-muted-foreground">({count})</span>
+              <span className="text-muted-foreground text-xs">({count})</span>
             </DropdownMenuItem>
           );
         })}

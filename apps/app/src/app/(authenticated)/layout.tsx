@@ -20,7 +20,8 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
   const notesState = useSnapshot(NotesDiscoveryController.state);
 
   const isAuthenticated = state.state.status === "authenticated";
-  const isNotesSyncing = notesState.state.status === "discovering" && notesState.noteChains.length === 0;
+  const isNotesSyncing =
+    notesState.state.status === "discovering" && notesState.noteChains.length === 0;
 
   // Show auth screen if not authenticated
   if (!isAuthenticated) {
@@ -58,7 +59,7 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
           </div>
 
           {/* Card Content */}
-          <div className="rounded-xl border border-border bg-card/70">
+          <div className="border-border bg-card/70 rounded-xl border">
             {isNotesSyncing ? <NotesSyncingScreen /> : children}
           </div>
         </div>

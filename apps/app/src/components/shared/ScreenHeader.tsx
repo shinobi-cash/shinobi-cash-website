@@ -15,7 +15,7 @@ interface ScreenHeaderProps {
 
 export function ScreenHeader({ title, subtitle, onBack, backDisabled }: ScreenHeaderProps) {
   return (
-    <div className="flex items-center gap-3 border-b border-border px-4 py-3">
+    <div className="border-border flex items-center gap-3 border-b px-4 py-3">
       <Button
         variant="ghost"
         size="sm"
@@ -28,7 +28,7 @@ export function ScreenHeader({ title, subtitle, onBack, backDisabled }: ScreenHe
       </Button>
       <div>
         <h2 className="text-lg font-semibold text-white">{title}</h2>
-        {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
+        {subtitle && <p className="text-muted-foreground text-xs">{subtitle}</p>}
       </div>
     </div>
   );

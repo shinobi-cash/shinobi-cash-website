@@ -70,7 +70,7 @@ export function DepositPreviewScreen({
       {/* Assets */}
       <div className="w-full space-y-3">
         {/* From */}
-        <div className="flex items-center gap-4 rounded-3xl border bg-muted/90 p-4">
+        <div className="bg-muted/90 flex items-center gap-4 rounded-3xl border p-4">
           <AssetChain assetSymbol="ETH" chainId={originChainId} />
 
           <div className="flex flex-1 flex-col">
@@ -89,7 +89,7 @@ export function DepositPreviewScreen({
         </div>
 
         {/* To */}
-        <div className="flex items-center gap-4 rounded-3xl border bg-muted/90 p-4">
+        <div className="bg-muted/90 flex items-center gap-4 rounded-3xl border p-4">
           <ShinobiCashNote />
 
           <div className="flex flex-1 flex-col">

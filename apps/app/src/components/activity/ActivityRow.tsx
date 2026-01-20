@@ -24,7 +24,7 @@ export function ActivityRow({ activity, onClick }: ActivityRowProps) {
   return (
     <button
       type="button"
-      className="w-full cursor-pointer rounded-lg border border-border bg-muted/50 px-3 py-3 text-left transition-all duration-150 hover:bg-muted/70"
+      className="border-border bg-muted/50 hover:bg-muted/70 w-full cursor-pointer rounded-lg border px-3 py-3 text-left transition-all duration-150"
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
     >
@@ -47,7 +47,7 @@ export function ActivityRow({ activity, onClick }: ActivityRowProps) {
         {/* Bottom row: Chain info, status, timestamp */}
         <div className="flex items-center justify-between gap-2 text-xs">
           {/* Chain info */}
-          <div className="flex items-center gap-1.5 text-muted-foreground">
+          <div className="text-muted-foreground flex items-center gap-1.5">
             {isCrossChain ? (
               <>
                 <span>{originChainName}</span>
