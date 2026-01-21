@@ -25,6 +25,7 @@ export type {
   ASPApprovalList,
   CrossChainIntent,
   ActivityType,
+  ActivityStatus,
   ASPStatus,
   EntityType,
 } from './types/indexer.js';
@@ -44,11 +45,17 @@ export type {
   WithdrawalActivity,
   CrossChainDepositActivity,
   CrossChainWithdrawalActivity,
+  CrossChainDepositPendingActivity,
+  CrossChainWithdrawalPendingActivity,
+  RagequitActivity,
   TypedActivity,
   SerializedDepositActivity,
   SerializedWithdrawalActivity,
   SerializedCrossChainDepositActivity,
   SerializedCrossChainWithdrawalActivity,
+  SerializedCrossChainDepositPendingActivity,
+  SerializedCrossChainWithdrawalPendingActivity,
+  SerializedRagequitActivity,
   SerializedTypedActivity,
 } from './types/indexer.js';
 
@@ -58,7 +65,12 @@ export {
   isWithdrawalActivity,
   isCrossChainDepositActivity,
   isCrossChainWithdrawalActivity,
+  isCrossChainDepositPendingActivity,
+  isCrossChainWithdrawalPendingActivity,
+  isRagequitActivity,
   isCrossChainActivity,
+  isPendingCrossChainActivity,
+  isAnyCrossChainActivity,
 } from './types/indexer.js';
 
 // Filter types

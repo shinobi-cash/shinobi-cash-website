@@ -162,6 +162,7 @@ describe('Activity serialization', () => {
   const mockActivity: Activity = {
     id: 'activity-1',
     type: 'DEPOSIT',
+    status: 'pending',
     aspStatus: 'pending',
     poolId: '0x123',
     user: '0xuser',
@@ -171,7 +172,6 @@ describe('Activity serialization', () => {
     timestamp: 1700000000n,
     originTransactionHash: '0xtxhash',
     originChainId: 42161n,
-    destinationChainId: null,
   };
 
   it('should serialize activity with bigint fields as strings', () => {

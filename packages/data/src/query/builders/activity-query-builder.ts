@@ -175,6 +175,7 @@ export class ActivityQueryBuilder<
     return `
       id
       type
+      status
       aspStatus
       poolId
       user
@@ -191,6 +192,7 @@ export class ActivityQueryBuilder<
       feeAmount
       feeRefund
       relayer
+      solver
       isSponsored
       isRefunded
       orderId
