@@ -86,11 +86,6 @@ export async function fetchActivities(
   }
 }
 
-/**
- * Worker-safe fetch activities
- * For use in web workers where auth state is managed by main thread lifecycle
- */
-export { fetchActivitiesInternal as fetchActivitiesForWorker };
 
 export async function fetchStateTreeLeaves(poolId: string): Promise<StateTreeLeaf[]> {
   assertAuthenticated();
