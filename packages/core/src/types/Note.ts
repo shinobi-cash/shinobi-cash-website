@@ -55,6 +55,12 @@ interface BaseNote {
 
   /** Label assigned by solver (keccak256 hash) */
   label: string;
+
+  /** Whether this note came from a cross-chain deposit */
+  isCrossChain: boolean;
+
+  /** Cross-chain order ID for intent tracking (only for cross-chain deposits) */
+  orderId?: string;
 }
 
 /**
