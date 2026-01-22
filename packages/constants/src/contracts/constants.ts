@@ -176,8 +176,8 @@ export const SHINOBI_CASH_CROSSCHAIN_CONTRACTS = {
   84532: {
     DEPOSIT_ENTRYPOINT: {
       chain: baseSepolia as Chain,
-      address: '0x3f0351cdd05616B1807C177592ccB81b3220b5Ff',
-      blockNumber: 33607182,
+      address: '0x8ADb187D722C7B6088Ae56E9Fd7D12A1B11D5fd5',
+      blockNumber: 36677486,
       abi: ShinobiCrosschainDepositEntrypointAbi
     },
     WITHDRAWAL_OUTPUT_SETTLER: {
@@ -188,8 +188,8 @@ export const SHINOBI_CASH_CROSSCHAIN_CONTRACTS = {
     },
     DEPOSIT_INPUT_SETTLER: {
       chain: baseSepolia as Chain,
-      address: '0x9F5f52D0E481BfDA8028F64E7BA2fA76A897237b',
-      blockNumber: 33607221,
+      address: '0x5f858C0700E634d795C094F4cc80667D8E873923',
+      blockNumber: 36677560,
       abi: []
     },
     DEPOSIT_FILL_ORACLE: {
