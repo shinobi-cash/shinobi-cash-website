@@ -4,13 +4,34 @@
  * Full-screen view for displaying detailed activity information.
  */
 
-import { ExternalLink, Info, ArrowRight } from "lucide-react";
+import { ExternalLink, Info, ArrowRight, AlertTriangle, Clock } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
 import { AmountDisplay } from "@/components/shared/AmountDisplay";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";
 import { ScreenLayout } from "@/components/layout/ScreenLayout";
 import { ACTIVITY_TYPE_LABELS, type Activity } from "@/types/activity";
 import { getTxExplorerUrl, getChainName } from "@/config/chains";
+
+type ActivityPendingReason = "waitingForSolver" | "awaitingApproval" | "rejected";
+
+function getActivityPendingReason(activity: Activity): ActivityPendingReason | null {
+  // Cross-chain not filled yet (no label)
+  if (activity.isCrossChain && !activity.isActivated) {
+    return "waitingForSolver";
+  }
+
+  // In pool but ASP pending
+  if (activity.isActivated && activity.aspStatus === "pending") {
+    return "awaitingApproval";
+  }
+
+  // In pool but ASP rejected
+  if (activity.isActivated && activity.aspStatus === "rejected") {
+    return "rejected";
+  }
+
+  return null;
+}
 
 interface ActivityDetailsScreenProps {
   activity: Activity | null;
@@ -23,6 +44,11 @@ export function ActivityDetailsScreen({ activity, onBack }: ActivityDetailsScree
   const originChainName = getChainName(activity.originChainId);
   const destChainName = getChainName(activity.destinationChainId);
   const isCrossChain = activity.isCrossChain;
+  const pendingReason = getActivityPendingReason(activity);
+
+  // Check if destination tx exists (for pending cross-chain, it might not)
+  const hasDestinationTx = activity.destinationTransactionHash &&
+    activity.destinationTransactionHash !== activity.originTransactionHash;
 
   // Format full timestamp
   const fullTimestamp = new Date(Number(activity.timestamp) * 1000).toLocaleString("en-US", {
@@ -55,17 +81,46 @@ export function ActivityDetailsScreen({ activity, onBack }: ActivityDetailsScree
           />
         </div>
 
-        {/* Pending Activity Info */}
-        {!activity.isActivated && (
-          <div className="rounded-xl border border-yellow-800 bg-yellow-900/20 p-2">
+        {/* Pending Status Info */}
+        {pendingReason === "waitingForSolver" && (
+          <div className="rounded-xl border border-yellow-800 bg-yellow-900/20 p-3">
             <div className="flex items-start gap-2">
-              <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-yellow-400" />
+              <Clock className="mt-0.5 h-4 w-4 flex-shrink-0 text-yellow-400" />
               <div>
-                <p className="text-sm font-medium text-yellow-200">Pending</p>
+                <p className="text-sm font-medium text-yellow-200">Waiting for Solver</p>
                 <p className="mt-0.5 text-xs text-yellow-400">
-                  {isCrossChain
-                    ? "This cross-chain transaction is waiting to be filled by a solver."
-                    : "This transaction is pending asp approval."}
+                  This cross-chain deposit is waiting to be filled by a solver. Once filled, it
+                  will appear in your Available balance within ~5-10 minutes.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {pendingReason === "awaitingApproval" && (
+          <div className="rounded-xl border border-blue-800 bg-blue-900/20 p-3">
+            <div className="flex items-start gap-2">
+              <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-400" />
+              <div>
+                <p className="text-sm font-medium text-blue-200">Awaiting Approval</p>
+                <p className="mt-0.5 text-xs text-blue-400">
+                  This deposit is in the pool and awaiting compliance approval. Once approved, it
+                  will be available for private withdrawal.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {pendingReason === "rejected" && (
+          <div className="rounded-xl border border-orange-800 bg-orange-900/20 p-3">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-orange-400" />
+              <div>
+                <p className="text-sm font-medium text-orange-200">Compliance Rejected</p>
+                <p className="mt-0.5 text-xs text-orange-400">
+                  This deposit was not approved for private withdrawal. You can use Ragequit to
+                  withdraw your funds without privacy protection.
                 </p>
               </div>
             </div>
@@ -98,30 +153,35 @@ export function ActivityDetailsScreen({ activity, onBack }: ActivityDetailsScree
                 <div className="flex flex-1 flex-col items-center space-y-2">
                   <span className="text-muted-foreground font-medium">Destination</span>
                   <span className="text-center font-semibold text-white">{destChainName}</span>
-                  <a
-                    href={getTxExplorerUrl(
-                      activity.destinationChainId,
-                      activity.destinationTransactionHash
-                    )}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1 text-blue-400 hover:text-blue-300"
-                  >
-                    <span className="font-mono">
-                      {activity.destinationTransactionHash.slice(0, 6)}...
-                      {activity.destinationTransactionHash.slice(-4)}
+                  {hasDestinationTx ? (
+                    <a
+                      href={getTxExplorerUrl(
+                        activity.destinationChainId,
+                        activity.destinationTransactionHash
+                      )}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-blue-400 hover:text-blue-300"
+                    >
+                      <span className="font-mono">
+                        {activity.destinationTransactionHash.slice(0, 6)}...
+                        {activity.destinationTransactionHash.slice(-4)}
+                      </span>
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  ) : (
+                    <span className="flex items-center gap-1 text-yellow-400">
+                      <Clock className="h-3 w-3" />
+                      <span className="text-xs">Pending</span>
                     </span>
-                    <ExternalLink className="h-3 w-3" />
-                  </a>
+                  )}
                 </div>
               </div>
             </div>
           ) : (
             <div className="border-border bg-muted/50 space-y-2 rounded-lg border p-2 text-sm font-medium">
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">
-                  {isCrossChain ? "Origin Chain" : "Chain"}
-                </span>
+                <span className="text-muted-foreground">Chain</span>
                 <span className="text-white">{originChainName}</span>
               </div>
 

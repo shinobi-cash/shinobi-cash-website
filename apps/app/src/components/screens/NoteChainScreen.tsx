@@ -6,11 +6,11 @@
 import { getTxExplorerUrl } from "@/config/chains";
 import type { NoteChain, Note } from "@shinobi-cash/core";
 import { formatEthAmount, formatTimestamp, formatUsdAmount } from "@/utils/formatters";
-import { ExternalLink, Info } from "lucide-react";
+import { canWithdraw, canRagequit, getPendingReason } from "@/utils/noteFiltering";
+import { ExternalLink, Info, AlertTriangle } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";
 import { ScreenLayout } from "@/components/layout/ScreenLayout";
-import { NotesScreenSelectors } from "@/controllers/NotesScreenController";
 import { usePriceData } from "@/hooks/usePriceData";
 
 interface NoteChainScreenProps {
@@ -29,7 +29,14 @@ interface TimelineEntry {
   timestamp: string | bigint;
 }
 
-function getStatusStyles(note: Note) {
+interface StatusStyle {
+  badge: string;
+  dot: string;
+  label: string;
+}
+
+function getStatusStyles(note: Note): StatusStyle {
+  // Spent notes
   if (note.status === "spent") {
     return {
       badge: "bg-rose-400/10 text-rose-400",
@@ -37,18 +44,46 @@ function getStatusStyles(note: Note) {
       label: "Spent",
     };
   }
-  if (!note.isActivated) {
+
+  // Available for private withdrawal
+  if (canWithdraw(note)) {
     return {
-      badge: "bg-yellow-400/10 text-yellow-400",
-      dot: "bg-yellow-400",
-      label: "Pending Fill",
+      badge: "bg-emerald-400/10 text-emerald-400",
+      dot: "bg-emerald-400",
+      label: "Available",
     };
   }
-  return {
-    badge: "bg-emerald-400/10 text-emerald-400",
-    dot: "bg-emerald-400",
-    label: "Available",
-  };
+
+  // Get specific pending reason
+  const pendingReason = getPendingReason(note);
+
+  switch (pendingReason) {
+    case "waitingForSolver":
+      return {
+        badge: "bg-yellow-400/10 text-yellow-400",
+        dot: "bg-yellow-400",
+        label: "Awaiting Solver",
+      };
+    case "awaitingApproval":
+      return {
+        badge: "bg-blue-400/10 text-blue-400",
+        dot: "bg-blue-400",
+        label: "Awaiting Approval",
+      };
+    case "rejected":
+      return {
+        badge: "bg-orange-400/10 text-orange-400",
+        dot: "bg-orange-400",
+        label: "Rejected",
+      };
+    default:
+      // Fallback for any edge cases
+      return {
+        badge: "bg-neutral-400/10 text-neutral-400",
+        dot: "bg-neutral-400",
+        label: "Unknown",
+      };
+  }
 }
 
 function buildTimelineEntries(noteChain: NoteChain): TimelineEntry[] {
@@ -92,7 +127,9 @@ export function NoteChainScreen({ noteChain, onBack, onWithdrawClick }: NoteChai
   if (!noteChain) return null;
 
   const lastNote = noteChain[noteChain.length - 1];
-  const canWithdraw = NotesScreenSelectors.canWithdrawFromChain(noteChain) && !!onWithdrawClick;
+  const isWithdrawable = canWithdraw(lastNote) && !!onWithdrawClick;
+  const isRagequitable = canRagequit(lastNote);
+  const pendingReason = getPendingReason(lastNote);
   const statusStyles = getStatusStyles(lastNote);
 
   // Convert ETH amount to USD value
@@ -116,13 +153,22 @@ export function NoteChainScreen({ noteChain, onBack, onWithdrawClick }: NoteChai
         />
       }
       footer={
-        canWithdraw ? (
+        isWithdrawable ? (
           <div className="flex gap-2">
             <Button onClick={onBack} variant="outline" className="flex-1">
               Cancel
             </Button>
             <Button onClick={() => onWithdrawClick?.(noteChain)} className="flex-1">
               Withdraw
+            </Button>
+          </div>
+        ) : isRagequitable ? (
+          <div className="flex gap-2">
+            <Button onClick={onBack} variant="outline" className="flex-1">
+              Cancel
+            </Button>
+            <Button variant="destructive" disabled className="flex-1">
+              Ragequit (Coming Soon)
             </Button>
           </div>
         ) : undefined
@@ -148,16 +194,46 @@ export function NoteChainScreen({ noteChain, onBack, onWithdrawClick }: NoteChai
           </div>
         </div>
 
-        {/* Pending Deposit Info */}
-        {!lastNote.isActivated && (
+        {/* Pending Status Info */}
+        {pendingReason === "waitingForSolver" && (
           <div className="rounded-xl border border-yellow-800 bg-yellow-900/20 p-3">
             <div className="flex items-start gap-2">
               <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-yellow-400" />
               <div>
-                <p className="text-xs font-medium text-yellow-200">Waiting for Solver Fill</p>
+                <p className="text-xs font-medium text-yellow-200">Waiting for Solver</p>
                 <p className="mt-0.5 text-xs text-yellow-400">
                   This cross-chain deposit is waiting to be filled by a solver. Once filled, it
                   will appear in your Available balance.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {pendingReason === "awaitingApproval" && (
+          <div className="rounded-xl border border-blue-800 bg-blue-900/20 p-3">
+            <div className="flex items-start gap-2">
+              <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-400" />
+              <div>
+                <p className="text-xs font-medium text-blue-200">Awaiting Approval</p>
+                <p className="mt-0.5 text-xs text-blue-400">
+                  This deposit is in the pool and awaiting compliance approval. Once approved, it
+                  will be available for private withdrawal.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {pendingReason === "rejected" && (
+          <div className="rounded-xl border border-orange-800 bg-orange-900/20 p-3">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-orange-400" />
+              <div>
+                <p className="text-xs font-medium text-orange-200">Compliance Rejected</p>
+                <p className="mt-0.5 text-xs text-orange-400">
+                  This deposit was not approved for private withdrawal. You can use Ragequit to
+                  withdraw your funds without privacy protection.
                 </p>
               </div>
             </div>

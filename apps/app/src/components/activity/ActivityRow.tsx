@@ -11,6 +11,56 @@ import { formatTimestamp } from "@/utils/formatters";
 import { getChainName } from "@/config/chains";
 import { ArrowRight } from "lucide-react";
 
+type ActivityPendingReason = "waitingForSolver" | "awaitingApproval" | "rejected";
+
+interface BadgeStyle {
+  bg: string;
+  text: string;
+  label: string;
+}
+
+function getActivityPendingReason(activity: Activity): ActivityPendingReason | null {
+  // Cross-chain not filled yet (no label)
+  if (activity.isCrossChain && !activity.isActivated) {
+    return "waitingForSolver";
+  }
+
+  // In pool but ASP pending
+  if (activity.isActivated && activity.aspStatus === "pending") {
+    return "awaitingApproval";
+  }
+
+  // In pool but ASP rejected
+  if (activity.isActivated && activity.aspStatus === "rejected") {
+    return "rejected";
+  }
+
+  return null;
+}
+
+function getPendingBadgeStyle(reason: ActivityPendingReason): BadgeStyle {
+  switch (reason) {
+    case "waitingForSolver":
+      return {
+        bg: "bg-yellow-400/10",
+        text: "text-yellow-400",
+        label: "Awaiting Solver",
+      };
+    case "awaitingApproval":
+      return {
+        bg: "bg-blue-400/10",
+        text: "text-blue-400",
+        label: "Awaiting Approval",
+      };
+    case "rejected":
+      return {
+        bg: "bg-orange-400/10",
+        text: "text-orange-400",
+        label: "Rejected",
+      };
+  }
+}
+
 interface ActivityRowProps {
   activity: Activity;
   onClick?: () => void;
@@ -20,6 +70,8 @@ export function ActivityRow({ activity, onClick }: ActivityRowProps) {
   const isCrossChain = activity.isCrossChain;
   const originChainName = getChainName(activity.originChainId);
   const destChainName = getChainName(activity.destinationChainId);
+  const pendingReason = getActivityPendingReason(activity);
+  const badgeStyle = pendingReason ? getPendingBadgeStyle(pendingReason) : null;
 
   return (
     <button
@@ -61,9 +113,9 @@ export function ActivityRow({ activity, onClick }: ActivityRowProps) {
 
           {/* Status and timestamp */}
           <div className="flex items-center gap-2">
-            {!activity.isActivated && (
-              <span className="rounded-full bg-yellow-400/10 px-2 py-0.5 text-xs font-medium text-yellow-400">
-                Pending
+            {badgeStyle && (
+              <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${badgeStyle.bg} ${badgeStyle.text}`}>
+                {badgeStyle.label}
               </span>
             )}
             <span className="text-neutral-400">{formatTimestamp(activity.timestamp)}</span>
