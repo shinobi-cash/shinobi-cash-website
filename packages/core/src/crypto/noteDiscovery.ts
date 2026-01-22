@@ -99,6 +99,15 @@ export function buildNoteChain(
     );
   }
 
+  const originChainId = depositActivity.originChainId.toString();
+  const destinationChainId = (depositActivity.destinationChainId || depositActivity.originChainId).toString();
+
+  // Determine cross-chain status from activity type (more reliable than comparing chain IDs
+  // since destinationChainId may not be set for pending cross-chain deposits)
+  const isCrossChain = depositActivity.type === 'CROSSCHAIN_DEPOSIT' ||
+    depositActivity.type === 'CROSSCHAIN_DEPOSIT_PENDING' ||
+    originChainId !== destinationChainId;
+
   const depositNote: DepositNote = {
     poolAddress,
     depositIndex,
@@ -107,8 +116,8 @@ export function buildNoteChain(
     amount: depositActivity.amount ? depositActivity.amount.toString() : '0',
     originTransactionHash: depositActivity.originTransactionHash,
     destinationTransactionHash: depositActivity.destinationTransactionHash || depositActivity.originTransactionHash,
-    originChainId: depositActivity.originChainId.toString(),
-    destinationChainId: (depositActivity.destinationChainId || depositActivity.originChainId).toString(),
+    originChainId,
+    destinationChainId,
     blockNumber: depositActivity.blockNumber.toString(),
     timestamp: depositActivity.timestamp.toString(),
     status: 'unspent',
@@ -116,6 +125,8 @@ export function buildNoteChain(
     isActivated: depositActivity.label != null,
     label: depositActivity.label || `Pending Deposit #${depositIndex}`,
     precommitmentHash: depositActivity.precommitmentHash,
+    isCrossChain,
+    orderId: depositActivity.orderId ?? undefined,
   };
 
   const chain: NoteChain = [depositNote];
@@ -221,6 +232,8 @@ export function extendNoteChain(
       isActivated: true,
       label: chain[0]!.label,
       refundCommitment: withdrawal.refundCommitment,
+      isCrossChain: chain[0]!.isCrossChain,
+      orderId: chain[0]!.orderId,
     };
 
     newChain.push(changeNote);

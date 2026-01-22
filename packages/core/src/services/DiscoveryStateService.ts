@@ -152,9 +152,13 @@ export function reconcileExistingDeposits(
   poolAddress: string,
 ): NoteChain[] {
   // Build deposit activity map for O(1) lookups
+  // Include pending cross-chain deposits to track intent status before solver fills
   const depositActivityMap = new Map<PrecommitmentHash, Activity>();
   for (const activity of activities) {
-    if ((activity.type === 'DEPOSIT' || activity.type === 'CROSSCHAIN_DEPOSIT') && activity.precommitmentHash) {
+    const isDepositType = activity.type === 'DEPOSIT' ||
+      activity.type === 'CROSSCHAIN_DEPOSIT' ||
+      activity.type === 'CROSSCHAIN_DEPOSIT_PENDING';
+    if (isDepositType && activity.precommitmentHash) {
       depositActivityMap.set(activity.precommitmentHash, activity);
     }
   }
@@ -264,9 +268,13 @@ function discoverNewDeposits(
   }
 
   // Match activities to deposit indices
+  // Include pending cross-chain deposits to discover notes before solver fills
   const depositMatches = new Map<number, Activity>();
   for (const activity of activities) {
-    if ((activity.type === 'DEPOSIT' || activity.type === 'CROSSCHAIN_DEPOSIT') && activity.precommitmentHash) {
+    const isDepositType = activity.type === 'DEPOSIT' ||
+      activity.type === 'CROSSCHAIN_DEPOSIT' ||
+      activity.type === 'CROSSCHAIN_DEPOSIT_PENDING';
+    if (isDepositType && activity.precommitmentHash) {
       const depositIndex = precommitmentMap.get(activity.precommitmentHash);
       if (depositIndex !== undefined) {
         depositMatches.set(depositIndex, activity);
