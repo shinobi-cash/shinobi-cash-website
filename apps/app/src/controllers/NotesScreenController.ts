@@ -7,7 +7,7 @@
 import { proxy } from "valtio";
 import type { NoteChain } from "@shinobi-cash/core";
 import { NoteChainView, NoteFilter, ReadonlyNoteChain } from "@/types/notes";
-import { filterNoteChains, getLastNote, sortNoteChainsByTimestamp } from "@/utils/noteFiltering";
+import { filterNoteChains, getLastNote, sortNoteChainsByTimestamp, canWithdraw } from "@/utils/noteFiltering";
 
 /**
  * Screen UI state
@@ -72,18 +72,13 @@ export const NotesScreenSelectors = {
   getActiveFilter: (): NoteFilter => state.activeFilter,
 
   /**
-   * Check if a note chain can be withdrawn
-   * Business logic: must be unspent, activated, and have positive balance
+   * Check if a note chain can be withdrawn privately
+   * Delegates to canWithdraw helper for consistent logic
    */
   canWithdrawFromChain(noteChain: NoteChain): boolean {
     if (!noteChain || noteChain.length === 0) return false;
     const lastNote = noteChain[noteChain.length - 1];
-    return (
-      lastNote.status === "unspent" &&
-      lastNote.isActivated === true &&
-      Boolean(lastNote.amount) &&
-      BigInt(lastNote.amount) > BigInt(0)
-    );
+    return canWithdraw(lastNote);
   },
 };
 
