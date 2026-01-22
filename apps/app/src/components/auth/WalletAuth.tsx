@@ -2,18 +2,20 @@
 
 import { useState } from "react";
 import { Wallet } from "lucide-react";
-import { useAccount, useChainId, useConnect, useSignTypedData } from "wagmi";
+import { useAccount, useChainId, useConnect, useSignTypedData, useSwitchChain } from "wagmi";
 import { AuthController } from "@/controllers/AuthController";
 import { getEIP712Message } from "@/utils/authCrypto";
 import { showToast } from "@/lib/toast";
 import { getUserMessage, isUserCancellation } from "@/lib/errors/errors";
+import { POOL_CHAIN_ID } from "@/config/chains";
 
-type Status = "idle" | "connecting" | "signing" | "authenticating";
+type Status = "idle" | "connecting" | "switching" | "signing" | "authenticating";
 
 export function WalletAuth() {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const { connectors, connectAsync } = useConnect();
+  const { switchChainAsync } = useSwitchChain();
   const { signTypedDataAsync } = useSignTypedData();
   const [status, setStatus] = useState<Status>("idle");
 
@@ -23,7 +25,7 @@ export function WalletAuth() {
 
       let walletAddress = address as `0x${string}` | undefined;
 
-      if (!isConnected || !walletAddress || !chainId) {
+      if (!isConnected || !walletAddress) {
         setStatus("connecting");
         const connector = connectors[0];
         if (!connector) throw new Error("No wallet connector");
@@ -33,16 +35,23 @@ export function WalletAuth() {
 
         if (!walletAddress) throw new Error("Wallet address missing");
       }
+
+      // Switch to pool chain if not already on it (required for EIP-712 signature)
+      if (chainId !== POOL_CHAIN_ID) {
+        setStatus("switching");
+        await switchChainAsync({ chainId: POOL_CHAIN_ID });
+      }
+
       setStatus("signing");
 
-      const message = getEIP712Message(walletAddress, chainId, { deterministic: true });
-      console.log("Request Signing the auth message");
+      // Always use pool chain for auth signature to ensure consistent account ID
+      const message = getEIP712Message(walletAddress, POOL_CHAIN_ID, { deterministic: true });
       const signature = await signTypedDataAsync(message);
 
       setStatus("authenticating");
 
       AuthController.signInWithWallet({
-        chainId,
+        chainId: POOL_CHAIN_ID,
         signature,
         walletAddress,
       });
@@ -78,6 +87,7 @@ export function WalletAuth() {
             {
               {
                 connecting: "Connecting wallet…",
+                switching: "Switching to Arbitrum…",
                 signing: "Awaiting signature…",
                 authenticating: "Signing in…",
               }[status]
