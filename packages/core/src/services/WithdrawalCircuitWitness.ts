@@ -148,6 +148,7 @@ export function buildWithdrawalCircuitWitness(
 
   // Find indices in commitment/label arrays
   const existingCommitmentBigInt = fromHashString(derivation.existingCommitment);
+
   const stateIndex = stateCommitments.indexOf(existingCommitmentBigInt);
   const aspIndex = aspLabels.indexOf(label);
 
@@ -164,7 +165,7 @@ export function buildWithdrawalCircuitWitness(
   const aspProof = aspTree.generateProof(aspIndex);
 
   // Prepare circuit witness
-  return {
+  const witness = {
     withdrawnValue: withdrawAmount.toString(),
     stateRoot: stateProof.root.toString(),
     ASPRoot: aspProof.root.toString(),
@@ -182,6 +183,8 @@ export function buildWithdrawalCircuitWitness(
     stateIndex: Object.is(stateProof.index, Number.NaN) ? 0 : stateProof.index,
     ASPIndex: Object.is(aspProof.index, Number.NaN) ? 0 : aspProof.index,
   };
+
+  return witness;
 }
 
 /**
@@ -221,7 +224,6 @@ export function buildCrosschainWithdrawalCircuitWitness(
   // Get base witness (same-chain logic)
   const baseWitness = buildWithdrawalCircuitWitness(derivation, stateCommitments, aspLabels, intent);
 
-  // Add refund credentials
   return {
     ...baseWitness,
     refundNullifier: derivation.refundNullifier.toString(),
