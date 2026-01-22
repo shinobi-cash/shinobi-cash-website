@@ -88,7 +88,7 @@ export function DepositPreviewScreen({
 
         <div className="text-center">
           <h1 className="text-2xl font-bold">
-            You'll deposit {formatSmallEthAmount(depositAmountNum)} ETH
+            You&apos;ll deposit {formatSmallEthAmount(depositAmountNum)} ETH
           </h1>
 
           {/* {depositUsd !== null && <p className="text-md text-zinc-500">~{formatUsdAmount(depositUsd)}</p>} */}

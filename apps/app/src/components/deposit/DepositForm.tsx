@@ -141,6 +141,7 @@ export function DepositForm({ asset }: DepositFormProps) {
 
     const error = state.state.status === "error" ? state.state.error : null;
     const failedReason = state.state.status === "failed" ? state.state.reason : null;
+    const isCrossChain = state.wallet.chainId !== POOL_CHAIN.id;
 
     return (
       <DepositTimelineScreen
@@ -150,6 +151,7 @@ export function DepositForm({ asset }: DepositFormProps) {
         error={error}
         failedReason={failedReason}
         originChainId={state.wallet.chainId}
+        isCrossChain={isCrossChain}
         onClose={() => {
           DepositController.reset();
           screens.close();

@@ -1,6 +1,7 @@
 "use client";
 
 import { CheckCircle, Clock, Hourglass, XCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { Button } from "@workspace/ui/components/button";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";
 import { ScreenLayout } from "@/components/layout/ScreenLayout";
@@ -33,6 +34,7 @@ interface DepositTimelineScreenProps {
   error: AppError | null;
   failedReason: string | null;
   originChainId: number;
+  isCrossChain: boolean;
   onClose: () => void;
 }
 
@@ -43,8 +45,10 @@ export function DepositTimelineScreen({
   error,
   failedReason,
   originChainId,
+  isCrossChain,
   onClose,
 }: DepositTimelineScreenProps) {
+  const router = useRouter();
   const { trackingStatus } = useTransactionTracking();
   const explorerUrl = txHash ? getTxExplorerUrl(originChainId, txHash) : null;
 
@@ -61,26 +65,45 @@ export function DepositTimelineScreen({
   const isUserCancelled = error && isUserCancellation(error);
   const hasError = isUserCancelled || isFailed || isError;
 
-  const title = isIndexed
-    ? "Deposit complete"
+  // Both same-chain and cross-chain wait for indexer
+  const isComplete = isIndexed;
+
+  // Title based on state and cross-chain
+  const title = isComplete
+    ? isCrossChain
+      ? "Deposit intent submitted"
+      : "Deposit complete"
     : hasError
       ? "Deposit failed"
       : isConfirmedOnChain || isIndexing
-        ? "Confirming deposit"
+        ? isCrossChain
+          ? "Confirming deposit intent"
+          : "Confirming deposit"
         : isConfirming
-          ? "Processing deposit"
+          ? isCrossChain
+            ? "Submitting deposit intent"
+            : "Processing deposit"
           : isSubmitting
             ? "Confirm in wallet"
-            : "Processing deposit";
+            : isCrossChain
+              ? "Submitting deposit intent"
+              : "Processing deposit";
 
-  const subtitle = isIndexed
-    ? "Your deposit is complete and ready for withdrawal."
+  // Subtitle based on state and cross-chain
+  const subtitle = isComplete
+    ? isCrossChain
+      ? "Your deposit intent is on-chain. A solver will fill it shortly."
+      : "Your deposit is complete and ready for withdrawal."
     : hasError
       ? "Something went wrong. See details below."
       : isConfirmedOnChain || isIndexing
-        ? "Almost done. Finalizing your deposit."
+        ? isCrossChain
+          ? "Waiting for indexer to confirm your deposit intent."
+          : "Almost done. Finalizing your deposit."
         : isConfirming
-          ? "Waiting for confirmation."
+          ? isCrossChain
+            ? "Creating your cross-chain deposit intent."
+            : "Waiting for confirmation."
           : isSubmitting
             ? "Please confirm in your wallet."
             : "This may take a few moments.";
@@ -105,7 +128,7 @@ export function DepositTimelineScreen({
   const processingStatus: StepStatus =
     failedAtStep === "processing"
       ? "failed"
-      : isIndexed
+      : isComplete
         ? "completed"
         : isConfirming || isConfirmedOnChain || isIndexing
           ? "active"
@@ -113,7 +136,7 @@ export function DepositTimelineScreen({
             ? "active"
             : "pending";
 
-  const completeStatus: StepStatus = isIndexed ? "completed" : "pending";
+  const completeStatus: StepStatus = isComplete ? "completed" : "pending";
 
   const getErrorMessage = (): string | undefined => {
     if (!hasError) return undefined;
@@ -123,6 +146,7 @@ export function DepositTimelineScreen({
     return undefined;
   };
 
+  // Timeline with cross-chain aware messaging
   const timeline: TimelineItem[] = [
     {
       label: "Confirm in wallet",
@@ -131,16 +155,21 @@ export function DepositTimelineScreen({
       errorMessage: failedAtStep === "confirm" ? getErrorMessage() : undefined,
     },
     {
-      label: "Processing deposit",
+      label: isCrossChain ? "Submitting intent" : "Processing deposit",
       status: processingStatus,
-      description: "Confirming and securing your deposit.",
+      description: isCrossChain
+        ? "Creating your cross-chain deposit intent."
+        : "Confirming and securing your deposit.",
       errorMessage: failedAtStep === "processing" ? getErrorMessage() : undefined,
+      link: explorerUrl && (isConfirmedOnChain || isIndexing) ? { url: explorerUrl, text: "View transaction" } : undefined,
     },
     {
-      label: "Deposit complete",
+      label: isCrossChain ? "Intent submitted" : "Deposit complete",
       status: completeStatus,
-      description: "Your funds are ready for withdrawal.",
-      link: explorerUrl && isIndexed ? { url: explorerUrl, text: "View receipt" } : undefined,
+      description: isCrossChain
+        ? "A solver will fill your deposit within ~5-10 minutes."
+        : "Your funds are ready for withdrawal.",
+      link: explorerUrl && isComplete ? { url: explorerUrl, text: "View receipt" } : undefined,
     },
   ];
 
@@ -152,15 +181,40 @@ export function DepositTimelineScreen({
   };
 
   const StatusIcon = () => {
-    if (isIndexed) return <CheckCircle className="h-12 w-12 text-emerald-400" />;
+    if (isComplete) return <CheckCircle className="h-12 w-12 text-emerald-400" />;
     if (hasError) return <XCircle className="h-12 w-12 text-rose-400" />;
     return <Hourglass className="text-neutral-400 h-12 w-12 animate-pulse" />;
   };
 
-  // Back button only enabled after success or failure
-  const canGoBack = isIndexed || hasError;
+  // Back button enabled after success or failure
+  const canGoBack = isComplete || hasError;
 
-  const footerContent = (
+  // Navigate to notes to track deposit status
+  const handleTrackStatus = () => {
+    onClose();
+    router.push("/notes");
+  };
+
+  // Different footer for cross-chain success (indexed pending intent)
+  const footerContent = isComplete && isCrossChain ? (
+    <div className="flex flex-col gap-2">
+      <Button
+        onClick={handleTrackStatus}
+        className="h-12 w-full rounded-xl text-base font-semibold sm:h-14 sm:text-lg"
+        size="lg"
+      >
+        Track Deposit Status
+      </Button>
+      <Button
+        onClick={onClose}
+        variant="outline"
+        className="h-12 w-full rounded-xl text-base font-semibold sm:h-14 sm:text-lg"
+        size="lg"
+      >
+        Done
+      </Button>
+    </div>
+  ) : (
     <Button
       onClick={onClose}
       className="h-12 w-full rounded-xl text-base font-semibold disabled:cursor-not-allowed disabled:opacity-50 sm:h-14 sm:text-lg"
