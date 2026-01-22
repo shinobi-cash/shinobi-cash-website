@@ -184,9 +184,11 @@ export interface ActivityWhereInput {
   timestamp_gte?: string;
   timestamp_lte?: string;
 
+  // Status filter
+  status?: string;
+
   // Boolean filters
   isSponsored?: boolean;
-  isRefunded?: boolean;
 
   // Label existence (for activation check)
   label_not?: null; // Has label (is activated)

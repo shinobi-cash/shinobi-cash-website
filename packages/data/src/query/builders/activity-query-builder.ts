@@ -121,6 +121,7 @@ export class ActivityQueryBuilder<
       switch (key) {
         case 'id':
         case 'type':
+        case 'status':
         case 'aspStatus':
         case 'poolId':
         case 'user':
@@ -146,7 +147,6 @@ export class ActivityQueryBuilder<
           declarations.push(`$${key}: String`);
           break;
         case 'isSponsored':
-        case 'isRefunded':
           declarations.push(`$${key}: Boolean`);
           break;
       }
@@ -194,7 +194,6 @@ export class ActivityQueryBuilder<
       relayer
       solver
       isSponsored
-      isRefunded
       orderId
       blockNumber
       timestamp
@@ -378,7 +377,7 @@ export class ActivityQueryBuilder<
    * Filter only refunded operations
    */
   onlyRefunded(): this {
-    this.where({ isRefunded: true });
+    this.where({ status: 'refunded' });
     return this;
   }
 

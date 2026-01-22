@@ -604,7 +604,6 @@ export class IndexerClient {
             feeRefund
             relayer
             isSponsored
-            isRefunded
             orderId
             blockNumber
             timestamp
@@ -644,7 +643,6 @@ export class IndexerClient {
       feeRefund?: string;
       relayer?: string;
       isSponsored?: boolean;
-      isRefunded?: boolean;
       orderId?: string;
       blockNumber: string;
       timestamp: string;

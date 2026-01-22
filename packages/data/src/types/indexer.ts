@@ -100,8 +100,6 @@ export interface Activity {
 
   /** Whether operation was sponsored (AA) */
   isSponsored?: boolean;
-  /** Whether operation was refunded */
-  isRefunded?: boolean;
 
   /** Cross-chain order ID */
   orderId?: string;
@@ -231,7 +229,6 @@ export interface SerializedActivity {
   relayer?: string;
   solver?: string;
   isSponsored?: boolean;
-  isRefunded?: boolean;
   orderId?: string;
   blockNumber: string;
   timestamp: string;
