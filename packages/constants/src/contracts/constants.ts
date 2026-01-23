@@ -95,10 +95,14 @@ export const CROSS_CHAIN_GAS_LIMITS = {
 } as const;
 
 /**
- * Default deposit fee rates for cross-chain deposits
+ * Deposit fee configuration
  */
 export const DEPOSIT_FEES = {
-  DEFAULT_SOLVER_FEE_BPS: 500, // 5% solver fee in basis points (uint256 for contract)
+  /** Compliance/vetting fee in basis points (1%) */
+  COMPLIANCE_FEE_BPS: 100,
+
+  /** Default solver fee for cross-chain deposits (5%) */
+  DEFAULT_SOLVER_FEE_BPS: 500,
 } as const;
 
 /**

@@ -212,3 +212,13 @@ export {
   type GasLimits,
   type FeeBreakdown,
 } from './utils/withdrawal.js';
+
+// Deposit utilities
+export {
+  classifyDeposit,
+  calculateComplianceFee,
+  calculateDepositNoteAmount,
+  calculateDepositFeeBreakdown,
+  type DepositKind,
+  type DepositFeeBreakdown,
+} from './utils/deposit.js';
