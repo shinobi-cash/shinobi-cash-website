@@ -55,18 +55,27 @@ export class IndexedDBStore<T = unknown> implements IEncryptedStorageAdapter<T> 
 
   async remove(key: string): Promise<void> {
     const store = await this.getStore("readwrite");
-    store.delete(key);
+    return new Promise((resolve, reject) => {
+      const req = store.delete(key);
+      req.onerror = () => reject(req.error);
+      req.onsuccess = () => resolve();
+    });
   }
 
   async clear(): Promise<void> {
     const store = await this.getStore("readwrite");
-    store.clear();
+    return new Promise((resolve, reject) => {
+      const req = store.clear();
+      req.onerror = () => reject(req.error);
+      req.onsuccess = () => resolve();
+    });
   }
 
   async keys(): Promise<string[]> {
     const store = await this.getStore("readonly");
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const req = store.getAllKeys();
+      req.onerror = () => reject(req.error);
       req.onsuccess = () => resolve(req.result as string[]);
     });
   }
