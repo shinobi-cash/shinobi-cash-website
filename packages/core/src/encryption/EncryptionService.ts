@@ -140,6 +140,7 @@ export class EncryptionService {
    *
    * @param encryptedData - Encrypted data with IV and salt
    * @returns Decrypted and JSON parsed data
+   * @throws If decryption fails or decrypted data is not valid JSON
    *
    * @example
    * ```typescript
@@ -158,7 +159,14 @@ export class EncryptionService {
 
     const decoder = new TextDecoder();
     const jsonString = decoder.decode(decryptedBuffer);
-    return JSON.parse(jsonString);
+
+    try {
+      return JSON.parse(jsonString);
+    } catch (error) {
+      throw new Error(
+        `Decrypted data is not valid JSON (corrupted or encrypted with different key): ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   }
 
   /**
