@@ -49,14 +49,19 @@ export class AccountService {
       throw new Error("CRITICAL: initializeAccountSession called without valid AMK");
     }
 
-    this.currentAccountName = accountId;
-    this.currentAMK = amkPrivateKey;
-
+    // Derive DEK first (can throw) - don't set state until all async ops succeed
     const dek = await keyDerivationService.deriveDataEncryptionKey(amkPrivateKey);
-    sharedEncryptionService.setEncryptionKey(dek);
     await notesStorageAdapter.initializeSession(dek);
 
+    // All async operations succeeded - now set state
+    this.currentAccountName = accountId;
+    this.currentAMK = amkPrivateKey;
+    sharedEncryptionService.setEncryptionKey(dek);
+
     if (!sharedEncryptionService.isKeyAvailable()) {
+      // Rollback on final validation failure
+      this.currentAccountName = null;
+      this.currentAMK = null;
       throw new Error("CRITICAL: Session initialization incomplete (DEK missing)");
     }
   }
