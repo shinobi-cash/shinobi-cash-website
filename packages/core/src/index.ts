@@ -222,3 +222,18 @@ export {
   type DepositKind,
   type DepositFeeBreakdown,
 } from './utils/deposit.js';
+
+// Withdrawal contract utilities
+export {
+  createWithdrawalData,
+  createCrossChainWithdrawalData,
+  formatProofForContract,
+  formatCrossChainProofForContract,
+  encodeRelayCallData,
+  encodeCrossChainWithdrawalCallData,
+  type WithdrawalData,
+  type CrossChainWithdrawalData,
+  type ContractProof,
+  type ContractCrossChainProof,
+  type SnarkJsProof,
+} from './utils/withdrawalContract.js';

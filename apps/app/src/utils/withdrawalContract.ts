@@ -1,6 +1,12 @@
+/**
+ * Withdrawal Contract Utilities
+ *
+ * App-specific utilities for withdrawal transactions.
+ * Pure encoding functions are in @shinobi-cash/core.
+ */
+
 import {
   ShinobiCashPoolAbi,
-  ShinobiCashEntrypointAbi,
   POOL_CHAIN,
   SHINOBI_CASH_ETH_POOL,
   SHINOBI_CASH_ENTRYPOINT,
@@ -10,36 +16,26 @@ import {
 import { pimlicoClient } from "@/lib/clients";
 import type { SmartAccountClient } from "permissionless";
 import { AppException, Errors, logError } from "@/lib/errors/errors";
-import { http, createPublicClient, encodeAbiParameters, encodeFunctionData } from "viem";
+import { http, createPublicClient } from "viem";
 import { type UserOperation, entryPoint07Address } from "viem/account-abstraction";
 
-// "processooor" spelling is intentional - matches the contract ABI
-export interface WithdrawalData {
-  processooor: `0x${string}`;
-  data: `0x${string}`;
-}
+// Re-export SDK types and functions for convenience
+export type {
+  WithdrawalData,
+  CrossChainWithdrawalData,
+  ContractProof,
+  ContractCrossChainProof,
+  SnarkJsProof,
+} from "@shinobi-cash/core";
 
-export interface CrossChainWithdrawalData {
-  processooor: `0x${string}`;
-  data: `0x${string}`;
-}
-
-// Contract-ready proof format with bigints for Solidity
-// pubSignals: [nullifier, newNoteCommitment, newAmount, newLabel, recipient, relayData, aspRoot, scope]
-export interface ContractProof {
-  pA: [bigint, bigint];
-  pB: [[bigint, bigint], [bigint, bigint]];
-  pC: [bigint, bigint];
-  pubSignals: [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint];
-}
-
-// Cross-chain has 9 signals (extra refundNullifier at [8])
-export interface ContractCrossChainProof {
-  pA: [bigint, bigint];
-  pB: [[bigint, bigint], [bigint, bigint]];
-  pC: [bigint, bigint];
-  pubSignals: [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint];
-}
+export {
+  createWithdrawalData,
+  createCrossChainWithdrawalData,
+  formatProofForContract,
+  formatCrossChainProofForContract,
+  encodeRelayCallData,
+  encodeCrossChainWithdrawalCallData,
+} from "@shinobi-cash/core";
 
 export interface SmartAccountConfig {
   privateKey: `0x${string}`;
@@ -69,78 +65,6 @@ export async function fetchPoolScope(): Promise<string> {
       Errors.blockchain.contractError("Failed to fetch pool scope from contract", error)
     );
   }
-}
-
-export function createWithdrawalData(
-  recipientAddress: string,
-  feeRecipient: string,
-  relayFeeBPS: bigint
-): readonly [`0x${string}`, `0x${string}`] {
-  return [
-    SHINOBI_CASH_ENTRYPOINT.address,
-    encodeAbiParameters(
-      [
-        { type: "address", name: "recipient" },
-        { type: "address", name: "feeRecipient" },
-        { type: "uint256", name: "relayFeeBPS" },
-      ],
-      [recipientAddress as `0x${string}`, feeRecipient as `0x${string}`, relayFeeBPS]
-    ),
-  ] as const;
-}
-
-export function encodeRelayCallData(
-  withdrawalData: WithdrawalData,
-  proof: ContractProof,
-  scope: bigint
-): `0x${string}` {
-  return encodeFunctionData({
-    abi: ShinobiCashEntrypointAbi,
-    functionName: "relay",
-    args: [
-      {
-        processooor: withdrawalData.processooor,
-        data: withdrawalData.data,
-      },
-      {
-        pA: proof.pA,
-        pB: proof.pB,
-        pC: proof.pC,
-        pubSignals: proof.pubSignals,
-      },
-      scope,
-    ],
-  });
-}
-
-// Swap pi_b coordinates for compatibility between snarkjs and Solidity verifier
-export function formatProofForContract(
-  proof: {
-    pi_a: string[];
-    pi_b: string[][];
-    pi_c: string[];
-  },
-  publicSignals: string[]
-): ContractProof {
-  return {
-    pA: [BigInt(proof.pi_a[0]), BigInt(proof.pi_a[1])],
-    pB: [
-      // Swap coordinates for pi_b - required for snarkjs/Solidity verifier compatibility
-      [BigInt(proof.pi_b[0][1]), BigInt(proof.pi_b[0][0])],
-      [BigInt(proof.pi_b[1][1]), BigInt(proof.pi_b[1][0])],
-    ],
-    pC: [BigInt(proof.pi_c[0]), BigInt(proof.pi_c[1])],
-    pubSignals: [
-      BigInt(publicSignals[0]),
-      BigInt(publicSignals[1]),
-      BigInt(publicSignals[2]),
-      BigInt(publicSignals[3]),
-      BigInt(publicSignals[4]),
-      BigInt(publicSignals[5]),
-      BigInt(publicSignals[6]),
-      BigInt(publicSignals[7]),
-    ],
-  };
 }
 
 export async function prepareWithdrawalUserOperation(
@@ -221,114 +145,6 @@ export async function executeWithdrawalUserOperation(
       Errors.blockchain.transactionFailed("Failed to execute withdrawal transaction", error)
     );
   }
-}
-
-export function createCrossChainWithdrawalData(
-  recipientAddress: string,
-  destinationChainId: number,
-  feeRecipient: string,
-  relayFeeBPS: bigint,
-  solverFeeBPS: bigint
-): readonly [`0x${string}`, `0x${string}`] {
-  const encodedDestination = (BigInt(destinationChainId) << BigInt(224)) | BigInt(recipientAddress);
-
-  return [
-    SHINOBI_CASH_ENTRYPOINT.address,
-    encodeAbiParameters(
-      [
-        { type: "address", name: "feeRecipient" },
-        { type: "uint256", name: "relayFeeBPS" },
-        { type: "uint256", name: "solverFeeBPS" },
-        { type: "bytes32", name: "encodedDestination" },
-      ],
-      [
-        feeRecipient as `0x${string}`,
-        relayFeeBPS,
-        solverFeeBPS,
-        `0x${encodedDestination.toString(16).padStart(64, "0")}`,
-      ]
-    ),
-  ] as const;
-}
-
-export function formatCrossChainProofForContract(
-  proof: {
-    pi_a: string[];
-    pi_b: string[][];
-    pi_c: string[];
-  },
-  publicSignals: string[]
-): ContractCrossChainProof {
-  return {
-    pA: [BigInt(proof.pi_a[0]), BigInt(proof.pi_a[1])],
-    pB: [
-      [BigInt(proof.pi_b[0][1]), BigInt(proof.pi_b[0][0])],
-      [BigInt(proof.pi_b[1][1]), BigInt(proof.pi_b[1][0])],
-    ],
-    pC: [BigInt(proof.pi_c[0]), BigInt(proof.pi_c[1])],
-    pubSignals: [
-      BigInt(publicSignals[0]),
-      BigInt(publicSignals[1]),
-      BigInt(publicSignals[2]),
-      BigInt(publicSignals[3]),
-      BigInt(publicSignals[4]),
-      BigInt(publicSignals[5]),
-      BigInt(publicSignals[6]),
-      BigInt(publicSignals[7]),
-      BigInt(publicSignals[8]),
-    ],
-  };
-}
-
-export function encodeCrossChainWithdrawalCallData(
-  withdrawalData: CrossChainWithdrawalData,
-  proof: ContractCrossChainProof,
-  scope: bigint
-): `0x${string}` {
-  return encodeFunctionData({
-    abi: [
-      {
-        name: "crosschainWithdrawal",
-        type: "function",
-        stateMutability: "nonpayable",
-        inputs: [
-          {
-            name: "withdrawal",
-            type: "tuple",
-            components: [
-              { name: "processooor", type: "address" },
-              { name: "data", type: "bytes" },
-            ],
-          },
-          {
-            name: "proof",
-            type: "tuple",
-            components: [
-              { name: "pA", type: "uint256[2]" },
-              { name: "pB", type: "uint256[2][2]" },
-              { name: "pC", type: "uint256[2]" },
-              { name: "pubSignals", type: "uint256[9]" },
-            ],
-          },
-          { name: "scope", type: "uint256" },
-        ],
-      },
-    ],
-    functionName: "crosschainWithdrawal",
-    args: [
-      {
-        processooor: withdrawalData.processooor,
-        data: withdrawalData.data,
-      },
-      {
-        pA: proof.pA,
-        pB: proof.pB,
-        pC: proof.pC,
-        pubSignals: proof.pubSignals,
-      },
-      scope,
-    ],
-  });
 }
 
 export async function prepareCrossChainWithdrawalUserOperation(
