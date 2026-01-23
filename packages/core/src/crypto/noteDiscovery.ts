@@ -207,7 +207,7 @@ export function extendNoteChain(
     const nullifierHash = poseidon1([currentNullifier]).toString();
     const withdrawal = withdrawalsByNullifier.get(nullifierHash);
 
-    if (!withdrawal || !withdrawal.newCommitment || !withdrawal.amount) break;
+    if (!withdrawal || !withdrawal.newCommitment || withdrawal.amount == null) break;
 
     // Mark previous note as spent (create new object to maintain immutability)
     const prevNote = newChain[newChain.length - 1]!;
