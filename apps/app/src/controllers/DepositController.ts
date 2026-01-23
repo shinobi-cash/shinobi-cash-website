@@ -83,7 +83,7 @@ const { transition } = createStateMachine<DepositState>({
   name: "DepositController",
   allowedTransitions: {
     idle: ["preparing"],
-    preparing: ["ready", "error"],
+    preparing: ["ready", "error", "idle", "preparing"],
     ready: ["submitting", "preparing", "idle"],
     submitting: ["confirming", "error"],
     confirming: ["confirmed-onchain", "failed"],
@@ -103,7 +103,14 @@ export const DepositController = {
 
   setAmount(amount: string) {
     state.amount = amount;
-    if (state.state.status === "error" || state.state.status === "failed") {
+    const { status } = state.state;
+
+    if (status === "error" || status === "failed") {
+      transition({ status: "idle" });
+      return;
+    }
+
+    if ((status === "preparing" || status === "ready") && !DepositSelectors.canAutoPrepare()) {
       transition({ status: "idle" });
     }
   },

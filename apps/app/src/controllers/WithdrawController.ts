@@ -210,7 +210,12 @@ export const WithdrawController = {
   async preview(): Promise<void> {
     const current = ++previewId;
     if (!this._validateInputs()) {
-      state.previewFeeQuote = null;
+      if (current === previewId) {
+        state.previewFeeQuote = null;
+        if (state.state.status === "previewing") {
+          transition({ status: "idle" });
+        }
+      }
       return;
     }
 
