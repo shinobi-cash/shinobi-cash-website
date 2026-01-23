@@ -1,6 +1,6 @@
 import { sessionStorageAdapter } from "../adapters/SessionStorageAdapter";
 import type { SessionInfo } from "../interfaces/IDataTypes";
-import type { WalletAccountId } from "@/utils/authCrypto";
+import type { WalletAccountId } from "@shinobi-cash/core";
 
 const SESSION_KEY = "shinobi_session";
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000; // 1h

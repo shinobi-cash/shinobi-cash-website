@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Wallet } from "lucide-react";
 import { useAccount, useChainId, useConnect, useSignTypedData, useSwitchChain } from "wagmi";
 import { AuthController } from "@/controllers/AuthController";
-import { getEIP712Message } from "@/utils/authCrypto";
+import { getShinobiAuthMessage } from "@shinobi-cash/core";
 import { showToast } from "@/lib/toast";
 import { getUserMessage, isUserCancellation } from "@/lib/errors/errors";
 import { POOL_CHAIN_ID } from "@/config/chains";
@@ -45,7 +45,7 @@ export function WalletAuth() {
       setStatus("signing");
 
       // Always use pool chain for auth signature to ensure consistent account ID
-      const message = getEIP712Message(walletAddress, POOL_CHAIN_ID, { deterministic: true });
+      const message = getShinobiAuthMessage(walletAddress, POOL_CHAIN_ID, { deterministic: true });
       const signature = await signTypedDataAsync(message);
 
       setStatus("authenticating");

@@ -122,29 +122,23 @@ export async function generateKeysFromWalletSignature(
 /**
  * Generate keys from random seed (for deterministic generation)
  *
- * @param randomSeed - Random seed as hex string
+ * SECURITY: Strict validation - never auto-pad or truncate keys.
+ * Invalid seed lengths indicate a bug that should fail loudly.
+ *
+ * @param randomSeed - Random seed as hex string (must be exactly 32 bytes / 64 hex chars)
  * @returns Generated keys
+ * @throws Error if seed is not exactly 32 bytes
  */
 export function generateKeysFromRandomSeed(randomSeed: string): KeyGenerationResult {
-  // Use the seed directly as private key material
   const seedBytes = hexToBytes(randomSeed);
 
-  // Ensure we have exactly 32 bytes for a private key
-  let privateKeyBytes: Uint8Array;
-  if (seedBytes.length >= 32) {
-    privateKeyBytes = seedBytes.slice(0, 32);
-  } else {
-    // Pad if needed (shouldn't happen with proper seed)
-    privateKeyBytes = new Uint8Array(32);
-    privateKeyBytes.set(seedBytes, 0);
-
-    for (let i = seedBytes.length; i < 32; i++) {
-      privateKeyBytes[i] = seedBytes[i % seedBytes.length]! ^ (i % 256);
-    }
+  // STRICT VALIDATION: Never auto-pad keys. Fail loudly.
+  if (seedBytes.length !== 32) {
+    throw new Error(`Invalid seed length: expected 32 bytes, got ${seedBytes.length}`);
   }
 
   // Create wallet from private key bytes
-  const privateKeyHex = '0x' + bytesToHex(privateKeyBytes);
+  const privateKeyHex = '0x' + bytesToHex(seedBytes);
   const wallet = new ethers.Wallet(privateKeyHex);
 
   return {

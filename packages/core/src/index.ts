@@ -78,6 +78,8 @@ export type {
   CrosschainWithdrawalContext,
   StateTreeLeaf,
   ASPData,
+  // Account types
+  WalletAccountId,
 } from './types/index.js';
 
 export {
@@ -87,6 +89,10 @@ export {
   isChangeNote,
   isRefundNote,
   DEFAULT_DISCOVERY_POLICY,
+  // Account utilities
+  assertWalletAccountId,
+  parseWalletAccountId,
+  getWalletAccountId,
 } from './types/index.js';
 
 // ============================================
@@ -133,6 +139,16 @@ export {
   type CrosschainWithdrawalDerivation,
   type ContextHash,
 } from './crypto/index.js';
+
+// ============================================
+// AUTHENTICATION
+// ============================================
+
+export {
+  getShinobiAuthMessage,
+  type EIP712MessageOptions,
+  type EIP712TypedData,
+} from './utils/auth.js';
 
 // ============================================
 // ZERO-KNOWLEDGE PROOFS

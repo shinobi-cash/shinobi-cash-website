@@ -1,8 +1,7 @@
 import { ethers } from "ethers";
 import { accountStorageAdapter } from "../adapters/IndexedDBStore";
 import type { AccountMetadata, AccountData } from "../interfaces/IDataTypes";
-import type { WalletAccountId } from "@/utils/authCrypto";
-import { assertWalletAccountId } from "@/utils/authCrypto";
+import { assertWalletAccountId, type WalletAccountId } from "@shinobi-cash/core";
 import { IndexedDBStore } from "../adapters/IndexedDBStore";
 
 /**

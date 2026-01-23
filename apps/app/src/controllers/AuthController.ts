@@ -7,13 +7,13 @@ import {
   storeSessionInfo,
 } from "@/lib/storage/repositories/SessionRepository";
 import { keyDerivationService } from "@/services/KeyDerivationService";
-import { parseUserKey } from "@shinobi-cash/core";
-import { proxy } from "valtio";
 import {
+  parseUserKey,
   deriveKeysFromSignature,
   generateKeysFromRandomSeed,
   getWalletAccountId,
-} from "@/utils/authCrypto";
+} from "@shinobi-cash/core";
+import { proxy } from "valtio";
 import { type AppError } from "@/lib/errors/errors";
 
 /**

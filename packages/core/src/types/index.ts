@@ -33,3 +33,11 @@ export type {
   StateTreeLeaf,
   ASPData,
 } from './Withdrawal.js';
+
+// Account types
+export type { WalletAccountId } from './Account.js';
+export {
+  assertWalletAccountId,
+  parseWalletAccountId,
+  getWalletAccountId,
+} from './Account.js';

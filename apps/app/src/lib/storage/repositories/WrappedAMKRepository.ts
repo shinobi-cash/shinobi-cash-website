@@ -1,8 +1,7 @@
 import { z } from "zod";
-import { EncryptionService } from "@shinobi-cash/core";
+import { EncryptionService, type WalletAccountId } from "@shinobi-cash/core";
 import { type IndexedDBStore, AMKStorageAdapter } from "../adapters/IndexedDBStore";
 import type { WrappedAMK } from "../interfaces/IDataTypes";
-import type { WalletAccountId } from "@/utils/authCrypto";
 import { HexStringSchema } from "@/schemas/common";
 
 /** Schema for decrypted AMK data - privateKey is 0x + 64 hex chars */

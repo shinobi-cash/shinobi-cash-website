@@ -11,8 +11,7 @@ import {
   sharedEncryptionService,
 } from "@/lib/storage/adapters/IndexedDBStore";
 import { AccountData, AccountMetadata } from "@/lib/storage/interfaces/IDataTypes";
-import { EncryptionService } from "@shinobi-cash/core";
-import type { WalletAccountId } from "@/utils/authCrypto";
+import { EncryptionService, type WalletAccountId } from "@shinobi-cash/core";
 
 export class AccountService {
   private currentAccountName: WalletAccountId | null = null;

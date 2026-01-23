@@ -2,7 +2,7 @@
  * App-Specific Data Type Interfaces
  */
 
-import type { WalletAccountId } from "@/utils/authCrypto";
+import type { WalletAccountId } from "@shinobi-cash/core";
 
 /**
  * Account Metadata - This is stored in IndexedDB account store
