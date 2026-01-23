@@ -219,41 +219,24 @@ export class WithdrawalProofGenerator {
    * Verify a same-chain withdrawal proof
    *
    * @param proofData - Proof data to verify
-   * @returns true if proof is valid
+   * @returns true if proof is valid, false if invalid
+   * @throws If circuit files fail to load or snarkjs verification throws
    */
   async verifyWithdrawalProof(proofData: WithdrawalProofData): Promise<boolean> {
-    try {
-      const circuitFiles = await this.ensureCircuitFiles();
-      const isValid = await snarkjs.groth16.verify(circuitFiles.vkeyData, proofData.publicSignals, proofData.proof);
-
-      dev.log(`[WithdrawalProofGen] Verification result: ${isValid ? 'VALID' : 'INVALID'}`);
-      return isValid;
-    } catch (error) {
-      dev.log('[WithdrawalProofGen] Verification failed:', error instanceof Error ? error.message : String(error));
-      return false;
-    }
+    const circuitFiles = await this.ensureCircuitFiles();
+    return snarkjs.groth16.verify(circuitFiles.vkeyData, proofData.publicSignals, proofData.proof);
   }
 
   /**
    * Verify a cross-chain withdrawal proof
    *
    * @param proofData - Proof data to verify
-   * @returns true if proof is valid
+   * @returns true if proof is valid, false if invalid
+   * @throws If circuit files fail to load or snarkjs verification throws
    */
   async verifyCrosschainWithdrawalProof(proofData: WithdrawalProofData): Promise<boolean> {
-    try {
-      const circuitFiles = await this.ensureCrossChainWithdrawalCircuitFiles();
-      const isValid = await snarkjs.groth16.verify(circuitFiles.vkeyData, proofData.publicSignals, proofData.proof);
-
-      dev.log(`[WithdrawalProofGen] Cross-chain verification result: ${isValid ? 'VALID' : 'INVALID'}`);
-      return isValid;
-    } catch (error) {
-      dev.log(
-        '[WithdrawalProofGen] Cross-chain verification failed:',
-        error instanceof Error ? error.message : String(error),
-      );
-      return false;
-    }
+    const circuitFiles = await this.ensureCrossChainWithdrawalCircuitFiles();
+    return snarkjs.groth16.verify(circuitFiles.vkeyData, proofData.publicSignals, proofData.proof);
   }
 }
 
