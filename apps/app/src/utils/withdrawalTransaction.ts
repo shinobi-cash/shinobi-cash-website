@@ -17,15 +17,14 @@ import {
   prepareCrossChainWithdrawalUserOperation,
   executeWithdrawalUserOperation,
 } from "@/utils/withdrawalContract";
+import { parseWithdrawalDataTuple } from "@/schemas/withdrawal";
 
 export async function prepareUserOperation(
   context: WithdrawalPipelineContext,
   proof: WithdrawalProof
 ): Promise<PreparedUserOperation> {
-  const withdrawalData = {
-    processooor: context.withdrawalData[0],
-    data: context.withdrawalData[1],
-  };
+  const [processooor, data] = parseWithdrawalDataTuple(context.withdrawalData);
+  const withdrawalData = { processooor, data };
 
   const isCrossChain = context.kind === "cross-chain";
 
