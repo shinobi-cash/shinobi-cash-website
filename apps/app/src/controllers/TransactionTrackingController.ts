@@ -22,9 +22,10 @@ const state = proxy<TransactionTrackingState>({
   transaction: null,
 });
 
-// Timers
+// Timers and tracking
 let autoClearTimeout: ReturnType<typeof setTimeout> | null = null;
 let pollingInterval: ReturnType<typeof setInterval> | null = null;
+let currentTrackingId = 0;
 
 // Event target for indexed callbacks
 const eventTarget = new EventTarget();
@@ -56,13 +57,16 @@ function scheduleAutoClear(ms: number = 5 * 60 * 1000) {
 /**
  * Wait for transaction receipt and transition to waiting state
  */
-async function waitForReceipt(txHash: string, chainId: number) {
+async function waitForReceipt(txHash: string, chainId: number, trackingId: number) {
   try {
     const client = getPublicClient(chainId);
     const receipt = await client.waitForTransactionReceipt({
       hash: txHash as `0x${string}`,
       timeout: 60_000,
     });
+
+    // Ignore if we've moved on to tracking a different transaction
+    if (trackingId !== currentTrackingId) return;
 
     if (receipt.status === "success") {
       state.transaction = {
@@ -73,12 +77,15 @@ async function waitForReceipt(txHash: string, chainId: number) {
       state.status = "waiting";
 
       // Start polling for indexing
-      startIndexingPoll();
+      startIndexingPoll(trackingId);
     } else {
       state.status = "failed";
       scheduleAutoClear(5000);
     }
   } catch (error) {
+    // Ignore if we've moved on to tracking a different transaction
+    if (trackingId !== currentTrackingId) return;
+
     logError(error, { action: "waitForReceipt", txHash });
     state.status = "failed";
     scheduleAutoClear(5000);
@@ -88,18 +95,32 @@ async function waitForReceipt(txHash: string, chainId: number) {
 /**
  * Poll for indexer to catch up to transaction block
  */
-function startIndexingPoll() {
+function startIndexingPoll(trackingId: number) {
   if (pollingInterval) {
     clearInterval(pollingInterval);
+    pollingInterval = null;
   }
 
   const poll = async () => {
+    // Stop if we've moved on to a different transaction
+    if (trackingId !== currentTrackingId) {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+        pollingInterval = null;
+      }
+      return;
+    }
+
     if (state.status !== "waiting" || state.transaction?.blockNumber == null) {
       return;
     }
 
     try {
       const indexed = await fetchLatestIndexedBlock();
+
+      // Check again after async operation
+      if (trackingId !== currentTrackingId) return;
+
       if (indexed && Number(indexed.blockNumber) >= state.transaction.blockNumber) {
         state.status = "synced";
 
@@ -118,6 +139,9 @@ function startIndexingPoll() {
         }
       }
     } catch (err) {
+      // Ignore errors if we've moved on
+      if (trackingId !== currentTrackingId) return;
+
       logError(err, {
         action: "checkTransactionIndexed",
         suppressed: true,
@@ -141,13 +165,15 @@ export const TransactionTrackingController = {
   trackTransaction(txHash: string, chainId: number) {
     clearTracking();
 
+    const trackingId = ++currentTrackingId;
+
     state.transaction = { hash: txHash, chainId, blockNumber: null };
     state.status = "pending";
 
     scheduleAutoClear();
 
     // Start waiting for receipt
-    waitForReceipt(txHash, chainId);
+    waitForReceipt(txHash, chainId, trackingId);
   },
 
   /**
