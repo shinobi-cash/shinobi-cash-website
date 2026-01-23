@@ -72,7 +72,9 @@ export type {
   LiveDeposit,
   // Deposit types
   DepositCommitmentResult,
-  // Withdrawal types (app-layer)
+  // Withdrawal types
+  WithdrawalKind,
+  FeeQuote,
   WithdrawalRequest,
   WithdrawalContext,
   CrosschainWithdrawalContext,
@@ -199,3 +201,14 @@ export {
 // ============================================
 
 export { dev } from './utils/dev.js';
+
+// Withdrawal utilities
+export {
+  classifyWithdrawal,
+  calculateFeesFromBPS,
+  calculateTotalGas,
+  calculateRelayFeeBPS,
+  calculateSolverFeeBPS,
+  type GasLimits,
+  type FeeBreakdown,
+} from './utils/withdrawal.js';

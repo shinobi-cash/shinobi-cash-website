@@ -4,13 +4,14 @@ import {
   POOL_CHAIN,
   SHINOBI_CASH_ETH_POOL,
   SHINOBI_CASH_ENTRYPOINT,
+  SAME_CHAIN_GAS_LIMITS,
+  CROSS_CHAIN_GAS_LIMITS,
 } from "@shinobi-cash/constants";
 import { pimlicoClient } from "@/lib/clients";
 import type { SmartAccountClient } from "permissionless";
 import { AppException, Errors, logError } from "@/lib/errors/errors";
 import { http, createPublicClient, encodeAbiParameters, encodeFunctionData } from "viem";
 import { type UserOperation, entryPoint07Address } from "viem/account-abstraction";
-import { SAME_CHAIN_GAS_LIMITS, CROSS_CHAIN_GAS_LIMITS } from "@/constants/withdraw";
 
 // "processooor" spelling is intentional - matches the contract ABI
 export interface WithdrawalData {

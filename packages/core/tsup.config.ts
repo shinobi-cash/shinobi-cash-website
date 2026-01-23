@@ -15,7 +15,6 @@ export default defineConfig({
     'poseidon-lite',
     'snarkjs',
     '@zk-kit/lean-imt',
-    'ethers',
     'bip39',
     'viem',
   ],

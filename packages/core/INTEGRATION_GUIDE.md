@@ -82,7 +82,7 @@ import { NoteSyncEngine, WithdrawalProofGenerator } from '@shinobi-cash/core';
 │  Crypto · Discovery · ZK Proofs          │
 ├─────────────────────────────────────────┤
 │         External Dependencies            │
-│  poseidon · snarkjs · ethers · viem      │
+│  poseidon · snarkjs · viem      │
 └─────────────────────────────────────────┘
 ```
 

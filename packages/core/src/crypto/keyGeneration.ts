@@ -7,7 +7,7 @@
  * to prevent signature malleability and ensure domain separation.
  */
 
-import { ethers } from 'ethers';
+import { privateKeyToAccount } from 'viem/accounts'
 
 /**
  * Result of key generation
@@ -138,13 +138,13 @@ export function generateKeysFromRandomSeed(randomSeed: string): KeyGenerationRes
   }
 
   // Create wallet from private key bytes
-  const privateKeyHex = '0x' + bytesToHex(seedBytes);
-  const wallet = new ethers.Wallet(privateKeyHex);
+  const privateKeyHex = '0x' + bytesToHex(seedBytes) as `0x${string}`;
+  const account = privateKeyToAccount(privateKeyHex)
 
   return {
-    publicKey: wallet.signingKey.publicKey,
-    privateKey: wallet.privateKey,
-    address: wallet.address,
+    publicKey: account.publicKey,
+    privateKey: privateKeyHex,
+    address: account.address,
   };
 }
 

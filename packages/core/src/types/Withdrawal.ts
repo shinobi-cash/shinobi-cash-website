@@ -7,6 +7,43 @@
 import type { Note } from './Note.js';
 
 /**
+ * Type of withdrawal operation
+ */
+export type WithdrawalKind = 'same-chain' | 'cross-chain';
+
+/**
+ * Fee quote for a withdrawal operation
+ */
+export interface FeeQuote {
+  /** Type of withdrawal */
+  kind: WithdrawalKind;
+
+  /** Relay fee in basis points */
+  relayFeeBPS: number;
+
+  /** Solver fee in basis points (cross-chain only) */
+  solverFeeBPS: number;
+
+  /** Execution/relay fee in wei */
+  executionFeeWei: bigint;
+
+  /** Solver fee in wei */
+  solverFeeWei: bigint;
+
+  /** Total fees in wei */
+  totalFeeWei: bigint;
+
+  /** Net amount after fees in wei */
+  netAmountWei: bigint;
+
+  /** Gas price used for fee calculation */
+  gasPrice: {
+    maxFeePerGas: bigint;
+    maxPriorityFeePerGas: bigint;
+  };
+}
+
+/**
  * Request for a withdrawal operation
  */
 export interface WithdrawalRequest {

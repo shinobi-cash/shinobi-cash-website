@@ -26,6 +26,8 @@ export type { DepositCommitmentResult } from './Deposit.js';
 
 // Withdrawal types
 export type {
+  WithdrawalKind,
+  FeeQuote,
   WithdrawalRequest,
   WithdrawalContext,
   CrosschainWithdrawalContext,

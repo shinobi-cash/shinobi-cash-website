@@ -1,9 +1,10 @@
-import type { Note } from "@shinobi-cash/core";
-import type { WithdrawalDerivation, CrosschainWithdrawalDerivation } from "@shinobi-cash/core";
+import type { Note, WithdrawalDerivation, CrosschainWithdrawalDerivation } from "@shinobi-cash/core";
 import type { SmartAccountClient } from "permissionless";
 import type { UserOperation } from "viem/account-abstraction";
 
-export type WithdrawalKind = "same-chain" | "cross-chain";
+// Re-export SDK types for convenience
+export type { WithdrawalKind, FeeQuote } from "@shinobi-cash/core";
+import type { WithdrawalKind, FeeQuote } from "@shinobi-cash/core";
 
 export interface WithdrawalRequest {
   note: Note;
@@ -11,20 +12,6 @@ export interface WithdrawalRequest {
   recipient: `0x${string}`;
   accountKey: bigint;
   destinationChainId?: number;
-}
-
-export interface FeeQuote {
-  kind: WithdrawalKind;
-  relayFeeBPS: number;
-  solverFeeBPS: number;
-  executionFeeWei: bigint;
-  solverFeeWei: bigint;
-  totalFeeWei: bigint;
-  netAmountWei: bigint;
-  gasPrice: {
-    maxFeePerGas: bigint;
-    maxPriorityFeePerGas: bigint;
-  };
 }
 
 export interface WithdrawalPipelineContext {
