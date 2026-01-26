@@ -47,7 +47,7 @@ export default function NotesPage() {
           {controller.syncError && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <button type="button" className="mt-1 rounded p-1 hover:bg-white/10">
+                <button type="button" className="mt-1 cursor-pointer rounded p-1 hover:bg-white/10">
                   <AlertTriangle className="h-5 w-5 text-yellow-400" />
                 </button>
               </TooltipTrigger>

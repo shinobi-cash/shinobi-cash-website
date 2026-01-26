@@ -69,7 +69,7 @@ export function TokenAmountInputWithBalance({
           </span>
           <button
             onClick={onMaxClick}
-            className="bg-muted text-foreground hover:bg-muted/80 rounded-lg px-3 py-1 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+            className="bg-muted text-foreground hover:bg-muted/80 cursor-pointer rounded-lg px-3 py-1 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
             disabled={disabled || !hasBalance}
           >
             Max

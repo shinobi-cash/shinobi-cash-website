@@ -58,7 +58,7 @@ export function NoteSelectionScreen({
                   onSelectNote(note);
                   onBack();
                 }}
-                className={`flex w-full items-center gap-3 px-4 py-4 transition-colors ${
+                className={`flex w-full cursor-pointer items-center gap-3 px-4 py-4 transition-colors ${
                   isSelected
                     ? "border-l-4 border-orange-600 bg-orange-600/20"
                     : "hover:bg-muted/50 border-l-4 border-transparent"

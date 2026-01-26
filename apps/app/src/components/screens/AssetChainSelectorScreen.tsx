@@ -68,7 +68,7 @@ export function AssetChainSelectorScreen({
               value={searchChain}
               onChange={(e) => setSearchChain(e.target.value)}
               placeholder="Search chains"
-              className="border-border bg-muted text-foreground placeholder:text-muted-foreground h-10 w-full rounded-lg border pl-10 pr-3 text-sm transition-colors focus:border-purple-600 focus:outline-none"
+              className="border-border bg-muted text-foreground placeholder:text-muted-foreground h-10 w-full rounded-lg border pl-10 pr-3 text-sm transition-colors focus:border-blue-600 focus:outline-none"
             />
           </div>
         </div>
@@ -80,7 +80,7 @@ export function AssetChainSelectorScreen({
               value={searchToken}
               onChange={(e) => setSearchToken(e.target.value)}
               placeholder="Search tokens"
-              className="border-border bg-muted text-foreground placeholder:text-muted-foreground h-10 w-full rounded-lg border pl-10 pr-3 text-sm transition-colors focus:border-purple-600 focus:outline-none"
+              className="border-border bg-muted text-foreground placeholder:text-muted-foreground h-10 w-full rounded-lg border pl-10 pr-3 text-sm transition-colors focus:border-blue-600 focus:outline-none"
             />
           </div>
         </div>
@@ -94,7 +94,7 @@ export function AssetChainSelectorScreen({
             <button
               key={chain.id}
               onClick={() => onChainChange(chain.id)}
-              className={`flex w-full items-center gap-3 px-4 py-3 transition-colors ${
+              className={`flex w-full cursor-pointer items-center gap-3 px-4 py-3 transition-colors ${
                 selectedChainId === chain.id
                   ? "border-l-4 border-orange-600 bg-orange-600/20"
                   : "hover:bg-muted/50 border-l-4 border-transparent"
@@ -125,7 +125,7 @@ export function AssetChainSelectorScreen({
             <button
               key={asset.symbol}
               onClick={() => handleSelectToken(asset)}
-              className="hover:bg-muted/50 flex w-full items-center gap-3 px-4 py-3 transition-colors"
+              className="hover:bg-muted/50 flex w-full cursor-pointer items-center gap-3 px-4 py-3 transition-colors"
             >
               <div className="relative flex-shrink-0">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600">

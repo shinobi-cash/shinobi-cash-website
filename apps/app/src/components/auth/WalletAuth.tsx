@@ -88,7 +88,7 @@ export function WalletAuth() {
       {status === "idle" ? (
         <button
           onClick={start}
-          className="border-white/10 bg-white/[0.02] hover:bg-white/[0.04] flex w-full max-w-sm flex-col items-start rounded-lg border p-4 text-left"
+          className="border-white/10 bg-white/[0.02] hover:bg-white/[0.04] flex w-full max-w-sm cursor-pointer flex-col items-start rounded-lg border p-4 text-left"
         >
           <div className="mb-2 flex items-center gap-2">
             <Wallet className="h-5 w-5 text-white" />

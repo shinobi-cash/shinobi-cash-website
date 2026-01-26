@@ -21,7 +21,7 @@ export function NotesSection({ controller, onNoteChainClick }: NotesSectionProps
     <button
       type="button"
       onClick={() => controller.setFilter(filter)}
-      className={`flex-1 px-4 py-2 text-sm font-semibold transition-colors ${
+      className={`flex-1 cursor-pointer px-4 py-2 text-sm font-semibold transition-colors ${
         controller.activeFilter === filter
           ? `text-white border-b-2 ${borderColor}`
           : "text-neutral-400 hover:text-white"

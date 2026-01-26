@@ -30,7 +30,7 @@ export default function ActivityPage() {
             {controller.syncError && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <button type="button" className="rounded p-1 hover:bg-white/10">
+                  <button type="button" className="cursor-pointer rounded p-1 hover:bg-white/10">
                     <AlertTriangle className="h-4 w-4 text-yellow-400" />
                   </button>
                 </TooltipTrigger>

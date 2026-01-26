@@ -47,7 +47,7 @@ export function WithdrawalPreview({
     <>
       {/* Hero */}
       <div className="flex flex-col items-center space-y-4">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-purple-600">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-600">
           <ArrowDownUp className="h-8 w-8" />
         </div>
 

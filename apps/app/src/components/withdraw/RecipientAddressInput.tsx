@@ -41,12 +41,12 @@ export function RecipientAddressInput({
             value={value}
             onChange={(e) => onChange(e.target.value)}
             placeholder={placeholder}
-            className="border-border bg-muted text-foreground placeholder:text-muted-foreground w-full rounded-xl border px-4 py-3 pr-20 text-sm transition-colors focus:border-purple-600 focus:outline-none"
+            className="border-border bg-muted text-foreground placeholder:text-muted-foreground w-full rounded-xl border px-4 py-3 pr-20 text-sm transition-colors focus:border-blue-600 focus:outline-none"
             disabled={disabled}
           />
           <button
             onClick={handlePaste}
-            className="bg-muted text-foreground hover:bg-muted/80 absolute right-2 top-1/2 -translate-y-1/2 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+            className="bg-muted text-foreground hover:bg-muted/80 absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer rounded-lg px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
             disabled={disabled}
           >
             Paste
