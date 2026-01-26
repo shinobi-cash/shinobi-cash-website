@@ -1,15 +1,12 @@
 "use client";
 
-import { Loader2, ArrowDownUp } from "lucide-react";
-import { Button } from "@workspace/ui/components/button";
+import { ArrowDownUp } from "lucide-react";
 import { usePriceData } from "@/hooks/usePriceData";
 import { formatUsdAmount, formatHash, formatSmallEthAmount } from "@/utils/formatters";
 import { POOL_CHAIN, SHINOBI_CASH_SUPPORTED_CHAINS } from "@shinobi-cash/constants";
 import { ShinobiCashNote, AssetChain } from "@/components/shared/AssetChain";
 
 interface WithdrawalPreviewProps {
-  onBack: () => void;
-  onConfirm: () => void;
   withdrawAmount: string;
   executionFee: number;
   solverFee: number;
@@ -17,11 +14,9 @@ interface WithdrawalPreviewProps {
   recipientAddress: string;
   destinationChainId: number;
   isCrossChain: boolean;
-  isProcessing: boolean;
 }
 
 export function WithdrawalPreview({
-  onConfirm,
   withdrawAmount,
   executionFee,
   solverFee,
@@ -29,7 +24,6 @@ export function WithdrawalPreview({
   recipientAddress,
   destinationChainId,
   isCrossChain,
-  isProcessing,
 }: WithdrawalPreviewProps) {
   const withdrawAmountNum = Number.parseFloat(withdrawAmount) || 0;
 
@@ -104,7 +98,7 @@ export function WithdrawalPreview({
       </div>
 
       {/* Details */}
-      <div className="w-full space-y-2">
+      <div className="w-full space-y-1">
         <DetailRow label="Destination" value={destinationChain.name} />
         <DetailRow label="Recipient" value={formatHash(recipientAddress)} />
         <DetailRow
@@ -118,25 +112,6 @@ export function WithdrawalPreview({
           />
         )}
       </div>
-
-      {/* Footer */}
-      <div className="flex flex-col items-center gap-4">
-        <Button
-          onClick={onConfirm}
-          disabled={isProcessing}
-          className="h-12 w-full rounded-xl text-base font-semibold disabled:cursor-not-allowed disabled:opacity-50 sm:h-14 sm:text-lg"
-          size="lg"
-        >
-          {isProcessing ? (
-            <span className="flex items-center gap-2">
-              <Loader2 className="h-5 w-5 animate-spin" />
-              Processing…
-            </span>
-          ) : (
-            "Confirm Withdrawal"
-          )}
-        </Button>
-      </div>
     </>
   );
 }
@@ -146,8 +121,8 @@ export function WithdrawalPreview({
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between">
-      <span className="text-[15px] text-zinc-500">{label}</span>
-      <span className="text-[15px] font-medium text-zinc-200">{value}</span>
+      <span className="text-sm text-zinc-500">{label}</span>
+      <span className="text-sm font-medium text-zinc-200">{value}</span>
     </div>
   );
 }

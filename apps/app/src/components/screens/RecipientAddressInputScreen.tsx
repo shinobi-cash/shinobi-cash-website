@@ -31,7 +31,8 @@ export function RecipientAddressInputScreen({
         <Button
           onClick={onConfirm}
           disabled={!value || !!error}
-          className="h-12 w-full rounded-xl font-semibold"
+          className="h-12 w-full rounded-xl text-base font-semibold disabled:cursor-not-allowed disabled:opacity-50 sm:h-14 sm:text-lg"
+          size="lg"
         >
           Confirm
         </Button>

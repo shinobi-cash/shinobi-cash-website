@@ -17,7 +17,7 @@ export function ScreenLayout({
   children,
   contentClassName = "px-4 py-6",
   containerClassName = "h-full",
-  showFooterDivider = true,
+  showFooterDivider = false,
 }: ScreenLayoutProps) {
   return (
     <div className={cn("flex flex-col", containerClassName)}>

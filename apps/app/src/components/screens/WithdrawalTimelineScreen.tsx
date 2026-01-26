@@ -6,6 +6,7 @@
  */
 
 import { useMemo, useEffect } from "react";
+import { Loader2 } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";
 import { ScreenLayout } from "@/components/layout/ScreenLayout";
@@ -106,6 +107,24 @@ export function WithdrawalTimelineScreen({ onBack, onConfirm }: WithdrawalTimeli
   const isCrossChain = WithdrawSelectors.isCrossChain();
   const isProcessing = state.state.status === "preparing" || state.state.status === "submitting";
 
+  const previewFooter = (
+    <Button
+      onClick={onConfirm}
+      disabled={isProcessing}
+      className="h-12 w-full rounded-xl text-base font-semibold disabled:cursor-not-allowed disabled:opacity-50 sm:h-14 sm:text-lg"
+      size="lg"
+    >
+      {isProcessing ? (
+        <span className="flex items-center gap-2">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          Processing…
+        </span>
+      ) : (
+        "Confirm Withdrawal"
+      )}
+    </Button>
+  );
+
   const timelineFooter = (
     <Button
       onClick={handleTimelineClose}
@@ -120,7 +139,7 @@ export function WithdrawalTimelineScreen({ onBack, onConfirm }: WithdrawalTimeli
     <ScreenLayout
       containerClassName="h-[600px]"
       header={<ScreenHeader title={title} onBack={onBack} backDisabled={!canGoBack} />}
-      footer={screenMode === "timeline" ? timelineFooter : undefined}
+      footer={screenMode === "timeline" ? timelineFooter : previewFooter}
       contentClassName={
         screenMode === "timeline"
           ? "space-y-4 px-6 py-4"
@@ -129,8 +148,6 @@ export function WithdrawalTimelineScreen({ onBack, onConfirm }: WithdrawalTimeli
     >
       {screenMode === "preview" ? (
         <WithdrawalPreview
-          onBack={onBack}
-          onConfirm={onConfirm}
           withdrawAmount={withdrawAmount}
           executionFee={executionFee}
           solverFee={solverFee}
@@ -138,7 +155,6 @@ export function WithdrawalTimelineScreen({ onBack, onConfirm }: WithdrawalTimeli
           recipientAddress={recipientAddress}
           destinationChainId={destinationChainId}
           isCrossChain={isCrossChain}
-          isProcessing={isProcessing}
         />
       ) : (
         <WithdrawalTimeline

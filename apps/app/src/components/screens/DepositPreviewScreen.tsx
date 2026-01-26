@@ -79,6 +79,23 @@ export function DepositPreviewScreen({
       containerClassName="h-[600px]"
       header={<ScreenHeader title="Transaction Preview" onBack={onBack} />}
       contentClassName="space-y-4 px-6 py-4 font-sans text-white"
+      footer={
+        <Button
+          onClick={onConfirm}
+          disabled={isProcessing}
+          className="h-12 w-full rounded-xl text-base font-semibold disabled:cursor-not-allowed disabled:opacity-50 sm:h-14 sm:text-lg"
+          size="lg"
+        >
+          {isProcessing ? (
+            <span className="flex items-center gap-2">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              Processing…
+            </span>
+          ) : (
+            "Confirm Deposit"
+          )}
+        </Button>
+      }
     >
       {/* Hero */}
       <div className="flex flex-col items-center space-y-4">
@@ -208,25 +225,6 @@ export function DepositPreviewScreen({
           //   }
           // />
         )}
-      </div>
-
-      {/* Footer */}
-      <div className="flex flex-col items-center gap-4">
-        <Button
-          onClick={onConfirm}
-          disabled={isProcessing}
-          className="h-12 w-full rounded-xl text-base font-semibold disabled:cursor-not-allowed disabled:opacity-50 sm:h-14 sm:text-lg"
-          size="lg"
-        >
-          {isProcessing ? (
-            <span className="flex items-center gap-2">
-              <Loader2 className="h-5 w-5 animate-spin" />
-              Processing…
-            </span>
-          ) : (
-            "Confirm Deposit"
-          )}
-        </Button>
       </div>
     </ScreenLayout>
   );

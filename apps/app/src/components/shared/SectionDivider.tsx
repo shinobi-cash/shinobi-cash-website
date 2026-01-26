@@ -1,14 +1,14 @@
 /**
  * Section Divider Component
- * Displays a downward arrow in a circle, used between form sections
+ * Displays a downward arrow in a circle, absolutely positioned to overlap cards
  */
 
 export function SectionDivider() {
   return (
-    <div className="flex justify-center">
-      <div className="border-border bg-background rounded-full border p-2">
+    <div className="absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2">
+      <div className="rounded-full border border-white/10 bg-neutral-900 p-2">
         <svg
-          className="text-muted-foreground h-5 w-5"
+          className="h-5 w-5 text-neutral-400"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"

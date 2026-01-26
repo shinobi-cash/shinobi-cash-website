@@ -155,19 +155,38 @@ export function NoteChainScreen({ noteChain, onBack, onWithdrawClick }: NoteChai
       footer={
         isWithdrawable ? (
           <div className="flex gap-2">
-            <Button onClick={onBack} variant="outline" className="flex-1">
+            <Button
+              onClick={onBack}
+              variant="outline"
+              className="h-12 flex-1 rounded-xl text-base font-semibold sm:h-14 sm:text-lg"
+              size="lg"
+            >
               Cancel
             </Button>
-            <Button onClick={() => onWithdrawClick?.(noteChain)} className="flex-1">
+            <Button
+              onClick={() => onWithdrawClick?.(noteChain)}
+              className="h-12 flex-1 rounded-xl text-base font-semibold sm:h-14 sm:text-lg"
+              size="lg"
+            >
               Withdraw
             </Button>
           </div>
         ) : isRagequitable ? (
           <div className="flex gap-2">
-            <Button onClick={onBack} variant="outline" className="flex-1">
+            <Button
+              onClick={onBack}
+              variant="outline"
+              className="h-12 flex-1 rounded-xl text-base font-semibold sm:h-14 sm:text-lg"
+              size="lg"
+            >
               Cancel
             </Button>
-            <Button variant="destructive" disabled className="flex-1">
+            <Button
+              variant="destructive"
+              disabled
+              className="h-12 flex-1 rounded-xl text-base font-semibold disabled:cursor-not-allowed disabled:opacity-50 sm:h-14 sm:text-lg"
+              size="lg"
+            >
               Ragequit (Coming Soon)
             </Button>
           </div>
@@ -259,23 +278,26 @@ export function NoteChainScreen({ noteChain, onBack, onWithdrawClick }: NoteChai
                   )}
                   <div className="relative flex items-center space-x-3">
                     <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full ${entry.dotColor}`} />
-                    <div className="grid min-w-0 flex-1 grid-cols-[100px_1fr_80px_20px_auto] items-center gap-x-3">
-                      <span className="text-sm font-medium text-white">{entry.label}</span>
-                      <span className={`text-sm tabular-nums text-right ${amountColorClass}`}>
-                        {entry.prefix}{ethAmount} ETH
-                      </span>
-                      <span className="text-xs tabular-nums text-right text-neutral-500">
-                        {usdValue !== null ? `(~${formatUsdAmount(usdValue)})` : ""}
-                      </span>
-                      <a
-                        href={entry.txUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex justify-center text-neutral-400 hover:text-white"
-                      >
-                        <ExternalLink className="h-3 w-3" />
-                      </a>
-                      <span className="whitespace-nowrap text-right text-xs text-neutral-500">
+                    <div className="flex flex-1 gap-3">
+                      <span className="text-sm font-medium text-white justify-start">{entry.label}</span>
+                      <div className="flex items-center gap-2 justify-end flex-1">
+                        <span className={`text-sm tabular-nums text-right ${amountColorClass}`}>
+                          {entry.prefix}{ethAmount} ETH
+                        </span>
+                        <span className="text-xs tabular-nums text-right text-neutral-500">
+                          {usdValue !== null ? `(~${formatUsdAmount(usdValue)})` : ""}
+                        </span>
+                        <a
+                          href={entry.txUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex justify-center text-neutral-400 hover:text-white"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      </div>
+                     
+                      <span className="flex flex-1 whitespace-nowrap text-right text-xs text-neutral-500 justify-end">
                         {formatTimestamp(entry.timestamp)}
                       </span>
                     </div>

@@ -82,7 +82,7 @@ export function FeeBreakdown({
   return (
     <div className="mb-2">
       <details className="overflow-hidden">
-        <summary className="flex cursor-pointer items-center justify-between py-3 transition-colors">
+        <summary className="flex cursor-pointer items-center justify-between py-1 transition-colors">
           <span className="text-muted-foreground text-sm font-medium">Fees</span>
           <div className="flex items-center gap-2">
             {!isEstimating && totalFeesUsd !== null && (
@@ -93,7 +93,7 @@ export function FeeBreakdown({
             <ChevronDown className="hover:bg-muted/80 h-4 w-4" />
           </div>
         </summary>
-        <div className="space-y-2 pt-2">
+        <div className="space-y-1 pl-2">
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Network Gas</span>
             <span className="text-orange-400">
