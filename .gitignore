@@ -27,6 +27,8 @@ out/
 !apps/app/public/circuits/build
 build
 dist
+rollup-dist/
+rollup.analyze.mjs
 
 
 # Debug
