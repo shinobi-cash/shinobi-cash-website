@@ -10,7 +10,7 @@
  */
 
 import { LeanIMT, type LeanIMTMerkleProof } from '@zk-kit/lean-imt';
-import { poseidon2 } from 'poseidon-lite';
+import { poseidon2 } from 'poseidon-lite/poseidon2';
 import type { WithdrawalDerivation, CrosschainWithdrawalDerivation } from '../crypto/withdrawalDerivation.js';
 import { fromHashString } from '../types/Hash.js';
 import { CommitmentNotFoundError, LabelNotApprovedError } from '../crypto/errors.js';

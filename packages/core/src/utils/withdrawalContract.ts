@@ -5,9 +5,10 @@
  * These are framework-agnostic and can be used by any app.
  */
 
-import { encodeAbiParameters, encodeFunctionData } from 'viem';
+import { encodeAbiParameters, encodeFunctionData } from 'viem/utils';
 import {
-  ShinobiCashEntrypointAbi,
+  EntrypointRelayAbi,
+  EntrypointCrosschainWithdrawalAbi,
   SHINOBI_CASH_ENTRYPOINT,
 } from '@shinobi-cash/constants';
 
@@ -201,7 +202,7 @@ export function encodeRelayCallData(
   scope: bigint
 ): `0x${string}` {
   return encodeFunctionData({
-    abi: ShinobiCashEntrypointAbi,
+    abi: EntrypointRelayAbi,
     functionName: 'relay',
     args: [
       {
@@ -233,34 +234,7 @@ export function encodeCrossChainWithdrawalCallData(
   scope: bigint
 ): `0x${string}` {
   return encodeFunctionData({
-    abi: [
-      {
-        name: 'crosschainWithdrawal',
-        type: 'function',
-        stateMutability: 'nonpayable',
-        inputs: [
-          {
-            name: 'withdrawal',
-            type: 'tuple',
-            components: [
-              { name: 'processooor', type: 'address' },
-              { name: 'data', type: 'bytes' },
-            ],
-          },
-          {
-            name: 'proof',
-            type: 'tuple',
-            components: [
-              { name: 'pA', type: 'uint256[2]' },
-              { name: 'pB', type: 'uint256[2][2]' },
-              { name: 'pC', type: 'uint256[2]' },
-              { name: 'pubSignals', type: 'uint256[9]' },
-            ],
-          },
-          { name: 'scope', type: 'uint256' },
-        ],
-      },
-    ],
+    abi: EntrypointCrosschainWithdrawalAbi,
     functionName: 'crosschainWithdrawal',
     args: [
       {

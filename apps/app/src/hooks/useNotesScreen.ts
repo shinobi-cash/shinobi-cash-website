@@ -1,6 +1,10 @@
 /**
  * Notes Screen Controller Hook
  * Combines discovery controller + screen controller for UI consumption
+ *
+ * Uses selective subscriptions to minimize re-renders:
+ * - Only subscribes to specific properties from each controller
+ * - Progress updates during discovery don't trigger re-renders
  */
 
 "use client";
@@ -10,7 +14,7 @@ import { useSnapshot } from "valtio";
 import type { Note, NoteChain } from "@shinobi-cash/core";
 import type { NotesStatus, NotesError, NoteFilter, NoteChainView } from "@/types/notes";
 import { useNotesDiscovery } from "./useNotesDiscovery";
-import { NotesDiscoverySelectors } from "@/controllers/NotesDiscoveryController";
+import { NotesDiscoveryController, NotesDiscoverySelectors } from "@/controllers/NotesDiscoveryController";
 import { NotesScreenController, NotesScreenSelectors } from "@/controllers/NotesScreenController";
 
 /**
@@ -57,30 +61,34 @@ export interface NotesScreenControllerAPI {
  * Hook for notes screen UI
  * Combines discovery controller (domain) + screen controller (UI)
  *
+ * Uses selective subscriptions - only accesses:
+ * - noteChains, state.status, lastError from discovery (not progress)
+ * - activeFilter, selectedNoteChain from screen controller
+ *
  * @returns Controller interface for notes screen
  */
 export function useNotesScreen(): NotesScreenControllerAPI {
-  // Subscribe to discovery controller (domain data)
-  const discoveryState = useNotesDiscovery();
+  // Selective subscription to discovery controller
+  // Only access properties we actually need - excludes progress
+  const { noteChains, state: discoveryState, lastError } = useSnapshot(NotesDiscoveryController.state);
 
-  // Subscribe to screen controller (UI state)
-  const screenState = useSnapshot(NotesScreenController.state);
+  // Selective subscription to screen controller
+  const { activeFilter, selectedNoteChain } = useSnapshot(NotesScreenController.state);
+
+  // Trigger the useNotesDiscovery hook for its side effects (transaction refresh)
+  useNotesDiscovery();
 
   const viewState = useMemo(
     () => NotesDiscoverySelectors.getViewState(),
     // Re-compute when discovery state or note chains change
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [discoveryState.state.status, discoveryState.noteChains]
+    [discoveryState.status, noteChains]
   );
 
   // Get filtered views (from screen controller)
   const filteredNoteViews = useMemo(
-    () =>
-      NotesScreenSelectors.getFilteredNoteViews(
-        discoveryState.noteChains,
-        screenState.activeFilter
-      ),
-    [discoveryState.noteChains, screenState.activeFilter]
+    () => NotesScreenSelectors.getFilteredNoteViews(noteChains, activeFilter),
+    [noteChains, activeFilter]
   );
 
   // Calculate total balance from available notes
@@ -93,14 +101,14 @@ export function useNotesScreen(): NotesScreenControllerAPI {
   return {
     // UI status (from domain)
     status: viewState.status,
-    lastError: discoveryState.lastError,
+    lastError,
     syncError: viewState.syncError,
 
     // Filtered views
     filteredNoteViews,
 
     // Filter state
-    activeFilter: screenState.activeFilter,
+    activeFilter,
     availableCount: viewState.counts.available,
     pendingCount: viewState.counts.pending,
     spentCount: viewState.counts.spent,
@@ -117,7 +125,7 @@ export function useNotesScreen(): NotesScreenControllerAPI {
     availableNotes: viewState.availableNotes,
 
     // Selection
-    selectedNoteChain: screenState.selectedNoteChain as NoteChain | null,
+    selectedNoteChain: selectedNoteChain as NoteChain | null,
 
     // Actions
     setFilter: NotesScreenController.setFilter,

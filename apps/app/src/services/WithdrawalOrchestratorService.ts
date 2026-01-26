@@ -20,9 +20,11 @@ import { withdrawalProofGenerator } from "@/services/ProofGeneratorService";
 import {
   deriveWithdrawalInputs,
   deriveCrosschainWithdrawalInputs,
+} from "@shinobi-cash/core";
+import {
   buildWithdrawalCircuitWitness,
   buildCrosschainWithdrawalCircuitWitness,
-} from "@shinobi-cash/core";
+} from "@shinobi-cash/core/zk";
 import {
   SHINOBI_CASH_RELAY_WITHDRAWAL_PAYMASTER,
   SHINOBI_CASH_CROSSCHAIN_WITHDRAWAL_PAYMASTER,

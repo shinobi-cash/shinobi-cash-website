@@ -39,11 +39,6 @@
  * - ❌ "0x123abc..." (no hex)
  *
  * This matches Poseidon hash outputs and enables consistent comparisons.
- *
- * ### Development Utilities
- *
- * Dev-only helpers (logging, assertions) are centralized in the `dev` namespace
- * and are zero-cost in production builds.
  */
 
 // ============================================
@@ -155,14 +150,8 @@ export {
 // ============================================
 // ZERO-KNOWLEDGE PROOFS
 // ============================================
-
-export {
-  WithdrawalProofGenerator,
-  withdrawalProofGenerator,
-  type CircuitFiles,
-  type CircuitFileLoader,
-  type WithdrawalProofData,
-} from './zk/index.js';
+// NOTE: ZK proof generation is in a separate entry point '@shinobi-cash/core/zk'
+// to enable tree-shaking. Import from there for proof-related code.
 
 // ============================================
 // SERVICES
@@ -177,15 +166,15 @@ export {
   type ActivityPage,
   type ActivityFetcher,
   type PersistenceCallbacks,
-  // Withdrawal circuit witness
-  buildWithdrawalTrees,
-  buildWithdrawalCircuitWitness,
-  buildCrosschainWithdrawalCircuitWitness,
-  type WithdrawalTrees,
-  type WithdrawalIntent,
-  type WithdrawalCircuitWitness,
-  type CrosschainWithdrawalCircuitWitness,
 } from './services/index.js';
+
+// Withdrawal circuit witness types (implementation in '@shinobi-cash/core/zk')
+export type {
+  WithdrawalTrees,
+  WithdrawalIntent,
+  WithdrawalCircuitWitness,
+  CrosschainWithdrawalCircuitWitness,
+} from './services/WithdrawalCircuitWitness.js';
 
 // ============================================
 // ENCRYPTION & KEY DERIVATION
@@ -199,8 +188,6 @@ export {
 // ============================================
 // UTILITIES
 // ============================================
-
-export { dev } from './utils/dev.js';
 
 // Withdrawal utilities
 export {

@@ -5,9 +5,9 @@
 
 import {
   SHINOBI_CASH_ENTRYPOINT,
-  ShinobiCashEntrypointAbi,
+  EntrypointDepositAbi,
   SHINOBI_CASH_CROSSCHAIN_CONTRACTS,
-  ShinobiCrosschainDepositEntrypointAbi,
+  CrosschainDepositEntrypointAbi,
   DEPOSIT_FEES,
   POOL_CHAIN,
 } from "@shinobi-cash/constants";
@@ -39,7 +39,7 @@ export function resolveDepositRoute(chainId: number): DepositRoute {
   if (isSameChain) {
     return {
       address: SHINOBI_CASH_ENTRYPOINT.address as Address,
-      abi: ShinobiCashEntrypointAbi,
+      abi: EntrypointDepositAbi,
       functionName: "deposit",
       isCrossChain: false,
       chainId,
@@ -60,7 +60,7 @@ export function resolveDepositRoute(chainId: number): DepositRoute {
 
   return {
     address: crosschainContract.DEPOSIT_ENTRYPOINT.address as Address,
-    abi: ShinobiCrosschainDepositEntrypointAbi,
+    abi: CrosschainDepositEntrypointAbi,
     functionName: "depositWithCustomFee",
     isCrossChain: true,
     chainId,

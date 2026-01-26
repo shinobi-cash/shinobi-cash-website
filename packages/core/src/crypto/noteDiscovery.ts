@@ -14,7 +14,7 @@ import {
   deriveChangeNullifier,
   deriveDepositNullifier,
 } from './noteDerivation.js';
-import { poseidon1 } from 'poseidon-lite';
+import { poseidon1 } from 'poseidon-lite/poseidon1';
 
 /**
  * Activity context for optimized chain operations

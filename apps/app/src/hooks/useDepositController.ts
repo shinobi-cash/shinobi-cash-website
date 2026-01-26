@@ -8,7 +8,7 @@ import { useEffect } from "react";
 import { useAccount, useChainId, useBalance, useConfig, useGasPrice, useWalletClient } from "wagmi";
 import { useSnapshot } from "valtio";
 import { DepositController } from "@/controllers/DepositController";
-import { formatEther } from "viem";
+import { formatEther } from "viem/utils";
 
 /**
  * Read-only snapshot of DepositController state

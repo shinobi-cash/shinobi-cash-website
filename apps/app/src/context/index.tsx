@@ -32,6 +32,16 @@ export const modal = createAppKit({
   themeMode: "dark",
   features: {
     analytics: true,
+    email:false,
+    onramp:false,
+    connectMethodsOrder:['wallet'],
+    emailShowWallets:false,
+    history:false,
+    receive:false,
+    reownAuthentication:false,
+    send:false,
+    socials:false,
+    swaps:false,
   },
   themeVariables: {
     "--w3m-accent": "#f97316",

@@ -245,7 +245,6 @@ export function ActivityDetailsScreen({ activity, onBack }: ActivityDetailsScree
             size="sm"
             onClick={() => {
               // TODO: Navigate to notes page with this chain selected
-              console.log("View note chain:", activity.depositIndex);
             }}
             className="text-sm"
           >

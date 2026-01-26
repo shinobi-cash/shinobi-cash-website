@@ -1,5 +1,5 @@
 import { formatDistance } from "date-fns";
-import { formatEther, parseEther } from "viem";
+import { formatEther, parseEther } from "viem/utils";
 
 export interface EthFormattingOptions {
   decimals?: number;

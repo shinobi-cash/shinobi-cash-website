@@ -3,6 +3,7 @@ import { getPublicClient } from "@/lib/clients";
 import { fetchLatestIndexedBlock } from "@/utils/indexer";
 import { logError } from "@/lib/errors/errors";
 import { NotesDiscoveryController } from "@/controllers/NotesDiscoveryController";
+import { TX_RECEIPT_TIMEOUT_MS, INDEXER_POLL_INTERVAL_MS } from "@/constants/timings";
 
 export type TrackingStatus = "idle" | "pending" | "waiting" | "synced" | "failed";
 
@@ -62,7 +63,7 @@ async function waitForReceipt(txHash: string, chainId: number, trackingId: numbe
     const client = getPublicClient(chainId);
     const receipt = await client.waitForTransactionReceipt({
       hash: txHash as `0x${string}`,
-      timeout: 60_000,
+      timeout: TX_RECEIPT_TIMEOUT_MS,
     });
 
     // Ignore if we've moved on to tracking a different transaction
@@ -152,8 +153,8 @@ function startIndexingPoll(trackingId: number) {
   // Initial poll
   poll();
 
-  // Continue polling every 5 seconds
-  pollingInterval = setInterval(poll, 5000);
+  // Continue polling
+  pollingInterval = setInterval(poll, INDEXER_POLL_INTERVAL_MS);
 }
 
 export const TransactionTrackingController = {

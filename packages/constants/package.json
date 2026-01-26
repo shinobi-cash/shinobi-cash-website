@@ -2,6 +2,7 @@
   "name": "@shinobi-cash/constants",
   "version": "0.0.0-canary-20251229091317",
   "description": "Shared constants for shinobi cash packages",
+  "sideEffects": false,
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",

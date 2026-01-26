@@ -126,12 +126,9 @@ export class NotesRepository {
       try {
         const decryptedData = await this.encryptionService.decrypt<CachedNoteData>(encryptedData);
         return decryptedData;
-      } catch (decryptionError) {
-        console.error("[NotesRepository] ❌ Failed to decrypt cached notes:", decryptionError);
-        console.error(
-          "[NotesRepository] This likely means notes were encrypted with a different KEK"
-        );
-        return null; // Return null if decryption fails (wrong password)
+      } catch {
+        // Decryption failed - likely encrypted with a different KEK
+        return null;
       }
     }
 

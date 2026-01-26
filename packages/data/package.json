@@ -2,6 +2,7 @@
   "name": "@shinobi-cash/data",
   "version": "0.0.0-canary-20251229091317",
   "description": "Data layer for Shinobi Cash with fluent query builders",
+  "sideEffects": false,
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",

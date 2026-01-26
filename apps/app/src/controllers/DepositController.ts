@@ -8,6 +8,11 @@ import type { PublicClient, WalletClient } from "viem";
 import { AuthController } from "@/controllers/AuthController";
 import { NotesDiscoverySelectors } from "@/controllers/NotesDiscoveryController";
 import { type AppError, Errors, getUserMessage } from "@/lib/errors/errors";
+import {
+  PREPARE_DEBOUNCE_MS,
+  DEPOSIT_COMMITMENT_MAX_RETRIES,
+  DEPOSIT_COMMITMENT_RETRY_DELAY_MS,
+} from "@/constants/timings";
 
 export interface DepositAmounts {
   noteAmount: number;
@@ -115,7 +120,7 @@ export const DepositController = {
     }
   },
 
-  schedulePrepare(delay = 1000) {
+  schedulePrepare(delay = PREPARE_DEBOUNCE_MS) {
     if (prepareTimeout) clearTimeout(prepareTimeout);
     prepareTimeout = setTimeout(() => this.prepare(), delay);
   },
@@ -143,9 +148,8 @@ export const DepositController = {
     const lastUsedIndex = NotesDiscoverySelectors.getLastUsedIndex();
     let noteData: CashNoteData | null = null;
     let retries = 0;
-    const MAX_RETRIES = 3;
 
-    while (retries < MAX_RETRIES) {
+    while (retries < DEPOSIT_COMMITMENT_MAX_RETRIES) {
       if (current !== prepareId) return;
       try {
         noteData = await depositService.generateCommitment(
@@ -156,12 +160,12 @@ export const DepositController = {
         break;
       } catch (error) {
         retries++;
-        if (retries >= MAX_RETRIES) {
+        if (retries >= DEPOSIT_COMMITMENT_MAX_RETRIES) {
           if (current !== prepareId) return;
           transition({ status: "error", error: Errors.deposit.commitmentFailed(error) });
           return;
         }
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, DEPOSIT_COMMITMENT_RETRY_DELAY_MS));
       }
     }
 

@@ -1,57 +1,44 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Wallet } from "lucide-react";
-import { useAccount, useChainId, useConnect, useSignTypedData, useSwitchChain } from "wagmi";
+import { useAppKit, useAppKitAccount, useAppKitEvents, useAppKitNetwork } from "@reown/appkit/react";
+import { useSignTypedData } from "wagmi";
 import { AuthController } from "@/controllers/AuthController";
 import { getShinobiAuthMessage } from "@shinobi-cash/core";
 import { showToast } from "@/lib/toast";
 import { getUserMessage, isUserCancellation } from "@/lib/errors/errors";
-import { POOL_CHAIN_ID } from "@/config/chains";
+import { POOL_CHAIN } from "@shinobi-cash/constants";
 
 type Status = "idle" | "connecting" | "switching" | "signing" | "authenticating";
 
 export function WalletAuth() {
-  const { address, isConnected } = useAccount();
-  const chainId = useChainId();
-  const { connectors, connectAsync } = useConnect();
-  const { switchChainAsync } = useSwitchChain();
+  const { open } = useAppKit();
+  const { address, isConnected } = useAppKitAccount();
+  const events = useAppKitEvents();
+  const { chainId, switchNetwork } = useAppKitNetwork();
   const { signTypedDataAsync } = useSignTypedData();
   const [status, setStatus] = useState<Status>("idle");
+  const pendingSignIn = useRef(false);
 
-  const start = async () => {
+  const continueSignIn = useCallback(async (walletAddress: `0x${string}`) => {
     try {
-      if (status !== "idle") return;
-
-      let walletAddress = address as `0x${string}` | undefined;
-
-      if (!isConnected || !walletAddress) {
-        setStatus("connecting");
-        const connector = connectors[0];
-        if (!connector) throw new Error("No wallet connector");
-
-        const result = await connectAsync({ connector });
-        walletAddress = result.accounts?.[0] as `0x${string}`;
-
-        if (!walletAddress) throw new Error("Wallet address missing");
-      }
-
       // Switch to pool chain if not already on it (required for EIP-712 signature)
-      if (chainId !== POOL_CHAIN_ID) {
+      if (chainId !== POOL_CHAIN.id) {
         setStatus("switching");
-        await switchChainAsync({ chainId: POOL_CHAIN_ID });
+        await switchNetwork(POOL_CHAIN);
       }
 
       setStatus("signing");
 
       // Always use pool chain for auth signature to ensure consistent account ID
-      const message = getShinobiAuthMessage(walletAddress, POOL_CHAIN_ID, { deterministic: true });
+      const message = getShinobiAuthMessage(walletAddress, POOL_CHAIN.id, { deterministic: true });
       const signature = await signTypedDataAsync(message);
 
       setStatus("authenticating");
 
       AuthController.signInWithWallet({
-        chainId: POOL_CHAIN_ID,
+        chainId: POOL_CHAIN.id,
         signature,
         walletAddress,
       });
@@ -63,6 +50,37 @@ export function WalletAuth() {
         showToast.error(getUserMessage(e, "Sign in failed. Please try again."));
       }
     }
+  }, [chainId, switchNetwork, signTypedDataAsync]);
+
+  // Detect when user closes modal without connecting
+  useEffect(() => {
+    if (events.data.event === "MODAL_CLOSE" && pendingSignIn.current && !isConnected) {
+      pendingSignIn.current = false;
+      setStatus("idle");
+    }
+  }, [events, isConnected]);
+
+  // Continue sign-in flow after wallet connects via modal
+  useEffect(() => {
+    if (pendingSignIn.current && isConnected && address) {
+      pendingSignIn.current = false;
+      continueSignIn(address as `0x${string}`);
+    }
+  }, [isConnected, address, continueSignIn]);
+
+  const start = async () => {
+    if (status !== "idle") return;
+
+    // If already connected, proceed directly to signing
+    if (isConnected && address) {
+      await continueSignIn(address as `0x${string}`);
+      return;
+    }
+
+    // Open Reown modal for wallet selection
+    setStatus("connecting");
+    pendingSignIn.current = true;
+    open();
   };
 
   return (

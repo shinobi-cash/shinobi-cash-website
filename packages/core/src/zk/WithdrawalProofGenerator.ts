@@ -18,7 +18,6 @@
 
 // @ts-ignore - snarkjs doesn't have type declarations
 import * as snarkjs from 'snarkjs';
-import { dev } from '../utils/dev.js';
 import type { WithdrawalCircuitWitness, CrosschainWithdrawalCircuitWitness } from '../services/WithdrawalCircuitWitness.js';
 
 /**
@@ -107,9 +106,7 @@ export class WithdrawalProofGenerator {
       if (!this.circuitFileLoader) {
         throw new Error('Circuit file loader not provided. Please provide a circuit file loader in constructor.');
       }
-      dev.log('[WithdrawalProofGen] Loading same-chain circuit files...');
       this.circuitFiles = await this.circuitFileLoader();
-      dev.log('[WithdrawalProofGen] Circuit files loaded');
     }
     return this.circuitFiles;
   }
@@ -124,9 +121,7 @@ export class WithdrawalProofGenerator {
           'Cross-chain circuit file loader not provided. Please provide a cross-chain circuit file loader in constructor.',
         );
       }
-      dev.log('[WithdrawalProofGen] Loading cross-chain circuit files...');
       this.crosschainCircuitFiles = await this.crosschainCircuitFileLoader();
-      dev.log('[WithdrawalProofGen] Cross-chain circuit files loaded');
     }
     return this.crosschainCircuitFiles;
   }
@@ -142,8 +137,6 @@ export class WithdrawalProofGenerator {
    * @throws If proof verification fails
    */
   async generateWithdrawalProof(witness: WithdrawalCircuitWitness): Promise<WithdrawalProofData> {
-    dev.log('[WithdrawalProofGen] Generating withdrawal proof...');
-
     // Ensure circuit files are loaded
     const circuitFiles = await this.ensureCircuitFiles();
 
@@ -154,8 +147,6 @@ export class WithdrawalProofGenerator {
       circuitFiles.zkeyFile,
     );
 
-    dev.log('[WithdrawalProofGen] Proof generated, verifying...');
-
     // Verify proof
     const isValid = await this.verifyWithdrawalProof({ proof, publicSignals });
 
@@ -163,7 +154,6 @@ export class WithdrawalProofGenerator {
       throw new Error('Generated proof failed verification');
     }
 
-    dev.log('[WithdrawalProofGen] Withdrawal proof verified successfully');
     return { proof, publicSignals };
   }
 
@@ -180,8 +170,6 @@ export class WithdrawalProofGenerator {
   async generateCrosschainWithdrawalProof(
     witness: CrosschainWithdrawalCircuitWitness,
   ): Promise<WithdrawalProofData> {
-    dev.log('[WithdrawalProofGen] Generating cross-chain withdrawal proof...');
-
     // Ensure circuit files are loaded
     const circuitFiles = await this.ensureCrossChainWithdrawalCircuitFiles();
 
@@ -192,18 +180,6 @@ export class WithdrawalProofGenerator {
       circuitFiles.zkeyFile,
     );
 
-    dev.log('[WithdrawalProofGen] Cross-chain proof generated, verifying...');
-    dev.log('[WithdrawalProofGen] Public signals:');
-    dev.log('  [0] newCommitmentHash:', publicSignals[0]);
-    dev.log('  [1] existingNullifierHash:', publicSignals[1]);
-    dev.log('  [2] refundCommitmentHash:', publicSignals[2]);
-    dev.log('  [3] withdrawnValue:', publicSignals[3]);
-    dev.log('  [4] stateRoot:', publicSignals[4]);
-    dev.log('  [5] stateTreeDepth:', publicSignals[5]);
-    dev.log('  [6] ASPRoot:', publicSignals[6]);
-    dev.log('  [7] ASPTreeDepth:', publicSignals[7]);
-    dev.log('  [8] context:', publicSignals[8]);
-
     // Verify proof with cross-chain verification key
     const isValid = await this.verifyCrosschainWithdrawalProof({ proof, publicSignals });
 
@@ -211,7 +187,6 @@ export class WithdrawalProofGenerator {
       throw new Error('Generated proof failed verification');
     }
 
-    dev.log('[WithdrawalProofGen] Cross-chain withdrawal proof verified successfully');
     return { proof, publicSignals };
   }
 

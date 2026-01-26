@@ -5,13 +5,16 @@
  * Organized by category for easy maintenance.
  */
 
-import { CrosschainWithdrawalPaymasterAbi } from "../abi/CrosschainWithdrawalPaymasterAbi";
-import { ShinobiCashEntrypointAbi } from "../abi/ShinobiCashEntrypointAbi";
-import { ShinobiCashPoolAbi } from "../abi/ShinobiCashPoolAbi";
-import { ShinobiCrosschainDepositEntrypointAbi } from "../abi/ShinobiCrosschainDepositEntrypointAbi";
-import { ShinobiDepositOutputSettlerAbi } from "../abi/ShinobiDepositOutputSettlerAbi";
-import { ShinobiWithdrawalOutputSettlerAbi } from "../abi/ShinobiWithdrawalOutputSettlerAbi";
-import { SimpleShinobiCashPoolPaymasterAbi } from "../abi/SimpleShinobiCashPoolPaymasterAbi";
+import {
+  EntrypointRelayAbi,
+  EntrypointDepositAbi,
+  PoolScopeAbi,
+  CrosschainDepositEntrypointAbi,
+  RelayWithdrawalPaymasterAbi,
+  CrosschainWithdrawalPaymasterAbi,
+  DepositOutputSettlerAbi,
+  WithdrawalOutputSettlerAbi,
+} from "../abi.js";
 import { arbitrumSepolia, baseSepolia, type Chain } from 'viem/chains';
 import { SUPPORTED_CROSSCHAIN } from "../network";
 
@@ -154,22 +157,25 @@ type CrossChainContracts = {
 
 /**
  * Main entrypoint contract for same-chain and cross-chain operations
+ * Use EntrypointRelayAbi, EntrypointDepositAbi, or EntrypointCrosschainWithdrawalAbi
+ * for specific operations instead of a full ABI.
  */
 export const SHINOBI_CASH_ENTRYPOINT: ContractConfig = {
   chain: arbitrumSepolia as Chain,
   address: '0x11C3E1332893A3E34273e6c81f245fA7fB84A52d',
   blockNumber: 214546382,
-  abi: ShinobiCashEntrypointAbi
+  abi: [...EntrypointRelayAbi, ...EntrypointDepositAbi],
 };
 
 /**
  * ETH privacy pool contract
+ * Use PoolScopeAbi for reading the pool scope.
  */
 export const SHINOBI_CASH_ETH_POOL: ContractConfig = {
   chain: arbitrumSepolia as Chain,
   address: '0x5543b250b8a44513BA91C0346BeE40890FfD7D18',
   blockNumber: 214550187,
-  abi: ShinobiCashPoolAbi
+  abi: PoolScopeAbi,
 };
 
 /**
@@ -189,7 +195,7 @@ export const SHINOBI_CASH_DEPOSIT_OUTPUT_SETTLER: ContractConfig = {
   chain: arbitrumSepolia as Chain,
   address: "0x0B44BE1cA20749aa2ac2A4f078188f0E14d9DcA2",
   blockNumber: 214550698,
-  abi: ShinobiDepositOutputSettlerAbi
+  abi: DepositOutputSettlerAbi
 };
 
 /**
@@ -199,7 +205,7 @@ export const SHINOBI_CASH_RELAY_WITHDRAWAL_PAYMASTER: ContractConfig = {
   chain: arbitrumSepolia as Chain,
   address: '0x4d09818A2C5Dc21D3EA4Ef93D721c52696fC31F3',
   blockNumber: 214552085,
-  abi: SimpleShinobiCashPoolPaymasterAbi
+  abi: RelayWithdrawalPaymasterAbi
 };
 
 /**
@@ -244,13 +250,13 @@ export const SHINOBI_CASH_CROSSCHAIN_CONTRACTS = {
       chain: baseSepolia as Chain,
       address: '0x8ADb187D722C7B6088Ae56E9Fd7D12A1B11D5fd5',
       blockNumber: 36677486,
-      abi: ShinobiCrosschainDepositEntrypointAbi
+      abi: CrosschainDepositEntrypointAbi
     },
     WITHDRAWAL_OUTPUT_SETTLER: {
       chain: baseSepolia as Chain,
       address: "0x621Ca010AE73309cF1FF6E75D53d26BEBCB0cfDe",
       blockNumber: 33603332,
-      abi: ShinobiWithdrawalOutputSettlerAbi
+      abi: WithdrawalOutputSettlerAbi
     },
     DEPOSIT_INPUT_SETTLER: {
       chain: baseSepolia as Chain,

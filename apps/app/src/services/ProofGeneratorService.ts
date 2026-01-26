@@ -10,7 +10,7 @@ import {
   WithdrawalProofGenerator as SDKProofGenerator,
   type CircuitFileLoader,
   type WithdrawalProofData,
-} from "@shinobi-cash/core";
+} from "@shinobi-cash/core/zk";
 
 // Re-export types for convenience
 export type { WithdrawalProofData };

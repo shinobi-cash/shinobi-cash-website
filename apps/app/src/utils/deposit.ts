@@ -1,4 +1,5 @@
-import { formatEther, parseEther, type PublicClient, type WalletClient } from "viem";
+import { formatEther, parseEther } from "viem/utils";
+import type { PublicClient, WalletClient } from "viem";
 import { estimateContractGas, waitForTransactionReceipt } from "viem/actions";
 import { SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
 import {
@@ -7,6 +8,7 @@ import {
   derivePrecommitment,
 } from "@shinobi-cash/core";
 import { NotesRepository } from "@/lib/storage/repositories/NotesRepository";
+import { TX_RECEIPT_TIMEOUT_MS } from "@/constants/timings";
 import {
   notesStorageAdapter,
   sharedEncryptionService,
@@ -155,7 +157,7 @@ export const depositService = {
     try {
       const receipt = await waitForTransactionReceipt(publicClient, {
         hash: txHash,
-        timeout: 60_000,
+        timeout: TX_RECEIPT_TIMEOUT_MS,
       });
 
       if (receipt.status === "success") {

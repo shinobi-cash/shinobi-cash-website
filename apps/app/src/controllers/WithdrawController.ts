@@ -1,5 +1,5 @@
 import { proxy } from "valtio";
-import { parseEther, formatEther, isAddress } from "viem";
+import { parseEther, formatEther, isAddress } from "viem/utils";
 import { Note } from "@shinobi-cash/core";
 import { POOL_CHAIN } from "@shinobi-cash/constants";
 import { AuthController } from "@/controllers/AuthController";
@@ -12,6 +12,7 @@ import {
   WithdrawalRequest,
 } from "@/types/withdrawal";
 import { type AppError, Errors, getUserMessage } from "@/lib/errors/errors";
+import { PREVIEW_DEBOUNCE_MS } from "@/constants/timings";
 
 type WithdrawState =
   | { status: "idle" }
@@ -126,17 +127,9 @@ export const WithdrawSelectors = {
   },
 };
 
-let engine: WithdrawalEngine | null = null;
-
-function getEngine(): WithdrawalEngine {
-  if (!engine) engine = new WithdrawalEngine();
-  return engine;
-}
-
-function resetEngine(): void {
-  engine?.reset();
-  engine = null;
-}
+// Engine instance for current withdrawal flow
+// Created fresh for each prepare() call, used by submit()
+let currentEngine: WithdrawalEngine | null = null;
 
 let prepareId = 0;
 let previewId = 0;
@@ -202,7 +195,7 @@ export const WithdrawController = {
     if (state.state.status === "ready") transition({ status: "idle" });
   },
 
-  schedulePreview(delay = 500): void {
+  schedulePreview(delay = PREVIEW_DEBOUNCE_MS): void {
     if (previewTimeout) clearTimeout(previewTimeout);
     previewTimeout = setTimeout(() => this.preview(), delay);
   },
@@ -223,7 +216,9 @@ export const WithdrawController = {
 
     try {
       const request = this._buildRequest();
-      const feeQuote = await getEngine().quoteFees(request);
+      // Use fresh engine for preview (stateless quote)
+      const previewEngine = new WithdrawalEngine();
+      const feeQuote = await previewEngine.quoteFees(request);
       if (current !== previewId) return;
       state.previewFeeQuote = feeQuote;
       transition({ status: "idle" });
@@ -239,42 +234,43 @@ export const WithdrawController = {
 
     if (!this._validateInputs()) {
       transition({ status: "error", error: Errors.withdrawal.precondition("Invalid inputs") });
-      resetEngine();
+      currentEngine = null;
       return;
     }
 
     try {
       const request = this._buildRequest();
       transition({ status: "preparing", phase: "idle" });
-      const preparedUserOp = await getEngine().prepare(request);
+      // Create fresh engine for this withdrawal flow
+      currentEngine = new WithdrawalEngine();
+      const preparedUserOp = await currentEngine.prepare(request);
       if (current !== prepareId) return;
       transition({ status: "ready", preparedUserOp });
     } catch (error) {
       if (current !== prepareId) return;
       transition({ status: "error", error: Errors.withdrawal.proofFailed(error) });
-      resetEngine();
+      currentEngine = null;
     }
   },
 
   async confirm(): Promise<void> {
     await this.prepare();
     if (state.state.status !== "ready") {
-      resetEngine();
+      currentEngine = null;
       return;
     }
     await this.submit();
   },
 
   async submit(): Promise<void> {
-    if (state.state.status !== "ready") {
-      resetEngine();
+    if (state.state.status !== "ready" || !currentEngine) {
+      currentEngine = null;
       return;
     }
 
     transition({ status: "submitting" });
 
     try {
-      const currentEngine = getEngine();
       const result = await currentEngine.execute();
 
       if (!result?.transactionHash) {
@@ -297,7 +293,7 @@ export const WithdrawController = {
         status: "error",
         error: Errors.withdrawal.transactionFailed(userMessage, error),
       });
-      resetEngine();
+      currentEngine = null;
     }
   },
 
@@ -307,13 +303,13 @@ export const WithdrawController = {
     state.selectedNote = null;
     state.previewFeeQuote = null;
     state.lastError = null;
-    resetEngine();
+    currentEngine = null;
     transition({ status: "idle" });
   },
 
   async retry(): Promise<void> {
     if (state.state.status === "error") {
-      resetEngine();
+      currentEngine = null;
       await this.prepare();
     }
   },

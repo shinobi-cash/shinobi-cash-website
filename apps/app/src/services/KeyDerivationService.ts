@@ -1,4 +1,4 @@
-import { ethers } from "ethers";
+import { hexToBytes } from "viem/utils";
 
 interface PrfExtensionInput {
   eval: {
@@ -27,15 +27,14 @@ export class KeyDerivationService {
   async deriveDataEncryptionKey(amkPrivateKey: string): Promise<CryptoKey> {
     let privateKeyBytes: Uint8Array;
     try {
-      privateKeyBytes = ethers.getBytes(amkPrivateKey);
-    } catch (e) {
+      const hexKey = amkPrivateKey.startsWith('0x') ? amkPrivateKey : `0x${amkPrivateKey}`;
+      privateKeyBytes = hexToBytes(hexKey as `0x${string}`);
+    } catch {
       throw new Error("SECURITY ERROR: AMK is malformed.");
     }
 
     if (privateKeyBytes.length !== 32) {
-      console.warn(
-        `[keyDerivationService] AMK length warning: expected 32 bytes, got ${privateKeyBytes.length}`
-      );
+      throw new Error("SECURITY ERROR: AMK has unexpected length.");
     }
 
     const keyMaterial = await crypto.subtle.importKey(

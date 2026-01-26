@@ -8,8 +8,8 @@
  * These functions are circuit-compatible and deterministic.
  */
 
-import { encodeAbiParameters, keccak256 } from 'viem';
-import { poseidon2, poseidon3 } from 'poseidon-lite';
+import { encodeAbiParameters, keccak256 } from 'viem/utils';
+import { poseidon3 } from 'poseidon-lite/poseidon3';
 import type { Note, DepositNote, ChangeNote } from '../types/Note.js';
 import type { CommitmentHash, NullifierHash, PrecommitmentHash } from '../types/Hash.js';
 import { toHashString } from '../types/Hash.js';

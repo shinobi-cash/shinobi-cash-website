@@ -2,6 +2,7 @@
   "name": "@shinobi-cash/core",
   "version": "0.0.0-canary-20251229091317",
   "description": "Core SDK for Shinobi Cash - note generation, discovery, and ZK proof operations",
+  "sideEffects": false,
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -10,6 +11,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
       "require": "./dist/index.js"
+    },
+    "./zk": {
+      "types": "./dist/zk.d.ts",
+      "import": "./dist/zk.mjs",
+      "require": "./dist/zk.js"
     }
   },
   "files": [
@@ -20,7 +26,9 @@
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/",
-    "clean": "rm -rf dist"
+    "test": "vitest",
+    "clean": "rm -rf dist rollup-dist",
+    "analyze": "rollup -c rollup.analyze.mjs && open rollup-dist/bundle-analysis.html"
   },
   "keywords": [
     "shinobi-cash",
@@ -44,7 +52,13 @@
     "@workspace/typescript-config": "workspace:*",
     "eslint": "^9.17.0",
     "tsup": "^8.3.5",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "@rollup/plugin-node-resolve": "^15.3.0",
+    "@rollup/plugin-typescript": "^12.1.1",
+    "rollup": "^4.28.1",
+    "rollup-plugin-visualizer": "^5.12.0",
+    "viem": "^2.28.1",
+    "vitest": "^2.1.8"
   },
   "publishConfig": {
     "access": "public",

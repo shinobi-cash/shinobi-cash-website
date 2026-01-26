@@ -9,8 +9,9 @@
  */
 
 import type { Note } from '../types/Note.js';
-import { poseidon2, poseidon3 } from 'poseidon-lite';
-import { encodePacked, getAddress, keccak256 } from 'viem';
+import { poseidon2 } from 'poseidon-lite/poseidon2';
+import { poseidon3 } from 'poseidon-lite/poseidon3';
+import { encodePacked, getAddress, keccak256 } from 'viem/utils';
 
 // BN254 scalar field (same as SNARK_SCALAR_FIELD)
 const F = 21888242871839275222246405745257275088548364400416034343698204186575808495617n as const;

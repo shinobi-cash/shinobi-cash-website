@@ -101,13 +101,11 @@ export class WrappedAMKRepository {
       const parsed = DecryptedAMKSchema.safeParse(decrypted);
 
       if (!parsed.success) {
-        console.error(`Invalid AMK format for ${wrappedBy}:`, parsed.error.message);
         return null;
       }
 
       return parsed.data.privateKey;
-    } catch (error) {
-      console.error(`Failed to unwrap AMK for ${wrappedBy}:`, error);
+    } catch {
       return null;
     }
   }

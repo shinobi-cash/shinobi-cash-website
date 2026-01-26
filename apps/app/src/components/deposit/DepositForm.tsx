@@ -5,10 +5,10 @@
 
 import { Copy, Check, Loader2, CircleQuestionMarkIcon } from "lucide-react";
 import { useState, useEffect } from "react";
-import { useChainId, useSwitchChain } from "wagmi";
+import { useAppKitNetwork } from "@reown/appkit/react";
 import { useSnapshot } from "valtio";
 import { Button } from "@workspace/ui/components/button";
-import { POOL_CHAIN, SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
+import { POOL_CHAIN, SHINOBI_CASH_ETH_POOL, SHINOBI_CASH_SUPPORTED_CHAINS } from "@shinobi-cash/constants";
 import { TokenAmountInput } from "@/components/shared/TokenAmountInput";
 import { TokenAmountInputWithBalance } from "@/components/shared/TokenAmountInputWithBalance";
 import { InputLabel } from "@/components/shared/InputLabel";
@@ -23,6 +23,7 @@ import { useTransactionTracking } from "@/hooks/useTransactionTracking";
 import { DepositController, DepositSelectors } from "@/controllers/DepositController";
 import { AuthController } from "@/controllers/AuthController";
 import { DepositPreviewScreen } from "@/components/screens/DepositPreviewScreen";
+import { COPY_FEEDBACK_DURATION_MS } from "@/constants/timings";
 import { DepositTimelineScreen } from "@/components/screens/DepositTimelineScreen";
 import { ScreenLayout } from "@/components/layout/ScreenLayout";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";
@@ -48,8 +49,7 @@ interface DepositFormProps {
 }
 
 export function DepositForm({ asset }: DepositFormProps) {
-  const chainId = useChainId();
-  const { switchChain } = useSwitchChain();
+  const { switchNetwork } = useAppKitNetwork();
   const [copiedAddress, setCopiedAddress] = useState(false);
 
   const screens = useScreenNavigation<DepositScreen>();
@@ -77,7 +77,7 @@ export function DepositForm({ asset }: DepositFormProps) {
     try {
       await navigator.clipboard.writeText(state.wallet.address);
       setCopiedAddress(true);
-      setTimeout(() => setCopiedAddress(false), 2000);
+      setTimeout(() => setCopiedAddress(false), COPY_FEEDBACK_DURATION_MS);
     } catch (error) {
       console.warn("Copy failed:", error);
     }
@@ -170,7 +170,7 @@ export function DepositForm({ asset }: DepositFormProps) {
       state.state.status === "ready" ? state.state.gasEstimate : { gasCostEth: "0" };
     const isSubmitting = state.state.status === "submitting";
 
-    const isCrossChain = chainId !== POOL_CHAIN.id;
+    const isCrossChain = state.wallet.chainId !== POOL_CHAIN.id;
 
     return (
       <DepositPreviewScreen
@@ -180,7 +180,7 @@ export function DepositForm({ asset }: DepositFormProps) {
         complianceFee={depositAmounts.complianceFee}
         gasCostEth={gasEstimate.gasCostEth}
         solverFee={depositAmounts.solverFee}
-        originChainId={chainId}
+        originChainId={state.wallet.chainId}
         destinationChainId={POOL_CHAIN.id}
         poolAddress={SHINOBI_CASH_ETH_POOL.address}
         userAddress={state.wallet.address}
@@ -195,9 +195,12 @@ export function DepositForm({ asset }: DepositFormProps) {
     return (
       <ScreenLayout containerClassName="h-[600px]" header={<ScreenHeader title="Select Asset & Chain" onBack={screens.close} />}>
         <AssetChainSelectorScreen
-          selectedChainId={chainId}
+          selectedChainId={state.wallet.chainId}
           onChainChange={(newChainId) => {
-            switchChain?.({ chainId: newChainId });
+            const network = SHINOBI_CASH_SUPPORTED_CHAINS.find((c) => c.id === newChainId);
+            if (network) {
+              switchNetwork(network);
+            }
           }}
           onSelect={screens.close}
         />
@@ -247,7 +250,7 @@ export function DepositForm({ asset }: DepositFormProps) {
         >
           <AssetChainSelector
             asset={asset}
-            chainId={chainId}
+            chainId={state.wallet.chainId}
             onClick={() => screens.navigate("assetSelector")}
             disabled={state.state.status === "submitting" || !DepositSelectors.isOnSupportedChain()}
             showChevron={true}

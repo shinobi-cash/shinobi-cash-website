@@ -27,7 +27,6 @@ import {
 } from '../crypto/noteDerivation.js';
 import type { PrecommitmentHash } from '../types/Hash.js';
 import { toHashString } from '../types/Hash.js';
-import { dev } from '../utils/dev.js';
 
 /**
  * Initialize discovery state from cached data
@@ -93,17 +92,13 @@ export function applyActivityPage(
   policy: DiscoveryPolicy,
   newOffset?: number,
 ): DiscoveryState {
-  dev.log(`[DiscoveryState] Processing page with ${activities.length} activities`);
-
   // Build activity context once for this page
   const context: ActivityContext = buildActivityIndexMaps(activities);
 
   // Phase 1: Reconcile existing deposits (ASP status updates)
-  dev.log(`[DiscoveryState] Phase 1: Reconciling ${state.notes.length} existing deposits`);
   const reconciledNotes = reconcileExistingDeposits(state.notes, activities, accountKey, poolAddress);
 
   // Phase 2: Extend live deposits with new withdrawals
-  dev.log(`[DiscoveryState] Phase 2: Extending ${state.liveDeposits.length} live deposits`);
   const { extendedNotes, updatedLiveDeposits } = extendLiveDeposits(
     reconciledNotes,
     state.liveDeposits,
@@ -114,7 +109,6 @@ export function applyActivityPage(
   );
 
   // Phase 3: Discover new deposits
-  dev.log(`[DiscoveryState] Phase 3: Scanning deposit indices ${state.nextDepositIndex}-${state.nextDepositIndex + policy.maxDepositScan - 1}`);
   const { finalNotes, newLiveDeposits, nextDepositIndex, depositsFound } = discoverNewDeposits(
     extendedNotes,
     updatedLiveDeposits,
@@ -125,8 +119,6 @@ export function applyActivityPage(
     policy.maxDepositScan,
     context,
   );
-
-  dev.log(`[DiscoveryState] Page complete: found ${depositsFound} new deposits, next index: ${nextDepositIndex}`);
 
   return {
     notes: finalNotes,

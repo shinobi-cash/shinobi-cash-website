@@ -7,6 +7,7 @@ import { SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
 import { AuthController } from "@/controllers/AuthController";
 import { NotesError, NotesStatus, ReadonlyNoteChain } from "@/types/notes";
 import { getAvailableNotes, getLastNote, getNoteChainCounts } from "@/utils/noteFiltering";
+import { NOTES_SYNC_INTERVAL_MS } from "@/constants/timings";
 
 /**
  * Discovery state machine
@@ -387,7 +388,7 @@ export const NotesDiscoveryController = {
       type: "START",
       payload: {
         poolAddress,
-        intervalMs: 60_000,
+        intervalMs: NOTES_SYNC_INTERVAL_MS,
       },
     });
   },

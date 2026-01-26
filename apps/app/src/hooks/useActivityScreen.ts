@@ -1,3 +1,11 @@
+/**
+ * Activity Screen Controller Hook
+ *
+ * Uses selective subscriptions to minimize re-renders:
+ * - Only accesses specific properties from each controller
+ * - Prevents cascading re-renders from unrelated state changes
+ */
+
 "use client";
 
 import { useMemo } from "react";
@@ -27,31 +35,30 @@ export interface ActivityScreenControllerAPI {
 }
 
 export function useActivityScreen(): ActivityScreenControllerAPI {
+  // Trigger activity derivation from notes (side effect)
   useActivityDiscovery();
-  const discoverySnapshot = useSnapshot(ActivityDiscoveryController.state);
-  const screenState = useSnapshot(ActivityScreenController.state);
 
-  const activities = discoverySnapshot.activities;
-  const counts = discoverySnapshot.counts;
-  const status = discoverySnapshot.status;
-  const syncError = discoverySnapshot.syncError;
+  // Selective subscriptions - only access what's needed
+  // This prevents re-renders from unrelated state changes
+  const { activities, counts, status, syncError } = useSnapshot(ActivityDiscoveryController.state);
+  const { activeFilter, selectedActivityId } = useSnapshot(ActivityScreenController.state);
 
   const filteredActivities = useMemo(
-    () => filterActivitiesByType(activities as Activity[], screenState.activeFilter),
-    [activities, screenState.activeFilter]
+    () => filterActivitiesByType(activities as Activity[], activeFilter),
+    [activities, activeFilter]
   );
 
   const selectedActivity = useMemo(() => {
-    if (!screenState.selectedActivityId) return null;
-    return (activities as Activity[]).find((a) => a.id === screenState.selectedActivityId) ?? null;
-  }, [screenState.selectedActivityId, activities]);
+    if (!selectedActivityId) return null;
+    return (activities as Activity[]).find((a) => a.id === selectedActivityId) ?? null;
+  }, [selectedActivityId, activities]);
 
   return {
     status,
     syncError,
     activities,
     filteredActivities,
-    activeFilter: screenState.activeFilter,
+    activeFilter,
     setFilter: ActivityScreenController.setFilter,
     selectedActivity,
     selectActivity: ActivityScreenController.selectActivity,

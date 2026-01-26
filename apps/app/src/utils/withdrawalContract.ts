@@ -6,7 +6,7 @@
  */
 
 import {
-  ShinobiCashPoolAbi,
+  PoolScopeAbi,
   POOL_CHAIN,
   SHINOBI_CASH_ETH_POOL,
   SHINOBI_CASH_ENTRYPOINT,
@@ -52,7 +52,7 @@ export async function fetchPoolScope(): Promise<string> {
   try {
     const scope = (await publicClient.readContract({
       address: SHINOBI_CASH_ETH_POOL.address,
-      abi: ShinobiCashPoolAbi,
+      abi: PoolScopeAbi,
       functionName: "SCOPE",
     })) as bigint;
 
