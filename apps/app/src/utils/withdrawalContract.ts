@@ -15,7 +15,7 @@ import {
 } from "@shinobi-cash/constants";
 import { pimlicoClient } from "@/lib/clients";
 import type { SmartAccountClient } from "permissionless";
-import { AppException, Errors, logError } from "@/lib/errors/errors";
+import { Errors, logError } from "@/lib/errors/errors";
 import { http, createPublicClient } from "viem";
 import { type UserOperation, entryPoint07Address } from "viem/account-abstraction";
 
@@ -60,10 +60,7 @@ export async function fetchPoolScope(): Promise<string> {
     return scopeString;
   } catch (error) {
     logError(error, { action: "fetchPoolScope" });
-
-    throw new AppException(
-      Errors.blockchain.contractError("Failed to fetch pool scope from contract", error)
-    );
+    throw Errors.blockchain.contractError("Failed to fetch pool scope from contract", error);
   }
 }
 
@@ -91,10 +88,7 @@ export async function prepareWithdrawalUserOperation(
     return preparedUserOperation;
   } catch (error) {
     logError(error, { action: "prepareWithdrawalUserOperation" });
-
-    throw new AppException(
-      Errors.blockchain.contractError("Failed to prepare withdrawal transaction", error)
-    );
+    throw Errors.blockchain.contractError("Failed to prepare withdrawal transaction", error);
   }
 }
 
@@ -133,17 +127,15 @@ export async function executeWithdrawalUserOperation(
       const msg = error.message.toLowerCase();
 
       if (msg.includes("user rejected") || msg.includes("user denied")) {
-        throw new AppException(Errors.blockchain.userRejected(error));
+        throw Errors.blockchain.userRejected(error);
       }
 
       if (msg.includes("insufficient funds")) {
-        throw new AppException(Errors.blockchain.insufficientFunds(error));
+        throw Errors.blockchain.insufficientFunds(error);
       }
     }
 
-    throw new AppException(
-      Errors.blockchain.transactionFailed("Failed to execute withdrawal transaction", error)
-    );
+    throw Errors.blockchain.transactionFailed("Failed to execute withdrawal transaction", error);
   }
 }
 
@@ -171,9 +163,6 @@ export async function prepareCrossChainWithdrawalUserOperation(
     return preparedUserOperation;
   } catch (error) {
     logError(error, { action: "prepareCrossChainWithdrawalUserOperation" });
-
-    throw new AppException(
-      Errors.blockchain.contractError("Failed to prepare cross-chain withdrawal transaction", error)
-    );
+    throw Errors.blockchain.contractError("Failed to prepare cross-chain withdrawal transaction", error);
   }
 }

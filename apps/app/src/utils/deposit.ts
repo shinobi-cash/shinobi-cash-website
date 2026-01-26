@@ -14,7 +14,6 @@ import {
   sharedEncryptionService,
 } from "@/lib/storage/adapters/IndexedDBStore";
 import { resolveDepositRoute, buildDepositCallParams } from "@/utils/depositRoute";
-import { getUserMessage, logError } from "@/lib/errors/errors";
 
 const GAS_BUFFER = BigInt(120);
 const DIVISOR = BigInt(100);
@@ -40,38 +39,27 @@ export const depositService = {
     publicKey: string,
     lastUsedIndex: number
   ): Promise<CashNoteData> {
-    try {
-      const poolAddress = SHINOBI_CASH_ETH_POOL.address;
-      let depositIndex = 0;
+    const poolAddress = SHINOBI_CASH_ETH_POOL.address;
+    let depositIndex = 0;
 
-      if (lastUsedIndex >= 0) {
-        depositIndex = lastUsedIndex + 1;
-      } else {
-        const notesRepo = new NotesRepository(notesStorageAdapter, sharedEncryptionService);
-        const cached = await notesRepo.getCachedNotes(publicKey, poolAddress);
-        depositIndex = cached?.lastUsedIndex !== undefined ? cached.lastUsedIndex + 1 : 0;
-      }
-
-      const nullifier = deriveDepositNullifier(accountKey, poolAddress, depositIndex);
-      const secret = deriveDepositSecret(accountKey, poolAddress, depositIndex);
-      const precommitment = derivePrecommitment(nullifier, secret);
-
-      return {
-        poolAddress,
-        depositIndex,
-        changeIndex: 0,
-        precommitment: BigInt(precommitment),
-      };
-    } catch (error) {
-      logError(error, {
-        action: "generateCommitment",
-        component: "depositService",
-        hasAccountKey: !!accountKey,
-        hasPublicKey: !!publicKey,
-      });
-
-      throw new Error(getUserMessage(error, "Failed to generate deposit commitment"));
+    if (lastUsedIndex >= 0) {
+      depositIndex = lastUsedIndex + 1;
+    } else {
+      const notesRepo = new NotesRepository(notesStorageAdapter, sharedEncryptionService);
+      const cached = await notesRepo.getCachedNotes(publicKey, poolAddress);
+      depositIndex = cached?.lastUsedIndex !== undefined ? cached.lastUsedIndex + 1 : 0;
     }
+
+    const nullifier = deriveDepositNullifier(accountKey, poolAddress, depositIndex);
+    const secret = deriveDepositSecret(accountKey, poolAddress, depositIndex);
+    const precommitment = derivePrecommitment(nullifier, secret);
+
+    return {
+      poolAddress,
+      depositIndex,
+      changeIndex: 0,
+      precommitment: BigInt(precommitment),
+    };
   },
 
   async estimateGas(
@@ -81,33 +69,26 @@ export const depositService = {
     publicClient: PublicClient,
     gasPrice: bigint
   ): Promise<GasEstimate> {
-    try {
-      const route = resolveDepositRoute(chainId);
-      const callParams = buildDepositCallParams(route, noteData.precommitment);
-      const valueWei = parseEther(amount);
+    const route = resolveDepositRoute(chainId);
+    const callParams = buildDepositCallParams(route, noteData.precommitment);
+    const valueWei = parseEther(amount);
 
-      const gasLimit = await estimateContractGas(publicClient, {
-        address: callParams.address,
-        abi: callParams.abi,
-        functionName: callParams.functionName,
-        args: callParams.args,
-        value: valueWei,
-      } as never);
+    const gasLimit = await estimateContractGas(publicClient, {
+      address: callParams.address,
+      abi: callParams.abi,
+      functionName: callParams.functionName,
+      args: callParams.args,
+      value: valueWei,
+    } as never);
 
-      const bufferedGas = (gasLimit * GAS_BUFFER) / DIVISOR;
-      const totalWei = bufferedGas * gasPrice;
+    const bufferedGas = (gasLimit * GAS_BUFFER) / DIVISOR;
+    const totalWei = bufferedGas * gasPrice;
 
-      return {
-        gasCostEth: formatEther(totalWei),
-        gasCostWei: totalWei,
-        gasLimit: bufferedGas,
-      };
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Gas estimation failed - check balance";
-
-      throw new Error(errorMessage);
-    }
+    return {
+      gasCostEth: formatEther(totalWei),
+      gasCostWei: totalWei,
+      gasLimit: bufferedGas,
+    };
   },
 
   async submitTransaction(
@@ -117,36 +98,30 @@ export const depositService = {
     walletClient: WalletClient,
     gasPrice?: bigint
   ): Promise<`0x${string}`> {
-    try {
-      const amountWei = parseEther(amount);
-      const route = resolveDepositRoute(chainId);
-      const callParams = buildDepositCallParams(route, noteData.precommitment);
+    const amountWei = parseEther(amount);
+    const route = resolveDepositRoute(chainId);
+    const callParams = buildDepositCallParams(route, noteData.precommitment);
 
-      // Add 50% buffer to gas price to handle L2 gas fluctuations
-      const gasParams = gasPrice
-        ? {
-            maxFeePerGas: (gasPrice * BigInt(150)) / BigInt(100),
-            maxPriorityFeePerGas: (gasPrice * BigInt(150)) / BigInt(100),
-          }
-        : {};
+    // Add 50% buffer to gas price to handle L2 gas fluctuations
+    const gasParams = gasPrice
+      ? {
+          maxFeePerGas: (gasPrice * BigInt(150)) / BigInt(100),
+          maxPriorityFeePerGas: (gasPrice * BigInt(150)) / BigInt(100),
+        }
+      : {};
 
-      const hash = await walletClient.writeContract({
-        address: callParams.address,
-        abi: callParams.abi,
-        functionName: callParams.functionName,
-        args: callParams.args,
-        value: amountWei,
-        chain: walletClient.chain,
-        account: walletClient.account!,
-        ...gasParams,
-      });
+    const hash = await walletClient.writeContract({
+      address: callParams.address,
+      abi: callParams.abi,
+      functionName: callParams.functionName,
+      args: callParams.args,
+      value: amountWei,
+      chain: walletClient.chain,
+      account: walletClient.account!,
+      ...gasParams,
+    });
 
-      return hash;
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to submit transaction";
-
-      throw new Error(errorMessage);
-    }
+    return hash;
   },
 
   async trackTransaction(

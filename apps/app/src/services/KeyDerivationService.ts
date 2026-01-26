@@ -1,4 +1,5 @@
 import { hexToBytes } from "viem/utils";
+import { Errors } from "@/lib/errors/errors";
 
 interface PrfExtensionInput {
   eval: {
@@ -30,11 +31,11 @@ export class KeyDerivationService {
       const hexKey = amkPrivateKey.startsWith('0x') ? amkPrivateKey : `0x${amkPrivateKey}`;
       privateKeyBytes = hexToBytes(hexKey as `0x${string}`);
     } catch {
-      throw new Error("SECURITY ERROR: AMK is malformed.");
+      throw Errors.auth.decryptionFailed("Account key is malformed");
     }
 
     if (privateKeyBytes.length !== 32) {
-      throw new Error("SECURITY ERROR: AMK has unexpected length.");
+      throw Errors.auth.decryptionFailed("Account key has unexpected length");
     }
 
     const keyMaterial = await crypto.subtle.importKey(
@@ -107,15 +108,13 @@ export class KeyDerivationService {
       },
     });
 
-    if (!cred) throw new Error("Passkey authentication cancelled");
+    if (!cred) throw Errors.auth.cancelled();
 
     // @ts-expect-error PRF extension types not in standard lib
     const extensions = cred.getClientExtensionResults() as { prf?: PrfExtensionOutput };
 
     if (!extensions.prf?.results?.first) {
-      throw new Error(
-        "Device does not support Passkey PRF. Cannot derive encryption keys from this device."
-      );
+      throw Errors.auth.passkeyUnsupported();
     }
 
     return new Uint8Array(extensions.prf.results.first);
@@ -167,7 +166,7 @@ export class KeyDerivationService {
     })) as PublicKeyCredential | null;
 
     if (!credential) {
-      throw new Error("Passkey creation was cancelled or failed.");
+      throw Errors.auth.passkeyFailed("Passkey creation was cancelled or failed");
     }
 
     return { credentialId: credential.id };

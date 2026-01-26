@@ -55,31 +55,33 @@ export const ErrorCode = {
   },
 } as const;
 
-export interface AppError {
-  category: ErrorCategory;
-  code: string;
-  message: string;
-  cause?: unknown;
-  context?: Record<string, unknown>;
-}
-
-export class AppException extends Error implements AppError {
+/**
+ * Unified error class for the application.
+ * Extends Error for stack traces and throwability.
+ * Use Errors.* factory functions to create instances.
+ */
+export class AppError extends Error {
   readonly category: ErrorCategory;
   readonly code: string;
   readonly context?: Record<string, unknown>;
   override readonly cause?: unknown;
 
-  constructor(error: AppError) {
-    super(error.message);
-    this.name = "AppException";
-    this.category = error.category;
-    this.code = error.code;
-    this.cause = error.cause;
-    this.context = error.context;
+  constructor(
+    category: ErrorCategory,
+    code: string,
+    message: string,
+    options?: { cause?: unknown; context?: Record<string, unknown> }
+  ) {
+    super(message);
+    this.name = "AppError";
+    this.category = category;
+    this.code = code;
+    this.cause = options?.cause;
+    this.context = options?.context;
     if (Error.captureStackTrace) Error.captureStackTrace(this, this.constructor);
   }
 
-  toJSON(): AppError {
+  toJSON() {
     return {
       category: this.category,
       code: this.code,
@@ -90,150 +92,147 @@ export class AppException extends Error implements AppError {
   }
 }
 
-function createError(
-  category: ErrorCategory,
-  code: string,
-  message: string,
-  options?: { cause?: unknown; context?: Record<string, unknown> }
-): AppError {
-  return { category, code, message, cause: options?.cause, context: options?.context };
-}
-
 export const Errors = {
   auth: {
     cancelled: (cause?: unknown) =>
-      createError("AUTH", ErrorCode.AUTH.CANCELLED, "Authentication cancelled", { cause }),
+      new AppError("AUTH", ErrorCode.AUTH.CANCELLED, "Authentication cancelled", { cause }),
     failed: (message = "Authentication failed", cause?: unknown) =>
-      createError("AUTH", ErrorCode.AUTH.FAILED, message, { cause }),
+      new AppError("AUTH", ErrorCode.AUTH.FAILED, message, { cause }),
     passkeyFailed: (message = "Passkey authentication failed", cause?: unknown) =>
-      createError("AUTH", ErrorCode.AUTH.PASSKEY_FAILED, message, { cause }),
+      new AppError("AUTH", ErrorCode.AUTH.PASSKEY_FAILED, message, { cause }),
     passkeyUnsupported: (cause?: unknown) =>
-      createError("AUTH", ErrorCode.AUTH.PASSKEY_UNSUPPORTED, "Device does not support passkey", {
+      new AppError("AUTH", ErrorCode.AUTH.PASSKEY_UNSUPPORTED, "Device does not support passkey", {
         cause,
       }),
+    accountNotFound: (cause?: unknown) =>
+      new AppError("AUTH", ErrorCode.AUTH.ACCOUNT_NOT_FOUND, "Account not found", { cause }),
+    decryptionFailed: (message = "Failed to decrypt account data", cause?: unknown) =>
+      new AppError("AUTH", ErrorCode.AUTH.DECRYPTION_FAILED, message, { cause }),
+    sessionRequired: (cause?: unknown) =>
+      new AppError("AUTH", ErrorCode.AUTH.FAILED, "Please sign in to continue", { cause }),
   },
 
   blockchain: {
     userRejected: (cause?: unknown) =>
-      createError("BLOCKCHAIN", ErrorCode.BLOCKCHAIN.USER_REJECTED, "Transaction was cancelled", {
+      new AppError("BLOCKCHAIN", ErrorCode.BLOCKCHAIN.USER_REJECTED, "Transaction was cancelled", {
         cause,
       }),
     insufficientFunds: (cause?: unknown) =>
-      createError(
+      new AppError(
         "BLOCKCHAIN",
         ErrorCode.BLOCKCHAIN.INSUFFICIENT_FUNDS,
         "Insufficient funds for this transaction",
         { cause }
       ),
     transactionFailed: (message = "Transaction failed", cause?: unknown) =>
-      createError("BLOCKCHAIN", ErrorCode.BLOCKCHAIN.TRANSACTION_FAILED, message, { cause }),
+      new AppError("BLOCKCHAIN", ErrorCode.BLOCKCHAIN.TRANSACTION_FAILED, message, { cause }),
     transactionReverted: (reason?: string, cause?: unknown) =>
-      createError(
+      new AppError(
         "BLOCKCHAIN",
         ErrorCode.BLOCKCHAIN.TRANSACTION_REVERTED,
         reason || "Transaction reverted",
         { cause }
       ),
     contractError: (message: string, cause?: unknown) =>
-      createError("BLOCKCHAIN", ErrorCode.BLOCKCHAIN.CONTRACT_ERROR, message, { cause }),
+      new AppError("BLOCKCHAIN", ErrorCode.BLOCKCHAIN.CONTRACT_ERROR, message, { cause }),
     rpcError: (message = "RPC request failed", cause?: unknown) =>
-      createError("BLOCKCHAIN", ErrorCode.BLOCKCHAIN.RPC_ERROR, message, { cause }),
+      new AppError("BLOCKCHAIN", ErrorCode.BLOCKCHAIN.RPC_ERROR, message, { cause }),
     timeout: (cause?: unknown) =>
-      createError("BLOCKCHAIN", ErrorCode.BLOCKCHAIN.TIMEOUT, "Transaction timed out", { cause }),
+      new AppError("BLOCKCHAIN", ErrorCode.BLOCKCHAIN.TIMEOUT, "Transaction timed out", { cause }),
   },
 
   network: {
     requestFailed: (message = "Network request failed", cause?: unknown) =>
-      createError("NETWORK", ErrorCode.NETWORK.REQUEST_FAILED, message, { cause }),
+      new AppError("NETWORK", ErrorCode.NETWORK.REQUEST_FAILED, message, { cause }),
     timeout: (cause?: unknown) =>
-      createError("NETWORK", ErrorCode.NETWORK.TIMEOUT, "Request timed out", { cause }),
-    offline: () => createError("NETWORK", ErrorCode.NETWORK.OFFLINE, "No internet connection"),
+      new AppError("NETWORK", ErrorCode.NETWORK.TIMEOUT, "Request timed out", { cause }),
+    offline: () => new AppError("NETWORK", ErrorCode.NETWORK.OFFLINE, "No internet connection"),
   },
 
   indexer: {
     fetchFailed: (message = "Failed to fetch data", cause?: unknown) =>
-      createError("INDEXER", ErrorCode.INDEXER.FETCH_FAILED, message, { cause }),
+      new AppError("INDEXER", ErrorCode.INDEXER.FETCH_FAILED, message, { cause }),
     invalidResponse: (cause?: unknown) =>
-      createError("INDEXER", ErrorCode.INDEXER.INVALID_RESPONSE, "Invalid response from indexer", {
+      new AppError("INDEXER", ErrorCode.INDEXER.INVALID_RESPONSE, "Invalid response from indexer", {
         cause,
       }),
     unavailable: (cause?: unknown) =>
-      createError("INDEXER", ErrorCode.INDEXER.UNAVAILABLE, "Indexer service unavailable", {
+      new AppError("INDEXER", ErrorCode.INDEXER.UNAVAILABLE, "Indexer service unavailable", {
         cause,
       }),
   },
 
   deposit: {
     precondition: (message: string) =>
-      createError("DEPOSIT", ErrorCode.DEPOSIT.PRECONDITION, message),
+      new AppError("DEPOSIT", ErrorCode.DEPOSIT.PRECONDITION, message),
     commitmentFailed: (cause?: unknown) =>
-      createError(
+      new AppError(
         "DEPOSIT",
         ErrorCode.DEPOSIT.COMMITMENT_FAILED,
         "Note generation failed. Please try again.",
         { cause }
       ),
     gasEstimationFailed: (cause?: unknown) =>
-      createError(
+      new AppError(
         "DEPOSIT",
         ErrorCode.DEPOSIT.GAS_ESTIMATION_FAILED,
         "Gas estimation failed. Please try again.",
         { cause }
       ),
     transactionFailed: (message = "Transaction failed", cause?: unknown) =>
-      createError("DEPOSIT", ErrorCode.DEPOSIT.TRANSACTION_FAILED, message, { cause }),
+      new AppError("DEPOSIT", ErrorCode.DEPOSIT.TRANSACTION_FAILED, message, { cause }),
     trackingFailed: (cause?: unknown) =>
-      createError("DEPOSIT", ErrorCode.DEPOSIT.TRACKING_FAILED, "Transaction tracking failed", {
+      new AppError("DEPOSIT", ErrorCode.DEPOSIT.TRACKING_FAILED, "Transaction tracking failed", {
         cause,
       }),
   },
 
   withdrawal: {
     precondition: (message: string) =>
-      createError("WITHDRAWAL", ErrorCode.WITHDRAWAL.PRECONDITION, message),
+      new AppError("WITHDRAWAL", ErrorCode.WITHDRAWAL.PRECONDITION, message),
     feeEstimationFailed: (cause?: unknown) =>
-      createError(
+      new AppError(
         "WITHDRAWAL",
         ErrorCode.WITHDRAWAL.FEE_ESTIMATION_FAILED,
         "Fee estimation failed. Please try again.",
         { cause }
       ),
     contextFailed: (cause?: unknown) =>
-      createError(
+      new AppError(
         "WITHDRAWAL",
         ErrorCode.WITHDRAWAL.CONTEXT_FAILED,
         "Failed to prepare withdrawal context",
         { cause }
       ),
     witnessFailed: (cause?: unknown) =>
-      createError(
+      new AppError(
         "WITHDRAWAL",
         ErrorCode.WITHDRAWAL.WITNESS_FAILED,
         "Failed to generate witness data",
         { cause }
       ),
     proofFailed: (cause?: unknown) =>
-      createError(
+      new AppError(
         "WITHDRAWAL",
         ErrorCode.WITHDRAWAL.PROOF_FAILED,
         "Proof generation failed. Please try again.",
         { cause }
       ),
     transactionFailed: (message = "Transaction failed", cause?: unknown) =>
-      createError("WITHDRAWAL", ErrorCode.WITHDRAWAL.TRANSACTION_FAILED, message, { cause }),
+      new AppError("WITHDRAWAL", ErrorCode.WITHDRAWAL.TRANSACTION_FAILED, message, { cause }),
     confirmationFailed: (cause?: unknown) =>
-      createError(
+      new AppError(
         "WITHDRAWAL",
         ErrorCode.WITHDRAWAL.CONFIRMATION_FAILED,
         "Transaction confirmation failed",
         { cause }
       ),
     invalidAmount: (message = "Invalid withdrawal amount") =>
-      createError("WITHDRAWAL", ErrorCode.WITHDRAWAL.INVALID_AMOUNT, message),
+      new AppError("WITHDRAWAL", ErrorCode.WITHDRAWAL.INVALID_AMOUNT, message),
     invalidRecipient: (message = "Invalid recipient address") =>
-      createError("WITHDRAWAL", ErrorCode.WITHDRAWAL.INVALID_RECIPIENT, message),
+      new AppError("WITHDRAWAL", ErrorCode.WITHDRAWAL.INVALID_RECIPIENT, message),
     insufficientBalance: (message = "Insufficient balance") =>
-      createError("WITHDRAWAL", ErrorCode.WITHDRAWAL.INSUFFICIENT_BALANCE, message),
+      new AppError("WITHDRAWAL", ErrorCode.WITHDRAWAL.INSUFFICIENT_BALANCE, message),
   },
 
   custom: (
@@ -241,25 +240,11 @@ export const Errors = {
     code: string,
     message: string,
     options?: { cause?: unknown; context?: Record<string, unknown> }
-  ) => createError(category, code, message, options),
+  ) => new AppError(category, code, message, options),
 };
 
-export function throwError(error: AppError): never {
-  throw new AppException(error);
-}
-
 export function isAppError(error: unknown): error is AppError {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "category" in error &&
-    "code" in error &&
-    "message" in error
-  );
-}
-
-export function isAppException(error: unknown): error is AppException {
-  return error instanceof AppException;
+  return error instanceof AppError;
 }
 
 const CANCELLATION_PATTERNS = [
@@ -276,7 +261,7 @@ const CANCELLATION_PATTERNS = [
 ];
 
 export function isUserCancellation(error: unknown): boolean {
-  if (isAppError(error)) {
+  if (error instanceof AppError) {
     if (error.code === ErrorCode.AUTH.CANCELLED) return true;
     if (error.code === ErrorCode.BLOCKCHAIN.USER_REJECTED) return true;
   }
@@ -295,7 +280,7 @@ export function isUserCancellation(error: unknown): boolean {
 }
 
 export function getUserMessage(error: unknown, fallback = "An unexpected error occurred"): string {
-  if (isAppError(error)) return error.message;
+  if (error instanceof AppError) return error.message;
 
   if (error instanceof Error) {
     const msg = error.message.toLowerCase();
@@ -364,7 +349,7 @@ export function logError(
   }
 
   const prefix = context?.action ? `[${context.action}]` : "[Error]";
-  if (isAppError(error)) {
+  if (error instanceof AppError) {
     console.warn(`${prefix} [${error.category}/${error.code}]`, error.message, context);
   } else if (error instanceof Error) {
     console.error(prefix, error.message, context);

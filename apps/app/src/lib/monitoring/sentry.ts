@@ -9,7 +9,7 @@
  */
 
 import * as Sentry from "@sentry/react";
-import { isAppError, isAppException, ErrorCode } from "@/lib/errors/errors";
+import { isAppError, AppError, ErrorCode } from "@/lib/errors/errors";
 
 /**
  * Initialize Sentry monitoring
@@ -132,10 +132,9 @@ export function initializeSentry() {
  */
 export function reportErrorToSentry(error: unknown, context?: Record<string, unknown>): void {
   // Set context tags for filtering/searching in Sentry
-  if (isAppError(error)) {
+  if (error instanceof AppError) {
     Sentry.setTag("error_category", error.category);
     Sentry.setTag("error_code", error.code);
-    Sentry.setTag("is_exception", String(isAppException(error)));
   }
 
   // Set custom context data

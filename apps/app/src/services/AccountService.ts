@@ -12,6 +12,7 @@ import {
 } from "@/lib/storage/adapters/IndexedDBStore";
 import { AccountData, AccountMetadata } from "@/lib/storage/interfaces/IDataTypes";
 import { EncryptionService, type WalletAccountId } from "@shinobi-cash/core";
+import { Errors, logError } from "@/lib/errors/errors";
 
 export class AccountService {
   private currentAccountName: WalletAccountId | null = null;
@@ -68,29 +69,34 @@ export class AccountService {
   async getAccountMetadata(): Promise<AccountMetadata | null> {
     const accountId = this.getCurrentAccountName();
     if (!accountId) {
-      throw new Error("No current account context");
+      throw Errors.auth.sessionRequired();
     }
     const record = await accountRepo.getStoredAccountRecord(accountId);
     return record ? record.profile : null;
   }
 
-  async getAccountData(amk?: string): Promise<AccountData | null> {
+  async getAccountData(amk?: string): Promise<AccountData> {
     const accountId = this.getCurrentAccountName();
     if (!accountId) {
-      throw new Error("No current account context");
+      throw Errors.auth.sessionRequired();
     }
     const useAMK = amk || this.getCurrentAMK();
     if (!useAMK) {
-      throw new Error("No AMK available - session not initialized or AMK not provided");
+      throw Errors.auth.sessionRequired();
     }
-    return accountRepo.getAccountMetadata(accountId, useAMK);
+    const data = await accountRepo.getAccountMetadata(accountId, useAMK);
+    if (!data) {
+      throw Errors.auth.accountNotFound();
+    }
+    return data;
   }
 
   async isPasskeyUnlockEnabled(): Promise<boolean> {
     try {
       const metadata = await this.getAccountMetadata();
       return !!metadata?.credentialId;
-    } catch {
+    } catch (error) {
+      logError(error, { action: "isPasskeyUnlockEnabled", component: "AccountService" });
       return false;
     }
   }
@@ -105,9 +111,6 @@ export class AccountService {
 
   async enablePasskeyForCurrentAccount(): Promise<void> {
     const accountData = await this.getAccountData();
-    if (!accountData) {
-      throw new Error("No active session - please sign in first");
-    }
 
     if (accountData.credentialId) {
       throw new Error("Passkey already enabled for this account");
@@ -144,14 +147,14 @@ export class AccountService {
       };
       await accountRepo.storeAccountData(updatedMetadata);
     } catch (error) {
-      console.error("[AccountService] Passkey enablement failed, rolling back:", error);
+      logError(error, { action: "enablePasskey", component: "AccountService" });
 
       try {
         await removePasskeyFromSession();
         await wrappedAMKRepo.deleteWrappedAMK(accountData.accountId, "passkey");
         await accountRepo.storeAccountData(originalMetadata);
       } catch (rollbackError) {
-        console.error("[AccountService] Rollback failed:", rollbackError);
+        logError(rollbackError, { action: "enablePasskey:rollback", component: "AccountService" });
       }
       throw error;
     }
@@ -160,7 +163,7 @@ export class AccountService {
   async removePasskeyForCurrentAccount(): Promise<void> {
     const accountData = await this.getAccountMetadata();
     if (!accountData) {
-      throw new Error("No active session - please sign in first");
+      throw Errors.auth.sessionRequired();
     }
 
     if (!accountData.credentialId) {
@@ -176,10 +179,8 @@ export class AccountService {
       await accountRepo.storeAccountData(updatedMetadata);
       await removePasskeyFromSession();
     } catch (error) {
-      console.error("[AccountService] Failed to remove passkey unlock:", error);
-      throw new Error(
-        `Failed to remove passkey unlock: ${error instanceof Error ? error.message : "Unknown error"}`
-      );
+      logError(error, { action: "removePasskey", component: "AccountService" });
+      throw error;
     }
   }
 
@@ -188,7 +189,7 @@ export class AccountService {
     await AMKStorageAdapter.initializeSession(kek);
 
     const amk = await wrappedAMKRepo.unwrapAMK(accountId, "wallet");
-    if (!amk) throw new Error("AMK unwrap failed");
+    if (!amk) throw Errors.auth.decryptionFailed("Failed to unwrap account key");
 
     await this.initializeAccountSession(accountId, amk);
   }
@@ -199,7 +200,7 @@ export class AccountService {
     const amk = await wrappedAMKRepo.unwrapAMK(accountId, "passkey");
 
     if (!amk) {
-      throw new Error("AMK unwrap failed for passkey");
+      throw Errors.auth.decryptionFailed("Failed to unwrap account key with passkey");
     }
 
     await this.initializeAccountSession(accountId, amk);

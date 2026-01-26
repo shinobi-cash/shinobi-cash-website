@@ -79,15 +79,15 @@ export const WithdrawSelectors = {
 
   isOnSupportedChain: () => true,
 
-  getRemainingBalance: () => {
-    if (!state.selectedNote || !state.amount) return 0;
+  getRemainingBalance: (): number | null => {
+    if (!state.selectedNote || !state.amount) return null;
     try {
       const noteAmountWei = parseEther(state.selectedNote.amount.toString());
       const withdrawWei = parseEther(state.amount);
       const remainingWei = noteAmountWei > withdrawWei ? noteAmountWei - withdrawWei : BigInt(0);
       return parseFloat(formatEther(remainingWei));
     } catch {
-      return 0;
+      return null;
     }
   },
 

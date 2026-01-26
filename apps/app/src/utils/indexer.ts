@@ -1,6 +1,6 @@
 import { IPFS_GATEWAY_URL } from "@shinobi-cash/constants";
 import type { Activity, StateTreeLeaf, ASPApprovalList } from "@shinobi-cash/data";
-import { Errors, AppException, logError } from "@/lib/errors/errors";
+import { Errors, AppError, logError } from "@/lib/errors/errors";
 import { AuthController } from "@/controllers/AuthController";
 
 /**
@@ -16,7 +16,7 @@ function isAuthenticated(): boolean {
  */
 function assertAuthenticated() {
   if (!isAuthenticated()) {
-    throw new AppException(Errors.auth.failed("Not authenticated"));
+    throw Errors.auth.failed("Not authenticated");
   }
 }
 
@@ -82,7 +82,7 @@ export async function fetchActivities(
     return await fetchActivitiesInternal(poolAddress, limit, offset, orderDirection);
   } catch (error) {
     logError(error, { action: "fetchActivities", poolId: poolAddress });
-    throw new AppException(Errors.indexer.fetchFailed("Failed to fetch activities", error));
+    throw Errors.indexer.fetchFailed("Failed to fetch activities", error);
   }
 }
 
@@ -108,7 +108,7 @@ export async function fetchStateTreeLeaves(poolId: string): Promise<StateTreeLea
     return result.data;
   } catch (error) {
     logError(error, { action: "fetchStateTreeLeaves", poolId });
-    throw new AppException(Errors.indexer.fetchFailed("Failed to fetch state tree", error));
+    throw Errors.indexer.fetchFailed("Failed to fetch state tree", error);
   }
 }
 
@@ -135,12 +135,9 @@ export async function fetchLatestASPRoot(): Promise<{
 
     return result.data;
   } catch (error) {
-    if (error instanceof AppException) {
-      throw error;
-    }
-
+    if (error instanceof AppError) throw error;
     logError(error, { action: "fetchLatestASPRoot" });
-    throw new AppException(Errors.indexer.fetchFailed("Failed to fetch ASP root", error));
+    throw Errors.indexer.fetchFailed("Failed to fetch ASP root", error);
   }
 }
 
@@ -150,9 +147,7 @@ export async function fetchApprovedLabelsFromIPFS(ipfsCID: string): Promise<stri
     const ipfsResponse = await fetch(`${IPFS_GATEWAY_URL}${ipfsCID}`);
 
     if (!ipfsResponse.ok) {
-      throw new AppException(
-        Errors.network.requestFailed(`Failed to fetch from IPFS: ${ipfsResponse.statusText}`)
-      );
+      throw Errors.network.requestFailed(`Failed to fetch from IPFS: ${ipfsResponse.statusText}`);
     }
 
     const approvalList = (await ipfsResponse.json()) as ASPApprovalListLegacy;
@@ -161,16 +156,14 @@ export async function fetchApprovedLabelsFromIPFS(ipfsCID: string): Promise<stri
       !approvalList.cumulativeApprovedLabels ||
       !Array.isArray(approvalList.cumulativeApprovedLabels)
     ) {
-      throw new AppException(Errors.indexer.invalidResponse());
+      throw Errors.indexer.invalidResponse();
     }
 
     return approvalList.cumulativeApprovedLabels;
   } catch (error) {
-    if (error instanceof AppException) throw error;
+    if (error instanceof AppError) throw error;
     logError(error, { action: "fetchApprovedLabelsFromIPFS", ipfsCID });
-    throw new AppException(
-      Errors.network.requestFailed("Failed to fetch approved labels from IPFS", error)
-    );
+    throw Errors.network.requestFailed("Failed to fetch approved labels from IPFS", error);
   }
 }
 
@@ -180,9 +173,9 @@ export async function fetchASPData() {
     const approvalList = await fetchApprovedLabelsFromIPFS(ipfsCID);
     return { root, ipfsCID, timestamp, approvalList };
   } catch (error) {
-    if (error instanceof AppException) throw error;
+    if (error instanceof AppError) throw error;
     logError(error, { action: "fetchASPData" });
-    throw new AppException(Errors.indexer.fetchFailed("Failed to fetch ASP data", error));
+    throw Errors.indexer.fetchFailed("Failed to fetch ASP data", error);
   }
 }
 

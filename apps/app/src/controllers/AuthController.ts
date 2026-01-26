@@ -14,7 +14,7 @@ import {
   getWalletAccountId,
 } from "@shinobi-cash/core";
 import { proxy } from "valtio";
-import { type AppError } from "@/lib/errors/errors";
+import { type AppError, logError } from "@/lib/errors/errors";
 
 /**
  * Crypto context (public key + account key)
@@ -75,9 +75,6 @@ export const AuthController = {
 
         // Load crypto context immediately after successful login
         const accountData = await accountService.getAccountData();
-        if (!accountData) {
-          throw new Error("Account data not available after login");
-        }
 
         // Update auth state
         this.state.state = {
@@ -101,7 +98,10 @@ export const AuthController = {
 
       this.state.state = { status: "unauthenticated" };
     } catch (error) {
-      console.error("[AuthController] Bootstrap failed:", error);
+      logError(error, { action: "bootstrap", component: "AuthController" });
+      // Clear session and reset to unauthenticated on bootstrap failure
+      // This is intentional - a failed passkey login should allow manual login
+      await clearSessionInfo().catch(() => {});
       this.state.state = { status: "unauthenticated" };
       this._clearCrypto();
     }
@@ -154,9 +154,6 @@ export const AuthController = {
 
     // Load crypto context immediately after successful login
     const accountData = await accountService.getAccountData();
-    if (!accountData) {
-      throw new Error("Account data not available after login");
-    }
 
     // Update auth state
     this.state.state = {
@@ -194,7 +191,8 @@ export const AuthController = {
     try {
       const accountData = await accountService.getAccountMetadata();
       return !!accountData?.credentialId;
-    } catch {
+    } catch (error) {
+      logError(error, { action: "isPasskeyEnabled", component: "AuthController" });
       return false;
     }
   },

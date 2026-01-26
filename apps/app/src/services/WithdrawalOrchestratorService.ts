@@ -7,6 +7,7 @@ import type {
   PreparedUserOperation,
   ExecutionResult,
 } from "@/types/withdrawal";
+import { Errors } from "@/lib/errors/errors";
 import { validateWithdrawalRequest, validateWithdrawalContext } from "@/utils/withdrawalInvariants";
 import { quoteFees } from "@/utils/withdrawalFees";
 import { prepareUserOperation, executeUserOperation } from "@/utils/withdrawalTransaction";
@@ -123,7 +124,7 @@ export class WithdrawalEngine {
 
   async execute(): Promise<ExecutionResult> {
     if (!this.state.preparedUserOp) {
-      throw new Error("Withdrawal not prepared. Call prepare() first.");
+      throw Errors.withdrawal.precondition("Withdrawal not prepared");
     }
     const result = await executeUserOperation(this.state.preparedUserOp);
     this.state.executionResult = result;
