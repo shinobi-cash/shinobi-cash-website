@@ -8,6 +8,7 @@ import Image from "next/image";
 import { getChainIcon } from "@/utils/chainIcons";
 import { getAssetIcon } from "@/utils/assetIcons";
 import { Banknote } from "lucide-react";
+import { POOL_CHAIN } from "@shinobi-cash/constants";
 
 interface AssetChainProps {
   assetSymbol: string;
@@ -36,12 +37,18 @@ export function AssetChain({ assetSymbol, chainId, className = "" }: AssetChainP
 }
 
 export function ShinobiCashNote({ className = "" }: { className?: string }) {
+  const chainIcon = getChainIcon(POOL_CHAIN.id);
+
   return (
     <div className={`flex shrink-0 items-center gap-2 ${className}`}>
       <div className="relative">
-        {/* Asset icon */}
+        {/* Note icon */}
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600">
-          <Banknote />
+          <Banknote className="h-6 w-6" />
+        </div>
+        {/* Chain badge - smaller, overlayed on bottom-right */}
+        <div className="border-background absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 bg-white">
+          <Image src={chainIcon} alt="Pool Chain" width={12} height={12} className="h-3 w-3" />
         </div>
       </div>
     </div>

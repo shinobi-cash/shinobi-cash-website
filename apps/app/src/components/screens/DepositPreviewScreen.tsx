@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Shield, Globe, Clock } from "lucide-react";
+import { Loader2, Globe, Clock } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";
 import { ScreenLayout } from "@/components/layout/ScreenLayout";
@@ -97,58 +97,40 @@ export function DepositPreviewScreen({
         </Button>
       }
     >
-      {/* Hero */}
-      <div className="flex flex-col items-center space-y-4">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-600">
-          <Shield className="h-8 w-8" />
-        </div>
-
-        <div className="text-center">
-          <h1 className="text-2xl font-bold">
-            You&apos;ll deposit {formatSmallEthAmount(depositAmountNum)} ETH
-          </h1>
-
-          {/* {depositUsd !== null && <p className="text-md text-zinc-500">~{formatUsdAmount(depositUsd)}</p>} */}
-        </div>
-      </div>
-
-      {/* Assets */}
-      <div className="w-full space-y-3">
+      {/* Assets - Horizontal Layout */}
+      <div className="flex w-full items-center gap-2">
         {/* From */}
-        <div className="bg-muted/90 flex items-center gap-4 rounded-3xl border p-4">
-          <AssetChain assetSymbol="ETH" chainId={originChainId} />
-
-          <div className="flex flex-1 flex-col">
-            <span className="text-xs font-medium uppercase text-zinc-500">You send</span>
-            <span className="text-lg font-bold">{"ETH"}</span>
+        <div className="flex flex-1 flex-col rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+          <span className="mb-2 text-xs text-neutral-500">You send</span>
+          <div className="flex items-center justify-between">
+            <AssetChain assetSymbol="ETH" chainId={originChainId} />
+            <div className="flex flex-col items-end">
+              <span className="text-lg font-bold">{formatSmallEthAmount(depositAmountNum)} ETH</span>
+              {depositUsd !== null && (
+                <span className="text-xs text-neutral-500">~{formatUsdAmount(depositUsd)}</span>
+              )}
+            </div>
           </div>
+        </div>
 
-          <div className="flex flex-col items-end">
-            <span className="text-lg font-bold">
-              {formatSmallEthAmount(depositAmountNum)} ETH
-            </span>
-            {depositUsd !== null && (
-              <span className="text-xs text-zinc-500">~{formatUsdAmount(depositUsd)}</span>
-            )}
-          </div>
+        {/* Arrow */}
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-neutral-900">
+          <svg className="h-4 w-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+          </svg>
         </div>
 
         {/* To */}
-        <div className="bg-muted/90 flex items-center gap-4 rounded-3xl border p-4">
-          <ShinobiCashNote />
-
-          <div className="flex flex-1 flex-col">
-            <span className="text-xs font-medium uppercase text-zinc-500">You receive</span>
-            <span className="text-lg font-bold">Note</span>
-          </div>
-
-          <div className="flex flex-col items-end">
-            <span className="text-lg font-bold">
-              {formatSmallEthAmount(depositNoteAmount)} ETH
-            </span>
-            {noteUsd !== null && (
-              <span className="text-xs text-zinc-500">~{formatUsdAmount(noteUsd)}</span>
-            )}
+        <div className="flex flex-1 flex-col rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+          <span className="mb-2 text-xs text-neutral-500">You receive</span>
+          <div className="flex items-center justify-between">
+            <ShinobiCashNote />
+            <div className="flex flex-col items-end">
+              <span className="text-lg font-bold">{formatSmallEthAmount(depositNoteAmount)} ETH</span>
+              {noteUsd !== null && (
+                <span className="text-xs text-neutral-500">~{formatUsdAmount(noteUsd)}</span>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -235,8 +217,8 @@ export function DepositPreviewScreen({
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between">
-      <span className="text-[15px] text-zinc-500">{label}</span>
-      <span className="text-[15px] font-medium text-zinc-200">{value}</span>
+      <span className="text-sm text-zinc-500">{label}</span>
+      <span className="text-sm font-medium text-zinc-200">{value}</span>
     </div>
   );
 }
