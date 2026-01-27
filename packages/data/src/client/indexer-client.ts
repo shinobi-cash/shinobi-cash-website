@@ -475,11 +475,10 @@ export class IndexerClient {
 
     const result = await this.executePaginatedQuery<RawASPApprovalList>(query, {});
 
-    if (result.items.length === 0) {
+    const item = result.items[0];
+    if (!item) {
       return null;
     }
-
-    const item = result.items[0];
 
     // Convert string timestamp to bigint
     return {

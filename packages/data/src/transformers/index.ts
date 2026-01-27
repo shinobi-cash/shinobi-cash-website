@@ -78,8 +78,7 @@ export function safeBigIntParse(value: string | number | bigint | null | undefin
 
   try {
     return BigInt(value);
-  } catch (error) {
-    console.warn(`Failed to parse BigInt from value: ${value}`, error);
+  } catch {
     return 0n;
   }
 }

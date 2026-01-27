@@ -140,11 +140,6 @@ export abstract class BaseQueryBuilder<
     }
 
     const safeLimit = Math.min(limit, BaseQueryBuilder.MAX_SAFE_LIMIT);
-
-    if (safeLimit < limit) {
-      console.warn(`Limit ${limit} exceeds maximum ${BaseQueryBuilder.MAX_SAFE_LIMIT}, using ${safeLimit}`);
-    }
-
     this.config.first = safeLimit;
     return this;
   }
@@ -202,12 +197,6 @@ export abstract class BaseQueryBuilder<
     const result = await this.client.executeQuery<{ [key: string]: TEntity[] }>(query, variables);
 
     const data = result[this.entityName] || [];
-
-    // Warn if hitting limits
-    if (data.length === this.config.first) {
-      console.warn(`Query returned maximum results (${this.config.first}). Consider using pagination.`);
-    }
-
     return data;
   }
 
