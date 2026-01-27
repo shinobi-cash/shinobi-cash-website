@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Banknote } from "lucide-react";
+import { AlertTriangle, Banknote, History } from "lucide-react";
 import { AmountDisplay } from "@/components/shared/AmountDisplay";
 import { NoteChainScreen } from "@/components/screens/NoteChainScreen";
 import { NotesSection } from "@/components/notes/NotesSection";
@@ -42,18 +43,26 @@ export default function NotesPage() {
           title="Notes"
           icon={<Banknote className="h-5 w-5" />}
           rightContent={
-            controller.syncError && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button type="button" className="cursor-pointer rounded p-1 hover:bg-white/10">
-                    <AlertTriangle className="h-5 w-5 text-yellow-400" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="text-xs">Unable to sync. Showing cached data.</p>
-                </TooltipContent>
-              </Tooltip>
-            )
+            <div className="flex items-center gap-2">
+              {controller.syncError && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button type="button" className="cursor-pointer rounded p-1 hover:bg-white/10">
+                      <AlertTriangle className="h-5 w-5 text-yellow-400" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="text-xs">Unable to sync. Showing cached data.</p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
+              <Link
+                href="/activity"
+                className="rounded p-1.5 text-neutral-400 transition-colors hover:bg-white/10 hover:text-white"
+              >
+                <History className="h-5 w-5" />
+              </Link>
+            </div>
           }
         />
       }

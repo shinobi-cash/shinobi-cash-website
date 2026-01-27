@@ -4,17 +4,9 @@
  */
 
 import { isPasskeySupported } from "@/utils/environment";
-import {
-  LogOut,
-  WalletIcon,
-  FingerprintIcon,
-  MoreHorizontalIcon,
-  CircleUserRound,
-} from "lucide-react";
+import { LogOut, WalletIcon, FingerprintIcon, CircleUserRound, ChevronDown } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useAccount, useDisconnect } from "wagmi";
-import { ButtonGroup } from "@workspace/ui/components/button-group";
-import { Button } from "@workspace/ui/components/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -73,17 +65,17 @@ export function ProfileMenu() {
     <>
       <AddPasskeyModal open={showAddPasskeyModal} onOpenChange={setShowAddPasskeyModal} />
       <RemovePasskeyModal open={showRemovePasskeyModal} onOpenChange={setShowRemovePasskeyModal} />
-      <ButtonGroup>
-        <Button variant="outline">
-          <CircleUserRound className="h-4 w-4" />
-          Profile
-        </Button>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="icon" aria-label="More Options">
-              <MoreHorizontalIcon />
-            </Button>
-          </DropdownMenuTrigger>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-neutral-400 transition-colors hover:bg-white/10 hover:text-white"
+          >
+            <CircleUserRound className="h-4 w-4" />
+            Profile
+            <ChevronDown className="h-3.5 w-3.5" />
+          </button>
+        </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="border-border bg-background w-56 p-1">
             <DropdownMenuGroup>
               <DropdownMenuLabel className="text-muted-foreground px-2 text-xs font-semibold">
@@ -130,8 +122,7 @@ export function ProfileMenu() {
               </DropdownMenuItem>
             </DropdownMenuGroup>
           </DropdownMenuContent>
-        </DropdownMenu>
-      </ButtonGroup>
+      </DropdownMenu>
     </>
   );
 }

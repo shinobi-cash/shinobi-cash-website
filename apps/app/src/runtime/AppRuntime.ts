@@ -5,7 +5,6 @@
 
 import { AuthController } from "@/controllers/AuthController";
 import { NotesDiscoveryController } from "@/controllers/NotesDiscoveryController";
-import { SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
 
 type RuntimeState = "stopped" | "starting" | "running" | "stopping";
 
@@ -52,7 +51,7 @@ export const AppRuntime = {
 
         // Phase 3: Start background workers
         log.debug("Phase 3: Starting background sync...");
-        NotesDiscoveryController.startBackgroundSync(SHINOBI_CASH_ETH_POOL.address);
+        NotesDiscoveryController.startBackgroundSync();
       }
 
       state.state = "running";
@@ -110,7 +109,7 @@ export const AppRuntime = {
 
     log.debug("Crypto ready, bootstrapping notes...");
     await NotesDiscoveryController.bootstrap();
-    NotesDiscoveryController.startBackgroundSync(SHINOBI_CASH_ETH_POOL.address);
+    NotesDiscoveryController.startBackgroundSync();
   },
 
   /**

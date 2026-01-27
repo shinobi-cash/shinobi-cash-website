@@ -5,9 +5,7 @@
 
 "use client";
 
-import { useEffect } from "react";
 import { useSnapshot } from "valtio";
-import { useTransactionTracking } from "@/hooks/useTransactionTracking";
 import { NotesDiscoveryController } from "@/controllers/NotesDiscoveryController";
 
 /**
@@ -15,25 +13,12 @@ import { NotesDiscoveryController } from "@/controllers/NotesDiscoveryController
  *
  * Responsibilities:
  * 1. Subscribe to controller state via valtio
- * 2. Listen for transaction indexed events and refresh
  *
- * Note: Discovery is handled by background worker (NotesBackgroundBootstrap)
- * This hook only subscribes to updates and triggers refresh on new transactions
+ * Note: Discovery is handled by background worker via NotesDiscoveryController.
+ * Transaction indexed events trigger refresh via TransactionTrackingController.
  *
  * @returns Snapshot of discovery controller state (read-only)
  */
 export function useNotesDiscovery() {
-  // Subscribe to controller state (valtio makes this reactive)
-  const snapshot = useSnapshot(NotesDiscoveryController.state);
-
-  // Listen for transaction indexed events and refresh
-  const { onTransactionIndexed } = useTransactionTracking();
-
-  useEffect(() => {
-    return onTransactionIndexed(() => {
-      NotesDiscoveryController.refresh();
-    });
-  }, [onTransactionIndexed]);
-
-  return snapshot;
+  return useSnapshot(NotesDiscoveryController.state);
 }

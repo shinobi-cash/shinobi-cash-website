@@ -33,6 +33,9 @@ interface NotesDiscoveryControllerState {
 
   // Last error
   lastError: NotesError | null;
+
+  // Last successful sync timestamp (for sync indicator)
+  lastSyncedAt: number | null;
 }
 
 interface NotesDiscoveryViewState {
@@ -62,6 +65,7 @@ const state = proxy<NotesDiscoveryControllerState>({
   noteChains: [],
   progress: null,
   lastError: null,
+  lastSyncedAt: null,
 });
 
 // Discovery concurrency protection
@@ -190,7 +194,7 @@ export const NotesDiscoverySelectors = {
     };
   },
 };
-let worker: Worker | null = null;
+let syncIntervalId: ReturnType<typeof setInterval> | null = null;
 
 /**
  * Notes Discovery Controller - Main API
@@ -307,6 +311,7 @@ export const NotesDiscoveryController = {
         log.debug(`Discovery complete: ${result.notes.length} note chains found`);
         state.noteChains = result.notes;
         state.progress = null;
+        state.lastSyncedAt = Date.now();
         transition({ status: "ready" });
       }
     } catch (error) {
@@ -368,34 +373,24 @@ export const NotesDiscoveryController = {
     state.noteChains = [];
     state.progress = null;
     state.lastError = null;
+    state.lastSyncedAt = null;
   },
 
-  startBackgroundSync(poolAddress: string) {
-    if (worker) return;
+  startBackgroundSync() {
+    if (syncIntervalId) return;
 
-    worker = new Worker(new URL("../workers/notesSync.worker.ts", import.meta.url), {
-      type: "module",
-    });
+    log.debug(`Starting background sync (interval: ${NOTES_SYNC_INTERVAL_MS}ms)`);
 
-    worker.onmessage = (event) => {
-      if (event.data.type === "SYNC_RESULT") {
-        // feed into existing discovery pipeline
-        NotesDiscoveryController.refresh();
-      }
-    };
-
-    worker.postMessage({
-      type: "START",
-      payload: {
-        poolAddress,
-        intervalMs: NOTES_SYNC_INTERVAL_MS,
-      },
-    });
+    syncIntervalId = setInterval(() => {
+      NotesDiscoveryController.refresh();
+    }, NOTES_SYNC_INTERVAL_MS);
   },
 
   stopBackgroundSync() {
-    worker?.postMessage({ type: "STOP" });
-    worker?.terminate();
-    worker = null;
+    if (syncIntervalId) {
+      clearInterval(syncIntervalId);
+      syncIntervalId = null;
+      log.debug("Background sync stopped");
+    }
   },
 };

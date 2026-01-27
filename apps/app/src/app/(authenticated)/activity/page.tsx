@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { AlertTriangle, History } from "lucide-react";
 import { ActivityFilterDropdown } from "@/components/activity/ActivityFilterDropdown";
 import { ActivityList } from "@/components/activity/ActivityList";
@@ -10,6 +11,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/component
 import { useActivityScreen } from "@/hooks/useActivityScreen";
 
 export default function ActivityPage() {
+  const router = useRouter();
   const controller = useActivityScreen();
 
   // Show activity details if selected
@@ -29,6 +31,7 @@ export default function ActivityPage() {
         <ScreenHeader
           title="Activity"
           icon={<History className="h-5 w-5" />}
+          onBack={() => router.push("/notes")}
           rightContent={
             <div className="flex items-center gap-2">
               {controller.syncError && (
