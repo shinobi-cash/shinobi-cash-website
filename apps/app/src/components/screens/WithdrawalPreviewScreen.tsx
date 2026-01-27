@@ -1,13 +1,18 @@
 "use client";
 
-import { Globe, Clock } from "lucide-react";
+import { Loader2, Globe, Clock } from "lucide-react";
+import { Button } from "@workspace/ui/components/button";
+import { ScreenHeader } from "@/components/shared/ScreenHeader";
+import { ScreenLayout } from "@/components/layout/ScreenLayout";
+import { LabelWithHover } from "@/components/shared/LabelWithHover";
 import { usePriceData } from "@/hooks/usePriceData";
 import { formatUsdAmount, formatHash, formatSmallEthAmount } from "@/utils/formatters";
 import { POOL_CHAIN, SHINOBI_CASH_SUPPORTED_CHAINS, CROSSCHAIN_DEPOSIT_TIMING } from "@shinobi-cash/constants";
 import { ShinobiCashNote, AssetChain } from "@/components/shared/AssetChain";
-import { LabelWithHover } from "@/components/shared/LabelWithHover";
 
-interface WithdrawalPreviewProps {
+interface WithdrawalPreviewScreenProps {
+  onBack: () => void;
+  onConfirm: () => void;
   withdrawAmount: string;
   executionFee: number;
   solverFee: number;
@@ -15,9 +20,12 @@ interface WithdrawalPreviewProps {
   recipientAddress: string;
   destinationChainId: number;
   isCrossChain: boolean;
+  isProcessing: boolean;
 }
 
-export function WithdrawalPreview({
+export function WithdrawalPreviewScreen({
+  onBack,
+  onConfirm,
   withdrawAmount,
   executionFee,
   solverFee,
@@ -25,7 +33,8 @@ export function WithdrawalPreview({
   recipientAddress,
   destinationChainId,
   isCrossChain,
-}: WithdrawalPreviewProps) {
+  isProcessing,
+}: WithdrawalPreviewScreenProps) {
   const withdrawAmountNum = Number.parseFloat(withdrawAmount) || 0;
 
   const { usdPrice } = usePriceData("ETH");
@@ -51,7 +60,28 @@ export function WithdrawalPreview({
   const fillDeadline = formatDuration(CROSSCHAIN_DEPOSIT_TIMING.FILL_DEADLINE_SECONDS);
 
   return (
-    <>
+    <ScreenLayout
+      containerClassName="h-[600px]"
+      header={<ScreenHeader title="Transaction Preview" onBack={onBack} />}
+      contentClassName="space-y-4 px-6 py-4 font-sans text-white"
+      footer={
+        <Button
+          onClick={onConfirm}
+          disabled={isProcessing}
+          className="h-12 w-full rounded-xl text-base font-semibold disabled:cursor-not-allowed disabled:opacity-50 sm:h-14 sm:text-lg"
+          size="lg"
+        >
+          {isProcessing ? (
+            <span className="flex items-center gap-2">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              Processing…
+            </span>
+          ) : (
+            "Confirm Withdrawal"
+          )}
+        </Button>
+      }
+    >
       {/* Assets - Horizontal Layout */}
       <div className="flex w-full items-center gap-2">
         {/* From */}
@@ -145,7 +175,7 @@ export function WithdrawalPreview({
           />
         )}
       </div>
-    </>
+    </ScreenLayout>
   );
 }
 

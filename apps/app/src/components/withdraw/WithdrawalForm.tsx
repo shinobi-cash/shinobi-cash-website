@@ -14,8 +14,11 @@ import { SectionDivider } from "@/components/shared/SectionDivider";
 import { AssetChainSelectorScreen } from "@/components/screens/AssetChainSelectorScreen";
 import { FeeBreakdown } from "@/components/shared/FeeBreakdown";
 import { NoteSelectionScreen } from "@/components/screens/NoteSelectionScreen";
+import { WithdrawalPreviewScreen } from "@/components/screens/WithdrawalPreviewScreen";
 import { WithdrawalTimelineScreen } from "@/components/screens/WithdrawalTimelineScreen";
 import { RecipientAddressInputScreen } from "@/components/screens/RecipientAddressInputScreen";
+import { useTransactionTracking } from "@/hooks/useTransactionTracking";
+import type { EnginePhase } from "@/services/WithdrawalOrchestratorService";
 import { DISPLAY_DECIMALS, ETH_ASSET } from "@/constants/withdraw";
 import { formatEthAmount } from "@/utils/formatters";
 import { ScreenLayout } from "@/components/layout/ScreenLayout";
@@ -25,7 +28,7 @@ import { useWithdrawController } from "@/hooks/useWithdrawController";
 import { usePriceData } from "@/hooks/usePriceData";
 import { WithdrawController, WithdrawSelectors } from "@/controllers/WithdrawController";
 
-type WithdrawScreen = "noteSelection" | "recipientInput" | "destinationSelection" | "timeline";
+type WithdrawScreen = "noteSelection" | "recipientInput" | "destinationSelection" | "preview" | "timeline";
 
 export function WithdrawalForm() {
   const asset = ETH_ASSET;
@@ -43,21 +46,93 @@ export function WithdrawalForm() {
     }
   }, [state.amount, state.recipientAddress, state.selectedNote, state.destinationChainId]);
 
-  // Review = instant navigation (validation handled by button state)
+  const { trackTransaction, trackingStatus, onTransactionIndexed } = useTransactionTracking();
+
+  // Listen for indexed event to update controller
+  useEffect(() => {
+    return onTransactionIndexed(() => {
+      WithdrawController.markIndexed();
+    });
+  }, [onTransactionIndexed]);
+
+  // Review = navigate to preview screen
   const handleReviewWithdrawal = () => {
+    screens.navigate("preview");
+  };
+
+  // Confirm = prepare + submit, then navigate to timeline
+  const handleConfirmWithdrawal = () => {
+    WithdrawController.confirm();
     screens.navigate("timeline");
   };
 
+  // Handle close from timeline (after work is done)
+  const handleTimelineClose = () => {
+    WithdrawController.reset();
+    screens.close();
+  };
+
+  // Derive current engine phase for timeline
+  const currentPhase: EnginePhase | null = (() => {
+    if (state.state.status === "preparing") {
+      return state.state.phase;
+    }
+    if (state.state.status === "ready" || state.state.status === "submitting") {
+      return "prepared";
+    }
+    return null;
+  })();
+
+  // Get transaction details
+  const txHash = (() => {
+    if (state.state.status === "confirmed" || state.state.status === "indexed") {
+      return state.state.txHash;
+    }
+    return null;
+  })();
+
+  // Track transaction for indexing when txHash becomes available
+  useEffect(() => {
+    if (txHash) {
+      trackTransaction(txHash, POOL_CHAIN.id);
+    }
+  }, [txHash, trackTransaction]);
+
+  const isConfirmed = state.state.status === "confirmed" || state.state.status === "indexed";
+  const isIndexed = state.state.status === "indexed";
+  const hasError = state.state.status === "error";
+  const error = hasError ? state.state.error : state.lastError;
+
   // Show withdrawal timeline screen
-  // Interaction Contract: Confirm button in timeline calls WithdrawController.confirm()
   if (screens.is("timeline")) {
     return (
       <WithdrawalTimelineScreen
+        amount={parseFloat(state.amount) || 0}
+        currentPhase={currentPhase}
+        txHash={txHash}
+        error={error}
+        isConfirmed={isConfirmed}
+        isIndexed={isIndexed}
+        trackingStatus={trackingStatus}
+        onClose={handleTimelineClose}
+      />
+    );
+  }
+
+  // Show withdrawal preview screen
+  if (screens.is("preview")) {
+    return (
+      <WithdrawalPreviewScreen
         onBack={screens.close}
-        onConfirm={() => {
-          // Confirm = prepare + submit (all work happens here)
-          WithdrawController.confirm();
-        }}
+        onConfirm={handleConfirmWithdrawal}
+        withdrawAmount={state.amount}
+        executionFee={WithdrawSelectors.getExecutionFee()}
+        solverFee={WithdrawSelectors.getSolverFee()}
+        youReceive={WithdrawSelectors.getYouReceive()}
+        recipientAddress={state.recipientAddress}
+        destinationChainId={state.destinationChainId}
+        isCrossChain={WithdrawSelectors.isCrossChain()}
+        isProcessing={state.state.status === "submitting"}
       />
     );
   }
