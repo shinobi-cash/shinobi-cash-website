@@ -1,9 +1,5 @@
-/**
- * Recipient Address Input Screen Component
- * Full-screen view for entering recipient address
- */
+"use client";
 
-import { RecipientAddressInput } from "@/components/withdraw/RecipientAddressInput";
 import { Button } from "@workspace/ui/components/button";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";
 import { ScreenLayout } from "@/components/layout/ScreenLayout";
@@ -12,33 +8,44 @@ interface RecipientAddressInputScreenProps {
   value: string;
   onChange: (value: string) => void;
   error?: string;
-  onBack: () => void;
-  onConfirm: () => void;
+  onClose: () => void;
 }
 
 export function RecipientAddressInputScreen({
   value,
   onChange,
   error,
-  onBack,
-  onConfirm,
+  onClose,
 }: RecipientAddressInputScreenProps) {
   return (
     <ScreenLayout
       containerClassName="h-[600px]"
-      header={<ScreenHeader title="Recipient Address" onBack={onBack} />}
+      header={<ScreenHeader title="Recipient Address" onBack={onClose} />}
       footer={
         <Button
-          onClick={onConfirm}
+          onClick={onClose}
           disabled={!value || !!error}
           className="h-12 w-full rounded-xl text-base font-semibold disabled:cursor-not-allowed disabled:opacity-50 sm:h-14 sm:text-lg"
           size="lg"
         >
-          Confirm
+          Close
         </Button>
       }
+      contentClassName="px-6 py-4"
     >
-      <RecipientAddressInput value={value} onChange={onChange} error={error} />
+      <div>
+        <label className="mb-3 block text-sm font-medium text-muted-foreground">Recipient Address</label>
+        <div className="space-y-3">
+          <input
+            type="text"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="Address or ENS"
+            className="w-full rounded-xl border border-border bg-muted px-4 py-3 text-sm text-foreground transition-colors placeholder:text-muted-foreground focus:border-blue-600 focus:outline-none"
+          />
+          {error && <p className="text-sm text-red-500">{error}</p>}
+        </div>
+      </div>
     </ScreenLayout>
   );
 }

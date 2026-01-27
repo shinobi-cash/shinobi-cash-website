@@ -158,8 +158,7 @@ export default function WithdrawPage() {
         value={state.recipientAddress}
         onChange={(address) => WithdrawController.setRecipientAddress(address)}
         error={WithdrawSelectors.getAddressError() ?? undefined}
-        onBack={screens.close}
-        onConfirm={screens.close}
+        onClose={screens.close}
       />
     );
   }
