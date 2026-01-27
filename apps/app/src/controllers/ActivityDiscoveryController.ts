@@ -1,39 +1,22 @@
-/**
- * Activity Discovery Controller
- *
- * Domain-level controller that derives activities from note chains.
- * Single source of truth for activity data & status.
- */
-
 import { proxy } from "valtio";
 
-import type { ReadonlyNoteChain } from "@/features/notes/types";
+import type { ReadonlyNoteChain } from "@/types/notes";
 import { NotesDiscoverySelectors } from "@/controllers/NotesDiscoveryController";
-import { Activity, ActivityStatus } from "@/features/activity/types";
-import {
-  deriveActivitiesFromNoteChains,
-  getActivityCounts,
-} from "@/features/activity/utils/deriveActivities";
-
-// ============ STATE TYPES ============
+import { Activity, ActivityStatus } from "@/types/activity";
+import { deriveActivitiesFromNoteChains, getActivityCounts } from "@/utils/activityDerivation";
 
 interface ActivityDiscoveryState {
-  // Source data (derived from notes)
   activities: Activity[];
-
-  // Derived status
   status: ActivityStatus;
-
-  // Counts
   counts: {
     total: number;
     deposit: number;
     withdrawal: number;
     refund: number;
   };
+  // Sync error when we have cached data but sync failed
+  syncError: string | null;
 }
-
-// ============ STATE ============
 
 const state = proxy<ActivityDiscoveryState>({
   activities: [],
@@ -44,33 +27,26 @@ const state = proxy<ActivityDiscoveryState>({
     withdrawal: 0,
     refund: 0,
   },
+  syncError: null,
 });
-
-// ============ SELECTORS ============
 
 export const ActivityDiscoverySelectors = {
   getActivities: (): readonly Activity[] => state.activities,
   getCounts: () => state.counts,
   getStatus: () => state.status,
+  getSyncError: () => state.syncError,
 };
-
-// ============ CONTROLLER ============
 
 export const ActivityDiscoveryController = {
   state,
 
-  /**
-   * Recompute activities from note chains
-   * Called by React adapter when notes change
-   */
   deriveFromNoteChains(noteChains: readonly ReadonlyNoteChain[]): void {
     const notesView = NotesDiscoverySelectors.getViewState();
-
-    // Derive activities
     const activities = deriveActivitiesFromNoteChains(noteChains);
     const counts = getActivityCounts(activities);
 
-    // Status machine (canonical)
+    // Determine status: propagate from notes view
+    // Note: notesView.status will be "ready" if we have cached data even on sync error
     const status: ActivityStatus =
       notesView.status === "idle"
         ? { type: "idle" }
@@ -82,10 +58,11 @@ export const ActivityDiscoveryController = {
               ? { type: "empty" }
               : { type: "ready" };
 
-    // Commit atomically
     state.activities = activities;
     state.counts = counts;
     state.status = status;
+    // Propagate sync error from notes discovery
+    state.syncError = notesView.syncError;
   },
 
   reset(): void {
@@ -97,5 +74,6 @@ export const ActivityDiscoveryController = {
       refund: 0,
     };
     state.status = { type: "idle" };
+    state.syncError = null;
   },
 };

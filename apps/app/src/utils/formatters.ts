@@ -1,27 +1,12 @@
-/**
- * Utility functions for formatting values in the application
- */
-
 import { formatDistance } from "date-fns";
-import { formatEther, parseEther } from "viem";
+import { formatEther, parseEther } from "viem/utils";
 
 export interface EthFormattingOptions {
-  /** Number of decimal places to show. If undefined, removes trailing zeros */
   decimals?: number;
-  /** Minimum number of decimal places to show (only when decimals is undefined) */
   minDecimals?: number;
-  /** Maximum number of decimal places to show (only when decimals is undefined) */
   maxDecimals?: number;
 }
 
-/**
- * Format ETH amounts with consistent precision using viem for accuracy
- * Handles multiple input types and provides flexible decimal formatting
- *
- * @param amount - Amount to format (wei string, ETH number/string, bigint, or null)
- * @param options - Formatting options
- * @returns Formatted ETH amount string
- */
 export function formatEthAmount(
   amount: string | number | bigint | null | undefined,
   options: EthFormattingOptions = {}
@@ -53,15 +38,21 @@ export function formatEthAmount(
 
     // Convert wei to ETH string
     const ethString = formatEther(weiAmount);
+    const num = Number.parseFloat(ethString);
 
     // Apply decimal formatting
     if (options.decimals !== undefined) {
       // Fixed decimal places
-      const num = Number.parseFloat(ethString);
       return num.toFixed(options.decimals);
     }
+
     // Dynamic decimal formatting
     const { minDecimals = 0, maxDecimals = 18 } = options;
+
+    // For small amounts, use significant digits formatting
+    if (num > 0 && num < 0.01) {
+      return formatSmallEthAmount(num, 2);
+    }
 
     // Remove trailing zeros but respect minimum decimals
     let formatted = ethString.replace(/\.?0+$/, "") || "0";
@@ -96,14 +87,6 @@ export function formatEthAmount(
   }
 }
 
-/**
- * Format hash strings for display (6 chars + ... + 4 chars)
- *
- * @param hash - Hash string to format
- * @param startChars - Number of characters to show at start (default: 6)
- * @param endChars - Number of characters to show at end (default: 4)
- * @returns Formatted hash string
- */
 export function formatHash(hash: string, startChars = 6, endChars = 4): string {
   if (!hash || hash.length <= startChars + endChars) {
     return hash;
@@ -111,10 +94,6 @@ export function formatHash(hash: string, startChars = 6, endChars = 4): string {
   return `${hash.slice(0, startChars)}...${hash.slice(-endChars)}`;
 }
 
-/**
- * Format timestamp for relative display (e.g., "2 hours ago")
- * Accepts string or bigint timestamp
- */
 export function formatTimestamp(timestamp: string | bigint): string {
   const numericTimestamp =
     typeof timestamp === "bigint" ? Number(timestamp) : Number.parseInt(timestamp);
@@ -122,31 +101,70 @@ export function formatTimestamp(timestamp: string | bigint): string {
 }
 
 /**
- * Format timestamp as a date (e.g., "12/25/2023")
+ * Format a date as "Wednesday, 7 November at 23:16"
  */
-export function formatDate(timestamp: string | number): string {
-  const date =
-    typeof timestamp === "string"
-      ? new Date(Number.parseInt(timestamp) * 1000)
-      : new Date(timestamp);
-  return date.toLocaleDateString();
+export function formatDateTime(date: Date): string {
+  const dayName = date.toLocaleDateString([], { weekday: "long" });
+  const day = date.getDate();
+  const month = date.toLocaleDateString([], { month: "long" });
+  const time = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+  return `${dayName}, ${day} ${month} at ${time}`;
+}
+
+export function formatUsdAmount(amount: number, decimals?: number): string {
+  // For zero or explicit decimals, use fixed formatting
+  if (amount === 0 || decimals !== undefined) {
+    const effectiveDecimals = decimals ?? 2;
+    return `$${amount.toLocaleString("en-US", {
+      minimumFractionDigits: effectiveDecimals,
+      maximumFractionDigits: effectiveDecimals,
+    })}`;
+  }
+
+  // For amounts >= $0.01, use 2 decimals
+  if (amount >= 0.01) {
+    return `$${amount.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+  }
+
+  // For small amounts, show significant digits (similar to formatSmallEthAmount)
+  const str = amount.toFixed(18);
+  const match = str.match(/^0\.(0*)([1-9]\d*)/);
+
+  if (!match) {
+    return `$${amount.toFixed(2)}`;
+  }
+
+  const leadingZeros = match[1].length;
+  const decimalsNeeded = leadingZeros + 2; // Show 2 significant digits
+
+  return `$${amount.toFixed(Math.min(decimalsNeeded, 8))}`;
 }
 
 /**
- * Format USD amounts with consistent formatting
- * Pure formatter - no hidden dependencies or side effects
- *
- * @param amount - USD amount to format
- * @param decimals - Number of decimal places (default: 2)
- * @returns Formatted USD string with $ prefix
- *
- * @example
- * formatUsdAmount(1234.5) // "$1,234.50"
- * formatUsdAmount(0.123, 4) // "$0.1230"
+ * Format small ETH amounts with significant digits
+ * e.g. 0.00000824788188 -> "0.0000082"
+ * Shows leading zeros + specified significant digits
  */
-export function formatUsdAmount(amount: number, decimals = 2): string {
-  return `$${amount.toLocaleString("en-US", {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  })}`;
+export function formatSmallEthAmount(
+  amount: string | number,
+  significantDigits = 2
+): string {
+  const num = typeof amount === "string" ? Number.parseFloat(amount) : amount;
+
+  if (num === 0 || Number.isNaN(num)) return "0";
+  if (num >= 0.01) return num.toFixed(4); // Normal formatting for larger amounts
+
+  // For small numbers, find first non-zero digit and show significantDigits after
+  const str = num.toFixed(18);
+  const match = str.match(/^0\.(0*)([1-9]\d*)/);
+
+  if (!match) return num.toFixed(6);
+
+  const leadingZeros = match[1].length;
+  const decimalsNeeded = leadingZeros + significantDigits;
+
+  return num.toFixed(Math.min(decimalsNeeded, 18));
 }

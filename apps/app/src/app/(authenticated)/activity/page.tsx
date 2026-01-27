@@ -1,63 +1,71 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { ActivityFilterDropdown } from "@/features/activity/ui/components/ActivityFilterDropdown";
-import { ActivityList } from "@/features/activity/ui/components/ActivityList";
-import { ActivityDetailsScreen } from "@/features/activity/ui/screens/ActivityDetailsScreen";
-import { useActivityScreenController } from "@/features/activity/hooks/useActivityScreenController";
+import { AlertTriangle, History } from "lucide-react";
+import { ActivityFilterDropdown } from "@/components/activity/ActivityFilterDropdown";
+import { ActivityList } from "@/components/activity/ActivityList";
+import { ActivityDetailsScreen } from "@/components/screens/ActivityDetailsScreen";
+import { ScreenLayout } from "@/components/layout/ScreenLayout";
+import { ScreenHeader } from "@/components/shared/ScreenHeader";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { useActivityScreen } from "@/hooks/useActivityScreen";
 
 export default function ActivityPage() {
-  const activityController = useActivityScreenController();
-  const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
-
-  // Find the selected activity
-  const selectedActivity = useMemo(() => {
-    if (!selectedActivityId) return null;
-    return activityController.activities.find((a) => a.id === selectedActivityId) ?? null;
-  }, [selectedActivityId, activityController.activities]);
-
-  const handleActivityClick = (activityId: string) => {
-    setSelectedActivityId(activityId);
-  };
-
-  const handleBack = () => {
-    setSelectedActivityId(null);
-  };
+  const controller = useActivityScreen();
 
   // Show activity details if selected
-  if (selectedActivity) {
-    return <ActivityDetailsScreen activity={selectedActivity} onBack={handleBack} />;
+  if (controller.selectedActivity) {
+    return (
+      <ActivityDetailsScreen
+        activity={controller.selectedActivity}
+        onBack={controller.clearSelection}
+      />
+    );
   }
 
   return (
-    <div className="flex h-[550px] w-full flex-col">
-      {/* Header with Filter - Fixed */}
-      <div className="shrink-0 border-b border-gray-800 px-4 py-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-white">Recent Activity</h2>
-          <ActivityFilterDropdown
-            activeFilter={activityController.activeFilter}
-            onFilterChange={activityController.setFilter}
-            counts={{
-              total: activityController.totalCount,
-              deposit: activityController.depositCount,
-              withdrawal: activityController.withdrawalCount,
-              refund: activityController.refundCount,
-            }}
-          />
-        </div>
-      </div>
-
-      {/* Activity List - Scrollable */}
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4 pt-2 sm:px-6">
-        <ActivityList
-          activities={activityController.filteredActivities}
-          status={activityController.status}
-          activeFilter={activityController.activeFilter}
-          totalCount={activityController.totalCount}
-          onActivityClick={handleActivityClick}
+    <ScreenLayout
+      containerClassName="h-[600px]"
+      header={
+        <ScreenHeader
+          title="Activity"
+          icon={<History className="h-5 w-5" />}
+          rightContent={
+            <div className="flex items-center gap-2">
+              {controller.syncError && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button type="button" className="cursor-pointer rounded p-1 hover:bg-white/10">
+                      <AlertTriangle className="h-4 w-4 text-yellow-400" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="text-xs">Unable to sync. Showing cached data.</p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
+              <ActivityFilterDropdown
+                activeFilter={controller.activeFilter}
+                onFilterChange={controller.setFilter}
+                counts={{
+                  total: controller.totalCount,
+                  deposit: controller.depositCount,
+                  withdrawal: controller.withdrawalCount,
+                  refund: controller.refundCount,
+                }}
+              />
+            </div>
+          }
         />
-      </div>
-    </div>
+      }
+      contentClassName="px-4 pb-4 pt-2 sm:px-6"
+    >
+      <ActivityList
+        activities={controller.filteredActivities}
+        status={controller.status}
+        activeFilter={controller.activeFilter}
+        totalCount={controller.totalCount}
+        onActivityClick={controller.selectActivity}
+      />
+    </ScreenLayout>
   );
 }

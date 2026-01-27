@@ -9,6 +9,11 @@
 import { NextResponse } from "next/server";
 import { IndexerClient, convertBigIntsToStrings } from "@shinobi-cash/data";
 import { SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
+import {
+  INDEXER_REQUEST_TIMEOUT_MS,
+  STATE_TREE_CACHE_TTL_SECONDS,
+  ASP_ROOT_CACHE_TTL_SECONDS,
+} from "@/constants/timings";
 
 // Server-side indexer configuration (credentials never exposed to client)
 const INDEXER_ENDPOINT =
@@ -30,14 +35,14 @@ const serverClient = new IndexerClient({
     "User-Agent": "shinobi-cash-api/1.0.0",
     ...(INDEXER_TOKEN && { Authorization: `Bearer ${INDEXER_TOKEN}` }),
   },
-  timeout: 30000,
+  timeout: INDEXER_REQUEST_TIMEOUT_MS,
 });
 
 // Cache TTL for different endpoints
 const CACHE_CONFIG = {
-  activities: 2, // 10 seconds (real-time data)
-  stateTree: 30, // 30 seconds (changes occasionally)
-  aspRoot: 60, // 1 minute (updates periodically)
+  activities: 2, // 2 seconds (real-time data)
+  stateTree: STATE_TREE_CACHE_TTL_SECONDS,
+  aspRoot: ASP_ROOT_CACHE_TTL_SECONDS,
   health: 5, // 5 seconds
 } as const;
 
@@ -48,7 +53,7 @@ interface IndexerRequest {
     poolAddress?: string;
     poolId?: string;
     limit?: number;
-    after?: string;
+    offset?: number;
     orderDirection?: "asc" | "desc";
   };
 }
@@ -73,7 +78,7 @@ export async function POST(request: Request) {
           poolId,
           limit: params.limit || 100,
           orderDirection: params.orderDirection || "desc",
-          after: params.after,
+          offset: params.offset,
         });
         cacheTTL = CACHE_CONFIG.activities;
         break;
@@ -99,7 +104,7 @@ export async function POST(request: Request) {
 
       case "health": {
         const health = await serverClient.healthCheck();
-        data = { status: health.status === "ok" || health.status === "healthy" };
+        data = { status: health.status === "healthy" };
         cacheTTL = CACHE_CONFIG.health;
         break;
       }

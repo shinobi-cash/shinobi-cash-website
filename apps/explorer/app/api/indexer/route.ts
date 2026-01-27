@@ -56,7 +56,7 @@ interface IndexerRequest {
     poolAddress?: string;
     poolId?: string;
     limit?: number;
-    after?: string;
+    offset?: number;
     orderDirection?: "asc" | "desc";
   };
 }
@@ -84,7 +84,7 @@ export async function POST(request: Request) {
           poolId,
           limit: params.limit || 100,
           orderDirection: params.orderDirection || "desc",
-          after: params.after,
+          offset: params.offset,
         });
         cacheTTL = CACHE_CONFIG.activities;
         break;
@@ -152,7 +152,7 @@ export async function POST(request: Request) {
 
       case "health": {
         const health = await client.healthCheck();
-        data = { status: health.status === "ok" || health.status === "healthy" };
+        data = { status: health.status === "healthy" };
         cacheTTL = CACHE_CONFIG.health;
         break;
       }

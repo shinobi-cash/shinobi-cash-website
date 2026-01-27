@@ -1,16 +1,13 @@
-/**
- * Wrapped AMK Repository
- * Handles envelope encryption: AMK encrypted with multiple KEKs
- *
- * Invariant: KEKs NEVER encrypt account data directly.
- * KEKs ONLY encrypt the AMK (privateKey).
- * Each auth method stores its own wrapped version of the AMK.
- */
-
-import { EncryptionService } from "@shinobi-cash/core";
-import type { IndexedDBStore } from "../adapters/IndexedDBStore";
+import { z } from "zod";
+import { EncryptionService, type WalletAccountId } from "@shinobi-cash/core";
+import { type IndexedDBStore, AMKStorageAdapter } from "../adapters/IndexedDBStore";
 import type { WrappedAMK } from "../interfaces/IDataTypes";
-import type { WalletAccountId } from "@/features/auth/utils";
+import { HexStringSchema } from "@/schemas/common";
+
+/** Schema for decrypted AMK data - privateKey is 0x + 64 hex chars */
+const DecryptedAMKSchema = z.object({
+  privateKey: HexStringSchema.refine((s) => s.length === 66, "Private key must be 66 characters"),
+});
 
 export class WrappedAMKRepository {
   constructor(
@@ -100,10 +97,15 @@ export class WrappedAMKRepository {
         salt: this.encryptionService.base64ToArrayBuffer(wrapped.salt),
       };
 
-      const decrypted = await this.encryptionService.decrypt<{ privateKey: string }>(encrypted);
-      return decrypted.privateKey;
-    } catch (error) {
-      console.error(`Failed to unwrap AMK for ${wrappedBy}:`, error);
+      const decrypted = await this.encryptionService.decrypt<unknown>(encrypted);
+      const parsed = DecryptedAMKSchema.safeParse(decrypted);
+
+      if (!parsed.success) {
+        return null;
+      }
+
+      return parsed.data.privateKey;
+    } catch {
       return null;
     }
   }
@@ -136,3 +138,8 @@ function isWrappedAMK(value: unknown): value is WrappedAMK {
     typeof v.createdAt === "number"
   );
 }
+
+export const wrappedAMKRepo = new WrappedAMKRepository(
+  AMKStorageAdapter,
+  AMKStorageAdapter.getEncryptionService()
+);

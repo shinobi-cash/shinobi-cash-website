@@ -13,8 +13,9 @@
  */
 
 import { useQuery } from "@tanstack/react-query";
-import { fetchTokenPrice } from "@/lib/prices/priceService";
-import type { TokenSymbol } from "@/lib/prices/types";
+import { PRICE_STALE_TIME_MS } from "@/constants/timings";
+import { fetchTokenPrice } from "@/utils/price";
+import type { TokenSymbol } from "@/types/price";
 
 export interface UsePriceDataResult {
   /** Current USD price for the token (null if loading or error) */
@@ -60,11 +61,11 @@ export function usePriceData(
     queryFn: () => fetchTokenPrice(symbol),
 
     // Caching configuration
-    staleTime: 60_000, // Consider data fresh for 60 seconds
-    gcTime: 5 * 60_000, // Keep in cache for 5 minutes after last use
+    staleTime: PRICE_STALE_TIME_MS,
+    gcTime: 5 * PRICE_STALE_TIME_MS, // Keep in cache for 5 minutes after last use
 
     // Background refresh
-    refetchInterval: options?.disableRefresh ? false : (options?.refreshInterval ?? 60_000),
+    refetchInterval: options?.disableRefresh ? false : (options?.refreshInterval ?? PRICE_STALE_TIME_MS),
 
     // Retry configuration
     retry: 2,

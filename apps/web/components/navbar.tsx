@@ -63,7 +63,7 @@ export default function Navbar() {
     <nav
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         isScrolled
-          ? "bg-background/80 backdrop-blur-lg border-b border-border shadow-sm"
+          ? "bg-black/80 backdrop-blur-lg border-b border-white/10 shadow-sm"
           : "bg-transparent"
       }`}
     >
@@ -94,7 +94,7 @@ export default function Navbar() {
                 href={link.href}
                 target={link.href.startsWith("http") ? "_blank" : undefined}
                 rel={link.href.startsWith("http") ? "noopener noreferrer" : undefined}
-                className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors"
+                className="text-base font-medium text-neutral-400 hover:text-white transition-colors"
               >
                 {link.label}
               </a>
@@ -103,7 +103,7 @@ export default function Navbar() {
               href="https://github.com/shinobi-cash"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-muted-foreground hover:text-foreground transition-colors"
+              className="text-neutral-400 hover:text-white transition-colors"
               aria-label="GitHub"
             >
               <Github className="h-5 w-5" />
@@ -112,7 +112,7 @@ export default function Navbar() {
               asChild
               variant="outline"
               size="lg"
-              className="border-2 border-orange-600 dark:border-orange-500 text-foreground hover:bg-orange-600/10 hover:border-orange-500 dark:hover:border-orange-400 text-base px-6 py-5"
+              className="border border-white/10 text-white hover:bg-white/[0.06] hover:border-white/20 text-base px-6 py-5"
             >
               <a href="https://app.shinobi.cash" target="_blank" rel="noopener noreferrer">
                 Launch App
@@ -139,7 +139,7 @@ export default function Navbar() {
 
       {/* Mobile Menu */}
       {isMenuOpen && (
-        <div className="md:hidden fixed inset-0 top-20 bg-background/95 backdrop-blur-lg border-t border-border">
+        <div className="md:hidden fixed inset-0 top-20 bg-black/95 backdrop-blur-lg border-t border-white/10">
           <div className="flex flex-col space-y-1 p-4">
             {NAV_LINKS.map((link) => (
               <a
@@ -148,7 +148,7 @@ export default function Navbar() {
                 target={link.href.startsWith("http") ? "_blank" : undefined}
                 rel={link.href.startsWith("http") ? "noopener noreferrer" : undefined}
                 onClick={handleLinkClick}
-                className="px-4 py-3 rounded-lg text-base font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                className="px-4 py-3 rounded-lg text-base font-medium text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors"
               >
                 {link.label}
               </a>
@@ -158,7 +158,7 @@ export default function Navbar() {
               target="_blank"
               rel="noopener noreferrer"
               onClick={handleLinkClick}
-              className="px-4 py-3 rounded-lg text-base font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors flex items-center gap-2"
+              className="px-4 py-3 rounded-lg text-base font-medium text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors flex items-center gap-2"
             >
               <Github className="h-5 w-5" />
               GitHub
@@ -167,7 +167,7 @@ export default function Navbar() {
               <Button
                 asChild
                 variant="outline"
-                className="w-full border-2 border-orange-600 dark:border-orange-500 text-foreground hover:bg-orange-600/10 hover:border-orange-500 dark:hover:border-orange-400"
+                className="w-full border border-white/10 text-white hover:bg-white/[0.06] hover:border-white/20"
               >
                 <a href="https://app.shinobi.cash" target="_blank" rel="noopener noreferrer" onClick={handleLinkClick}>
                   Launch App

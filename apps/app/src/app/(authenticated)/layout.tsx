@@ -1,11 +1,14 @@
 "use client";
 
-import { AuthScreen } from "@/features/auth/ui/screens/AuthScreen";
+import { AuthScreen } from "@/components/screens/AuthScreen";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { DashboardTabs } from "@/components/layout/DashboardTabs";
 import { useSnapshot } from "valtio";
 import { AuthController } from "@/controllers/AuthController";
+import { IndexerHealthIndicator } from "@/components/indicators/IndexerHealthIndicator";
+import { NotesSyncingScreen } from "@/components/indicators/NotesSyncingBanner";
+import { NotesDiscoveryController } from "@/controllers/NotesDiscoveryController";
 
 /**
  * Authenticated Layout
@@ -14,13 +17,16 @@ import { AuthController } from "@/controllers/AuthController";
  */
 export default function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const state = useSnapshot(AuthController.state);
-  const isAuthenticated = state.state.status === "authenticated";
+  const notesState = useSnapshot(NotesDiscoveryController.state);
 
-  console.log({ isAuthenticated });
+  const isAuthenticated = state.state.status === "authenticated";
+  const isNotesSyncing =
+    notesState.state.status === "discovering" && notesState.noteChains.length === 0;
+
   // Show auth screen if not authenticated
   if (!isAuthenticated) {
     return (
-      <div className="bg-linear-to-br flex min-h-dvh flex-col overflow-y-auto from-gray-900 via-gray-900 to-black">
+      <div className="flex min-h-dvh flex-col overflow-y-auto">
         <div className="p-4">
           <Header />
         </div>
@@ -40,7 +46,7 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
 
   // Authenticated layout with card UI
   return (
-    <div className="bg-linear-to-br flex min-h-dvh flex-col overflow-y-auto from-gray-900 via-gray-900 to-black">
+    <div className="flex min-h-dvh flex-col overflow-y-auto">
       <div className="p-4">
         <Header />
       </div>
@@ -53,12 +59,14 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
           </div>
 
           {/* Card Content */}
-          <div className="rounded-xl border bg-gray-900/70">{children}</div>
+          <div className="border-white/10 bg-white/[0.02] rounded-2xl border">
+            {isNotesSyncing ? <NotesSyncingScreen /> : children}
+          </div>
         </div>
       </div>
 
       <div className="hidden shrink-0 md:block">
-        <Footer showIndicators={true} />
+        <Footer indicators={<IndexerHealthIndicator />} />
       </div>
     </div>
   );

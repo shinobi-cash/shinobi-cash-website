@@ -6,13 +6,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createAppKit } from "@reown/appkit/react";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { SettingsProvider } from "@/contexts/SettingsContext";
-import { TransactionTrackingProvider } from "@/hooks/useTransactionTracking";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import React, { type ReactNode } from "react";
 import { cookieToInitialState, WagmiProvider, type Config } from "wagmi";
 import { Toaster } from "@workspace/ui/components/sonner";
-import { Particles } from "@workspace/ui/components/particles";
-import { NotesBackgroundBootstrap } from "./NoteBackgroudBootstrap";
+import { RuntimeBootstrap } from "./RuntimeBootstrap";
 
 // Set up queryClient
 const queryClient = new QueryClient();
@@ -34,6 +32,16 @@ export const modal = createAppKit({
   themeMode: "dark",
   features: {
     analytics: true,
+    email:false,
+    onramp:false,
+    connectMethodsOrder:['wallet'],
+    emailShowWallets:false,
+    history:false,
+    receive:false,
+    reownAuthentication:false,
+    send:false,
+    socials:false,
+    swaps:false,
   },
   themeVariables: {
     "--w3m-accent": "#f97316",
@@ -49,18 +57,9 @@ function ContextProvider({ children, cookies }: { children: ReactNode; cookies: 
         <SettingsProvider>
           <WagmiProvider config={wagmiAdapter.wagmiConfig as Config} initialState={initialState}>
             <QueryClientProvider client={queryClient}>
-              <TransactionTrackingProvider>
-                <NotesBackgroundBootstrap />
-                <Particles
-                  className="pointer-events-none fixed inset-0"
-                  quantity={100}
-                  ease={80}
-                  color="#f97316"
-                  refresh={true}
-                />
-                {children}
-                <Toaster />
-              </TransactionTrackingProvider>
+              <RuntimeBootstrap />
+              {children}
+              <Toaster />
             </QueryClientProvider>
           </WagmiProvider>
         </SettingsProvider>

@@ -22,7 +22,6 @@ export interface PaginatedResponse<T> {
   pageInfo: {
     hasNextPage: boolean;
     hasPreviousPage: boolean;
-    endCursor?: string;
   };
 }
 
@@ -52,7 +51,7 @@ export interface ASPApprovalListLegacy {
 export async function fetchActivities(
   poolAddress?: string,
   limit = 100,
-  after?: string,
+  offset?: number,
   orderDirection: "asc" | "desc" = "desc"
 ) {
   try {
@@ -61,7 +60,7 @@ export async function fetchActivities(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         endpoint: "activities",
-        params: { poolAddress, limit, after, orderDirection },
+        params: { poolAddress, limit, offset, orderDirection },
       }),
     });
 
@@ -70,14 +69,6 @@ export async function fetchActivities(
     if (!result.success) {
       throw new Error(result.error || "Failed to fetch activities");
     }
-
-    console.log("[fetchActivities] Response:", {
-      itemCount: result.data.items.length,
-      limit,
-      hasNextPage: result.data.pageInfo.hasNextPage,
-      firstItem: result.data.items[0]?.type,
-      orderDirection,
-    });
 
     return result.data;
   } catch (error) {
@@ -157,8 +148,6 @@ export async function fetchLatestASPRoot(): Promise<{
     if (!result.success) {
       throw new Error(result.error || "Failed to fetch ASP root");
     }
-
-    console.log("[fetchLatestASPRoot] Result:", result.data);
 
     return result.data;
   } catch (error) {
@@ -289,8 +278,6 @@ export async function fetchPoolStats(poolAddress?: string): Promise<{
     if (!result.success) {
       throw new Error(result.error || "Failed to fetch pool stats");
     }
-
-    console.log("[fetchPoolStats] Result:", result.data);
 
     return result.data;
   } catch (error) {

@@ -4,61 +4,43 @@
  */
 
 import { IBrowserStorageAdapter } from "./types";
+import { logError } from "@/lib/errors/errors";
 
 export class BrowserStorageAdapter<T = string> implements IBrowserStorageAdapter<T> {
   constructor(private storage: Storage) {}
 
   async get(key: string): Promise<T | null> {
-    try {
-      const value = this.storage.getItem(key);
-      if (value === null) return null;
+    const value = this.storage.getItem(key);
+    if (value === null) return null;
 
-      // Try to parse as JSON, fallback to raw string
-      try {
-        return JSON.parse(value) as T;
-      } catch {
-        return value as T;
-      }
-    } catch (error) {
-      console.warn(`Failed to get ${key} from storage:`, error);
-      return null;
+    // Try to parse as JSON, fallback to raw string
+    try {
+      return JSON.parse(value) as T;
+    } catch {
+      return value as T;
     }
   }
 
   async set(key: string, value: T): Promise<void> {
-    try {
-      const serialized = typeof value === "string" ? value : JSON.stringify(value);
-      this.storage.setItem(key, serialized);
-    } catch (error) {
-      console.warn(`Failed to set ${key} in storage:`, error);
-      throw error;
-    }
+    const serialized = typeof value === "string" ? value : JSON.stringify(value);
+    this.storage.setItem(key, serialized);
   }
 
   async remove(key: string): Promise<void> {
     try {
       this.storage.removeItem(key);
     } catch (error) {
-      console.warn(`Failed to remove ${key} from storage:`, error);
+      // Best-effort cleanup - log but don't throw
+      logError(error, { action: "removeFromStorage", key });
     }
   }
 
   async clear(): Promise<void> {
-    try {
-      this.storage.clear();
-    } catch (error) {
-      console.warn("Failed to clear storage:", error);
-      throw error;
-    }
+    this.storage.clear();
   }
 
   async has(key: string): Promise<boolean> {
-    try {
-      return this.storage.getItem(key) !== null;
-    } catch (error) {
-      console.warn(`Failed to check ${key} in storage:`, error);
-      return false;
-    }
+    return this.storage.getItem(key) !== null;
   }
 
   async keys(): Promise<string[]> {

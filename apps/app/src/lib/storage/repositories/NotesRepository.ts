@@ -1,10 +1,3 @@
-/**
- * NotesRepository
- * NOTE:
- * This module is designed to be Web Worker compatible.
- * Do not introduce direct storage or DOM dependencies.
- */
-
 import {
   EncryptionService,
   type CachedNoteData,
@@ -16,7 +9,11 @@ import {
   type ActivityFetcher,
   type DiscoveryState,
 } from "@shinobi-cash/core";
-import type { IndexedDBStore } from "../adapters/IndexedDBStore";
+import {
+  type IndexedDBStore,
+  notesStorageAdapter,
+  sharedEncryptionService,
+} from "../adapters/IndexedDBStore";
 import type { EncryptedNotesData } from "../interfaces/IDataTypes";
 
 export class NotesRepository {
@@ -50,7 +47,7 @@ export class NotesRepository {
         notes: cached.notes,
         lastUsedIndex: cached.lastUsedDepositIndex,
         newNotesFound: 0,
-        lastProcessedCursor: cached.lastProcessedCursor,
+        lastProcessedOffset: cached.lastProcessedOffset,
       };
     }
 
@@ -64,7 +61,7 @@ export class NotesRepository {
     publicKey: string,
     poolAddress: string,
     notes: NoteChain[],
-    lastProcessedCursor?: string
+    lastProcessedOffset?: number
   ): Promise<void> {
     if (!this.encryptionService.isKeyAvailable()) {
       throw new Error("Session not initialized");
@@ -72,7 +69,7 @@ export class NotesRepository {
 
     const lastUsedIndex =
       notes.length > 0 ? Math.max(...notes.map((chain) => chain[0].depositIndex)) : -1;
-    await this.storeData(publicKey, poolAddress, notes, lastUsedIndex, lastProcessedCursor);
+    await this.storeData(publicKey, poolAddress, notes, lastUsedIndex, lastProcessedOffset);
   }
 
   /**
@@ -83,7 +80,7 @@ export class NotesRepository {
     poolAddress: string,
     notes: NoteChain[],
     lastUsedDepositIndex: number,
-    lastProcessedCursor?: string
+    lastProcessedOffset?: number
   ): Promise<void> {
     const sensitiveData: CachedNoteData = {
       poolAddress,
@@ -91,7 +88,7 @@ export class NotesRepository {
       notes,
       lastUsedDepositIndex,
       lastSyncTime: Date.now(),
-      lastProcessedCursor,
+      lastProcessedOffset,
     };
 
     const encrypted = await this.encryptionService.encrypt(sensitiveData);
@@ -129,12 +126,9 @@ export class NotesRepository {
       try {
         const decryptedData = await this.encryptionService.decrypt<CachedNoteData>(encryptedData);
         return decryptedData;
-      } catch (decryptionError) {
-        console.error("[NotesRepository] ❌ Failed to decrypt cached notes:", decryptionError);
-        console.error(
-          "[NotesRepository] This likely means notes were encrypted with a different KEK"
-        );
-        return null; // Return null if decryption fails (wrong password)
+      } catch {
+        // Decryption failed - likely encrypted with a different KEK
+        return null;
       }
     }
 
@@ -170,12 +164,12 @@ export class NotesRepository {
         return {
           notes: cached.notes,
           lastUsedIndex: cached.lastUsedIndex,
-          cursor: cached.lastProcessedCursor,
+          offset: cached.lastProcessedOffset,
         };
       },
 
       saveState: async (pubKey: string, pool: string, state: DiscoveryState) => {
-        await this.storeDiscoveredNotes(pubKey, pool, state.notes, state.cursor);
+        await this.storeDiscoveredNotes(pubKey, pool, state.notes, state.offset);
       },
     });
 
@@ -183,3 +177,5 @@ export class NotesRepository {
     return await engine.sync(publicKey, poolAddress, accountKey, options);
   }
 }
+
+export const notesRepo = new NotesRepository(notesStorageAdapter, sharedEncryptionService);

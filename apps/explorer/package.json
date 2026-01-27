@@ -14,8 +14,8 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,css}\" \"!node_modules\" \"!.next\" \"!out\""
   },
   "dependencies": {
-    "@shinobi-cash/constants": "^0.0.2",
-    "@shinobi-cash/data": "^0.0.2",
+    "@shinobi-cash/constants": "workspace:*",
+    "@shinobi-cash/data": "workspace:*",
     "@tanstack/react-query": "^5.62.14",
     "@workspace/ui": "workspace:*",
     "date-fns": "^4.1.0",

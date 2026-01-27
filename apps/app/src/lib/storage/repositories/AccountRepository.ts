@@ -1,12 +1,7 @@
-/**
- * Account Repository - Account data storage operations
- * Wallet-based accounts only (passkey is an unlock method, not an account type)
- */
-
-import { ethers } from "ethers";
+import { privateKeyToAccount } from "viem/accounts";
+import { accountStorageAdapter } from "../adapters/IndexedDBStore";
 import type { AccountMetadata, AccountData } from "../interfaces/IDataTypes";
-import type { WalletAccountId } from "@/features/auth/utils";
-import { assertWalletAccountId } from "@/features/auth/utils";
+import { assertWalletAccountId, type WalletAccountId } from "@shinobi-cash/core";
 import { IndexedDBStore } from "../adapters/IndexedDBStore";
 
 /**
@@ -16,9 +11,10 @@ import { IndexedDBStore } from "../adapters/IndexedDBStore";
 function deriveKeysFromPrivateKey(privateKey: string): {
   publicKey: string;
 } {
-  const wallet = new ethers.Wallet(privateKey);
+  const hexKey = privateKey.startsWith('0x') ? privateKey : `0x${privateKey}`;
+  const account = privateKeyToAccount(hexKey as `0x${string}`);
   return {
-    publicKey: wallet.signingKey.publicKey,
+    publicKey: account.publicKey,
   };
 }
 
@@ -130,3 +126,5 @@ export class AccountRepository {
     return index;
   }
 }
+
+export const accountRepo = new AccountRepository(accountStorageAdapter);

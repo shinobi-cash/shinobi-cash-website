@@ -1,22 +1,13 @@
-/**
- * Notes Discovery Controller - Domain Layer
- * Single source of truth for all discovered notes
- */
-
 import { proxy } from "valtio";
-import type { NoteChain, DiscoveryProgress } from "@shinobi-cash/core";
-import { discoverNotes } from "@/services/NoteDiscoveryService";
-import { repositoryRegistry } from "@/lib/storage/RepositoryRegistry";
+import type { NoteChain, DiscoveryProgress, Note } from "@shinobi-cash/core";
+import { notesRepo } from "@/lib/storage/repositories/NotesRepository";
+import { fetchActivities } from "@/utils/indexer";
+import { createStateMachine } from "@/utils/stateMachine";
 import { SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
 import { AuthController } from "@/controllers/AuthController";
-
-import type { Note } from "@shinobi-cash/core";
-import { NotesError, NotesStatus, ReadonlyNoteChain } from "@/features/notes/types";
-import {
-  getAvailableNotes,
-  getLastNote,
-  getNoteChainCounts,
-} from "@/features/notes/utils/noteFiltering";
+import { NotesError, NotesStatus, ReadonlyNoteChain } from "@/types/notes";
+import { getAvailableNotes, getLastNote, getNoteChainCounts } from "@/utils/noteFiltering";
+import { NOTES_SYNC_INTERVAL_MS } from "@/constants/timings";
 
 /**
  * Discovery state machine
@@ -60,6 +51,10 @@ interface NotesDiscoveryViewState {
   isLoading: boolean;
   isRefreshing: boolean;
   isEmpty: boolean;
+
+  // Sync error when we have cached data but discovery failed
+  // UI should show warning banner when this is set
+  syncError: string | null;
 }
 
 const state = proxy<NotesDiscoveryControllerState>({
@@ -86,20 +81,27 @@ const log = {
   },
 };
 
-/**
- * State transition helper
- */
-function transition(newState: DiscoveryState) {
-  log.debug("Transition:", state.state.status, "→", newState.status);
-  state.state = newState;
+const { transition } = createStateMachine<DiscoveryState>({
+  name: "NotesDiscoveryController",
+  allowedTransitions: {
+    idle: ["discovering", "ready"],
+    discovering: ["ready", "error"],
+    ready: ["discovering"],
+    error: ["idle", "discovering"],
+  },
+  getState: () => state.state,
+  setState: (next) => {
+    log.debug("Transition:", state.state.status, "→", next.status);
+    state.state = next;
 
-  // Clear last error on non-error transitions
-  if (newState.status !== "error") {
-    state.lastError = null;
-  } else {
-    state.lastError = newState.error;
-  }
-}
+    // Clear last error on non-error transitions
+    if (next.status !== "error") {
+      state.lastError = null;
+    } else {
+      state.lastError = next.error;
+    }
+  },
+});
 
 /**
  * Selectors - Derived views from canonical state
@@ -147,19 +149,34 @@ export const NotesDiscoverySelectors = {
   isIdle: (): boolean => state.state.status === "idle",
 
   getViewState(): NotesDiscoveryViewState {
-    const { noteChains, state: discoveryState } = state;
+    const { noteChains, state: discoveryState, lastError } = state;
 
     const counts = getNoteChainCounts(noteChains);
     const availableNotes = getAvailableNotes(noteChains);
 
     const isDiscovering = discoveryState.status === "discovering";
     const isEmpty = noteChains.length === 0;
+    const hasError = discoveryState.status === "error";
 
+    // Determine status: prioritize showing cached data over error state
+    // Only show error if we have no cached data at all
     let status: NotesStatus = "ready";
-    if (discoveryState.status === "idle") status = "idle";
-    else if (discoveryState.status === "error") status = "error";
-    else if (isDiscovering && isEmpty) status = "loading";
-    else if (isEmpty) status = "empty";
+    let syncError: string | null = null;
+
+    if (discoveryState.status === "idle") {
+      status = "idle";
+    } else if (hasError && isEmpty) {
+      // No cached data and error - show full error state
+      status = "error";
+    } else if (hasError && !isEmpty) {
+      // Have cached data but sync failed - show data with warning
+      status = "ready";
+      syncError = lastError?.message ?? "Unable to sync with server";
+    } else if (isDiscovering && isEmpty) {
+      status = "loading";
+    } else if (isEmpty) {
+      status = "empty";
+    }
 
     return {
       status,
@@ -169,6 +186,7 @@ export const NotesDiscoverySelectors = {
       isLoading: isDiscovering && isEmpty,
       isRefreshing: isDiscovering && !isEmpty,
       isEmpty,
+      syncError,
     };
   },
 };
@@ -183,19 +201,23 @@ export const NotesDiscoveryController = {
 
   /**
    * Bootstrap discovery controller
-   * Loads cached notes from storage, does NOT trigger discovery
-   * Discovery is handled by background worker
+   * Loads cached notes from storage, then triggers initial discovery
    */
   async bootstrap(): Promise<void> {
     const crypto = AuthController.state.crypto;
     if (!crypto.publicKey) return;
 
+    // Load cache first for immediate UI
     await NotesDiscoveryController._loadCache();
 
     // If we have cached notes, mark ready immediately
     if (state.noteChains.length > 0) {
       transition({ status: "ready" });
     }
+
+    // Always trigger discovery to sync latest notes
+    // This runs in background and updates state when complete
+    NotesDiscoveryController.discover();
   },
 
   /**
@@ -208,7 +230,7 @@ export const NotesDiscoveryController = {
 
     try {
       log.debug("Loading cached notes...");
-      const cached = await repositoryRegistry.notesRepo.getCachedNotes(
+      const cached = await notesRepo.getCachedNotes(
         crypto.publicKey,
         SHINOBI_CASH_ETH_POOL.address
       );
@@ -262,10 +284,14 @@ export const NotesDiscoveryController = {
     transition({ status: "discovering" });
 
     try {
-      const result = await discoverNotes(
+      const result = await notesRepo.discoverNotes(
         crypto.publicKey,
         SHINOBI_CASH_ETH_POOL.address,
         crypto.accountKey,
+        async (poolAddress, limit, cursor, orderDirection) => {
+          const result = await fetchActivities(poolAddress, limit, cursor, orderDirection);
+          return { items: result.items, pageInfo: result.pageInfo };
+        },
         {
           signal: abortController.signal,
           onProgress: (progress) => {
@@ -362,7 +388,7 @@ export const NotesDiscoveryController = {
       type: "START",
       payload: {
         poolAddress,
-        intervalMs: 60_000,
+        intervalMs: NOTES_SYNC_INTERVAL_MS,
       },
     });
   },

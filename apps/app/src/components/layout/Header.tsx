@@ -1,45 +1,22 @@
 "use client";
 
-import Image from "next/image";
-import Link from "next/link";
-import { ProfileMenu } from "@/features/auth/ui/components/ProfileMenu";
+import { ProfileMenu } from "@/components/auth/ProfileMenu";
+import AppLogo from "../AppLogo";
 
-export function Header() {
+interface HeaderProps {
+  rightSlot?: React.ReactNode;
+}
+
+export function Header({ rightSlot }: HeaderProps) {
   return (
-    <>
-      <header className="mx-auto flex items-center justify-between rounded-xl border border-gray-800 bg-black/50 px-4 py-3 backdrop-blur-sm sm:rounded-2xl sm:px-6 lg:px-8">
-        {/* Logo and Navigation */}
-        <div className="flex gap-6">
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-3">
-            {/* Mobile icon */}
-            <Image
-              src="/Shinobi.Cash-white-text.png"
-              alt="Shinobi Cash"
-              width={144}
-              height={32}
-              className="block h-8 w-auto md:hidden"
-              priority
-            />
+    <header className="border-white/10 bg-black/60 mx-auto flex items-center justify-between rounded-xl border px-4 py-3 backdrop-blur sm:rounded-2xl sm:px-6 lg:px-8">
+      <div className="flex gap-6">
+        <AppLogo />
+      </div>
 
-            {/* Desktop logo */}
-            <Image
-              src="/Shinobi.Cash-white-text.png"
-              alt="Shinobi Cash"
-              width={180}
-              height={40}
-              className="hidden h-10 w-auto md:block"
-              priority
-            />
-          </Link>
-        </div>
-
-        {/* Actions - Right */}
-        <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
-          {/* Account Menu */}
-          <ProfileMenu />
-        </div>
-      </header>
-    </>
+      <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+        {rightSlot ?? <ProfileMenu />}
+      </div>
+    </header>
   );
 }

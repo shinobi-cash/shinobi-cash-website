@@ -1,10 +1,6 @@
-/**
- * Toast utility functions using sonner
- * Provides consistent toast messaging across the app
- */
-
 import { toast } from "sonner";
-import { getUserMessage, isUserCancellation, logError } from "./errors/errorHandler";
+import { getUserMessage, isUserCancellation, logError } from "./errors/errors";
+import { TOAST_DURATION_MS, TOAST_ERROR_DURATION_MS } from "@/constants/timings";
 
 export const showToast = {
   success: (message: string, options?: Parameters<typeof toast.success>[1]) => {
@@ -79,12 +75,12 @@ export const showToast = {
   auth: {
     success: (action: string) => {
       return toast.success(`${action} successful!`, {
-        duration: 3000,
+        duration: TOAST_DURATION_MS,
       });
     },
     error: (action: string) => {
       return toast.error(`${action} failed`, {
-        duration: 4000,
+        duration: TOAST_ERROR_DURATION_MS,
       });
     },
   },
