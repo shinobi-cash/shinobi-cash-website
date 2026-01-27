@@ -6,7 +6,9 @@ export default defineConfig({
     zk: 'src/zk.ts',
   },
   format: ['cjs', 'esm'],
-  dts: true,
+  dts: {
+    resolve: ['@shinobi-cash/constants', '@shinobi-cash/data'],
+  },
   clean: true,
   sourcemap: true,
   splitting: false,
