@@ -1,25 +1,22 @@
 "use client";
 
-import { CheckCircle, Clock, Hourglass, XCircle } from "lucide-react";
+import { useState, useEffect } from "react";
 import { Button } from "@workspace/ui/components/button";
-import { cn } from "@workspace/ui/lib/utils";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";
 import { ScreenLayout } from "@/components/layout/ScreenLayout";
+import {
+  StatusIcon,
+  TimelineSteps,
+  formatDuration,
+  type TimelineItem,
+  type StepStatus,
+  type StepTiming,
+} from "@/components/shared/Timeline";
 import { type AppError, getUserMessage, ErrorCode } from "@/lib/errors/errors";
 import type { EnginePhase } from "@/services/WithdrawalOrchestratorService";
-import type { TrackingStatus } from "@/hooks/useTransactionTracking";
 import { getTxExplorerUrl } from "@/config/chains";
+import { formatDateTime } from "@/utils/formatters";
 import { POOL_CHAIN } from "@shinobi-cash/constants";
-
-type StepStatus = "completed" | "active" | "pending" | "failed";
-
-interface TimelineItem {
-  label: string;
-  status: StepStatus;
-  description: string;
-  errorMessage?: string;
-  link?: { url: string; text: string };
-}
 
 interface WithdrawalTimelineScreenProps {
   amount: number;
@@ -27,8 +24,7 @@ interface WithdrawalTimelineScreenProps {
   txHash: string | null;
   error: AppError | null;
   isConfirmed: boolean;
-  isIndexed: boolean;
-  trackingStatus: TrackingStatus;
+  isCrossChain: boolean;
   onClose: () => void;
 }
 
@@ -38,47 +34,34 @@ export function WithdrawalTimelineScreen({
   txHash,
   error,
   isConfirmed,
-  isIndexed,
-  trackingStatus,
+  isCrossChain,
   onClose,
 }: WithdrawalTimelineScreenProps) {
   const hasError = error !== null;
-  const canGoBack = isIndexed || hasError;
 
   const explorerUrl = txHash ? getTxExplorerUrl(POOL_CHAIN.id, txHash) : null;
 
+  // Track timestamps and durations for each step
+  const [timings, setTimings] = useState<Record<string, StepTiming>>({});
+
   const isPreparing = currentPhase !== null && currentPhase !== "prepared";
   const isConfirming = txHash !== null && !isConfirmed && !error;
-  const isIndexing = trackingStatus === "waiting" && isConfirmed;
 
-  const title = isIndexed
+  // Complete when tx is confirmed on-chain (don't wait for indexer)
+  const isComplete = isConfirmed;
+
+  // Title based on state
+  const title = isComplete
     ? "Withdrawal complete"
-    : error
+    : hasError
       ? "Withdrawal failed"
-      : isIndexing
-        ? "Finalizing withdrawal"
-        : isConfirmed
-          ? "Withdrawal confirmed"
-          : isConfirming
-            ? "Processing withdrawal"
-            : isPreparing
-              ? "Preparing withdrawal"
-              : "Processing withdrawal";
+      : isConfirming
+        ? "Submitting withdrawal"
+        : isPreparing
+          ? "Preparing withdrawal"
+          : "Processing withdrawal";
 
-  const subtitle = isIndexed
-    ? "Your withdrawal is complete and notes have been updated."
-    : error
-      ? "Something went wrong. Please check the details below."
-      : isIndexing
-        ? "Almost done. Syncing your notes."
-        : isConfirmed
-          ? "Transaction confirmed. Waiting for indexer."
-          : isConfirming
-            ? "Waiting for transaction confirmation."
-            : isPreparing
-              ? "Generating zero-knowledge proof. This may take 5-10 seconds."
-              : "Submitting your withdrawal transaction.";
-
+  // Error classification
   const isPreparationError =
     error &&
     (error.code === ErrorCode.WITHDRAWAL.FEE_ESTIMATION_FAILED ||
@@ -89,25 +72,35 @@ export function WithdrawalTimelineScreen({
 
   const isTransactionError = error && error.code === ErrorCode.WITHDRAWAL.TRANSACTION_FAILED;
 
-  // Combined preparation + submission step status
-  const prepareSubmitStatus: StepStatus = isPreparationError
-    ? "failed"
+  // Determine which step failed
+  const failedAtStep = isPreparationError
+    ? "preparing"
     : isTransactionError
-      ? "failed"
-      : txHash
-        ? "completed"
-        : isPreparing || currentPhase === "prepared"
+      ? "submitting"
+      : null;
+
+  // Step 1: Preparing (proof generation)
+  const preparingStatus: StepStatus = isPreparationError
+    ? "failed"
+    : txHash || isConfirming || isComplete
+      ? "completed"
+      : isPreparing || currentPhase === "prepared"
+        ? "active"
+        : "pending";
+
+  // Step 2: Submitting (tx confirmation)
+  const submittingStatus: StepStatus = isTransactionError
+    ? "failed"
+    : isComplete
+      ? "completed"
+      : isConfirming
+        ? "active"
+        : preparingStatus === "completed"
           ? "active"
           : "pending";
 
-  // Processing step status (confirming + indexing)
-  const processingStatus: StepStatus = isIndexed
-    ? "completed"
-    : isConfirmed || isIndexing
-      ? "active"
-      : prepareSubmitStatus === "completed"
-        ? "active"
-        : "pending";
+  // Step 3: Complete
+  const completeStatus: StepStatus = isComplete ? "completed" : "pending";
 
   const getErrorMessage = (): string | undefined => {
     if (isPreparationError) return getUserMessage(error);
@@ -115,25 +108,76 @@ export function WithdrawalTimelineScreen({
     return undefined;
   };
 
+  // Record timestamps when steps become active and durations when completed
+  useEffect(() => {
+    const steps = [
+      { key: "preparing", status: preparingStatus },
+      { key: "submitting", status: submittingStatus },
+      { key: "complete", status: completeStatus },
+    ];
+
+    setTimings((prev) => {
+      const updated = { ...prev };
+      let hasChanges = false;
+
+      steps.forEach(({ key, status }) => {
+        // Record start time when step becomes active
+        if ((status === "active" || status === "completed") && !updated[key]) {
+          const now = new Date();
+          updated[key] = {
+            startTime: now,
+            displayTime: formatDateTime(now),
+          };
+          hasChanges = true;
+        }
+        // Calculate duration when step completes
+        if (status === "completed" && updated[key] && !updated[key].duration) {
+          updated[key] = {
+            ...updated[key],
+            duration: formatDuration(updated[key].startTime, new Date()),
+          };
+          hasChanges = true;
+        }
+      });
+
+      return hasChanges ? updated : prev;
+    });
+  }, [preparingStatus, submittingStatus, completeStatus]);
+
+  // Complete step description based on cross-chain
+  const completeDescription = isCrossChain
+    ? "Your withdrawal intent is on-chain. A solver will fill it within ~5-10 minutes."
+    : "Your withdrawal is confirmed. Notes will sync shortly.";
+
   const timeline: TimelineItem[] = [
     {
-      label: "Preparing withdrawal",
-      status: prepareSubmitStatus,
-      description: "Generating proof and submitting transaction.",
-      errorMessage: prepareSubmitStatus === "failed" ? getErrorMessage() : undefined,
+      label: "Preparing",
+      status: preparingStatus,
+      description: "Generating zero-knowledge proof.",
+      errorMessage: failedAtStep === "preparing" ? getErrorMessage() : undefined,
+      timestamp: timings["preparing"]?.displayTime,
+      duration: timings["preparing"]?.duration,
     },
     {
-      label: "Processing withdrawal",
-      status: processingStatus,
-      description: "Confirming and syncing your notes.",
+      label: "Submitting",
+      status: submittingStatus,
+      description: "Waiting for on-chain confirmation.",
+      errorMessage: failedAtStep === "submitting" ? getErrorMessage() : undefined,
+      link: explorerUrl && submittingStatus !== "pending" ? { url: explorerUrl, text: "View transaction" } : undefined,
+      timestamp: timings["submitting"]?.displayTime,
+      duration: timings["submitting"]?.duration,
     },
     {
-      label: "Withdrawal complete",
-      status: isIndexed ? "completed" : "pending",
-      description: "Funds sent to recipient.",
-      link: explorerUrl && isIndexed ? { url: explorerUrl, text: "View receipt" } : undefined,
+      label: "Complete",
+      status: completeStatus,
+      description: completeDescription,
+      timestamp: timings["complete"]?.displayTime,
+      duration: timings["complete"]?.duration,
     },
   ];
+
+  // Back button enabled after success or failure
+  const canGoBack = isComplete || hasError;
 
   return (
     <ScreenLayout
@@ -151,84 +195,14 @@ export function WithdrawalTimelineScreen({
       contentClassName="space-y-4 px-6 py-4"
     >
       <div className="flex flex-1 flex-col items-center space-y-4">
-        <div className="flex flex-col items-center space-y-4 text-center">
-          <StatusIcon isIndexed={isIndexed} hasError={hasError} />
+        <div className="flex flex-col items-center space-y-2 text-center">
+          <StatusIcon isComplete={isComplete} hasError={hasError} />
           <h2 className="text-2xl font-bold">{title}</h2>
           <span className="text-5xl font-extrabold">{amount.toFixed(4)} ETH</span>
-          <span className="text-sm font-medium text-neutral-400">{subtitle}</span>
         </div>
 
-        <div className="w-full max-w-md">
-          <div className="relative space-y-6">
-            {timeline.map((step, idx) => (
-              <div key={idx} className="relative flex gap-4">
-                {idx !== timeline.length - 1 && (
-                  <div
-                    className={cn(
-                      "absolute left-[11px] top-6 h-full w-[2px]",
-                      step.status === "completed"
-                        ? "bg-emerald-400/20"
-                        : step.status === "failed"
-                          ? "bg-rose-400/20"
-                          : "bg-white/10"
-                    )}
-                  />
-                )}
-
-                <div className="relative z-10">
-                  <StepIcon status={step.status} />
-                </div>
-
-                <div className="flex flex-col gap-1">
-                  <h3 className={cn("font-semibold", step.status === "failed" ? "text-rose-400" : "")}>
-                    {step.label}
-                  </h3>
-                  {step.errorMessage ? (
-                    <p className="text-sm text-rose-400">{step.errorMessage}</p>
-                  ) : (
-                    <p
-                      className={cn(
-                        "text-sm",
-                        step.status === "pending" ? "text-neutral-500" : "text-neutral-400"
-                      )}
-                    >
-                      {step.description}
-                      {step.link && (
-                        <>
-                          {" "}
-                          <a
-                            href={step.link.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="font-medium text-white hover:underline"
-                          >
-                            {step.link.text}
-                          </a>
-                        </>
-                      )}
-                    </p>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <TimelineSteps items={timeline} />
       </div>
     </ScreenLayout>
   );
-}
-
-/* ---------- helpers ---------- */
-
-function StepIcon({ status }: { status: StepStatus }) {
-  if (status === "completed") return <CheckCircle className="h-6 w-6 text-emerald-400" />;
-  if (status === "active") return <Clock className="h-6 w-6 animate-pulse text-yellow-400" />;
-  if (status === "failed") return <XCircle className="h-6 w-6 text-rose-400" />;
-  return <div className="h-6 w-6 rounded-full border-2 border-white/10" />;
-}
-
-function StatusIcon({ isIndexed, hasError }: { isIndexed: boolean; hasError: boolean }) {
-  if (isIndexed) return <CheckCircle className="h-12 w-12 text-emerald-400" />;
-  if (hasError) return <XCircle className="h-12 w-12 text-rose-400" />;
-  return <Hourglass className="h-12 w-12 animate-pulse text-neutral-400" />;
 }

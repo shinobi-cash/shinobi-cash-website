@@ -1,14 +1,20 @@
 "use client";
 
-import { CheckCircle, Clock, Hourglass, XCircle } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import { Button } from "@workspace/ui/components/button";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";
 import { ScreenLayout } from "@/components/layout/ScreenLayout";
-import { useTransactionTracking } from "@/hooks/useTransactionTracking";
-import { getTxExplorerUrl } from "@/config/chains";
-import { cn } from "@workspace/ui/lib/utils";
+import {
+  StatusIcon,
+  TimelineSteps,
+  formatDuration,
+  type TimelineItem,
+  type StepStatus,
+  type StepTiming,
+} from "@/components/shared/Timeline";
 import { type AppError, getUserMessage, isUserCancellation } from "@/lib/errors/errors";
+import { getTxExplorerUrl } from "@/config/chains";
+import { formatDateTime } from "@/utils/formatters";
 
 type DepositStatus =
   | "submitting"
@@ -17,15 +23,6 @@ type DepositStatus =
   | "indexed"
   | "failed"
   | "error";
-type StepStatus = "completed" | "active" | "pending" | "failed";
-
-interface TimelineItem {
-  label: string;
-  status: StepStatus;
-  description: string;
-  errorMessage?: string;
-  link?: { url: string; text: string };
-}
 
 interface DepositTimelineScreenProps {
   noteAmount: number;
@@ -48,9 +45,10 @@ export function DepositTimelineScreen({
   isCrossChain,
   onClose,
 }: DepositTimelineScreenProps) {
-  const router = useRouter();
-  const { trackingStatus } = useTransactionTracking();
   const explorerUrl = txHash ? getTxExplorerUrl(originChainId, txHash) : null;
+
+  // Track timestamps and durations for each step
+  const [timings, setTimings] = useState<Record<string, StepTiming>>({});
 
   const isSubmitting = status === "submitting";
   const isConfirming = status === "confirming";
@@ -59,83 +57,55 @@ export function DepositTimelineScreen({
   const isFailed = status === "failed";
   const isError = status === "error";
 
-  // Show indexing state while confirmed but not yet indexed
-  const isIndexing = trackingStatus === "waiting" && isConfirmedOnChain;
+  // Complete when tx is confirmed on-chain (don't wait for indexer)
+  const isComplete = isConfirmedOnChain || isIndexed;
 
   const isUserCancelled = error && isUserCancellation(error);
   const hasError = isUserCancelled || isFailed || isError;
 
-  // Both same-chain and cross-chain wait for indexer
-  const isComplete = isIndexed;
-
-  // Title based on state and cross-chain
+  // Title based on state
   const title = isComplete
-    ? isCrossChain
-      ? "Deposit intent submitted"
-      : "Deposit complete"
+    ? "Deposit complete"
     : hasError
       ? "Deposit failed"
-      : isConfirmedOnChain || isIndexing
-        ? isCrossChain
-          ? "Confirming deposit intent"
-          : "Confirming deposit"
-        : isConfirming
-          ? isCrossChain
-            ? "Submitting deposit intent"
-            : "Processing deposit"
-          : isSubmitting
-            ? "Confirm in wallet"
-            : isCrossChain
-              ? "Submitting deposit intent"
-              : "Processing deposit";
+      : isConfirming
+        ? "Confirming deposit"
+        : isSubmitting
+          ? "Confirm in wallet"
+          : "Processing deposit";
 
-  // Subtitle based on state and cross-chain
-  const subtitle = isComplete
-    ? isCrossChain
-      ? "Your deposit intent is on-chain. A solver will fill it shortly."
-      : "Your deposit is complete and ready for withdrawal."
-    : hasError
-      ? "Something went wrong. See details below."
-      : isConfirmedOnChain || isIndexing
-        ? isCrossChain
-          ? "Waiting for indexer to confirm your deposit intent."
-          : "Almost done. Finalizing your deposit."
-        : isConfirming
-          ? isCrossChain
-            ? "Creating your cross-chain deposit intent."
-            : "Waiting for confirmation."
-          : isSubmitting
-            ? "Please confirm in your wallet."
-            : "This may take a few moments.";
-
+  // Determine which step failed
   const failedAtStep = isUserCancelled
-    ? "confirm"
+    ? "preparing"
     : isError
-      ? "confirm"
+      ? "preparing"
       : isFailed
-        ? "processing"
+        ? "submitting"
         : null;
 
-  const confirmWalletStatus: StepStatus =
-    failedAtStep === "confirm"
+  // Step 1: Preparing (wallet sign)
+  const preparingStatus: StepStatus =
+    failedAtStep === "preparing"
       ? "failed"
-      : txHash || isConfirming || isConfirmedOnChain || isFailed
+      : txHash || isConfirming || isComplete || isFailed
         ? "completed"
         : isSubmitting
           ? "active"
           : "pending";
 
-  const processingStatus: StepStatus =
-    failedAtStep === "processing"
+  // Step 2: Submitting (tx confirmation)
+  const submittingStatus: StepStatus =
+    failedAtStep === "submitting"
       ? "failed"
       : isComplete
         ? "completed"
-        : isConfirming || isConfirmedOnChain || isIndexing
+        : isConfirming
           ? "active"
-          : confirmWalletStatus === "completed"
+          : preparingStatus === "completed"
             ? "active"
             : "pending";
 
+  // Step 3: Complete
   const completeStatus: StepStatus = isComplete ? "completed" : "pending";
 
   const getErrorMessage = (): string | undefined => {
@@ -146,160 +116,100 @@ export function DepositTimelineScreen({
     return undefined;
   };
 
-  // Timeline with cross-chain aware messaging
+  // Record timestamps when steps become active and durations when completed
+  useEffect(() => {
+    const steps = [
+      { key: "preparing", status: preparingStatus },
+      { key: "submitting", status: submittingStatus },
+      { key: "complete", status: completeStatus },
+    ];
+
+    setTimings((prev) => {
+      const updated = { ...prev };
+      let hasChanges = false;
+
+      steps.forEach(({ key, status }) => {
+        // Record start time when step becomes active
+        if ((status === "active" || status === "completed") && !updated[key]) {
+          const now = new Date();
+          updated[key] = {
+            startTime: now,
+            displayTime: formatDateTime(now),
+          };
+          hasChanges = true;
+        }
+        // Calculate duration when step completes
+        if (status === "completed" && updated[key] && !updated[key].duration) {
+          updated[key] = {
+            ...updated[key],
+            duration: formatDuration(updated[key].startTime, new Date()),
+          };
+          hasChanges = true;
+        }
+      });
+
+      return hasChanges ? updated : prev;
+    });
+  }, [preparingStatus, submittingStatus, completeStatus]);
+
+  // Complete step description based on cross-chain
+  const completeDescription = isCrossChain
+    ? "Your deposit intent is on-chain. A solver will fill it within ~5-10 minutes."
+    : "Your deposit is confirmed. Notes will sync shortly.";
+
   const timeline: TimelineItem[] = [
     {
-      label: "Confirm in wallet",
-      status: confirmWalletStatus,
+      label: "Preparing",
+      status: preparingStatus,
       description: "Approve the transaction in your wallet.",
-      errorMessage: failedAtStep === "confirm" ? getErrorMessage() : undefined,
+      errorMessage: failedAtStep === "preparing" ? getErrorMessage() : undefined,
+      timestamp: timings["preparing"]?.displayTime,
+      duration: timings["preparing"]?.duration,
     },
     {
-      label: isCrossChain ? "Submitting intent" : "Processing deposit",
-      status: processingStatus,
-      description: isCrossChain
-        ? "Creating your cross-chain deposit intent."
-        : "Confirming and securing your deposit.",
-      errorMessage: failedAtStep === "processing" ? getErrorMessage() : undefined,
-      link: explorerUrl && (isConfirmedOnChain || isIndexing) ? { url: explorerUrl, text: "View transaction" } : undefined,
+      label: "Submitting",
+      status: submittingStatus,
+      description: "Waiting for on-chain confirmation.",
+      errorMessage: failedAtStep === "submitting" ? getErrorMessage() : undefined,
+      link: explorerUrl && submittingStatus !== "pending" ? { url: explorerUrl, text: "View transaction" } : undefined,
+      timestamp: timings["submitting"]?.displayTime,
+      duration: timings["submitting"]?.duration,
     },
     {
-      label: isCrossChain ? "Intent submitted" : "Deposit complete",
+      label: "Complete",
       status: completeStatus,
-      description: isCrossChain
-        ? "A solver will fill your deposit within ~5-10 minutes."
-        : "Your funds are ready for withdrawal.",
-      link: explorerUrl && isComplete ? { url: explorerUrl, text: "View receipt" } : undefined,
+      description: completeDescription,
+      timestamp: timings["complete"]?.displayTime,
+      duration: timings["complete"]?.duration,
     },
   ];
-
-  const StepIcon = ({ status }: { status: StepStatus }) => {
-    if (status === "completed") return <CheckCircle className="h-6 w-6 text-emerald-400" />;
-    if (status === "active") return <Clock className="h-6 w-6 animate-pulse text-yellow-400" />;
-    if (status === "failed") return <XCircle className="h-6 w-6 text-rose-400" />;
-    return <div className="border-white/10 h-6 w-6 rounded-full border-2" />;
-  };
-
-  const StatusIcon = () => {
-    if (isComplete) return <CheckCircle className="h-12 w-12 text-emerald-400" />;
-    if (hasError) return <XCircle className="h-12 w-12 text-rose-400" />;
-    return <Hourglass className="text-neutral-400 h-12 w-12 animate-pulse" />;
-  };
 
   // Back button enabled after success or failure
   const canGoBack = isComplete || hasError;
 
-  // Navigate to notes to track deposit status
-  const handleTrackStatus = () => {
-    onClose();
-    router.push("/notes");
-  };
-
-  // Different footer for cross-chain success (indexed pending intent)
-  const footerContent = isComplete && isCrossChain ? (
-    <div className="flex flex-col gap-2">
-      <Button
-        onClick={handleTrackStatus}
-        className="h-12 w-full rounded-xl text-base font-semibold sm:h-14 sm:text-lg"
-        size="lg"
-      >
-        Track Deposit Status
-      </Button>
-      <Button
-        onClick={onClose}
-        variant="outline"
-        className="h-12 w-full rounded-xl text-base font-semibold sm:h-14 sm:text-lg"
-        size="lg"
-      >
-        Done
-      </Button>
-    </div>
-  ) : (
-    <Button
-      onClick={onClose}
-      className="h-12 w-full rounded-xl text-base font-semibold disabled:cursor-not-allowed disabled:opacity-50 sm:h-14 sm:text-lg"
-      size="lg"
-    >
-      Close
-    </Button>
-  );
-
   return (
     <ScreenLayout
       containerClassName="h-[600px]"
-      header={
-        <ScreenHeader title="Transaction details" onBack={onClose} backDisabled={!canGoBack} />
+      header={<ScreenHeader title="Transaction details" onBack={onClose} backDisabled={!canGoBack} />}
+      footer={
+        <Button
+          onClick={onClose}
+          className="h-12 w-full rounded-xl text-base font-semibold disabled:cursor-not-allowed disabled:opacity-50 sm:h-14 sm:text-lg"
+          size="lg"
+        >
+          Close
+        </Button>
       }
-      footer={footerContent}
       contentClassName="space-y-4 px-6 py-4"
     >
       <div className="flex flex-1 flex-col items-center space-y-4">
-        <div className="flex flex-col items-center space-y-4 text-center">
-          <StatusIcon />
+        <div className="flex flex-col items-center space-y-2 text-center">
+          <StatusIcon isComplete={isComplete} hasError={hasError} />
           <h2 className="text-2xl font-bold">{title}</h2>
           <span className="text-5xl font-extrabold">{noteAmount.toFixed(4)} ETH</span>
-          <span className="text-neutral-400 text-sm font-medium">{subtitle}</span>
         </div>
 
-        <div className="w-full max-w-md">
-          <div className="relative space-y-6">
-            {timeline.map((step, idx) => (
-              <div key={idx} className="relative flex gap-4">
-                {idx !== timeline.length - 1 && (
-                  <div
-                    className={cn(
-                      "absolute left-[11px] top-6 h-full w-[2px]",
-                      step.status === "completed"
-                        ? "bg-emerald-400/20"
-                        : step.status === "failed"
-                          ? "bg-rose-400/20"
-                          : "bg-white/10"
-                    )}
-                  />
-                )}
-
-                <div className="relative z-10">
-                  <StepIcon status={step.status} />
-                </div>
-
-                <div className="flex flex-col gap-1">
-                  <h3
-                    className={cn("font-semibold", step.status === "failed" ? "text-rose-400" : "")}
-                  >
-                    {step.label}
-                  </h3>
-                  {step.errorMessage ? (
-                    <p className="text-sm text-rose-400">{step.errorMessage}</p>
-                  ) : (
-                    <p
-                      className={cn(
-                        "text-sm",
-                        step.status === "pending"
-                          ? "text-neutral-500"
-                          : "text-neutral-400"
-                      )}
-                    >
-                      {step.description}
-                      {step.link && (
-                        <>
-                          {" "}
-                          <a
-                            href={step.link.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="font-medium text-white hover:underline"
-                          >
-                            {step.link.text}
-                          </a>
-                        </>
-                      )}
-                    </p>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <TimelineSteps items={timeline} />
       </div>
     </ScreenLayout>
   );

@@ -112,8 +112,7 @@ export default function WithdrawPage() {
         txHash={txHash}
         error={error}
         isConfirmed={isConfirmed}
-        isIndexed={isIndexed}
-        trackingStatus={trackingStatus}
+        isCrossChain={WithdrawSelectors.isCrossChain()}
         onClose={handleTimelineClose}
       />
     );

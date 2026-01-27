@@ -100,6 +100,17 @@ export function formatTimestamp(timestamp: string | bigint): string {
   return formatDistance(new Date(numericTimestamp * 1000), new Date(), { addSuffix: true });
 }
 
+/**
+ * Format a date as "Wednesday, 7 November at 23:16"
+ */
+export function formatDateTime(date: Date): string {
+  const dayName = date.toLocaleDateString([], { weekday: "long" });
+  const day = date.getDate();
+  const month = date.toLocaleDateString([], { month: "long" });
+  const time = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+  return `${dayName}, ${day} ${month} at ${time}`;
+}
+
 export function formatUsdAmount(amount: number, decimals?: number): string {
   // For zero or explicit decimals, use fixed formatting
   if (amount === 0 || decimals !== undefined) {
