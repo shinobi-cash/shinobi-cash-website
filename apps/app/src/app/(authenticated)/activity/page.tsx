@@ -1,13 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { AlertTriangle, History } from "lucide-react";
+import { History } from "lucide-react";
+import { Badge } from "@workspace/ui/components/badge";
 import { ActivityFilterDropdown } from "@/components/activity/ActivityFilterDropdown";
 import { ActivityList } from "@/components/activity/ActivityList";
 import { ActivityDetailsScreen } from "@/components/screens/ActivityDetailsScreen";
 import { ScreenLayout } from "@/components/layout/ScreenLayout";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { useActivityScreen } from "@/hooks/useActivityScreen";
 
 export default function ActivityPage() {
@@ -35,16 +35,9 @@ export default function ActivityPage() {
           rightContent={
             <div className="flex items-center gap-2">
               {controller.syncError && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button type="button" className="cursor-pointer rounded p-1 hover:bg-white/10">
-                      <AlertTriangle className="h-4 w-4 text-yellow-400" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p className="text-xs">Unable to sync. Showing cached data.</p>
-                  </TooltipContent>
-                </Tooltip>
+                <Badge variant="secondary" className="text-yellow-400">
+                  Cached
+                </Badge>
               )}
               <ActivityFilterDropdown
                 activeFilter={controller.activeFilter}

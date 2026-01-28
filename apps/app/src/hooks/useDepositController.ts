@@ -35,7 +35,8 @@ export function useDepositController() {
 
   // Sync wallet context to controller
   useEffect(() => {
-    const publicClient = config.getClient({ chainId }) as any; // wagmi client is compatible with viem PublicClient
+    // wagmi client is compatible with viem PublicClient
+    const publicClient = config.getClient({ chainId }) as unknown as Parameters<typeof DepositController._updateWallet>[0]["publicClient"];
 
     DepositController._updateWallet({
       isConnected,

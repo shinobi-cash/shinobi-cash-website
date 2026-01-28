@@ -15,38 +15,45 @@ import { RuntimeBootstrap } from "./RuntimeBootstrap";
 // Set up queryClient
 const queryClient = new QueryClient();
 
-// Set up metadata
+// Set up metadata with URL based on environment
 const metadata = {
   name: "Shinobi Cash",
   description: "One click, borderless and complaint privacy",
-  url: "https://shinobi.cash",
-  icons: ["https://shinobi.cash/icon.svg"],
+  url: process.env.NODE_ENV === "development" ? "http://localhost:3000" : "https://testnet.shinobi.cash",
+  icons: ["https://testnet.shinobi.cash/icon.svg"],
 };
 
-// Create the modal
-export const modal = createAppKit({
-  adapters: [wagmiAdapter],
-  projectId,
-  networks,
-  metadata,
-  themeMode: "dark",
-  features: {
-    analytics: true,
-    email:false,
-    onramp:false,
-    connectMethodsOrder:['wallet'],
-    emailShowWallets:false,
-    history:false,
-    receive:false,
-    reownAuthentication:false,
-    send:false,
-    socials:false,
-    swaps:false,
-  },
-  themeVariables: {
-    "--w3m-accent": "#f97316",
-  },
-});
+// Singleton pattern to prevent double initialization during HMR
+const globalForAppKit = globalThis as unknown as { appKitModal?: ReturnType<typeof createAppKit> };
+
+function createModal() {
+  return createAppKit({
+    adapters: [wagmiAdapter],
+    projectId,
+    networks,
+    metadata,
+    themeMode: "dark",
+    features: {
+      analytics: false,
+      email: false,
+      onramp: false,
+      connectMethodsOrder: ["wallet"],
+      emailShowWallets: false,
+      history: false,
+      receive: false,
+      reownAuthentication: false,
+      send: false,
+      socials: false,
+      swaps: false,
+    },
+    themeVariables: {
+      "--w3m-accent": "#f97316",
+    },
+  });
+}
+
+export const modal = globalForAppKit.appKitModal ?? createModal();
+if (process.env.NODE_ENV !== "production") globalForAppKit.appKitModal = modal;
 
 function ContextProvider({ children, cookies }: { children: ReactNode; cookies: string | null }) {
   const initialState = cookieToInitialState(wagmiAdapter.wagmiConfig as Config, cookies);

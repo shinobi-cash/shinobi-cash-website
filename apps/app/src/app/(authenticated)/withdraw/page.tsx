@@ -1,7 +1,7 @@
 "use client";
 
-import { Loader2, ChevronDown, ArrowUpFromLine, Banknote, Wallet } from "lucide-react";
-import { useEffect } from "react";
+import { Loader2, ChevronDown, ArrowUpFromLine, Banknote, Wallet, Check, X } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
 import { Button } from "@workspace/ui/components/button";
 import { POOL_CHAIN } from "@shinobi-cash/constants";
 import { CardContainer } from "@/components/shared/CardContainer";
@@ -16,7 +16,6 @@ import { FeeBreakdown } from "@/components/shared/FeeBreakdown";
 import { NoteSelectionScreen } from "@/components/screens/NoteSelectionScreen";
 import { WithdrawalPreviewScreen } from "@/components/screens/WithdrawalPreviewScreen";
 import { WithdrawalTimelineScreen } from "@/components/screens/WithdrawalTimelineScreen";
-import { RecipientAddressInputScreen } from "@/components/screens/RecipientAddressInputScreen";
 import { useTransactionTracking } from "@/hooks/useTransactionTracking";
 import type { EnginePhase } from "@/services/WithdrawalOrchestratorService";
 import { DISPLAY_DECIMALS, ETH_ASSET } from "@/constants/withdraw";
@@ -28,12 +27,14 @@ import { useWithdrawController } from "@/hooks/useWithdrawController";
 import { usePriceData } from "@/hooks/usePriceData";
 import { WithdrawController, WithdrawSelectors } from "@/controllers/WithdrawController";
 
-type WithdrawScreen = "noteSelection" | "recipientInput" | "destinationSelection" | "preview" | "timeline";
+type WithdrawScreen = "noteSelection" | "destinationSelection" | "preview" | "timeline";
 
 export default function WithdrawPage() {
   const asset = ETH_ASSET;
 
   const screens = useScreenNavigation<WithdrawScreen>();
+  const [isRecipientExpanded, setIsRecipientExpanded] = useState(false);
+  const recipientInputRef = useRef<HTMLInputElement>(null);
 
   // Read-only snapshot from controller (React adapter)
   const state = useWithdrawController();
@@ -46,7 +47,7 @@ export default function WithdrawPage() {
     }
   }, [state.amount, state.recipientAddress, state.selectedNote, state.destinationChainId]);
 
-  const { trackTransaction, trackingStatus, onTransactionIndexed } = useTransactionTracking();
+  const { trackTransaction, onTransactionIndexed } = useTransactionTracking();
 
   // Listen for indexed event to update controller
   useEffect(() => {
@@ -99,7 +100,6 @@ export default function WithdrawPage() {
   }, [txHash, trackTransaction]);
 
   const isConfirmed = state.state.status === "confirmed" || state.state.status === "indexed";
-  const isIndexed = state.state.status === "indexed";
   const hasError = state.state.status === "error";
   const error = hasError ? state.state.error : state.lastError;
 
@@ -150,18 +150,6 @@ export default function WithdrawPage() {
     );
   }
 
-  // Show recipient address input screen
-  if (screens.is("recipientInput")) {
-    return (
-      <RecipientAddressInputScreen
-        value={state.recipientAddress}
-        onChange={(address) => WithdrawController.setRecipientAddress(address)}
-        error={WithdrawSelectors.getAddressError() ?? undefined}
-        onClose={screens.close}
-      />
-    );
-  }
-
   // Show destination selection screen
   if (screens.is("destinationSelection")) {
     return (
@@ -200,32 +188,8 @@ export default function WithdrawPage() {
 
   return (
     <ScreenLayout
-      containerClassName="h-[600px]"
       header={<ScreenHeader title="Withdraw" icon={<ArrowUpFromLine className="h-5 w-5" />} />}
       contentClassName="px-4 py-4 sm:px-6"
-      footer={
-        <Button
-          onClick={handleReviewWithdrawal}
-          disabled={!WithdrawSelectors.canWithdraw()}
-          className="h-12 w-full rounded-xl text-base font-semibold disabled:cursor-not-allowed disabled:opacity-50 sm:h-14 sm:text-lg"
-          size="lg"
-        >
-          {state.state.status === "previewing" ? (
-            <div className="flex items-center gap-2">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Previewing fees...
-            </div>
-          ) : !state.selectedNote ? (
-            "Select a Note"
-          ) : !state.amount.trim() ? (
-            "Enter Amount"
-          ) : !state.recipientAddress ? (
-            "Enter Recipient Address"
-          ) : (
-            "Review Withdrawal"
-          )}
-        </Button>
-      }
     >
       <div className="flex-1 space-y-3 overflow-y-auto">
         <div className="relative flex flex-col gap-2">
@@ -276,17 +240,60 @@ export default function WithdrawPage() {
           <CardContainer>
             <div className="flex items-center justify-between">
               <span className="text-sm text-neutral-400">You Receive</span>
-              <button
-                onClick={() => screens.navigate("recipientInput")}
-                className="flex cursor-pointer items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 text-sm text-neutral-400 transition-colors hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={isDisabled}
-              >
-                <Wallet className="h-3 w-3" />
-                {state.recipientAddress
-                  ? `${state.recipientAddress.slice(0, 6)}...${state.recipientAddress.slice(-4)}`
-                  : "Enter Recipient"}
-                <ChevronDown className="h-3 w-3" />
-              </button>
+              {isRecipientExpanded ? (
+                <div className="flex items-center gap-1">
+                  <input
+                    ref={recipientInputRef}
+                    type="text"
+                    value={state.recipientAddress}
+                    onChange={(e) => WithdrawController.setRecipientAddress(e.target.value)}
+                    onBlur={() => setIsRecipientExpanded(false)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === "Escape") {
+                        setIsRecipientExpanded(false);
+                      }
+                    }}
+                    placeholder="0x... or ENS"
+                    autoFocus
+                    className={`w-48 rounded-lg border bg-white/[0.04] px-2 py-1 text-sm text-white placeholder:text-neutral-500 focus:outline-none ${
+                      WithdrawSelectors.getAddressError()
+                        ? "border-red-500 focus:border-red-500"
+                        : "border-white/20 focus:border-orange-500"
+                    }`}
+                  />
+                  {state.recipientAddress && (
+                    <button
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => WithdrawController.setRecipientAddress("")}
+                      className="rounded-full p-1 text-neutral-400 transition-colors hover:bg-white/10 hover:text-white"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                  <button
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => setIsRecipientExpanded(false)}
+                    className="rounded-full p-1 text-neutral-400 transition-colors hover:bg-white/10 hover:text-white"
+                  >
+                    <Check className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => {
+                    setIsRecipientExpanded(true);
+                    setTimeout(() => recipientInputRef.current?.focus(), 0);
+                  }}
+                  className="flex cursor-pointer items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 text-sm text-neutral-400 transition-colors hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={isDisabled}
+                >
+                  <Wallet className="h-3 w-3" />
+                  {state.recipientAddress
+                    ? `${state.recipientAddress.slice(0, 6)}...${state.recipientAddress.slice(-4)}`
+                    : "Enter Recipient"}
+                  <ChevronDown className="h-3 w-3" />
+                </button>
+              )}
             </div>
 
             <div className="flex items-center justify-between gap-3">
@@ -309,13 +316,37 @@ export default function WithdrawPage() {
           </CardContainer>
         </div>
 
-        <FeeBreakdown
-          executionFee={WithdrawSelectors.getExecutionFee()}
-          solverFee={WithdrawSelectors.getSolverFee()}
-          assetSymbol={asset.symbol}
-          isCrossChain={WithdrawSelectors.isCrossChain()}
-          showAsDeduction={true}
-        />
+        <Button
+          onClick={handleReviewWithdrawal}
+          disabled={!WithdrawSelectors.canWithdraw()}
+          className="h-12 w-full rounded-xl text-base font-semibold disabled:cursor-not-allowed disabled:opacity-50 sm:h-14 sm:text-lg"
+          size="lg"
+        >
+          {state.state.status === "previewing" ? (
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Previewing fees...
+            </div>
+          ) : !state.selectedNote ? (
+            "Select a Note"
+          ) : !state.amount.trim() ? (
+            "Enter Amount"
+          ) : !state.recipientAddress ? (
+            "Enter Recipient Address"
+          ) : (
+            "Review Withdrawal"
+          )}
+        </Button>
+
+        {state.previewFeeQuote && (
+          <FeeBreakdown
+            executionFee={WithdrawSelectors.getExecutionFee()}
+            solverFee={WithdrawSelectors.getSolverFee()}
+            assetSymbol={asset.symbol}
+            isCrossChain={WithdrawSelectors.isCrossChain()}
+            showAsDeduction={true}
+          />
+        )}
       </div>
     </ScreenLayout>
   );

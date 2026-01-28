@@ -3,6 +3,7 @@
 import { AuthScreen } from "@/components/screens/AuthScreen";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import { NavLinks } from "@/components/layout/NavLinks";
 import { useSnapshot } from "valtio";
 import { AuthController } from "@/controllers/AuthController";
 import { IndexerHealthIndicator } from "@/components/indicators/IndexerHealthIndicator";
@@ -31,8 +32,8 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
           <Header />
         </div>
 
-        <div className="flex-1 py-8">
-          <div className="mx-auto w-full max-w-md md:max-w-lg lg:max-w-xl">
+        <div className="flex flex-1 items-center justify-center py-8">
+          <div className="w-full max-w-md md:max-w-lg lg:max-w-xl">
             <AuthScreen />
           </div>
         </div>
@@ -48,11 +49,16 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
   return (
     <div className="flex min-h-dvh flex-col overflow-y-auto">
       <div className="p-4">
-        <Header showNavLinks />
+        <Header />
       </div>
 
       <div className="flex-1 py-8">
         <div className="mx-auto w-full max-w-md md:max-w-lg lg:max-w-xl">
+          {/* Navigation Tabs */}
+          <div className="mb-4">
+            <NavLinks />
+          </div>
+
           {/* Card Content */}
           <div className="border-white/10 bg-white/[0.02] rounded-2xl border">
             {isNotesSyncing ? <NotesSyncingScreen /> : children}

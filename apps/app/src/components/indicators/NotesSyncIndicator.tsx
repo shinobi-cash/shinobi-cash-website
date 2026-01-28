@@ -54,7 +54,7 @@ export function NotesSyncIndicator() {
           className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1 text-xs transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <RotateCw className={`h-3.5 w-3.5 text-neutral-400 ${isSyncing ? "animate-spin" : ""}`} />
-          <span className="w-14 text-neutral-400 tabular-nums">
+          <span className="flex justify-start w-14 text-neutral-400 tabular-nums">
             {isSyncing ? "Syncing..." : `${timeLeft}s`}
           </span>
         </button>

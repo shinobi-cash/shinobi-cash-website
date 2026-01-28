@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Banknote, History } from "lucide-react";
+import { Banknote, History } from "lucide-react";
+import { Badge } from "@workspace/ui/components/badge";
 import { AmountDisplay } from "@/components/shared/AmountDisplay";
 import { NoteChainScreen } from "@/components/screens/NoteChainScreen";
 import { NotesSection } from "@/components/notes/NotesSection";
@@ -45,23 +46,23 @@ export default function NotesPage() {
           rightContent={
             <div className="flex items-center gap-2">
               {controller.syncError && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button type="button" className="cursor-pointer rounded p-1 hover:bg-white/10">
-                      <AlertTriangle className="h-5 w-5 text-yellow-400" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p className="text-xs">Unable to sync. Showing cached data.</p>
-                  </TooltipContent>
-                </Tooltip>
+                <Badge variant="secondary" className="text-yellow-400">
+                  Cached
+                </Badge>
               )}
-              <Link
-                href="/activity"
-                className="rounded p-1.5 text-neutral-400 transition-colors hover:bg-white/10 hover:text-white"
-              >
-                <History className="h-5 w-5" />
-              </Link>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link
+                    href="/activity"
+                    className="rounded p-1.5 text-neutral-400 transition-colors hover:bg-white/10 hover:text-white"
+                  >
+                    <History className="h-5 w-5" />
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-xs">View activity</p>
+                </TooltipContent>
+              </Tooltip>
             </div>
           }
         />

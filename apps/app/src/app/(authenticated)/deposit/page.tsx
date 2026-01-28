@@ -216,34 +216,8 @@ export default function DepositPage() {
   // Main Deposit Form
   return (
     <ScreenLayout
-      containerClassName="h-[600px]"
       header={<ScreenHeader title="Deposit" icon={<ArrowDownToLine className="h-5 w-5" />} />}
       contentClassName="px-4 py-4 sm:px-6"
-      footer={
-        <Button
-          disabled={!DepositSelectors.canDeposit()}
-          onClick={handleReviewDeposit}
-          className="h-12 w-full rounded-xl text-base font-semibold disabled:cursor-not-allowed disabled:opacity-50 sm:h-14 sm:text-lg"
-          size="lg"
-        >
-          {state.state.status === "preparing" ? (
-            <div className="flex items-center gap-2">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Preparing Deposit...
-            </div>
-          ) : state.state.status === "ready" ? (
-            "Review Deposit"
-          ) : !state.amount.trim() ? (
-            "Enter Amount to Deposit"
-          ) : !state.wallet.isConnected ? (
-            "Connect Wallet to Continue"
-          ) : !DepositSelectors.isOnSupportedChain() ? (
-            "Switch to Supported Network"
-          ) : (
-            "Review Deposit"
-          )}
-        </Button>
-      }
     >
       <div className="flex-1 space-y-3 overflow-y-auto">
         <div className="relative flex flex-col gap-2">
@@ -324,14 +298,39 @@ export default function DepositPage() {
           </CardContainer>
         </div>
 
-        <FeeBreakdown
-          executionFee={state.state.status === "ready" ? state.state.gasEstimate.gasCostEth : "0"}
-          assetSymbol={asset.symbol}
-          solverFee={state.state.status === "ready" ? state.state.amounts.solverFee : 0}
-          isCrossChain={DepositSelectors.isCrossChain()}
-          isEstimating={state.state.status === "preparing" && state.state.step === "gas"}
-          decimals={6}
-        />
+        <Button
+          disabled={!DepositSelectors.canDeposit()}
+          onClick={handleReviewDeposit}
+          className="h-12 w-full rounded-xl text-base font-semibold disabled:cursor-not-allowed disabled:opacity-50 sm:h-14 sm:text-lg"
+          size="lg"
+        >
+          {state.state.status === "preparing" ? (
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Preparing Deposit...
+            </div>
+          ) : state.state.status === "ready" ? (
+            "Review Deposit"
+          ) : !state.amount.trim() ? (
+            "Enter Amount to Deposit"
+          ) : !state.wallet.isConnected ? (
+            "Connect Wallet to Continue"
+          ) : !DepositSelectors.isOnSupportedChain() ? (
+            "Switch to Supported Network"
+          ) : (
+            "Review Deposit"
+          )}
+        </Button>
+
+        {state.state.status === "ready" && (
+          <FeeBreakdown
+            executionFee={state.state.gasEstimate.gasCostEth}
+            assetSymbol={asset.symbol}
+            solverFee={state.state.amounts.solverFee}
+            isCrossChain={DepositSelectors.isCrossChain()}
+            decimals={6}
+          />
+        )}
       </div>
     </ScreenLayout>
   );

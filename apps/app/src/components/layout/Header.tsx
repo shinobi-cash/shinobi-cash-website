@@ -2,23 +2,20 @@
 
 import { ExternalLink } from "lucide-react";
 import { ProfileMenu } from "@/components/auth/ProfileMenu";
-import { NavLinks } from "@/components/layout/NavLinks";
 import AppLogo from "../AppLogo";
 
 interface HeaderProps {
   rightSlot?: React.ReactNode;
-  showNavLinks?: boolean;
 }
 
-export function Header({ rightSlot, showNavLinks = false }: HeaderProps) {
+export function Header({ rightSlot }: HeaderProps) {
   return (
     <header className="border-white/10 bg-black/60 mx-auto flex items-center justify-between rounded-xl border px-4 py-3 backdrop-blur sm:rounded-2xl sm:px-6 lg:px-8">
       <div className="flex gap-6">
         <AppLogo />
       </div>
 
-      <div className="flex items-center gap-1">
-        {showNavLinks && <NavLinks />}
+      <div className="flex items-center gap-2">
         <a
           href="https://testnet-explorer.shinobi.cash"
           target="_blank"

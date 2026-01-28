@@ -2,8 +2,6 @@ import { z } from "zod";
 import {
   HexStringSchema,
   HexAddressSchema,
-  TxHashSchema,
-  BigIntStringSchema,
   PositiveAmountSchema,
   ChainIdSchema,
   BPSSchema,

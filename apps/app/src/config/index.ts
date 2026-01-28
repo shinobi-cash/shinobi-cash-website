@@ -10,10 +10,18 @@ if (!projectId) {
 
 export const networks = SHINOBI_CASH_SUPPORTED_CHAINS as [AppKitNetwork, ...AppKitNetwork[]];
 
-export const wagmiAdapter = new WagmiAdapter({
-  ssr: true,
-  projectId,
-  networks,
-});
+// Singleton pattern to prevent double initialization during HMR
+const globalForWagmi = globalThis as unknown as { wagmiAdapter?: WagmiAdapter };
+
+function createWagmiAdapter() {
+  return new WagmiAdapter({
+    ssr: true,
+    projectId,
+    networks,
+  });
+}
+
+export const wagmiAdapter = globalForWagmi.wagmiAdapter ?? createWagmiAdapter();
+if (process.env.NODE_ENV !== "production") globalForWagmi.wagmiAdapter = wagmiAdapter;
 
 export const config = wagmiAdapter.wagmiConfig;
