@@ -29,14 +29,9 @@ export type ActivityType =
   | 'RAGEQUIT';
 
 /**
- * Activity status
+ * Intent status (for cross-chain activities only)
  */
-export type ActivityStatus =
-  | 'pending'
-  | 'approved'
-  | 'rejected'
-  | 'filled'
-  | 'refunded';
+export type IntentStatus = 'pending' | 'filled' | 'refunded';
 
 /**
  * ASP (Approved Set of Participants) status
@@ -58,14 +53,16 @@ export interface Activity {
   id: string;
   /** Activity type */
   type: ActivityType;
-  /** Activity status */
-  status: ActivityStatus;
+  /** Intent status (cross-chain activities only) */
+  intentStatus?: IntentStatus;
   /** ASP approval status */
   aspStatus: ASPStatus;
   /** Pool this activity belongs to */
   poolId: string;
-  /** User address */
-  user: string;
+  /** User address (deposits and ragequits only) */
+  user?: string;
+  /** Processor address (withdrawals only - Entrypoint contract) */
+  processor?: string;
   /** Recipient address (for withdrawals) */
   recipient?: string;
 
@@ -89,10 +86,14 @@ export interface Activity {
   /** Refund commitment */
   refundCommitment?: string;
 
-  /** Fee amount */
-  feeAmount?: bigint;
+  /** Relay fee amount (paid to relayer/paymaster) */
+  relayFeeAmount?: bigint;
+  /** Solver fee amount (cross-chain only, paid to solver) */
+  solverFeeAmount?: bigint;
   /** Fee refund amount */
   feeRefund?: bigint;
+  /** Vetting fee recipient (Entrypoint address) */
+  vettingFeeRecipient?: string;
   /** Relayer address */
   relayer?: string;
   /** Solver address (for crosschain fills) */
@@ -210,10 +211,11 @@ export interface CrossChainIntent {
 export interface SerializedActivity {
   id: string;
   type: ActivityType;
-  status: ActivityStatus;
+  intentStatus?: IntentStatus;
   aspStatus: ASPStatus;
   poolId: string;
-  user: string;
+  user?: string;
+  processor?: string;
   recipient?: string;
   amount: string | null;
   originalAmount?: string;
@@ -224,8 +226,10 @@ export interface SerializedActivity {
   spentNullifier?: string;
   newCommitment?: string;
   refundCommitment?: string;
-  feeAmount?: string;
+  relayFeeAmount?: string;
+  solverFeeAmount?: string;
   feeRefund?: string;
+  vettingFeeRecipient?: string;
   relayer?: string;
   solver?: string;
   isSponsored?: boolean;
@@ -424,11 +428,12 @@ export type TypedActivity =
 /**
  * Serialized typed activities
  */
-export interface SerializedDepositActivity extends Omit<DepositActivity, 'amount' | 'originalAmount' | 'vettingFeeAmount' | 'feeAmount' | 'feeRefund' | 'blockNumber' | 'timestamp' | 'originChainId' | 'destinationChainId'> {
+export interface SerializedDepositActivity extends Omit<DepositActivity, 'amount' | 'originalAmount' | 'vettingFeeAmount' | 'relayFeeAmount' | 'solverFeeAmount' | 'feeRefund' | 'blockNumber' | 'timestamp' | 'originChainId' | 'destinationChainId'> {
   amount: string | null;
   originalAmount?: string;
   vettingFeeAmount?: string;
-  feeAmount?: string;
+  relayFeeAmount?: string;
+  solverFeeAmount?: string;
   feeRefund?: string;
   blockNumber: string;
   timestamp: string;
@@ -436,11 +441,12 @@ export interface SerializedDepositActivity extends Omit<DepositActivity, 'amount
   destinationChainId?: string;
 }
 
-export interface SerializedWithdrawalActivity extends Omit<WithdrawalActivity, 'amount' | 'originalAmount' | 'vettingFeeAmount' | 'feeAmount' | 'feeRefund' | 'blockNumber' | 'timestamp' | 'originChainId' | 'destinationChainId'> {
+export interface SerializedWithdrawalActivity extends Omit<WithdrawalActivity, 'amount' | 'originalAmount' | 'vettingFeeAmount' | 'relayFeeAmount' | 'solverFeeAmount' | 'feeRefund' | 'blockNumber' | 'timestamp' | 'originChainId' | 'destinationChainId'> {
   amount: string | null;
   originalAmount?: string;
   vettingFeeAmount?: string;
-  feeAmount?: string;
+  relayFeeAmount?: string;
+  solverFeeAmount?: string;
   feeRefund?: string;
   blockNumber: string;
   timestamp: string;
@@ -448,11 +454,12 @@ export interface SerializedWithdrawalActivity extends Omit<WithdrawalActivity, '
   destinationChainId?: string;
 }
 
-export interface SerializedCrossChainDepositActivity extends Omit<CrossChainDepositActivity, 'amount' | 'originalAmount' | 'vettingFeeAmount' | 'feeAmount' | 'feeRefund' | 'blockNumber' | 'timestamp' | 'originChainId' | 'destinationChainId'> {
+export interface SerializedCrossChainDepositActivity extends Omit<CrossChainDepositActivity, 'amount' | 'originalAmount' | 'vettingFeeAmount' | 'relayFeeAmount' | 'solverFeeAmount' | 'feeRefund' | 'blockNumber' | 'timestamp' | 'originChainId' | 'destinationChainId'> {
   amount: string | null;
   originalAmount?: string;
   vettingFeeAmount?: string;
-  feeAmount?: string;
+  relayFeeAmount?: string;
+  solverFeeAmount?: string;
   feeRefund?: string;
   blockNumber: string;
   timestamp: string;
@@ -460,11 +467,12 @@ export interface SerializedCrossChainDepositActivity extends Omit<CrossChainDepo
   destinationChainId: string;
 }
 
-export interface SerializedCrossChainWithdrawalActivity extends Omit<CrossChainWithdrawalActivity, 'amount' | 'originalAmount' | 'vettingFeeAmount' | 'feeAmount' | 'feeRefund' | 'blockNumber' | 'timestamp' | 'originChainId' | 'destinationChainId'> {
+export interface SerializedCrossChainWithdrawalActivity extends Omit<CrossChainWithdrawalActivity, 'amount' | 'originalAmount' | 'vettingFeeAmount' | 'relayFeeAmount' | 'solverFeeAmount' | 'feeRefund' | 'blockNumber' | 'timestamp' | 'originChainId' | 'destinationChainId'> {
   amount: string | null;
   originalAmount?: string;
   vettingFeeAmount?: string;
-  feeAmount?: string;
+  relayFeeAmount?: string;
+  solverFeeAmount?: string;
   feeRefund?: string;
   blockNumber: string;
   timestamp: string;
@@ -472,11 +480,12 @@ export interface SerializedCrossChainWithdrawalActivity extends Omit<CrossChainW
   destinationChainId: string;
 }
 
-export interface SerializedCrossChainDepositPendingActivity extends Omit<CrossChainDepositPendingActivity, 'amount' | 'originalAmount' | 'vettingFeeAmount' | 'feeAmount' | 'feeRefund' | 'blockNumber' | 'timestamp' | 'originChainId' | 'destinationChainId'> {
+export interface SerializedCrossChainDepositPendingActivity extends Omit<CrossChainDepositPendingActivity, 'amount' | 'originalAmount' | 'vettingFeeAmount' | 'relayFeeAmount' | 'solverFeeAmount' | 'feeRefund' | 'blockNumber' | 'timestamp' | 'originChainId' | 'destinationChainId'> {
   amount: string | null;
   originalAmount?: string;
   vettingFeeAmount?: string;
-  feeAmount?: string;
+  relayFeeAmount?: string;
+  solverFeeAmount?: string;
   feeRefund?: string;
   blockNumber: string;
   timestamp: string;
@@ -484,11 +493,12 @@ export interface SerializedCrossChainDepositPendingActivity extends Omit<CrossCh
   destinationChainId?: string;
 }
 
-export interface SerializedCrossChainWithdrawalPendingActivity extends Omit<CrossChainWithdrawalPendingActivity, 'amount' | 'originalAmount' | 'vettingFeeAmount' | 'feeAmount' | 'feeRefund' | 'blockNumber' | 'timestamp' | 'originChainId' | 'destinationChainId'> {
+export interface SerializedCrossChainWithdrawalPendingActivity extends Omit<CrossChainWithdrawalPendingActivity, 'amount' | 'originalAmount' | 'vettingFeeAmount' | 'relayFeeAmount' | 'solverFeeAmount' | 'feeRefund' | 'blockNumber' | 'timestamp' | 'originChainId' | 'destinationChainId'> {
   amount: string | null;
   originalAmount?: string;
   vettingFeeAmount?: string;
-  feeAmount?: string;
+  relayFeeAmount?: string;
+  solverFeeAmount?: string;
   feeRefund?: string;
   blockNumber: string;
   timestamp: string;
@@ -496,11 +506,12 @@ export interface SerializedCrossChainWithdrawalPendingActivity extends Omit<Cros
   destinationChainId: string;
 }
 
-export interface SerializedRagequitActivity extends Omit<RagequitActivity, 'amount' | 'originalAmount' | 'vettingFeeAmount' | 'feeAmount' | 'feeRefund' | 'blockNumber' | 'timestamp' | 'originChainId' | 'destinationChainId'> {
+export interface SerializedRagequitActivity extends Omit<RagequitActivity, 'amount' | 'originalAmount' | 'vettingFeeAmount' | 'relayFeeAmount' | 'solverFeeAmount' | 'feeRefund' | 'blockNumber' | 'timestamp' | 'originChainId' | 'destinationChainId'> {
   amount: string;
   originalAmount?: string;
   vettingFeeAmount?: string;
-  feeAmount?: string;
+  relayFeeAmount?: string;
+  solverFeeAmount?: string;
   feeRefund?: string;
   blockNumber: string;
   timestamp: string;

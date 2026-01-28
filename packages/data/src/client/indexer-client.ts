@@ -586,22 +586,27 @@ export class IndexerClient {
           items {
             id
             type
+            intentStatus
             aspStatus
             poolId
             user
+            processor
             recipient
             amount
             originalAmount
             vettingFeeAmount
+            vettingFeeRecipient
             commitment
             label
             precommitmentHash
             spentNullifier
             newCommitment
             refundCommitment
-            feeAmount
+            relayFeeAmount
+            solverFeeAmount
             feeRefund
             relayer
+            solver
             isSponsored
             orderId
             blockNumber
@@ -625,22 +630,27 @@ export class IndexerClient {
     interface RawActivity {
       id: string;
       type: string;
+      intentStatus?: string;
       aspStatus: string;
       poolId: string;
-      user: string;
+      user?: string;
+      processor?: string;
       recipient?: string;
       amount: string | null;
       originalAmount?: string;
       vettingFeeAmount?: string;
+      vettingFeeRecipient?: string;
       commitment: string;
       label?: string | null;
       precommitmentHash?: string;
       spentNullifier?: string;
       newCommitment?: string;
       refundCommitment?: string;
-      feeAmount?: string;
+      relayFeeAmount?: string;
+      solverFeeAmount?: string;
       feeRefund?: string;
       relayer?: string;
+      solver?: string;
       isSponsored?: boolean;
       orderId?: string;
       blockNumber: string;
@@ -659,7 +669,8 @@ export class IndexerClient {
       amount: item.amount ? BigInt(item.amount) : null,
       originalAmount: item.originalAmount ? BigInt(item.originalAmount) : undefined,
       vettingFeeAmount: item.vettingFeeAmount ? BigInt(item.vettingFeeAmount) : undefined,
-      feeAmount: item.feeAmount ? BigInt(item.feeAmount) : undefined,
+      relayFeeAmount: item.relayFeeAmount ? BigInt(item.relayFeeAmount) : undefined,
+      solverFeeAmount: item.solverFeeAmount ? BigInt(item.solverFeeAmount) : undefined,
       feeRefund: item.feeRefund ? BigInt(item.feeRefund) : undefined,
       blockNumber: BigInt(item.blockNumber),
       timestamp: BigInt(item.timestamp),

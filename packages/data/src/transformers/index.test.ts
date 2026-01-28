@@ -162,7 +162,6 @@ describe('Activity serialization', () => {
   const mockActivity: Activity = {
     id: 'activity-1',
     type: 'DEPOSIT',
-    status: 'pending',
     aspStatus: 'pending',
     poolId: '0x123',
     user: '0xuser',
