@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 interface Asset {
   symbol: string;
   name: string;
@@ -14,7 +16,7 @@ export function AssetSelector() {
   return (
     <div className="bg-white/2 flex items-center justify-between rounded-xl border border-white/10 px-4 py-3">
       <div className="flex items-center gap-3">
-        <img src={ETH.icon} alt="Ethereum" className="h-8 w-8 rounded-full bg-white" />
+        <Image src={ETH.icon} alt="Ethereum" width={32} height={32} className="rounded-full bg-white" />
 
         <div>
           <p className="text-sm font-medium text-white">{ETH.symbol}</p>

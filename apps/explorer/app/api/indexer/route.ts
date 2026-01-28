@@ -73,7 +73,7 @@ export async function POST(request: Request) {
     // Use server-side client with protected credentials
     const client = serverClient;
 
-    let data: any;
+    let data: unknown;
     let cacheTTL = 30; // default
 
     // Route to appropriate SDK method
