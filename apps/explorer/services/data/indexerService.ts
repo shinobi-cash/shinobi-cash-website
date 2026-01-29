@@ -4,7 +4,7 @@
  */
 
 import { IPFS_GATEWAY_URL } from "@shinobi-cash/constants";
-import type { Activity, StateTreeLeaf, ASPApprovalList } from "@shinobi-cash/data";
+import type { StateTreeLeaf } from "@shinobi-cash/data";
 import {
   IndexerError,
   INDEXER_ERROR_CODES,
@@ -13,27 +13,13 @@ import {
   logError,
 } from "@/lib/errors";
 
-// Re-export SDK types for compatibility
-export type { Activity, StateTreeLeaf, ASPApprovalList };
+// Re-export ActivityType for components that need it
+export type { ActivityType } from "@shinobi-cash/data";
 
-// Pagination response type matching SDK's PageInfo structure
-export interface PaginatedResponse<T> {
-  items: T[];
-  pageInfo: {
-    hasNextPage: boolean;
-    hasPreviousPage: boolean;
-  };
-}
-
-// ============ LOCAL TYPES ============
-
-export type ActivityType = "DEPOSIT" | "WITHDRAWAL" | "RAGEQUIT";
-export type ActivityStatus = "pending" | "approved" | "rejected";
-
-// ============ LEGACY COMPATIBILITY TYPES ============
-
-// Legacy interface for compatibility
-export interface ASPApprovalListLegacy {
+/**
+ * IPFS approval list structure (format stored in IPFS)
+ */
+interface IPFSApprovalList {
   version: "1.0";
   poolId: string;
   cumulativeApprovedLabels: string[];
@@ -188,7 +174,7 @@ export async function fetchApprovedLabelsFromIPFS(ipfsCID: string): Promise<stri
       );
     }
 
-    const approvalList = (await ipfsResponse.json()) as ASPApprovalListLegacy;
+    const approvalList = (await ipfsResponse.json()) as IPFSApprovalList;
 
     // Validate the approval list structure
     if (
@@ -254,15 +240,34 @@ export async function fetchASPData() {
 // ============ POOL QUERIES ============
 
 /**
- * Fetch pool statistics (total deposits, withdrawals, deposit count)
- * Proxied through Next.js API to hide credentials
+ * Crosschain stats for a single chain
  */
-export async function fetchPoolStats(poolAddress?: string): Promise<{
+export interface CrosschainChainStats {
+  count: number;
+  totalAmount: string;
+}
+
+/**
+ * Pool statistics response
+ */
+export interface PoolStats {
   totalDeposits: string;
   totalWithdrawals: string;
   depositCount: number;
+  withdrawalCount: number;
+  uniqueDepositors: number;
+  crosschainDepositsByChain: Record<string, CrosschainChainStats>;
+  crosschainWithdrawalsByChain: Record<string, CrosschainChainStats>;
+  ragequitCount: number;
+  totalRagequitAmount: string;
   createdAt: string;
-} | null> {
+}
+
+/**
+ * Fetch pool statistics (total deposits, withdrawals, deposit count, etc.)
+ * Proxied through Next.js API to hide credentials
+ */
+export async function fetchPoolStats(poolAddress?: string): Promise<PoolStats | null> {
   try {
     const response = await fetch("/api/indexer", {
       method: "POST",
