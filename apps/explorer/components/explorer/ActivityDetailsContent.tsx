@@ -102,7 +102,7 @@ export function ActivityDetailsContent({ activity }: Props) {
         </div>
         <p className="mt-3 text-3xl font-semibold tabular-nums text-white">
           {isDeposit || isRagequit ? "+" : "−"}
-          {formatEthAmount(activity.amount)} ETH
+          {formatEthAmount(activity.amount, { decimals: 6 })} ETH
         </p>
         {isPending && (
           <p className="mt-1 text-sm text-neutral-400">
@@ -229,20 +229,15 @@ export function ActivityDetailsContent({ activity }: Props) {
               />
             )}
 
-            {/* Relay/Paymaster Fee */}
+            {/* Relay Fee */}
             {activity.relayer && relayFee > BigInt(0) && (
               <FlowRow
                 label="To"
-                role={activity.isSponsored ? "Paymaster" : "Relayer"}
+                role="Relayer"
                 address={activity.relayer}
                 amount={netRelayFee}
                 direction="in"
-                feeType={activity.isSponsored ? "Sponsoring Fee" : "Relay Fee"}
-                note={
-                  activity.isSponsored && paymasterRefund > BigInt(0)
-                    ? `(refunded ${formatEthAmount(paymasterRefund)} ETH)`
-                    : undefined
-                }
+                feeType="Relay Fee"
               />
             )}
 

@@ -52,19 +52,11 @@ export function FlowRow({
       {amount !== null && (
         <span
           className={`tabular-nums text-sm font-medium ${
-            feeType
-              ? "text-rose-400/80"
-              : highlight
-                ? direction === "in"
-                  ? "text-emerald-400"
-                  : "text-white"
-                : direction === "in"
-                  ? "text-emerald-400/80"
-                  : "text-neutral-300"
+            direction === "in" ? "text-emerald-400" : "text-rose-400"
           }`}
         >
-          {feeType ? "−" : direction === "in" ? "+" : "−"}
-          {formatEthAmount(amount)} ETH
+          {direction === "in" ? "+" : "−"}
+          {formatEthAmount(amount, { decimals: 6 })} ETH
         </span>
       )}
     </div>

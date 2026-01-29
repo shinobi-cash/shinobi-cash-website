@@ -31,7 +31,7 @@ export function ActivityRow({ activity }: Props) {
         }`}
       >
         {isDeposit ? "+" : "−"}
-        {formatEthAmount(activity.amount, { maxDecimals: 6 })} ETH
+        {formatEthAmount(activity.amount, { decimals: 6 })} ETH
       </div>
     </div>
   );

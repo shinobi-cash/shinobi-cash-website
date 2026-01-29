@@ -39,7 +39,7 @@ export function StatsOverview() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <StatsCard
           label="Total Pool Value"
-          value={loading ? "—" : `${formatEthAmount(totalValue, { decimals: 4 })} ETH`}
+          value={loading ? "—" : `${formatEthAmount(totalValue, { maxDecimals: 6 })} ETH`}
           gradient="from-emerald-500/20 to-cyan-500/10"
         />
 
