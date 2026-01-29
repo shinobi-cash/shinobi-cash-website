@@ -604,7 +604,7 @@ export class IndexerClient {
             refundCommitment
             relayFeeAmount
             solverFeeAmount
-            feeRefund
+            paymasterFeeRefund
             relayer
             solver
             isSponsored
@@ -648,7 +648,7 @@ export class IndexerClient {
       refundCommitment?: string;
       relayFeeAmount?: string;
       solverFeeAmount?: string;
-      feeRefund?: string;
+      paymasterFeeRefund?: string;
       relayer?: string;
       solver?: string;
       isSponsored?: boolean;
@@ -671,7 +671,7 @@ export class IndexerClient {
       vettingFeeAmount: item.vettingFeeAmount ? BigInt(item.vettingFeeAmount) : undefined,
       relayFeeAmount: item.relayFeeAmount ? BigInt(item.relayFeeAmount) : undefined,
       solverFeeAmount: item.solverFeeAmount ? BigInt(item.solverFeeAmount) : undefined,
-      feeRefund: item.feeRefund ? BigInt(item.feeRefund) : undefined,
+      paymasterFeeRefund: item.paymasterFeeRefund ? BigInt(item.paymasterFeeRefund) : undefined,
       blockNumber: BigInt(item.blockNumber),
       timestamp: BigInt(item.timestamp),
       originChainId: item.originChainId ? BigInt(item.originChainId) : null,

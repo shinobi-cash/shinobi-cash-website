@@ -194,7 +194,7 @@ export class ActivityQueryBuilder<
       refundCommitment
       relayFeeAmount
       solverFeeAmount
-      feeRefund
+      paymasterFeeRefund
       relayer
       solver
       isSponsored

@@ -4,7 +4,7 @@
  */
 
 import type { IndexerClient } from '../../client/indexer-client.js';
-import type { Pool, SerializedPool } from '../../types/indexer.js';
+import type { Pool, SerializedPool, CrosschainChainStats } from '../../types/indexer.js';
 import { BaseQueryBuilder } from './base-query-builder.js';
 import { PoolFields, PoolWhereInput, PoolOrderBy, GraphQLVariables } from '../types.js';
 import { serializePool } from '../../transformers/index.js';
@@ -30,7 +30,7 @@ export class PoolQueryBuilder extends BaseQueryBuilder<
       throw new Error('Pool queries require an id. Use .byId(poolId) to specify the pool.');
     }
 
-    // Query both poolConfigViews and poolStatsViews to get full pool data
+    // Query all pool stats views
     return `
       query GetPool($poolAddress: String!, $poolId: String!) {
         poolConfigViews(where: { poolAddress: $poolAddress }, limit: 1) {
@@ -46,6 +46,33 @@ export class PoolQueryBuilder extends BaseQueryBuilder<
           items {
             depositCount
             totalDeposited
+            uniqueDepositors
+          }
+        }
+        withdrawalStatsViews(where: { poolId: $poolId }, limit: 1) {
+          items {
+            withdrawalCount
+            totalWithdrawn
+          }
+        }
+        crosschainDepositStatsViews(limit: 100) {
+          items {
+            originChainId
+            depositCount
+            totalDeposited
+          }
+        }
+        crosschainWithdrawalStatsViews(limit: 100) {
+          items {
+            destinationChainId
+            withdrawalCount
+            totalWithdrawn
+          }
+        }
+        ragequitStatsViews(where: { poolId: $poolId }, limit: 1) {
+          items {
+            ragequitCount
+            totalRagequitAmount
           }
         }
       }
@@ -84,7 +111,7 @@ export class PoolQueryBuilder extends BaseQueryBuilder<
   }
 
   /**
-   * Override execute to combine poolConfigViews and poolStatsViews
+   * Override execute to combine all pool stats views
    */
   async execute(): Promise<Pool[]> {
     const query = this.buildDynamicQuery();
@@ -98,27 +125,82 @@ export class PoolQueryBuilder extends BaseQueryBuilder<
     interface PoolStatsItem {
       depositCount: string;
       totalDeposited: string;
+      uniqueDepositors: string;
+    }
+
+    interface WithdrawalStatsItem {
+      withdrawalCount: string;
+      totalWithdrawn: string;
+    }
+
+    interface CrosschainDepositStatsItem {
+      originChainId: string;
+      depositCount: string;
+      totalDeposited: string;
+    }
+
+    interface CrosschainWithdrawalStatsItem {
+      destinationChainId: string;
+      withdrawalCount: string;
+      totalWithdrawn: string;
+    }
+
+    interface RagequitStatsItem {
+      ragequitCount: string;
+      totalRagequitAmount: string;
     }
 
     const result = await this.client.executeQuery<{
       poolConfigViews: { items: PoolConfigItem[] };
       poolStatsViews: { items: PoolStatsItem[] };
+      withdrawalStatsViews: { items: WithdrawalStatsItem[] };
+      crosschainDepositStatsViews: { items: CrosschainDepositStatsItem[] };
+      crosschainWithdrawalStatsViews: { items: CrosschainWithdrawalStatsItem[] };
+      ragequitStatsViews: { items: RagequitStatsItem[] };
     }>(query, variables);
 
     const config = result.poolConfigViews?.items?.[0];
-    const stats = result.poolStatsViews?.items?.[0];
+    const depositStats = result.poolStatsViews?.items?.[0];
+    const withdrawalStats = result.withdrawalStatsViews?.items?.[0];
+    const crosschainDepositItems = result.crosschainDepositStatsViews?.items ?? [];
+    const crosschainWithdrawalItems = result.crosschainWithdrawalStatsViews?.items ?? [];
+    const ragequitStats = result.ragequitStatsViews?.items?.[0];
 
     if (!config) {
       return [];
     }
 
-    // Combine config and stats into Pool entity
+    // Build crosschain deposit stats map by origin chainId
+    const crosschainDepositsByChain: Record<string, CrosschainChainStats> = {};
+    for (const item of crosschainDepositItems) {
+      crosschainDepositsByChain[item.originChainId] = {
+        count: BigInt(item.depositCount),
+        totalAmount: BigInt(item.totalDeposited),
+      };
+    }
+
+    // Build crosschain withdrawal stats map by destination chainId
+    const crosschainWithdrawalsByChain: Record<string, CrosschainChainStats> = {};
+    for (const item of crosschainWithdrawalItems) {
+      crosschainWithdrawalsByChain[item.destinationChainId] = {
+        count: BigInt(item.withdrawalCount),
+        totalAmount: BigInt(item.totalWithdrawn),
+      };
+    }
+
+    // Combine all stats into Pool entity
     const pool: Pool = {
       id: config.poolAddress,
       createdAt: BigInt(config.timestamp),
-      totalDeposits: stats?.totalDeposited ? BigInt(stats.totalDeposited) : BigInt(0),
-      totalWithdrawals: BigInt(0), // Not tracked in current views
-      depositCount: stats?.depositCount ? BigInt(stats.depositCount) : BigInt(0),
+      totalDeposits: depositStats?.totalDeposited ? BigInt(depositStats.totalDeposited) : BigInt(0),
+      totalWithdrawals: withdrawalStats?.totalWithdrawn ? BigInt(withdrawalStats.totalWithdrawn) : BigInt(0),
+      depositCount: depositStats?.depositCount ? BigInt(depositStats.depositCount) : BigInt(0),
+      withdrawalCount: withdrawalStats?.withdrawalCount ? BigInt(withdrawalStats.withdrawalCount) : BigInt(0),
+      uniqueDepositors: depositStats?.uniqueDepositors ? BigInt(depositStats.uniqueDepositors) : BigInt(0),
+      crosschainDepositsByChain,
+      crosschainWithdrawalsByChain,
+      ragequitCount: ragequitStats?.ragequitCount ? BigInt(ragequitStats.ragequitCount) : BigInt(0),
+      totalRagequitAmount: ragequitStats?.totalRagequitAmount ? BigInt(ragequitStats.totalRagequitAmount) : BigInt(0),
     };
 
     return [pool];
