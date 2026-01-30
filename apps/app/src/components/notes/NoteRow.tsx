@@ -1,3 +1,10 @@
+/**
+ * Note Row Component
+ *
+ * Displays a single note in the notes list.
+ * Aligned with explorer design - simple row with status dot.
+ */
+
 import type { Note } from "@shinobi-cash/core";
 import { formatTimestamp } from "@/utils/formatters";
 import { AmountDisplay } from "@/components/shared/AmountDisplay";
@@ -7,90 +14,65 @@ interface NoteRowProps {
   onClick?: () => void;
 }
 
-interface StatusBadge {
-  label: string;
-  className: string;
-}
-
 /**
- * Get status badge based on note state.
- * Uses status fields directly for clean display.
+ * Get status dot color based on note state.
  */
-function getStatusBadge(note: Note): StatusBadge | null {
+function getStatusDotColor(note: Note): string {
   // Spent notes
   if (note.status === "spent") {
-    return { label: "Spent", className: "bg-neutral-400/10 text-neutral-400" };
+    return "bg-neutral-500";
   }
 
   // Cross-chain intent pending (waiting for solver)
   if (note.isCrossChain && note.intentStatus === "pending") {
-    return { label: "Pending", className: "bg-yellow-400/10 text-yellow-400" };
+    return "bg-amber-400";
   }
 
   // Cross-chain intent refunded
   if (note.isCrossChain && note.intentStatus === "refunded") {
-    return { label: "Refunded", className: "bg-orange-400/10 text-orange-400" };
+    return "bg-orange-500";
   }
 
-  // ASP pending approval
-  if (note.aspStatus === "pending") {
-    return { label: "Pending", className: "bg-blue-400/10 text-blue-400" };
-  }
+  // ASP status
+  if (note.aspStatus === "approved") return "bg-emerald-500";
+  if (note.aspStatus === "rejected") return "bg-rose-500";
+  if (note.aspStatus === "pending") return "bg-amber-400";
 
-  // ASP rejected
-  if (note.aspStatus === "rejected") {
-    return { label: "Rejected", className: "bg-red-400/10 text-red-400" };
-  }
-
-  // Approved and ready - no badge
-  return null;
+  return "bg-neutral-500";
 }
 
 export function NoteRow({ note, onClick }: NoteRowProps) {
   const noteLabel = `Note #${note.depositIndex + 1}`;
-  const statusBadge = getStatusBadge(note);
+  const dotColor = getStatusDotColor(note);
 
   return (
     <button
       type="button"
-      className="border-white/10 bg-white/[0.02] hover:bg-white/[0.04] w-full cursor-pointer rounded-lg border border-b px-2 py-2 text-left transition-all duration-150 sm:px-3 sm:py-3"
+      className="hover:bg-white/[0.04] w-full cursor-pointer px-4 py-3 text-left transition-colors"
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
     >
-      <div className="flex flex-col gap-1">
-        <div className="flex items-center justify-between gap-2">
-          {/* Left side: Type and amount */}
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <div className="text-white truncate text-base font-semibold capitalize tracking-tight sm:text-lg">
-                {noteLabel}
-              </div>
-              {statusBadge && (
-                <span className={`whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${statusBadge.className}`}>
-                  {statusBadge.label}
-                </span>
-              )}
-            </div>
-            <div className="text-neutral-400 text-xs font-medium tabular-nums sm:text-base">
-              <AmountDisplay
-                amount={note.amount}
-                layout="inline"
-                ethOptions={{ maxDecimals: 6 }}
-                className="gap-1.5"
-                ethClassName="text-neutral-400"
-                usdClassName="text-neutral-500 text-xs"
-              />
-            </div>
+      <div className="flex items-center justify-between gap-4">
+        {/* Left: Status dot + Label + Timestamp */}
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ${dotColor}`} />
+            <span className="truncate text-sm font-medium text-white">{noteLabel}</span>
           </div>
+          <div className="mt-0.5 pl-[18px] text-xs text-neutral-400">
+            {formatTimestamp(note.timestamp)}
+          </div>
+        </div>
 
-          {/* Right side: Status and timestamp */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="text-right">
-              <div className="text-neutral-500 whitespace-nowrap text-xs font-medium sm:text-sm">
-                {formatTimestamp(note.timestamp)}
-              </div>
-            </div>
-          </div>
+        {/* Right: Amount with USD */}
+        <div className="shrink-0 text-right">
+          <AmountDisplay
+            amount={note.amount}
+            layout="stacked"
+            ethOptions={{ maxDecimals: 6 }}
+            ethClassName="text-sm font-semibold tabular-nums text-white"
+            usdClassName="text-xs text-neutral-500"
+          />
         </div>
       </div>
     </button>
