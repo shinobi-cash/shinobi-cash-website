@@ -53,7 +53,7 @@ export default function NotesPage() {
 
   return (
     <ScreenLayout
-      containerClassName="h-[600px]"
+      containerClassName="flex-1 sm:flex-none sm:h-[600px]"
       header={
         <ScreenHeader
           title="Notes"

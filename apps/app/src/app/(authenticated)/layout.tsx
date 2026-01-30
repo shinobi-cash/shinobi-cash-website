@@ -21,21 +21,27 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
 
   const content = isAuthenticated ? (
     <>
-      <div className="mb-4">
+      <div className="shrink-0 pb-4">
         <NavLinks />
       </div>
-      <div className="rounded-2xl">{isNotesSyncing ? <NotesSyncingScreen /> : children}</div>
+      <div className="flex min-h-0 flex-1 flex-col rounded-2xl sm:flex-none">
+        {isNotesSyncing ? <NotesSyncingScreen /> : children}
+      </div>
     </>
   ) : (
     <AuthScreen />
   );
 
   return (
-    <div className="flex min-h-dvh flex-col overflow-y-auto">
+    <div className="flex h-dvh flex-col overflow-hidden sm:min-h-dvh sm:overflow-y-auto">
       <Header />
 
-      <div className={`flex-1 py-8 ${!isAuthenticated ? "flex items-center justify-center" : ""}`}>
-        <div className="mx-auto w-full max-w-md md:max-w-lg lg:max-w-xl">{content}</div>
+      <div
+        className={`min-h-0 flex-1 py-4 sm:py-8 ${!isAuthenticated ? "flex items-center justify-center" : ""}`}
+      >
+        <div className="mx-auto flex h-full w-full max-w-md flex-col md:max-w-lg lg:max-w-xl">
+          {content}
+        </div>
       </div>
 
       <div className="hidden shrink-0 md:block">

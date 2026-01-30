@@ -20,10 +20,10 @@ export function ScreenLayout({
   showFooterDivider = false,
 }: ScreenLayoutProps) {
   return (
-    <div className={cn("flex flex-col bg-white/[0.02]", containerClassName)}>
+    <div className={cn("flex min-h-0 flex-col overflow-hidden bg-white/[0.02]", containerClassName)}>
       {header}
 
-      <div className={cn("flex-1 overflow-y-auto", contentClassName)}>{children}</div>
+      <div className={cn("min-h-0 flex-1 overflow-y-auto", contentClassName)}>{children}</div>
 
       {footer && (
         <div className={cn(showFooterDivider && "border-t border-white/10", "px-4 py-4")}>

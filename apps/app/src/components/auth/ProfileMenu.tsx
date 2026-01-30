@@ -69,10 +69,10 @@ export function ProfileMenu() {
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-neutral-400 transition-colors hover:bg-white/10 hover:text-white"
+            className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-medium text-neutral-400 transition-colors hover:bg-white/10 hover:text-white sm:px-3"
           >
             <CircleUserRound className="h-4 w-4" />
-            Profile
+            <span className="hidden sm:inline">Profile</span>
             <ChevronDown className="h-3.5 w-3.5" />
           </button>
         </DropdownMenuTrigger>

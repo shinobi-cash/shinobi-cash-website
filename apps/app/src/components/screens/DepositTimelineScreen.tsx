@@ -192,7 +192,7 @@ export function DepositTimelineScreen({
 
   return (
     <ScreenLayout
-      containerClassName="h-[600px]"
+      containerClassName="flex-1 sm:flex-none sm:h-[600px]"
       header={
         <ScreenHeader title="Transaction details" onBack={onClose} backDisabled={!canGoBack} />
       }

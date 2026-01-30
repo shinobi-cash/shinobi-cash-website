@@ -81,7 +81,7 @@ export function DepositPreviewScreen({
 
   return (
     <ScreenLayout
-      containerClassName="h-[600px]"
+      containerClassName="flex-1 sm:flex-none sm:h-[600px]"
       header={<ScreenHeader title="Transaction Preview" onBack={onBack} />}
       contentClassName="space-y-4 px-4 py-4"
       footer={
@@ -102,15 +102,15 @@ export function DepositPreviewScreen({
         </Button>
       }
     >
-      {/* Assets - Horizontal Layout */}
-      <div className="flex w-full items-center gap-2">
+      {/* Assets - Stack on mobile, horizontal on desktop */}
+      <div className="flex w-full flex-col items-center gap-2 sm:flex-row">
         {/* From */}
-        <div className="flex flex-1 flex-col rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+        <div className="flex w-full flex-col rounded-2xl border border-white/10 bg-white/[0.02] p-3 sm:flex-1 sm:p-4">
           <span className="mb-2 text-xs text-neutral-500">You send</span>
           <div className="flex items-center justify-between">
             <AssetChain assetSymbol="ETH" chainId={originChainId} />
             <div className="flex flex-col items-end">
-              <span className="text-lg font-bold">
+              <span className="text-base font-bold sm:text-lg">
                 {formatSmallEthAmount(depositAmountNum)} ETH
               </span>
               {depositUsd !== null && (
@@ -121,7 +121,7 @@ export function DepositPreviewScreen({
         </div>
 
         {/* Arrow */}
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-neutral-900">
+        <div className="flex h-8 w-8 shrink-0 rotate-90 items-center justify-center rounded-full border border-white/10 bg-neutral-900 sm:rotate-0">
           <svg
             className="h-4 w-4 text-neutral-400"
             fill="none"
@@ -138,12 +138,12 @@ export function DepositPreviewScreen({
         </div>
 
         {/* To */}
-        <div className="flex flex-1 flex-col rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+        <div className="flex w-full flex-col rounded-2xl border border-white/10 bg-white/[0.02] p-3 sm:flex-1 sm:p-4">
           <span className="mb-2 text-xs text-neutral-500">You receive</span>
           <div className="flex items-center justify-between">
             <ShinobiCashNote />
             <div className="flex flex-col items-end">
-              <span className="text-lg font-bold">
+              <span className="text-base font-bold sm:text-lg">
                 {formatSmallEthAmount(depositNoteAmount)} ETH
               </span>
               {noteUsd !== null && (

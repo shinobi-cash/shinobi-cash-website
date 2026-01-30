@@ -138,7 +138,7 @@ export default function WithdrawPage() {
   if (screens.is("destinationSelection")) {
     return (
       <ScreenLayout
-        containerClassName="h-[600px]"
+        containerClassName="flex-1 sm:flex-none sm:h-[600px]"
         header={<ScreenHeader title="Select Asset & Chain" onBack={screens.close} />}
       >
         <AssetChainSelectorScreen
@@ -272,7 +272,7 @@ export default function WithdrawPage() {
                   }}
                   placeholder="0x... or ENS"
                   autoFocus
-                  className={`w-48 rounded-lg border bg-white/[0.04] px-2 py-1 text-sm text-white placeholder:text-neutral-500 focus:outline-none ${
+                  className={`w-32 rounded-lg border bg-white/[0.04] px-2 py-1 text-sm text-white placeholder:text-neutral-500 focus:outline-none sm:w-48 ${
                     WithdrawSelectors.getAddressError()
                       ? "border-red-500 focus:border-red-500"
                       : "border-white/20 focus:border-white/50"

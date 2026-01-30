@@ -46,7 +46,7 @@ export function ActivityDetailsScreen({
   return (
     <ScreenLayout
       header={<ScreenHeader title={`${ACTIVITY_TYPE_LABELS[type]} Details`} onBack={onBack} />}
-      containerClassName="h-[600px] w-full"
+      containerClassName="flex-1 sm:flex-none sm:h-[600px] w-full"
       contentClassName="px-4 py-4 overflow-y-auto"
       footer={
         <Button

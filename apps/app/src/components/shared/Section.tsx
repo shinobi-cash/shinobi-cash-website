@@ -28,9 +28,9 @@ interface RowProps {
 
 export function Row({ label, value }: RowProps) {
   return (
-    <div className="flex items-center justify-between px-3 py-2.5">
-      <span className="text-sm text-neutral-400">{label}</span>
-      <span className="text-sm text-white">{value}</span>
+    <div className="flex items-center justify-between gap-2 px-2 py-2 sm:px-3 sm:py-2.5">
+      <span className="text-xs text-neutral-400 sm:text-sm">{label}</span>
+      <span className="text-right text-xs text-white sm:text-sm">{value}</span>
     </div>
   );
 }
