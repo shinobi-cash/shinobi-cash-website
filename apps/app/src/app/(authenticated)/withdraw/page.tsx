@@ -167,7 +167,10 @@ export default function WithdrawPage() {
 
   // Quick amount handler
   const handleQuickAmount = (percentage: number) => {
-    if (noteBalance > 0) {
+    if (percentage === 1) {
+      // Use setMax for exact value without rounding
+      WithdrawController.setMax();
+    } else if (noteBalance > 0) {
       const amount = (noteBalance * percentage).toFixed(6);
       WithdrawController.setAmount(amount);
     }
