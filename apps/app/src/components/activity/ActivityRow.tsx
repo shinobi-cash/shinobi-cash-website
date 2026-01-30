@@ -6,26 +6,8 @@
  */
 
 import type { ActivityEntry } from "@/types/activity";
-import type { Note } from "@shinobi-cash/core";
 import { AmountDisplay } from "@/components/shared/AmountDisplay";
 import { formatTimestamp } from "@/utils/formatters";
-
-/**
- * Get status dot color based on note state.
- */
-function getStatusDotColor(note: Note, type: ActivityEntry["type"]): string {
-  // Withdrawals are always final
-  if (type === "withdrawal") {
-    return "bg-emerald-500";
-  }
-
-  // For deposits, check ASP status
-  if (note.aspStatus === "approved") return "bg-emerald-500";
-  if (note.aspStatus === "rejected") return "bg-rose-500";
-  if (note.aspStatus === "pending") return "bg-amber-400";
-
-  return "bg-neutral-500";
-}
 
 /**
  * Get display label for activity type.
@@ -48,7 +30,12 @@ interface ActivityRowProps {
 export function ActivityRow({ entry, onClick }: ActivityRowProps) {
   const { note, displayAmount, type } = entry;
   const isDeposit = type === "deposit";
-  const dotColor = getStatusDotColor(note, type);
+  // Dot color based on ASP status only
+  const dotColor =
+    note.aspStatus === "approved" ? "bg-emerald-500" :
+    note.aspStatus === "rejected" ? "bg-rose-500" :
+    note.aspStatus === "pending" ? "bg-amber-400" :
+    "bg-neutral-500";
   const label = getActivityLabel(entry);
 
   return (

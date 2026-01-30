@@ -131,7 +131,6 @@ export default function WithdrawPage() {
         onSelectNote={(note) => WithdrawController.selectNote(note)}
         onBack={screens.close}
         isLoading={state.notes.isLoading}
-        asset={asset}
       />
     );
   }

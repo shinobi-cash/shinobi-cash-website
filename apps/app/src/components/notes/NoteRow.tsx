@@ -7,38 +7,12 @@
 
 import type { Note } from "@shinobi-cash/core";
 import { formatTimestamp } from "@/utils/formatters";
+import { getStatusDotColor } from "@/utils/noteFiltering";
 import { AmountDisplay } from "@/components/shared/AmountDisplay";
 
 interface NoteRowProps {
   note: Note;
   onClick?: () => void;
-}
-
-/**
- * Get status dot color based on note state.
- */
-function getStatusDotColor(note: Note): string {
-  // Spent notes
-  if (note.status === "spent") {
-    return "bg-neutral-500";
-  }
-
-  // Cross-chain intent pending (waiting for solver)
-  if (note.isCrossChain && note.intentStatus === "pending") {
-    return "bg-amber-400";
-  }
-
-  // Cross-chain intent refunded
-  if (note.isCrossChain && note.intentStatus === "refunded") {
-    return "bg-orange-500";
-  }
-
-  // ASP status
-  if (note.aspStatus === "approved") return "bg-emerald-500";
-  if (note.aspStatus === "rejected") return "bg-rose-500";
-  if (note.aspStatus === "pending") return "bg-amber-400";
-
-  return "bg-neutral-500";
 }
 
 export function NoteRow({ note, onClick }: NoteRowProps) {
