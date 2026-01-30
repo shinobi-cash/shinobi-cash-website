@@ -139,7 +139,7 @@ export default function WithdrawPage() {
   // Show destination selection screen
   if (screens.is("destinationSelection")) {
     return (
-      <ScreenLayout containerClassName="h-[600px]" header={<ScreenHeader title="Select Asset & Chain" onBack={screens.close} />}>
+      <ScreenLayout containerClassName="h-[600px] bg-white/[0.02]" header={<ScreenHeader title="Select Asset & Chain" onBack={screens.close} />}>
         <AssetChainSelectorScreen
           selectedChainId={state.destinationChainId}
           onChainChange={(newChainId) => {

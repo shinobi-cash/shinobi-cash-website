@@ -32,7 +32,7 @@ export function NoteSelectionScreen({
   asset,
 }: NoteSelectionScreenProps) {
   return (
-    <ScreenLayout containerClassName="h-[600px]" header={<ScreenHeader title="Select Note" onBack={onBack} />} contentClassName="">
+    <ScreenLayout containerClassName="h-[600px] bg-white/[0.02]" header={<ScreenHeader title="Select Note" onBack={onBack} />} contentClassName="">
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />

@@ -196,7 +196,7 @@ export default function DepositPage() {
   if (screens.is("assetSelector")) {
     return (
       <ScreenLayout
-        containerClassName="h-[600px]"
+        containerClassName="h-[600px] bg-white/[0.02]"
         header={<ScreenHeader title="Select Asset & Chain" onBack={screens.close} />}
       >
         <AssetChainSelectorScreen
