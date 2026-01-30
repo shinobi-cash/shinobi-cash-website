@@ -1,6 +1,5 @@
 import type { Note } from "@shinobi-cash/core";
 import { formatTimestamp } from "@/utils/formatters";
-import { getPendingReason, type PendingReason } from "@/utils/noteFiltering";
 import { AmountDisplay } from "@/components/shared/AmountDisplay";
 
 interface NoteRowProps {
@@ -8,40 +7,48 @@ interface NoteRowProps {
   onClick?: () => void;
 }
 
-interface BadgeStyle {
-  bg: string;
-  text: string;
+interface StatusBadge {
   label: string;
+  className: string;
 }
 
-function getPendingBadgeStyle(reason: PendingReason): BadgeStyle {
-  switch (reason) {
-    case "waitingForSolver":
-      return {
-        bg: "bg-yellow-400/10",
-        text: "text-yellow-400",
-        label: "Awaiting Solver",
-      };
-    case "awaitingApproval":
-      return {
-        bg: "bg-blue-400/10",
-        text: "text-blue-400",
-        label: "Awaiting Approval",
-      };
-    case "rejected":
-      return {
-        bg: "bg-orange-400/10",
-        text: "text-orange-400",
-        label: "Rejected",
-      };
+/**
+ * Get status badge based on note state.
+ * Uses status fields directly for clean display.
+ */
+function getStatusBadge(note: Note): StatusBadge | null {
+  // Spent notes
+  if (note.status === "spent") {
+    return { label: "Spent", className: "bg-neutral-400/10 text-neutral-400" };
   }
+
+  // Cross-chain intent pending (waiting for solver)
+  if (note.isCrossChain && note.intentStatus === "pending") {
+    return { label: "Pending", className: "bg-yellow-400/10 text-yellow-400" };
+  }
+
+  // Cross-chain intent refunded
+  if (note.isCrossChain && note.intentStatus === "refunded") {
+    return { label: "Refunded", className: "bg-orange-400/10 text-orange-400" };
+  }
+
+  // ASP pending approval
+  if (note.aspStatus === "pending") {
+    return { label: "Pending", className: "bg-blue-400/10 text-blue-400" };
+  }
+
+  // ASP rejected
+  if (note.aspStatus === "rejected") {
+    return { label: "Rejected", className: "bg-red-400/10 text-red-400" };
+  }
+
+  // Approved and ready - no badge
+  return null;
 }
 
 export function NoteRow({ note, onClick }: NoteRowProps) {
-  // Show user-friendly labels based on chain progression
-  const noteLabel = `Note ${note.depositIndex + 1}.${note.changeIndex}`;
-  const pendingReason = getPendingReason(note);
-  const badgeStyle = pendingReason ? getPendingBadgeStyle(pendingReason) : null;
+  const noteLabel = `Note #${note.depositIndex + 1}`;
+  const statusBadge = getStatusBadge(note);
 
   return (
     <button
@@ -58,9 +65,9 @@ export function NoteRow({ note, onClick }: NoteRowProps) {
               <div className="text-white truncate text-base font-semibold capitalize tracking-tight sm:text-lg">
                 {noteLabel}
               </div>
-              {badgeStyle && (
-                <span className={`whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${badgeStyle.bg} ${badgeStyle.text}`}>
-                  {badgeStyle.label}
+              {statusBadge && (
+                <span className={`whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${statusBadge.className}`}>
+                  {statusBadge.label}
                 </span>
               )}
             </div>

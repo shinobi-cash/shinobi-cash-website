@@ -74,11 +74,11 @@ export function NotesSection({ controller, onNoteChainClick }: NotesSectionProps
       return (
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
-            {controller.activeFilter === "available" ? (
+            {controller.activeFilter === "spendable" ? (
               <>
                 <span className="mb-2 block text-2xl">💸</span>
-                <p className="text-neutral-400 mb-1">No available funds</p>
-                <p className="text-neutral-500 text-sm">All your deposits have been spent</p>
+                <p className="text-neutral-400 mb-1">No spendable funds</p>
+                <p className="text-neutral-500 text-sm">All your deposits have been spent or are pending</p>
               </>
             ) : controller.activeFilter === "pending" ? (
               <>
@@ -92,7 +92,7 @@ export function NotesSection({ controller, onNoteChainClick }: NotesSectionProps
               <>
                 <span className="mb-2 block text-2xl">🔒</span>
                 <p className="text-neutral-400 mb-1">No spent deposits</p>
-                <p className="text-neutral-500 text-sm">Your deposits are still available</p>
+                <p className="text-neutral-500 text-sm">Your deposits are still spendable</p>
               </>
             )}
           </div>
@@ -107,7 +107,7 @@ export function NotesSection({ controller, onNoteChainClick }: NotesSectionProps
     <div className="flex min-h-0 flex-1 flex-col space-y-2">
       <div className="flex-shrink-0">
         <div className="flex">
-          {renderFilterButton("available", controller.availableCount, "border-emerald-400")}
+          {renderFilterButton("spendable", controller.spendableCount, "border-emerald-400")}
           {renderFilterButton("pending", controller.pendingCount, "border-yellow-400")}
           {renderFilterButton("spent", controller.spentCount, "border-rose-400")}
         </div>

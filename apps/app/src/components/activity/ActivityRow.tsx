@@ -1,77 +1,67 @@
 /**
  * Activity Row Component
  *
- * Displays a single activity in the activity list.
+ * Displays a single activity entry in the activity list.
+ * Uses status fields directly for concise badge display.
  */
 
-import type { Activity } from "@/types/activity";
+import type { ActivityEntry } from "@/types/activity";
+import type { Note } from "@shinobi-cash/core";
 import { ActivityTypeBadge } from "./ActivityTypeBadge";
 import { AmountDisplay } from "@/components/shared/AmountDisplay";
 import { formatTimestamp } from "@/utils/formatters";
 import { getChainName } from "@/config/chains";
 import { ArrowRight } from "lucide-react";
 
-type ActivityPendingReason = "waitingForSolver" | "awaitingApproval" | "rejected";
-
-interface BadgeStyle {
-  bg: string;
-  text: string;
+interface StatusBadge {
   label: string;
+  className: string;
 }
 
-function getActivityPendingReason(activity: Activity): ActivityPendingReason | null {
-  // Cross-chain not filled yet (no label)
-  if (activity.isCrossChain && !activity.isActivated) {
-    return "waitingForSolver";
+/**
+ * Get status badge based on note state.
+ * Priority: spent > intent pending > intent refunded > asp pending > asp rejected
+ */
+function getStatusBadge(note: Note): StatusBadge | null {
+  // Spent notes
+  if (note.status === "spent") {
+    return { label: "Spent", className: "bg-neutral-400/10 text-neutral-400" };
   }
 
-  // In pool but ASP pending
-  if (activity.isActivated && activity.aspStatus === "pending") {
-    return "awaitingApproval";
+  // Cross-chain intent pending (waiting for solver)
+  if (note.isCrossChain && note.intentStatus === "pending") {
+    return { label: "Pending", className: "bg-yellow-400/10 text-yellow-400" };
   }
 
-  // In pool but ASP rejected
-  if (activity.isActivated && activity.aspStatus === "rejected") {
-    return "rejected";
+  // Cross-chain intent refunded
+  if (note.isCrossChain && note.intentStatus === "refunded") {
+    return { label: "Refunded", className: "bg-orange-400/10 text-orange-400" };
   }
 
+  // ASP pending approval
+  if (note.aspStatus === "pending") {
+    return { label: "Pending", className: "bg-blue-400/10 text-blue-400" };
+  }
+
+  // ASP rejected
+  if (note.aspStatus === "rejected") {
+    return { label: "Rejected", className: "bg-red-400/10 text-red-400" };
+  }
+
+  // Approved and ready - no badge needed
   return null;
 }
 
-function getPendingBadgeStyle(reason: ActivityPendingReason): BadgeStyle {
-  switch (reason) {
-    case "waitingForSolver":
-      return {
-        bg: "bg-yellow-400/10",
-        text: "text-yellow-400",
-        label: "Awaiting Solver",
-      };
-    case "awaitingApproval":
-      return {
-        bg: "bg-blue-400/10",
-        text: "text-blue-400",
-        label: "Awaiting Approval",
-      };
-    case "rejected":
-      return {
-        bg: "bg-orange-400/10",
-        text: "text-orange-400",
-        label: "Rejected",
-      };
-  }
-}
-
 interface ActivityRowProps {
-  activity: Activity;
+  entry: ActivityEntry;
   onClick?: () => void;
 }
 
-export function ActivityRow({ activity, onClick }: ActivityRowProps) {
-  const isCrossChain = activity.isCrossChain;
-  const originChainName = getChainName(activity.originChainId);
-  const destChainName = getChainName(activity.destinationChainId);
-  const pendingReason = getActivityPendingReason(activity);
-  const badgeStyle = pendingReason ? getPendingBadgeStyle(pendingReason) : null;
+export function ActivityRow({ entry, onClick }: ActivityRowProps) {
+  const { note, isCrossChain, displayAmount, type } = entry;
+  const originChainName = getChainName(note.originChainId);
+  const destChainName = getChainName(note.destinationChainId);
+  const statusBadge = getStatusBadge(note);
 
   return (
     <button
@@ -83,10 +73,10 @@ export function ActivityRow({ activity, onClick }: ActivityRowProps) {
       <div className="flex flex-col gap-2">
         {/* Top row: Type badge and amount */}
         <div className="flex items-start justify-between gap-2">
-          <ActivityTypeBadge type={activity.type} />
+          <ActivityTypeBadge type={type} />
           <div className="text-right">
             <AmountDisplay
-              amount={activity.amount}
+              amount={displayAmount}
               layout="inline"
               ethOptions={{ maxDecimals: 6 }}
               className="gap-1.5"
@@ -98,7 +88,6 @@ export function ActivityRow({ activity, onClick }: ActivityRowProps) {
 
         {/* Bottom row: Chain info, status, timestamp */}
         <div className="flex items-center justify-between gap-2 text-xs">
-          {/* Chain info */}
           <div className="text-neutral-400 flex items-center gap-1.5">
             {isCrossChain ? (
               <>
@@ -111,14 +100,13 @@ export function ActivityRow({ activity, onClick }: ActivityRowProps) {
             )}
           </div>
 
-          {/* Status and timestamp */}
           <div className="flex items-center gap-2">
-            {badgeStyle && (
-              <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${badgeStyle.bg} ${badgeStyle.text}`}>
-                {badgeStyle.label}
+            {statusBadge && (
+              <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusBadge.className}`}>
+                {statusBadge.label}
               </span>
             )}
-            <span className="text-neutral-400">{formatTimestamp(activity.timestamp)}</span>
+            <span className="text-neutral-400">{formatTimestamp(note.timestamp)}</span>
           </div>
         </div>
       </div>
