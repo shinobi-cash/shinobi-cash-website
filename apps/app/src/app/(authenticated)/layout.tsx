@@ -60,7 +60,7 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
           </div>
 
           {/* Card Content */}
-          <div className="border-white/10 bg-white/[0.02] rounded-2xl border">
+          <div className="rounded-2xl">
             {isNotesSyncing ? <NotesSyncingScreen /> : children}
           </div>
         </div>

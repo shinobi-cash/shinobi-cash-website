@@ -32,12 +32,11 @@ export default function ActivityPage() {
 
   return (
     <ScreenLayout
-      containerClassName="h-[600px]"
+      containerClassName="h-[600px] bg-white/[0.02]"
       header={
         <ScreenHeader
           title="Activity"
           icon={<History className="h-5 w-5" />}
-          onBack={() => router.push("/notes")}
           rightContent={
             <div className="flex items-center gap-2">
               {controller.syncError && (
@@ -59,7 +58,7 @@ export default function ActivityPage() {
           }
         />
       }
-      contentClassName="px-4 pb-4 pt-2 sm:px-6"
+      contentClassName="pb-4 pt-2"
     >
       <ActivityList
         entries={controller.filteredEntries}

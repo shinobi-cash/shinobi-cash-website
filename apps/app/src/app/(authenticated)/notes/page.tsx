@@ -62,7 +62,7 @@ export default function NotesPage() {
 
   return (
     <ScreenLayout
-      containerClassName="h-[600px]"
+      containerClassName="h-[600px] bg-white/[0.02]"
       header={
         <ScreenHeader
           title="Notes"
@@ -76,10 +76,10 @@ export default function NotesPage() {
           }
         />
       }
-      contentClassName="px-4 sm:px-6"
+      contentClassName=""
     >
       {/* Balance Section */}
-      <div className="shrink-0 border-b border-gray-800 pb-4">
+      <div className="shrink-0 border-b border-white/10 px-4 pb-4">
         <AmountDisplay
           amount={controller.totalBalance}
           layout="stacked"
