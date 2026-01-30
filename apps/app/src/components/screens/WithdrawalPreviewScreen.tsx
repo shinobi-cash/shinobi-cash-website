@@ -148,7 +148,7 @@ export function WithdrawalPreviewScreen({
           />
         )}
         <Row
-          label={isCrossChain ? "Relay Fee (Max)" : "Execution Fee (Max)"}
+          label="Relay Fee (Max)"
           value={<FeeValue amount={executionFee} usdValue={executionFeeUsd} />}
         />
         {isCrossChain && (
