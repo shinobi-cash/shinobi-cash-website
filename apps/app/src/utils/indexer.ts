@@ -1,5 +1,5 @@
 import { IPFS_GATEWAY_URL } from "@shinobi-cash/constants";
-import type { Activity, StateTreeLeaf, ASPApprovalList } from "@shinobi-cash/data";
+import type { StateTreeLeaf } from "@shinobi-cash/data";
 import { Errors, AppError, logError } from "@/lib/errors/errors";
 import { AuthController } from "@/controllers/AuthController";
 
@@ -20,20 +20,10 @@ function assertAuthenticated() {
   }
 }
 
-export type { Activity, StateTreeLeaf, ASPApprovalList };
-
-export interface PaginatedResponse<T> {
-  items: T[];
-  pageInfo: {
-    hasNextPage: boolean;
-    hasPreviousPage: boolean;
-  };
-}
-
-export type ActivityType = "DEPOSIT" | "WITHDRAWAL" | "RAGEQUIT";
-export type ActivityStatus = "pending" | "approved" | "rejected";
-
-export interface ASPApprovalListLegacy {
+/**
+ * IPFS approval list structure (format stored in IPFS)
+ */
+interface IPFSApprovalList {
   version: "1.0";
   poolId: string;
   cumulativeApprovedLabels: string[];
@@ -150,7 +140,7 @@ export async function fetchApprovedLabelsFromIPFS(ipfsCID: string): Promise<stri
       throw Errors.network.requestFailed(`Failed to fetch from IPFS: ${ipfsResponse.statusText}`);
     }
 
-    const approvalList = (await ipfsResponse.json()) as ASPApprovalListLegacy;
+    const approvalList = (await ipfsResponse.json()) as IPFSApprovalList;
 
     if (
       !approvalList.cumulativeApprovedLabels ||

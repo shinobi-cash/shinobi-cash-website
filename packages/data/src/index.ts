@@ -25,7 +25,7 @@ export type {
   ASPApprovalList,
   CrossChainIntent,
   ActivityType,
-  ActivityStatus,
+  IntentStatus,
   ASPStatus,
   EntityType,
 } from './types/indexer.js';

@@ -103,6 +103,7 @@ export async function executeWithdrawalUserOperation(
 
     userOperation.callGasLimit = gasLimits.CALL_GAS_LIMIT;
     userOperation.paymasterVerificationGasLimit = gasLimits.PAYMASTER_VERIFICATION_GAS_LIMIT;
+    userOperation.paymasterPostOpGasLimit = gasLimits.POST_OP_GAS_LIMIT
 
     const signature = await smartAccountClient.account?.signUserOperation(userOperation);
     const userOpHash = await smartAccountClient.sendUserOperation({

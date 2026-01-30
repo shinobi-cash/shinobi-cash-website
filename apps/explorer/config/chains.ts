@@ -21,3 +21,12 @@ export const getTxExplorerUrl = (chainId: number | string | bigint, txHash: stri
   const explorerUrl = chain?.blockExplorers?.default.url ?? "";
   return `${explorerUrl}/tx/${txHash}`;
 };
+
+/**
+ * Get chain name from chain ID
+ */
+export const getChainName = (chainId: number | string | bigint): string => {
+  const id = Number(chainId);
+  const chain = SHINOBI_CASH_SUPPORTED_CHAINS.find((c) => c.id === id);
+  return chain?.name ?? `Chain ${id}`;
+};

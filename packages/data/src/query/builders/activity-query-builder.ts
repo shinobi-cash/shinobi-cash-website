@@ -121,10 +121,11 @@ export class ActivityQueryBuilder<
       switch (key) {
         case 'id':
         case 'type':
-        case 'status':
+        case 'intentStatus':
         case 'aspStatus':
         case 'poolId':
         case 'user':
+        case 'processor':
         case 'recipient':
         case 'commitment':
         case 'label':
@@ -175,22 +176,25 @@ export class ActivityQueryBuilder<
     return `
       id
       type
-      status
+      intentStatus
       aspStatus
       poolId
       user
+      processor
       recipient
       amount
       originalAmount
       vettingFeeAmount
+      vettingFeeRecipient
       commitment
       label
       precommitmentHash
       spentNullifier
       newCommitment
       refundCommitment
-      feeAmount
-      feeRefund
+      relayFeeAmount
+      solverFeeAmount
+      paymasterFeeRefund
       relayer
       solver
       isSponsored
@@ -374,10 +378,10 @@ export class ActivityQueryBuilder<
   }
 
   /**
-   * Filter only refunded operations
+   * Filter only refunded cross-chain operations
    */
   onlyRefunded(): this {
-    this.where({ status: 'refunded' });
+    this.where({ intentStatus: 'refunded' });
     return this;
   }
 

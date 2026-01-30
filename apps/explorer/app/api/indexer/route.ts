@@ -119,10 +119,37 @@ export async function POST(request: Request) {
         if (!pool) {
           data = null;
         } else {
+          // Convert crosschain stats maps to serializable format
+          const crosschainDepositsByChain: Record<string, { count: number; totalAmount: string }> =
+            {};
+          for (const [chainId, stats] of Object.entries(pool.crosschainDepositsByChain)) {
+            crosschainDepositsByChain[chainId] = {
+              count: Number(stats.count),
+              totalAmount: stats.totalAmount.toString(),
+            };
+          }
+
+          const crosschainWithdrawalsByChain: Record<
+            string,
+            { count: number; totalAmount: string }
+          > = {};
+          for (const [chainId, stats] of Object.entries(pool.crosschainWithdrawalsByChain)) {
+            crosschainWithdrawalsByChain[chainId] = {
+              count: Number(stats.count),
+              totalAmount: stats.totalAmount.toString(),
+            };
+          }
+
           data = {
             totalDeposits: pool.totalDeposits.toString(),
             totalWithdrawals: pool.totalWithdrawals.toString(),
             depositCount: Number(pool.depositCount),
+            withdrawalCount: Number(pool.withdrawalCount),
+            uniqueDepositors: Number(pool.uniqueDepositors),
+            crosschainDepositsByChain,
+            crosschainWithdrawalsByChain,
+            ragequitCount: Number(pool.ragequitCount),
+            totalRagequitAmount: pool.totalRagequitAmount.toString(),
             createdAt: pool.createdAt.toString(),
           };
         }

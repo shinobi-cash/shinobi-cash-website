@@ -162,7 +162,6 @@ describe('Activity serialization', () => {
   const mockActivity: Activity = {
     id: 'activity-1',
     type: 'DEPOSIT',
-    status: 'pending',
     aspStatus: 'pending',
     poolId: '0x123',
     user: '0xuser',
@@ -214,6 +213,16 @@ describe('Pool serialization', () => {
     totalDeposits: 10000000000000000000n,
     totalWithdrawals: 5000000000000000000n,
     depositCount: 100n,
+    withdrawalCount: 25n,
+    uniqueDepositors: 50n,
+    crosschainDepositsByChain: {
+      '84532': { count: 10n, totalAmount: 1000000000000000000n },
+    },
+    crosschainWithdrawalsByChain: {
+      '84532': { count: 5n, totalAmount: 500000000000000000n },
+    },
+    ragequitCount: 2n,
+    totalRagequitAmount: 500000000000000000n,
     createdAt: 1700000000n,
   };
 

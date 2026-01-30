@@ -61,7 +61,7 @@ export type ActivityFields =
   | keyof Activity
   | 'id type aspStatus poolId user timestamp'
   | 'commitment label precommitmentHash'
-  | 'amount feeAmount relayer'
+  | 'amount relayFeeAmount solverFeeAmount relayer'
   | 'spentNullifier newCommitment refundCommitment'
   | 'orderId originChainId destinationChainId';
 
@@ -184,8 +184,11 @@ export interface ActivityWhereInput {
   timestamp_gte?: string;
   timestamp_lte?: string;
 
-  // Status filter
-  status?: string;
+  // Intent status filter (cross-chain only)
+  intentStatus?: string;
+
+  // Processor filter (withdrawals only)
+  processor?: string;
 
   // Boolean filters
   isSponsored?: boolean;
