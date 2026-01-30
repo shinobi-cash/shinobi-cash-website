@@ -22,7 +22,7 @@ interface NotesScreenState {
 }
 
 const state = proxy<NotesScreenState>({
-  activeFilter: "available",
+  activeFilter: "spendable",
   selectedNoteChain: null,
 });
 
@@ -114,7 +114,7 @@ export const NotesScreenController = {
    * Reset all UI state
    */
   reset(): void {
-    state.activeFilter = "available";
+    state.activeFilter = "spendable";
     state.selectedNoteChain = null;
   },
 };

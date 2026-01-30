@@ -18,6 +18,8 @@ import {
 const ASPStatusSchema = z.enum(["pending", "approved", "rejected"]);
 const NoteStatusSchema = z.enum(["unspent", "spent"]);
 
+const IntentStatusSchema = z.enum(["pending", "filled", "refunded"]);
+
 /** Base note fields shared by all note types */
 const BaseNoteSchema = z.object({
   poolAddress: z.string(),
@@ -31,10 +33,10 @@ const BaseNoteSchema = z.object({
   timestamp: z.string(),
   status: NoteStatusSchema,
   aspStatus: ASPStatusSchema,
-  isActivated: z.boolean(),
   label: z.string(),
   isCrossChain: z.boolean(),
   orderId: z.string().optional(),
+  intentStatus: IntentStatusSchema.optional(),
 });
 
 /** Deposit note schema */

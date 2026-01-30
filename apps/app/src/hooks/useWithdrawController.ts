@@ -30,13 +30,13 @@ export function useWithdrawController() {
   const discoveryState = useNotesDiscovery();
 
   // Sync notes context to controller (read-only)
-  // Get available notes from discovery controller
+  // Get withdrawable notes from discovery controller (ASP approved only)
   useEffect(() => {
-    const availableNotes = NotesDiscoverySelectors.getAvailableNotes();
+    const withdrawableNotes = NotesDiscoverySelectors.getWithdrawableNotes();
     const isLoading = NotesDiscoverySelectors.isDiscovering();
 
     WithdrawController._updateNotes({
-      notes: availableNotes,
+      notes: withdrawableNotes,
       isLoading,
     });
   }, [discoveryState.noteChains, discoveryState.state.status]);
