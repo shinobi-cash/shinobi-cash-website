@@ -20,8 +20,9 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
 
   const content = isAuthenticated ? (
     <>
-      <div className="shrink-0 pb-4">
+      <div className="flex shrink-0 items-center justify-between pb-4">
         <NavLinks />
+        <NotesSyncIndicator />
       </div>
       <div className="flex min-h-0 flex-1 flex-col rounded-2xl sm:flex-none">
         {isNotesSyncing ? <NotesSyncingScreen /> : children}
@@ -44,9 +45,7 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
       </div>
 
       <div className="hidden shrink-0 md:block">
-        <Footer
-          indicators={isAuthenticated ? <NotesSyncIndicator /> : undefined}
-        />
+        <Footer />
       </div>
     </div>
   );

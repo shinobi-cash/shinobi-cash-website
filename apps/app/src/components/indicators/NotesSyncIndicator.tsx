@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useSnapshot } from "valtio";
-import { RotateCw } from "lucide-react";
+import { RotateCw, Loader2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { NotesDiscoveryController } from "@/controllers/NotesDiscoveryController";
 import { AuthController } from "@/controllers/AuthController";
@@ -51,11 +51,18 @@ export function NotesSyncIndicator() {
         <button
           onClick={handleManualSync}
           disabled={isSyncing}
-          className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1 text-xs transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-xs transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50 sm:gap-2"
         >
-          <RotateCw className={`h-3.5 w-3.5 text-neutral-400 ${isSyncing ? "animate-spin" : ""}`} />
-          <span className="flex w-14 justify-start tabular-nums text-neutral-400">
+          {isSyncing ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-neutral-400" />
+          ) : (
+            <RotateCw className="h-3.5 w-3.5 text-neutral-400" />
+          )}
+          <span className="hidden tabular-nums text-neutral-400 sm:inline">
             {isSyncing ? "Syncing..." : `${timeLeft}s`}
+          </span>
+          <span className="tabular-nums text-neutral-400 sm:hidden">
+            {isSyncing ? "" : `${timeLeft}s`}
           </span>
         </button>
       </TooltipTrigger>

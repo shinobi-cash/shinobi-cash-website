@@ -17,7 +17,7 @@ export function NavLinks() {
   const pathname = usePathname();
 
   return (
-    <div className="flex w-full gap-1 rounded-lg bg-white/[0.04] p-1 sm:inline-flex sm:w-auto">
+    <div className="inline-flex gap-1 rounded-lg bg-white/[0.04] p-1">
       {NAV_LINKS.map((link) => {
         const isActive = pathname === link.href || pathname.startsWith(`${link.href}/`);
 
@@ -27,7 +27,7 @@ export function NavLinks() {
             href={link.href}
             aria-current={isActive ? "page" : undefined}
             className={cn(
-              "flex-1 rounded-md px-2 py-1.5 text-center text-xs font-medium transition-all sm:flex-none sm:px-3 sm:text-sm",
+              "rounded-md px-2 py-1.5 text-center text-xs font-medium transition-all sm:px-3 sm:text-sm",
               isActive
                 ? "bg-white/10 text-white shadow-sm"
                 : "text-neutral-400 hover:bg-white/[0.06] hover:text-white"

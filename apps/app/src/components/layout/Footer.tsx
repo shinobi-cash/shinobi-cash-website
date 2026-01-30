@@ -1,10 +1,6 @@
 "use client";
 
-interface FooterProps {
-  indicators?: React.ReactNode;
-}
-
-export function Footer({ indicators }: FooterProps) {
+export function Footer() {
   const currentYear = new Date().getFullYear();
 
   return (
@@ -36,10 +32,7 @@ export function Footer({ indicators }: FooterProps) {
             </a>
           </div>
 
-          <div className="flex items-center gap-4">
-            {indicators}
-            <div className="text-muted-foreground text-sm">v1.0.0</div>
-          </div>
+          <div className="text-muted-foreground text-sm">v1.0.0</div>
         </div>
       </div>
     </footer>
