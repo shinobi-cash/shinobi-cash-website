@@ -4,6 +4,7 @@ import { Loader2, Globe, Clock } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";
 import { ScreenLayout } from "@/components/layout/ScreenLayout";
+import { Section, Row } from "@/components/shared/Section";
 import { LabelWithHover } from "@/components/shared/LabelWithHover";
 import { usePriceData } from "@/hooks/usePriceData";
 import { formatUsdAmount, formatHash, formatSmallEthAmount } from "@/utils/formatters";
@@ -121,10 +122,9 @@ export function WithdrawalPreviewScreen({
       </div>
 
       {/* Details */}
-      <div className="w-full space-y-2">
-        {/* Route indicator for cross-chain */}
+      <Section title="Details">
         {isCrossChain && (
-          <DetailRow
+          <Row
             label="Route"
             value={
               <span className="flex items-center gap-1.5 text-blue-400">
@@ -134,61 +134,40 @@ export function WithdrawalPreviewScreen({
             }
           />
         )}
+        <Row label="Origin" value={POOL_CHAIN.name} />
+        <Row label="Destination" value={destinationChain.name} />
+        <Row label="Recipient" value={formatHash(recipientAddress)} />
+      </Section>
 
-        <DetailRow label="Origin" value={POOL_CHAIN.name} />
-        <DetailRow label="Destination" value={destinationChain.name} />
-        <DetailRow label="Recipient" value={formatHash(recipientAddress)} />
-
-        {/* Solver fee for cross-chain */}
+      {/* Fees */}
+      <Section title="Fees">
         {isCrossChain && solverFee > 0 && (
-          <DetailRow
+          <Row
             label="Solver Fee (5%)"
-            value={
-              <FeeValue
-                amount={solverFee}
-                usdValue={solverFeeUsd}
-              />
-            }
+            value={<FeeValue amount={solverFee} usdValue={solverFeeUsd} />}
           />
         )}
-
-        <DetailRow
+        <Row
           label={isCrossChain ? "Relay Fee (Max)" : "Execution Fee (Max)"}
-          value={
-            <FeeValue
-              amount={executionFee}
-              usdValue={executionFeeUsd}
-            />
-          }
+          value={<FeeValue amount={executionFee} usdValue={executionFeeUsd} />}
         />
-
-        {/* Cross-chain timing info */}
         {isCrossChain && (
-          <DetailRow
+          <Row
             label="Fill Deadline"
             value={
               <span className="flex items-center gap-1.5">
-                <Clock className="h-3.5 w-3.5 text-zinc-500" />
+                <Clock className="h-3.5 w-3.5 text-neutral-500" />
                 {fillDeadline}
               </span>
             }
           />
         )}
-      </div>
+      </Section>
     </ScreenLayout>
   );
 }
 
 /* ---------- helpers ---------- */
-
-function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className="flex items-center justify-between">
-      <span className="text-sm text-zinc-500">{label}</span>
-      <span className="text-sm font-medium text-zinc-200">{value}</span>
-    </div>
-  );
-}
 
 function FeeValue({ amount, usdValue }: { amount: number; usdValue: number | null }) {
   const ethText = `${formatSmallEthAmount(amount)} ETH`;

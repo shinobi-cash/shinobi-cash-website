@@ -10,6 +10,7 @@ import { Button } from "@workspace/ui/components/button";
 import { AmountDisplay } from "@/components/shared/AmountDisplay";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";
 import { ScreenLayout } from "@/components/layout/ScreenLayout";
+import { Section, Row } from "@/components/shared/Section";
 import { CopyableText } from "@/components/shared/CopyableText";
 import { ACTIVITY_TYPE_LABELS, type ActivityEntry } from "@/types/activity";
 import { getTxExplorerUrl, getChainName } from "@/config/chains";
@@ -166,27 +167,4 @@ export function ActivityDetailsScreen({ entry, onBack, onViewNoteChain }: Activi
     </ScreenLayout>
   );
 }
-
-// Helper components
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.02] overflow-hidden">
-      <div className="px-3 py-2 border-b border-white/5">
-        <h3 className="text-xs font-medium text-neutral-500 uppercase tracking-wide">{title}</h3>
-      </div>
-      <div className="divide-y divide-white/5">{children}</div>
-    </div>
-  );
-}
-
-function Row({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className="flex items-center justify-between px-3 py-2.5">
-      <span className="text-sm text-neutral-400">{label}</span>
-      <span className="text-sm text-white">{value}</span>
-    </div>
-  );
-}
-
 
