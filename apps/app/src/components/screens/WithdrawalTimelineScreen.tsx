@@ -13,27 +13,26 @@ import {
   type StepTiming,
 } from "@/components/shared/Timeline";
 import { type AppError, getUserMessage, ErrorCode } from "@/lib/errors/errors";
-import type { EnginePhase } from "@/services/WithdrawalOrchestratorService";
 import { getTxExplorerUrl } from "@/config/chains";
 import { formatDateTime } from "@/utils/formatters";
 import { POOL_CHAIN } from "@shinobi-cash/constants";
 
+type WithdrawStatus = "idle" | "previewing" | "preparing" | "ready" | "submitting" | "confirmed" | "indexed" | "error";
+
 interface WithdrawalTimelineScreenProps {
   amount: number;
-  currentPhase: EnginePhase | null;
+  status: WithdrawStatus;
   txHash: string | null;
   error: AppError | null;
-  isConfirmed: boolean;
   isCrossChain: boolean;
   onClose: () => void;
 }
 
 export function WithdrawalTimelineScreen({
   amount,
-  currentPhase,
+  status,
   txHash,
   error,
-  isConfirmed,
   isCrossChain,
   onClose,
 }: WithdrawalTimelineScreenProps) {
@@ -44,10 +43,12 @@ export function WithdrawalTimelineScreen({
   // Track timestamps and durations for each step
   const [timings, setTimings] = useState<Record<string, StepTiming>>({});
 
-  const isPreparing = currentPhase !== null && currentPhase !== "prepared";
-  const isConfirming = txHash !== null && !isConfirmed && !error;
+  // Derive states from controller status directly
+  const isPreparing = status === "preparing";
+  const isSubmitting = status === "submitting";
+  const isConfirmed = status === "confirmed" || status === "indexed";
 
-  // Complete when tx is confirmed on-chain (don't wait for indexer)
+  // Complete when tx is confirmed on-chain
   const isComplete = isConfirmed;
 
   // Title based on state
@@ -55,7 +56,7 @@ export function WithdrawalTimelineScreen({
     ? "Withdrawal complete"
     : hasError
       ? "Withdrawal failed"
-      : isConfirming
+      : isSubmitting
         ? "Submitting withdrawal"
         : isPreparing
           ? "Preparing withdrawal"
@@ -82,22 +83,20 @@ export function WithdrawalTimelineScreen({
   // Step 1: Preparing (proof generation)
   const preparingStatus: StepStatus = isPreparationError
     ? "failed"
-    : txHash || isConfirming || isComplete
+    : isSubmitting || isComplete
       ? "completed"
-      : isPreparing || currentPhase === "prepared"
+      : isPreparing
         ? "active"
         : "pending";
 
-  // Step 2: Submitting (tx confirmation)
+  // Step 2: Submitting (tx submission + wait for receipt)
   const submittingStatus: StepStatus = isTransactionError
     ? "failed"
     : isComplete
       ? "completed"
-      : isConfirming
+      : isSubmitting
         ? "active"
-        : preparingStatus === "completed"
-          ? "active"
-          : "pending";
+        : "pending";
 
   // Step 3: Complete
   const completeStatus: StepStatus = isComplete ? "completed" : "pending";

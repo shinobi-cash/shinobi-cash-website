@@ -79,18 +79,11 @@ export function NoteSelectionScreen({
 
                 {/* Note Info */}
                 <div className="min-w-0 flex-1 text-left">
-                  <div className="mb-1 flex items-center justify-between">
-                    <span className="text-foreground text-base font-semibold">
-                      {Number.parseFloat(amount).toFixed(4)} {asset.symbol}
-                    </span>
-                    {note.isActivated && (
-                      <span className="rounded bg-green-400/10 px-2 py-1 text-xs text-green-400">
-                        Active
-                      </span>
-                    )}
+                  <div className="text-foreground text-base font-semibold">
+                    Note #{note.depositIndex + 1}
                   </div>
-                  <div className="text-muted-foreground truncate text-xs">
-                    Note #{note.depositIndex}.{note.changeIndex}
+                  <div className="text-muted-foreground text-sm">
+                    {Number.parseFloat(amount).toFixed(4)} {asset.symbol}
                   </div>
                 </div>
               </button>
