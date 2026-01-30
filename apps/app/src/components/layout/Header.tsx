@@ -7,6 +7,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu";
@@ -85,6 +86,13 @@ export function Header({ rightSlot }: HeaderProps) {
                   GitHub
                 </a>
               </DropdownMenuItem>
+
+              <DropdownMenuSeparator />
+
+              <DropdownMenuLabel className="flex justify-between text-xs font-normal text-neutral-500">
+                <span>Shinobi Cash</span>
+                <span>v1.0.0</span>
+              </DropdownMenuLabel>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
