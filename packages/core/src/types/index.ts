@@ -7,7 +7,15 @@ export type { CommitmentHash, NullifierHash, PrecommitmentHash, PoolAddress } fr
 export { toHashString, fromHashString } from './Hash.js';
 
 // Note types
-export type { Note, DepositNote, ChangeNote, RefundNote, NoteChain, CachedNoteData } from './Note.js';
+export type {
+  Note,
+  DepositNote,
+  ChangeNote,
+  RefundNote,
+  NoteChain,
+  CachedNoteData,
+  NoteActivityData,
+} from './Note.js';
 export { isDepositNote, isChangeNote, isRefundNote } from './Note.js';
 
 // Discovery types

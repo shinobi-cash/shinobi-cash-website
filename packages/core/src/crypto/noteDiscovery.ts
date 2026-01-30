@@ -109,24 +109,51 @@ export function buildNoteChain(
     originChainId !== destinationChainId;
 
   const depositNote: DepositNote = {
+    // Note identity
     poolAddress,
     depositIndex,
     changeIndex: 0,
     noteType: 'deposit',
+
+    // Note value
     amount: depositActivity.amount ? depositActivity.amount.toString() : '0',
+
+    // Note location
     originTransactionHash: depositActivity.originTransactionHash,
     destinationTransactionHash: depositActivity.destinationTransactionHash || depositActivity.originTransactionHash,
     originChainId,
     destinationChainId,
     blockNumber: depositActivity.blockNumber.toString(),
     timestamp: depositActivity.timestamp.toString(),
+
+    // Note state
     status: 'unspent',
     aspStatus: depositActivity.aspStatus,
-    isActivated: depositActivity.label != null,
     label: depositActivity.label || `Pending Deposit #${depositIndex}`,
     precommitmentHash: depositActivity.precommitmentHash,
+
+    // Cross-chain context
     isCrossChain,
     orderId: depositActivity.orderId ?? undefined,
+    intentStatus: isCrossChain ? (depositActivity.intentStatus ?? 'pending') : undefined,
+    fillDeadline: depositActivity.fillDeadline?.toString(),
+    expires: depositActivity.expires?.toString(),
+
+    // Nested activity data (transaction metadata)
+    activityData: {
+      // Fees
+      originalAmount: depositActivity.originalAmount?.toString(),
+      vettingFeeAmount: depositActivity.vettingFeeAmount?.toString(),
+      solverFeeAmount: depositActivity.solverFeeAmount?.toString(),
+
+      // Actors
+      user: depositActivity.user,
+      solver: depositActivity.solver,
+      vettingFeeRecipient: depositActivity.vettingFeeRecipient,
+
+      // Crypto
+      commitment: depositActivity.commitment,
+    },
   };
 
   const chain: NoteChain = [depositNote];
@@ -216,24 +243,56 @@ export function extendNoteChain(
     remaining -= BigInt(withdrawal.amount);
 
     const changeNote: ChangeNote = {
+      // Note identity
       poolAddress: chain[0]!.poolAddress,
       depositIndex: chain[0]!.depositIndex,
       changeIndex,
       noteType: 'change',
+
+      // Note value (remaining balance after withdrawal)
       amount: remaining.toString(),
+
+      // Note location
       originTransactionHash: withdrawal.originTransactionHash,
       destinationTransactionHash: withdrawal.destinationTransactionHash || withdrawal.originTransactionHash,
       originChainId: withdrawal.originChainId.toString(),
       destinationChainId: (withdrawal.destinationChainId || withdrawal.originChainId).toString(),
       blockNumber: withdrawal.blockNumber.toString(),
       timestamp: withdrawal.timestamp.toString(),
+
+      // Note state (inherits ASP status from deposit)
       status: remaining > 0n ? 'unspent' : 'spent',
       aspStatus: chain[0]!.aspStatus,
-      isActivated: true,
       label: chain[0]!.label,
+
+      // Cross-chain context
       refundCommitment: withdrawal.refundCommitment,
       isCrossChain: chain[0]!.isCrossChain,
       orderId: chain[0]!.orderId,
+      intentStatus: chain[0]!.isCrossChain ? (withdrawal.intentStatus ?? 'filled') : undefined,
+
+      // Nested activity data (withdrawal transaction metadata)
+      activityData: {
+        // Fees
+        originalAmount: withdrawal.originalAmount?.toString(),
+        vettingFeeAmount: withdrawal.vettingFeeAmount?.toString(),
+        relayFeeAmount: withdrawal.relayFeeAmount?.toString(),
+        solverFeeAmount: withdrawal.solverFeeAmount?.toString(),
+        paymasterFeeRefund: withdrawal.paymasterFeeRefund?.toString(),
+
+        // Actors
+        recipient: withdrawal.recipient,
+        relayer: withdrawal.relayer,
+        solver: withdrawal.solver,
+
+        // Crypto
+        commitment: withdrawal.commitment,
+        spentNullifier: withdrawal.spentNullifier,
+        newCommitment: withdrawal.newCommitment,
+
+        // Metadata
+        isSponsored: withdrawal.isSponsored,
+      },
     };
 
     newChain.push(changeNote);

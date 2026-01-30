@@ -46,12 +46,14 @@ export function initializeDiscoveryState(
 
   for (const chain of notes) {
     const lastNote = chain[chain.length - 1];
+    // Note is in pool if: same-chain OR cross-chain with intent filled
+    const isInPool = !lastNote?.isCrossChain || lastNote.intentStatus === 'filled';
     if (
       lastNote &&
       lastNote.status === 'unspent' &&
       lastNote.amount &&
       BigInt(lastNote.amount) > 0n &&
-      lastNote.isActivated
+      isInPool
     ) {
       liveDeposits.push({
         depositIndex: chain[0]!.depositIndex,
@@ -155,7 +157,7 @@ export function reconcileExistingDeposits(
     }
   }
 
-  // Update each chain if ASP status changed
+  // Update each chain if ASP status or intent status changed
   return notes.map((chain) => {
     const depositNote = chain[0] as DepositNote;
 
@@ -164,12 +166,12 @@ export function reconcileExistingDeposits(
 
     const oldAspStatus = depositNote.aspStatus;
     const newAspStatus = depositActivity.aspStatus;
-    const oldIsActivated = depositNote.isActivated;
-    const newIsActivated = depositActivity.label != null;
+    const oldIntentStatus = depositNote.intentStatus;
+    const newIntentStatus = depositActivity.intentStatus;
     const newLabel = depositActivity.label || depositNote.label;
 
     // No changes needed
-    if (oldAspStatus === newAspStatus && oldIsActivated === newIsActivated) {
+    if (oldAspStatus === newAspStatus && oldIntentStatus === newIntentStatus) {
       return chain;
     }
 
@@ -177,7 +179,7 @@ export function reconcileExistingDeposits(
     return chain.map((note, idx) => ({
       ...note,
       aspStatus: newAspStatus,
-      ...(idx === 0 ? { isActivated: newIsActivated, label: newLabel } : {}),
+      ...(idx === 0 ? { intentStatus: newIntentStatus, label: newLabel } : {}),
     })) as NoteChain;
   });
 }
@@ -297,7 +299,9 @@ function discoverNewDeposits(
     depositsFound++;
 
     const lastNote = newChain[newChain.length - 1]!;
-    if (lastNote.status === 'unspent' && lastNote.amount && BigInt(lastNote.amount) > 0n && lastNote.isActivated) {
+    // Note is in pool if: same-chain OR cross-chain with intent filled
+    const isInPool = !lastNote.isCrossChain || lastNote.intentStatus === 'filled';
+    if (lastNote.status === 'unspent' && lastNote.amount && BigInt(lastNote.amount) > 0n && isInPool) {
       newLiveDeposits.push({
         depositIndex: checkIndex,
         chain: newChain,
