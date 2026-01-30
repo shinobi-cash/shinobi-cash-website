@@ -244,7 +244,7 @@ export default function WithdrawPage() {
                     className={`w-48 rounded-lg border bg-white/[0.04] px-2 py-1 text-sm text-white placeholder:text-neutral-500 focus:outline-none ${
                       WithdrawSelectors.getAddressError()
                         ? "border-red-500 focus:border-red-500"
-                        : "border-white/20 focus:border-orange-500"
+                        : "border-white/20 focus:border-white/50"
                     }`}
                   />
                   {state.recipientAddress && (

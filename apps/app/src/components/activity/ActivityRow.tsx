@@ -20,14 +20,10 @@ interface StatusBadge {
 
 /**
  * Get status badge based on note state.
- * Priority: spent > intent pending > intent refunded > asp pending > asp rejected
+ * Only show badges for actionable/pending states - not "spent" since
+ * activity is a transaction log (the type already indicates what happened).
  */
 function getStatusBadge(note: Note): StatusBadge | null {
-  // Spent notes
-  if (note.status === "spent") {
-    return { label: "Spent", className: "bg-neutral-400/10 text-neutral-400" };
-  }
-
   // Cross-chain intent pending (waiting for solver)
   if (note.isCrossChain && note.intentStatus === "pending") {
     return { label: "Pending", className: "bg-yellow-400/10 text-yellow-400" };
@@ -48,7 +44,7 @@ function getStatusBadge(note: Note): StatusBadge | null {
     return { label: "Rejected", className: "bg-red-400/10 text-red-400" };
   }
 
-  // Approved and ready - no badge needed
+  // No badge for normal completed transactions
   return null;
 }
 

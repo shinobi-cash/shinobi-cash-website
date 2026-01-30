@@ -56,7 +56,7 @@ export function CopyableText({
       className={cn(
         "group inline-flex items-center gap-1.5 font-mono text-sm",
         "text-neutral-300 hover:text-white transition-colors",
-        "cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500 rounded px-1 -mx-1",
+        "cursor-pointer focus:outline-none focus:ring-1 focus:ring-white/50 rounded px-1 -mx-1",
         className
       )}
       title={`Click to copy: ${text}`}
