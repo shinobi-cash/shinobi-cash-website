@@ -180,7 +180,7 @@ export function WithdrawalTimelineScreen({
 
   return (
     <ScreenLayout
-      containerClassName="h-[600px]"
+      containerClassName="h-[600px] bg-white/[0.02]"
       header={<ScreenHeader title="Transaction details" onBack={onClose} backDisabled={!canGoBack} />}
       footer={
         <Button

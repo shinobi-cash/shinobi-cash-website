@@ -41,7 +41,7 @@ export function ActivityDetailsScreen({ entry, onBack, onViewNoteChain }: Activi
   return (
     <ScreenLayout
       header={<ScreenHeader title={`${ACTIVITY_TYPE_LABELS[type]} Details`} onBack={onBack} />}
-      containerClassName="h-[600px] w-full"
+      containerClassName="h-[600px] w-full bg-white/[0.02]"
       contentClassName="px-4 py-4 overflow-y-auto"
       footer={
         <Button
@@ -68,19 +68,14 @@ export function ActivityDetailsScreen({ entry, onBack, onViewNoteChain }: Activi
             />
           </div>
 
-          {/* Status badges */}
-          <div className="mt-3 flex justify-center gap-2">
-            {activityData.isSponsored && (
-              <span className="inline-flex items-center rounded-full bg-blue-500/10 px-2.5 py-1 text-xs font-medium text-blue-400">
-                Sponsored
-              </span>
-            )}
-            {isCrossChain && (
+          {/* Cross-chain badge */}
+          {isCrossChain && (
+            <div className="mt-3 flex justify-center">
               <span className="inline-flex items-center gap-1 rounded-full bg-purple-500/10 px-2.5 py-1 text-xs font-medium text-purple-400">
                 {originChain} <ArrowRight className="h-3 w-3" /> {destChain}
               </span>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Transaction Info */}

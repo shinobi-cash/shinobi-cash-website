@@ -103,7 +103,7 @@ export function NoteChainScreen({ noteChain, onBack, onWithdrawClick }: NoteChai
 
   return (
     <ScreenLayout
-      containerClassName="h-[600px]"
+      containerClassName="h-[600px] bg-white/[0.02]"
       header={
         <ScreenHeader
           title="Note Details"
@@ -263,31 +263,49 @@ export function NoteChainScreen({ noteChain, onBack, onWithdrawClick }: NoteChai
                           <details className="pl-7 pt-1 group">
                             <summary className="flex items-center gap-1 text-xs text-neutral-500 cursor-pointer hover:text-neutral-400">
                               <span>Fees: -{formatEthAmount(totalFees, { maxDecimals: 6 })} ETH</span>
+                              {toUsdValue(totalFees) !== null && (
+                                <span className="text-neutral-600">(~{formatUsdAmount(toUsdValue(totalFees)!)})</span>
+                              )}
                               <ChevronDown className="h-3 w-3 group-open:rotate-180 transition-transform" />
                             </summary>
                             <div className="mt-1 space-y-0.5 text-xs">
                               {entry.fees?.relayFee && BigInt(entry.fees.relayFee) > BigInt(0) && (
                                 <div className="flex justify-between text-neutral-500">
                                   <span>Relay Fee</span>
-                                  <span className="text-orange-400/70">
-                                    -{formatEthAmount(entry.fees.relayFee, { maxDecimals: 6 })} ETH
-                                  </span>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-orange-400/70">
+                                      -{formatEthAmount(entry.fees.relayFee, { maxDecimals: 6 })} ETH
+                                    </span>
+                                    {toUsdValue(entry.fees.relayFee) !== null && (
+                                      <span className="text-neutral-600">(~{formatUsdAmount(toUsdValue(entry.fees.relayFee)!)})</span>
+                                    )}
+                                  </div>
                                 </div>
                               )}
                               {entry.fees?.solverFee && BigInt(entry.fees.solverFee) > BigInt(0) && (
                                 <div className="flex justify-between text-neutral-500">
                                   <span>Solver Fee</span>
-                                  <span className="text-orange-400/70">
-                                    -{formatEthAmount(entry.fees.solverFee, { maxDecimals: 6 })} ETH
-                                  </span>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-orange-400/70">
+                                      -{formatEthAmount(entry.fees.solverFee, { maxDecimals: 6 })} ETH
+                                    </span>
+                                    {toUsdValue(entry.fees.solverFee) !== null && (
+                                      <span className="text-neutral-600">(~{formatUsdAmount(toUsdValue(entry.fees.solverFee)!)})</span>
+                                    )}
+                                  </div>
                                 </div>
                               )}
                               {entry.fees?.vettingFee && BigInt(entry.fees.vettingFee) > BigInt(0) && (
                                 <div className="flex justify-between text-neutral-500">
                                   <span>Compliance Fee</span>
-                                  <span className="text-orange-400/70">
-                                    -{formatEthAmount(entry.fees.vettingFee, { maxDecimals: 6 })} ETH
-                                  </span>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-orange-400/70">
+                                      -{formatEthAmount(entry.fees.vettingFee, { maxDecimals: 6 })} ETH
+                                    </span>
+                                    {toUsdValue(entry.fees.vettingFee) !== null && (
+                                      <span className="text-neutral-600">(~{formatUsdAmount(toUsdValue(entry.fees.vettingFee)!)})</span>
+                                    )}
+                                  </div>
                                 </div>
                               )}
                             </div>
