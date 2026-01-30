@@ -79,7 +79,7 @@ export function DepositPreviewScreen({
     <ScreenLayout
       containerClassName="h-[600px] bg-white/[0.02]"
       header={<ScreenHeader title="Transaction Preview" onBack={onBack} />}
-      contentClassName="space-y-4 px-6 py-4 font-sans text-white"
+      contentClassName="space-y-4 px-4 py-4"
       footer={
         <Button
           onClick={onConfirm}

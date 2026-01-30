@@ -191,7 +191,7 @@ export function WithdrawalTimelineScreen({
           Close
         </Button>
       }
-      contentClassName="space-y-4 px-6 py-4"
+      contentClassName="space-y-4 px-4 py-4"
     >
       <div className="flex flex-1 flex-col items-center space-y-4">
         <div className="flex flex-col items-center space-y-2 text-center">

@@ -217,7 +217,7 @@ export default function DepositPage() {
   return (
     <ScreenLayout
       header={<ScreenHeader title="Deposit" icon={<ArrowDownToLine className="h-5 w-5" />} />}
-      contentClassName="px-4 py-4 sm:px-6"
+      contentClassName="px-4 py-4"
     >
       <div className="flex-1 space-y-3 overflow-y-auto">
         <div className="relative flex flex-col gap-2">
