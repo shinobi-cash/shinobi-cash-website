@@ -1,14 +1,14 @@
 /**
  * Activity Types
  *
- * Activities are derived from notes in note chains.
- * Each note represents a distinct activity (deposit, withdrawal, or refund).
+ * ActivityEntry wraps a Note with computed display values.
+ * This provides a view model for the activity list/details screens.
  */
 
-import type { ASPStatus } from "@shinobi-cash/data";
+import type { Note } from "@shinobi-cash/core";
 
 /**
- * Activity type derived from note type
+ * Display type derived from note type
  */
 export type ActivityType = "deposit" | "withdrawal" | "refund";
 
@@ -18,41 +18,25 @@ export type ActivityType = "deposit" | "withdrawal" | "refund";
 export type ActivityFilter = "all" | "deposit" | "withdrawal" | "refund";
 
 /**
- * Activity derived from a note
+ * Activity entry - wraps a Note with computed display values
  */
-export interface Activity {
-  // Identification
-  id: string; // `${depositIndex}-${changeIndex}`
+export interface ActivityEntry {
+  /** The underlying note */
+  note: Note;
+
+  /** Display type (deposit/withdrawal/refund) */
   type: ActivityType;
 
-  // Amount
-  amount: string; // In wei
+  /**
+   * Display amount:
+   * - For deposits: the deposited amount (note.amount)
+   * - For withdrawals: the withdrawn amount (prevNote.amount - note.amount)
+   * - For refunds: the refunded amount
+   */
+  displayAmount: string;
 
-  // Timestamps
-  timestamp: string;
-  blockNumber: string;
-
-  // Status
-  status: "unspent" | "spent";
-  aspStatus: ASPStatus;
-  isActivated: boolean;
-
-  // Transaction details
-  originTransactionHash: string;
-  destinationTransactionHash: string;
-
-  // Chain info
-  originChainId: string;
-  destinationChainId: string;
+  /** Whether this is a cross-chain operation */
   isCrossChain: boolean;
-
-  // Pool and indices
-  poolAddress: string;
-  depositIndex: number;
-  changeIndex: number;
-
-  // Labels
-  label: string;
 }
 
 /**
@@ -83,3 +67,19 @@ export const ACTIVITY_TYPE_LABELS: Record<ActivityType, string> = {
   withdrawal: "Withdrawal",
   refund: "Refund",
 };
+
+/**
+ * Get unique ID for an activity entry
+ */
+export function getActivityId(entry: ActivityEntry): string {
+  return `${entry.note.depositIndex}-${entry.note.changeIndex}`;
+}
+
+/**
+ * Get activity type from note
+ */
+export function getActivityType(note: Note): ActivityType {
+  if (note.noteType === "deposit") return "deposit";
+  if (note.noteType === "refund") return "refund";
+  return "withdrawal";
+}
