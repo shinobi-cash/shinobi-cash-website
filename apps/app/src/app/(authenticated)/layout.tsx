@@ -6,7 +6,6 @@ import { Footer } from "@/components/layout/Footer";
 import { NavLinks } from "@/components/layout/NavLinks";
 import { useSnapshot } from "valtio";
 import { AuthController } from "@/controllers/AuthController";
-import { IndexerHealthIndicator } from "@/components/indicators/IndexerHealthIndicator";
 import { NotesSyncIndicator } from "@/components/indicators/NotesSyncIndicator";
 import { NotesSyncingScreen } from "@/components/indicators/NotesSyncingBanner";
 import { NotesDiscoveryController } from "@/controllers/NotesDiscoveryController";
@@ -46,14 +45,7 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
 
       <div className="hidden shrink-0 md:block">
         <Footer
-          indicators={
-            isAuthenticated ? (
-              <>
-                <NotesSyncIndicator />
-                <IndexerHealthIndicator />
-              </>
-            ) : undefined
-          }
+          indicators={isAuthenticated ? <NotesSyncIndicator /> : undefined}
         />
       </div>
     </div>
