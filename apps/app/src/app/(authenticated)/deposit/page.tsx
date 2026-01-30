@@ -1,6 +1,6 @@
 "use client";
 
-import { Copy, Check, Loader2, CircleQuestionMarkIcon, ArrowDownToLine, Wallet } from "lucide-react";
+import { Copy, Check, CircleQuestionMarkIcon, ArrowDownToLine, Wallet } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAppKitNetwork } from "@reown/appkit/react";
 import { useSnapshot } from "valtio";
@@ -13,7 +13,6 @@ import { QuickAmountButtons } from "@/components/shared/QuickAmountButtons";
 import { PriceDisplay } from "@/components/shared/PriceDisplay";
 import { AmountUsd } from "@/components/shared/AmountUsd";
 import { SectionDivider } from "@/components/shared/SectionDivider";
-import { FeeBreakdown } from "@/components/shared/FeeBreakdown";
 import { AssetChainSelectorScreen } from "@/components/screens/AssetChainSelectorScreen";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { modal } from "@/context";
@@ -29,6 +28,7 @@ import { ScreenLayout } from "@/components/layout/ScreenLayout";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";
 import { useScreenNavigation } from "@/hooks/useScreenNavigation";
 import { ETH_ASSET, DISPLAY_DECIMALS } from "@/constants/withdraw";
+import { formatUsdAmount } from "@/utils/formatters";
 
 type DepositScreen = "timeline" | "preview" | "assetSelector";
 
@@ -220,7 +220,7 @@ export default function DepositPage() {
       contentClassName="px-4 py-4"
     >
       <div className="flex-1 space-y-3 overflow-y-auto">
-        <div className="relative flex flex-col gap-2">
+        <div className="flex flex-col gap-2">
           {/* You Pay */}
           <CardContainer>
             <div className="mb-3 flex items-center justify-between">
@@ -277,7 +277,20 @@ export default function DepositPage() {
             </div>
           </CardContainer>
 
-          <SectionDivider />
+          <SectionDivider
+            networkFee={
+              state.state.status === "ready" && usdPrice
+                ? formatUsdAmount(parseFloat(state.state.gasEstimate.gasCostEth) * usdPrice)
+                : undefined
+            }
+            solverFee={
+              state.state.status === "ready" && usdPrice && state.state.amounts.solverFee > 0
+                ? formatUsdAmount(state.state.amounts.solverFee * usdPrice)
+                : undefined
+            }
+            isCrossChain={DepositSelectors.isCrossChain()}
+            isLoading={state.state.status === "preparing"}
+          />
 
           {/* You Receive */}
           <CardContainer>
@@ -305,10 +318,7 @@ export default function DepositPage() {
           size="lg"
         >
           {state.state.status === "preparing" ? (
-            <div className="flex items-center gap-2">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Preparing Deposit...
-            </div>
+            "Estimating gas..."
           ) : state.state.status === "ready" ? (
             "Review Deposit"
           ) : !state.amount.trim() ? (
@@ -322,15 +332,6 @@ export default function DepositPage() {
           )}
         </Button>
 
-        {state.state.status === "ready" && (
-          <FeeBreakdown
-            executionFee={state.state.gasEstimate.gasCostEth}
-            assetSymbol={asset.symbol}
-            solverFee={state.state.amounts.solverFee}
-            isCrossChain={DepositSelectors.isCrossChain()}
-            decimals={6}
-          />
-        )}
       </div>
     </ScreenLayout>
   );

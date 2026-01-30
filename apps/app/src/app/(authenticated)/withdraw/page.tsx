@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, ChevronDown, ArrowUpFromLine, Banknote, Wallet, Check, X } from "lucide-react";
+import { ChevronDown, ArrowUpFromLine, Banknote, Wallet, Check, X } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import { Button } from "@workspace/ui/components/button";
 import { POOL_CHAIN } from "@shinobi-cash/constants";
@@ -12,13 +12,12 @@ import { PriceDisplay } from "@/components/shared/PriceDisplay";
 import { AmountUsd } from "@/components/shared/AmountUsd";
 import { SectionDivider } from "@/components/shared/SectionDivider";
 import { AssetChainSelectorScreen } from "@/components/screens/AssetChainSelectorScreen";
-import { FeeBreakdown } from "@/components/shared/FeeBreakdown";
 import { NoteSelectionScreen } from "@/components/screens/NoteSelectionScreen";
 import { WithdrawalPreviewScreen } from "@/components/screens/WithdrawalPreviewScreen";
 import { WithdrawalTimelineScreen } from "@/components/screens/WithdrawalTimelineScreen";
 import { useTransactionTracking } from "@/hooks/useTransactionTracking";
 import { DISPLAY_DECIMALS, ETH_ASSET } from "@/constants/withdraw";
-import { formatEthAmount } from "@/utils/formatters";
+import { formatEthAmount, formatUsdAmount } from "@/utils/formatters";
 import { ScreenLayout } from "@/components/layout/ScreenLayout";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";
 import { useScreenNavigation } from "@/hooks/useScreenNavigation";
@@ -177,7 +176,7 @@ export default function WithdrawPage() {
       contentClassName="px-4 py-4"
     >
       <div className="flex-1 space-y-3 overflow-y-auto">
-        <div className="relative flex flex-col gap-2">
+        <div className="flex flex-col gap-2">
           {/* You Pay */}
           <CardContainer>
             <div className="mb-3 flex items-center justify-between">
@@ -219,7 +218,20 @@ export default function WithdrawPage() {
             </div>
           </CardContainer>
 
-          <SectionDivider />
+          <SectionDivider
+            networkFee={
+              state.previewFeeQuote && usdPrice
+                ? formatUsdAmount(WithdrawSelectors.getExecutionFee() * usdPrice)
+                : undefined
+            }
+            solverFee={
+              state.previewFeeQuote && usdPrice && WithdrawSelectors.getSolverFee() > 0
+                ? formatUsdAmount(WithdrawSelectors.getSolverFee() * usdPrice)
+                : undefined
+            }
+            isCrossChain={WithdrawSelectors.isCrossChain()}
+            isLoading={state.state.status === "previewing"}
+          />
 
           {/* You Receive */}
           <CardContainer>
@@ -308,10 +320,7 @@ export default function WithdrawPage() {
           size="lg"
         >
           {state.state.status === "previewing" ? (
-            <div className="flex items-center gap-2">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Previewing fees...
-            </div>
+            "Estimating gas..."
           ) : !state.selectedNote ? (
             "Select a Note"
           ) : !state.amount.trim() ? (
@@ -323,15 +332,6 @@ export default function WithdrawPage() {
           )}
         </Button>
 
-        {state.previewFeeQuote && (
-          <FeeBreakdown
-            executionFee={WithdrawSelectors.getExecutionFee()}
-            solverFee={WithdrawSelectors.getSolverFee()}
-            assetSymbol={asset.symbol}
-            isCrossChain={WithdrawSelectors.isCrossChain()}
-            showAsDeduction={true}
-          />
-        )}
       </div>
     </ScreenLayout>
   );
