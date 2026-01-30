@@ -184,11 +184,13 @@ const BIGINT_FIELDS = {
     'timestamp',
     'originChainId',
     'destinationChainId',
+    'fillDeadline',
+    'expires',
   ],
   pool: ['totalDeposits', 'totalWithdrawals', 'depositCount', 'withdrawalCount', 'uniqueDepositors', 'ragequitCount', 'totalRagequitAmount', 'createdAt', 'count', 'totalAmount'],
   stateTreeLeaf: ['leafIndex', 'treeSize'],
   aspApprovalList: ['timestamp'],
-  crossChainIntent: ['originChainId', 'destinationChainId', 'amount', 'createdAt'],
+  crossChainIntent: ['originChainId', 'destinationChainId', 'amount', 'createdAt', 'fillDeadline', 'expires'],
 };
 
 /**

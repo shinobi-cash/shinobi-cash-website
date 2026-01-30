@@ -105,6 +105,11 @@ export interface Activity {
   /** Cross-chain order ID */
   orderId?: string;
 
+  /** Fill deadline for cross-chain intents (unix timestamp) */
+  fillDeadline?: bigint;
+  /** Expiry timestamp for cross-chain intents - refund available after this (unix timestamp) */
+  expires?: bigint;
+
   /** Block number */
   blockNumber: bigint;
   /** Timestamp */
@@ -213,6 +218,10 @@ export interface CrossChainIntent {
   amount: bigint;
   /** Creation timestamp */
   createdAt: bigint;
+  /** Fill deadline - solver must fill before this (unix timestamp) */
+  fillDeadline: bigint;
+  /** Expiry timestamp - refund available after this (unix timestamp) */
+  expires: bigint;
   /** Origin transaction hash */
   originTxHash: string;
   /** Destination transaction hash (when filled) */
@@ -256,6 +265,8 @@ export interface SerializedActivity {
   solver?: string;
   isSponsored?: boolean;
   orderId?: string;
+  fillDeadline?: string;
+  expires?: string;
   blockNumber: string;
   timestamp: string;
   originTransactionHash: string;
@@ -322,6 +333,8 @@ export interface SerializedCrossChainIntent {
   destinationChainId: string;
   amount: string;
   createdAt: string;
+  fillDeadline: string;
+  expires: string;
   originTxHash: string;
   destinationTxHash?: string;
   activityId?: string;
@@ -416,6 +429,10 @@ export interface CrossChainDepositPendingActivity extends Omit<Activity, 'type'>
   orderId: string;
   originChainId: bigint;
 
+  // Intent deadlines
+  fillDeadline?: bigint;
+  expires?: bigint;
+
   // Amount may be null until filled
   amount: bigint | null;
 }
@@ -432,6 +449,10 @@ export interface CrossChainWithdrawalPendingActivity extends Omit<Activity, 'typ
   recipient: string;
   originChainId: bigint;
   destinationChainId: bigint;
+
+  // Intent deadlines
+  fillDeadline?: bigint;
+  expires?: bigint;
 
   // Optional
   newCommitment?: string;
@@ -464,7 +485,7 @@ export type TypedActivity =
 /**
  * Serialized typed activities
  */
-export interface SerializedDepositActivity extends Omit<DepositActivity, 'amount' | 'originalAmount' | 'vettingFeeAmount' | 'relayFeeAmount' | 'solverFeeAmount' | 'paymasterFeeRefund' | 'blockNumber' | 'timestamp' | 'originChainId' | 'destinationChainId'> {
+export interface SerializedDepositActivity extends Omit<DepositActivity, 'amount' | 'originalAmount' | 'vettingFeeAmount' | 'relayFeeAmount' | 'solverFeeAmount' | 'paymasterFeeRefund' | 'blockNumber' | 'timestamp' | 'originChainId' | 'destinationChainId' | 'fillDeadline' | 'expires'> {
   amount: string | null;
   originalAmount?: string;
   vettingFeeAmount?: string;
@@ -475,9 +496,11 @@ export interface SerializedDepositActivity extends Omit<DepositActivity, 'amount
   timestamp: string;
   originChainId: string;
   destinationChainId?: string;
+  fillDeadline?: string;
+  expires?: string;
 }
 
-export interface SerializedWithdrawalActivity extends Omit<WithdrawalActivity, 'amount' | 'originalAmount' | 'vettingFeeAmount' | 'relayFeeAmount' | 'solverFeeAmount' | 'paymasterFeeRefund' | 'blockNumber' | 'timestamp' | 'originChainId' | 'destinationChainId'> {
+export interface SerializedWithdrawalActivity extends Omit<WithdrawalActivity, 'amount' | 'originalAmount' | 'vettingFeeAmount' | 'relayFeeAmount' | 'solverFeeAmount' | 'paymasterFeeRefund' | 'blockNumber' | 'timestamp' | 'originChainId' | 'destinationChainId' | 'fillDeadline' | 'expires'> {
   amount: string | null;
   originalAmount?: string;
   vettingFeeAmount?: string;
@@ -488,9 +511,11 @@ export interface SerializedWithdrawalActivity extends Omit<WithdrawalActivity, '
   timestamp: string;
   originChainId: string;
   destinationChainId?: string;
+  fillDeadline?: string;
+  expires?: string;
 }
 
-export interface SerializedCrossChainDepositActivity extends Omit<CrossChainDepositActivity, 'amount' | 'originalAmount' | 'vettingFeeAmount' | 'relayFeeAmount' | 'solverFeeAmount' | 'paymasterFeeRefund' | 'blockNumber' | 'timestamp' | 'originChainId' | 'destinationChainId'> {
+export interface SerializedCrossChainDepositActivity extends Omit<CrossChainDepositActivity, 'amount' | 'originalAmount' | 'vettingFeeAmount' | 'relayFeeAmount' | 'solverFeeAmount' | 'paymasterFeeRefund' | 'blockNumber' | 'timestamp' | 'originChainId' | 'destinationChainId' | 'fillDeadline' | 'expires'> {
   amount: string | null;
   originalAmount?: string;
   vettingFeeAmount?: string;
@@ -501,9 +526,11 @@ export interface SerializedCrossChainDepositActivity extends Omit<CrossChainDepo
   timestamp: string;
   originChainId: string;
   destinationChainId: string;
+  fillDeadline?: string;
+  expires?: string;
 }
 
-export interface SerializedCrossChainWithdrawalActivity extends Omit<CrossChainWithdrawalActivity, 'amount' | 'originalAmount' | 'vettingFeeAmount' | 'relayFeeAmount' | 'solverFeeAmount' | 'paymasterFeeRefund' | 'blockNumber' | 'timestamp' | 'originChainId' | 'destinationChainId'> {
+export interface SerializedCrossChainWithdrawalActivity extends Omit<CrossChainWithdrawalActivity, 'amount' | 'originalAmount' | 'vettingFeeAmount' | 'relayFeeAmount' | 'solverFeeAmount' | 'paymasterFeeRefund' | 'blockNumber' | 'timestamp' | 'originChainId' | 'destinationChainId' | 'fillDeadline' | 'expires'> {
   amount: string | null;
   originalAmount?: string;
   vettingFeeAmount?: string;
@@ -514,9 +541,11 @@ export interface SerializedCrossChainWithdrawalActivity extends Omit<CrossChainW
   timestamp: string;
   originChainId: string;
   destinationChainId: string;
+  fillDeadline?: string;
+  expires?: string;
 }
 
-export interface SerializedCrossChainDepositPendingActivity extends Omit<CrossChainDepositPendingActivity, 'amount' | 'originalAmount' | 'vettingFeeAmount' | 'relayFeeAmount' | 'solverFeeAmount' | 'paymasterFeeRefund' | 'blockNumber' | 'timestamp' | 'originChainId' | 'destinationChainId'> {
+export interface SerializedCrossChainDepositPendingActivity extends Omit<CrossChainDepositPendingActivity, 'amount' | 'originalAmount' | 'vettingFeeAmount' | 'relayFeeAmount' | 'solverFeeAmount' | 'paymasterFeeRefund' | 'blockNumber' | 'timestamp' | 'originChainId' | 'destinationChainId' | 'fillDeadline' | 'expires'> {
   amount: string | null;
   originalAmount?: string;
   vettingFeeAmount?: string;
@@ -527,9 +556,11 @@ export interface SerializedCrossChainDepositPendingActivity extends Omit<CrossCh
   timestamp: string;
   originChainId: string;
   destinationChainId?: string;
+  fillDeadline?: string;
+  expires?: string;
 }
 
-export interface SerializedCrossChainWithdrawalPendingActivity extends Omit<CrossChainWithdrawalPendingActivity, 'amount' | 'originalAmount' | 'vettingFeeAmount' | 'relayFeeAmount' | 'solverFeeAmount' | 'paymasterFeeRefund' | 'blockNumber' | 'timestamp' | 'originChainId' | 'destinationChainId'> {
+export interface SerializedCrossChainWithdrawalPendingActivity extends Omit<CrossChainWithdrawalPendingActivity, 'amount' | 'originalAmount' | 'vettingFeeAmount' | 'relayFeeAmount' | 'solverFeeAmount' | 'paymasterFeeRefund' | 'blockNumber' | 'timestamp' | 'originChainId' | 'destinationChainId' | 'fillDeadline' | 'expires'> {
   amount: string | null;
   originalAmount?: string;
   vettingFeeAmount?: string;
@@ -540,9 +571,11 @@ export interface SerializedCrossChainWithdrawalPendingActivity extends Omit<Cros
   timestamp: string;
   originChainId: string;
   destinationChainId: string;
+  fillDeadline?: string;
+  expires?: string;
 }
 
-export interface SerializedRagequitActivity extends Omit<RagequitActivity, 'amount' | 'originalAmount' | 'vettingFeeAmount' | 'relayFeeAmount' | 'solverFeeAmount' | 'paymasterFeeRefund' | 'blockNumber' | 'timestamp' | 'originChainId' | 'destinationChainId'> {
+export interface SerializedRagequitActivity extends Omit<RagequitActivity, 'amount' | 'originalAmount' | 'vettingFeeAmount' | 'relayFeeAmount' | 'solverFeeAmount' | 'paymasterFeeRefund' | 'blockNumber' | 'timestamp' | 'originChainId' | 'destinationChainId' | 'fillDeadline' | 'expires'> {
   amount: string;
   originalAmount?: string;
   vettingFeeAmount?: string;
@@ -553,6 +586,8 @@ export interface SerializedRagequitActivity extends Omit<RagequitActivity, 'amou
   timestamp: string;
   originChainId: string;
   destinationChainId?: string;
+  fillDeadline?: string;
+  expires?: string;
 }
 
 export type SerializedTypedActivity =
@@ -644,8 +679,8 @@ export interface ActivityFilters {
   before?: bigint;
   /** Minimum amount */
   minAmount?: bigint;
-  /** Only activated (has label) */
-  isActivated?: boolean;
+  /** Filter by intent status (cross-chain only) */
+  intentStatus?: IntentStatus;
 }
 
 /**
