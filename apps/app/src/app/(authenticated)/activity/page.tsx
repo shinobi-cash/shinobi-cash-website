@@ -32,7 +32,7 @@ export default function ActivityPage() {
 
   return (
     <ScreenLayout
-      containerClassName="h-[600px] bg-white/[0.02]"
+      containerClassName="h-[600px]"
       header={
         <ScreenHeader
           title="Activity"

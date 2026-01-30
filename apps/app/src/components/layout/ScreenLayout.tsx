@@ -20,7 +20,7 @@ export function ScreenLayout({
   showFooterDivider = false,
 }: ScreenLayoutProps) {
   return (
-    <div className={cn("flex flex-col", containerClassName)}>
+    <div className={cn("flex flex-col bg-white/[0.02]", containerClassName)}>
       {header}
 
       <div className={cn("flex-1 overflow-y-auto", contentClassName)}>{children}</div>

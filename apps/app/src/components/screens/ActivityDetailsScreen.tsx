@@ -42,7 +42,7 @@ export function ActivityDetailsScreen({ entry, onBack, onViewNoteChain }: Activi
   return (
     <ScreenLayout
       header={<ScreenHeader title={`${ACTIVITY_TYPE_LABELS[type]} Details`} onBack={onBack} />}
-      containerClassName="h-[600px] w-full bg-white/[0.02]"
+      containerClassName="h-[600px] w-full"
       contentClassName="px-4 py-4 overflow-y-auto"
       footer={
         <Button

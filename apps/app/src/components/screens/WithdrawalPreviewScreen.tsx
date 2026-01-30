@@ -62,7 +62,7 @@ export function WithdrawalPreviewScreen({
 
   return (
     <ScreenLayout
-      containerClassName="h-[600px] bg-white/[0.02]"
+      containerClassName="h-[600px]"
       header={<ScreenHeader title="Transaction Preview" onBack={onBack} />}
       contentClassName="space-y-4 px-4 py-4"
       footer={

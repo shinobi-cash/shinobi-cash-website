@@ -196,7 +196,7 @@ export default function DepositPage() {
   if (screens.is("assetSelector")) {
     return (
       <ScreenLayout
-        containerClassName="h-[600px] bg-white/[0.02]"
+        containerClassName="h-[600px]"
         header={<ScreenHeader title="Select Asset & Chain" onBack={screens.close} />}
       >
         <AssetChainSelectorScreen
@@ -218,9 +218,30 @@ export default function DepositPage() {
     <ScreenLayout
       header={<ScreenHeader title="Deposit" icon={<ArrowDownToLine className="h-5 w-5" />} />}
       contentClassName="px-4 py-4"
+      footer={
+        <Button
+          disabled={!DepositSelectors.canDeposit()}
+          onClick={handleReviewDeposit}
+          className="h-12 w-full rounded-xl text-base font-semibold disabled:cursor-not-allowed disabled:opacity-50 sm:h-14 sm:text-lg"
+          size="lg"
+        >
+          {state.state.status === "preparing" ? (
+            "Estimating gas..."
+          ) : state.state.status === "ready" ? (
+            "Review Deposit"
+          ) : !state.amount.trim() ? (
+            "Enter Amount to Deposit"
+          ) : !state.wallet.isConnected ? (
+            "Connect Wallet to Continue"
+          ) : !DepositSelectors.isOnSupportedChain() ? (
+            "Switch to Supported Network"
+          ) : (
+            "Review Deposit"
+          )}
+        </Button>
+      }
     >
-      <div className="flex-1 space-y-3 overflow-y-auto">
-        <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2">
           {/* You Pay */}
           <CardContainer>
             <div className="mb-3 flex items-center justify-between">
@@ -309,29 +330,6 @@ export default function DepositPage() {
               <AmountUsd amountUsd={noteAmountUsd} />
             </div>
           </CardContainer>
-        </div>
-
-        <Button
-          disabled={!DepositSelectors.canDeposit()}
-          onClick={handleReviewDeposit}
-          className="h-12 w-full rounded-xl text-base font-semibold disabled:cursor-not-allowed disabled:opacity-50 sm:h-14 sm:text-lg"
-          size="lg"
-        >
-          {state.state.status === "preparing" ? (
-            "Estimating gas..."
-          ) : state.state.status === "ready" ? (
-            "Review Deposit"
-          ) : !state.amount.trim() ? (
-            "Enter Amount to Deposit"
-          ) : !state.wallet.isConnected ? (
-            "Connect Wallet to Continue"
-          ) : !DepositSelectors.isOnSupportedChain() ? (
-            "Switch to Supported Network"
-          ) : (
-            "Review Deposit"
-          )}
-        </Button>
-
       </div>
     </ScreenLayout>
   );

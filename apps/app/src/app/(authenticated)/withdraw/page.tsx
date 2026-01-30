@@ -137,7 +137,7 @@ export default function WithdrawPage() {
   // Show destination selection screen
   if (screens.is("destinationSelection")) {
     return (
-      <ScreenLayout containerClassName="h-[600px] bg-white/[0.02]" header={<ScreenHeader title="Select Asset & Chain" onBack={screens.close} />}>
+      <ScreenLayout containerClassName="h-[600px]" header={<ScreenHeader title="Select Asset & Chain" onBack={screens.close} />}>
         <AssetChainSelectorScreen
           selectedChainId={state.destinationChainId}
           onChainChange={(newChainId) => {
@@ -174,9 +174,28 @@ export default function WithdrawPage() {
     <ScreenLayout
       header={<ScreenHeader title="Withdraw" icon={<ArrowUpFromLine className="h-5 w-5" />} />}
       contentClassName="px-4 py-4"
+      footer={
+        <Button
+          onClick={handleReviewWithdrawal}
+          disabled={!WithdrawSelectors.canWithdraw()}
+          className="h-12 w-full rounded-xl text-base font-semibold disabled:cursor-not-allowed disabled:opacity-50 sm:h-14 sm:text-lg"
+          size="lg"
+        >
+          {state.state.status === "previewing" ? (
+            "Estimating gas..."
+          ) : !state.selectedNote ? (
+            "Select a Note"
+          ) : !state.amount.trim() ? (
+            "Enter Amount"
+          ) : !state.recipientAddress ? (
+            "Enter Recipient Address"
+          ) : (
+            "Review Withdrawal"
+          )}
+        </Button>
+      }
     >
-      <div className="flex-1 space-y-3 overflow-y-auto">
-        <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2">
           {/* You Pay */}
           <CardContainer>
             <div className="mb-3 flex items-center justify-between">
@@ -311,27 +330,6 @@ export default function WithdrawPage() {
               <AmountUsd amountUsd={youReceiveUsd} />
             </div>
           </CardContainer>
-        </div>
-
-        <Button
-          onClick={handleReviewWithdrawal}
-          disabled={!WithdrawSelectors.canWithdraw()}
-          className="h-12 w-full rounded-xl text-base font-semibold disabled:cursor-not-allowed disabled:opacity-50 sm:h-14 sm:text-lg"
-          size="lg"
-        >
-          {state.state.status === "previewing" ? (
-            "Estimating gas..."
-          ) : !state.selectedNote ? (
-            "Select a Note"
-          ) : !state.amount.trim() ? (
-            "Enter Amount"
-          ) : !state.recipientAddress ? (
-            "Enter Recipient Address"
-          ) : (
-            "Review Withdrawal"
-          )}
-        </Button>
-
       </div>
     </ScreenLayout>
   );
