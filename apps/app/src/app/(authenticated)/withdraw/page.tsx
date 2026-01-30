@@ -17,7 +17,6 @@ import { NoteSelectionScreen } from "@/components/screens/NoteSelectionScreen";
 import { WithdrawalPreviewScreen } from "@/components/screens/WithdrawalPreviewScreen";
 import { WithdrawalTimelineScreen } from "@/components/screens/WithdrawalTimelineScreen";
 import { useTransactionTracking } from "@/hooks/useTransactionTracking";
-import type { EnginePhase } from "@/services/WithdrawalOrchestratorService";
 import { DISPLAY_DECIMALS, ETH_ASSET } from "@/constants/withdraw";
 import { formatEthAmount } from "@/utils/formatters";
 import { ScreenLayout } from "@/components/layout/ScreenLayout";
@@ -73,17 +72,6 @@ export default function WithdrawPage() {
     screens.close();
   };
 
-  // Derive current engine phase for timeline
-  const currentPhase: EnginePhase | null = (() => {
-    if (state.state.status === "preparing") {
-      return state.state.phase;
-    }
-    if (state.state.status === "ready" || state.state.status === "submitting") {
-      return "prepared";
-    }
-    return null;
-  })();
-
   // Get transaction details
   const txHash = (() => {
     if (state.state.status === "confirmed" || state.state.status === "indexed") {
@@ -99,7 +87,6 @@ export default function WithdrawPage() {
     }
   }, [txHash, trackTransaction]);
 
-  const isConfirmed = state.state.status === "confirmed" || state.state.status === "indexed";
   const hasError = state.state.status === "error";
   const error = hasError ? state.state.error : state.lastError;
 
@@ -108,10 +95,9 @@ export default function WithdrawPage() {
     return (
       <WithdrawalTimelineScreen
         amount={parseFloat(state.amount) || 0}
-        currentPhase={currentPhase}
+        status={state.state.status}
         txHash={txHash}
         error={error}
-        isConfirmed={isConfirmed}
         isCrossChain={WithdrawSelectors.isCrossChain()}
         onClose={handleTimelineClose}
       />
@@ -210,7 +196,7 @@ export default function WithdrawPage() {
                 >
                   <Banknote className="h-3 w-3" />
                   {state.selectedNote
-                    ? `Note ${state.selectedNote.depositIndex}.${state.selectedNote.changeIndex}`
+                    ? `Note #${state.selectedNote.depositIndex + 1}`
                     : "Select Note"}
                   <ChevronDown className="h-3 w-3" />
                 </button>

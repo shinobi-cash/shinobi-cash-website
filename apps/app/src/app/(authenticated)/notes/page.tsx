@@ -1,22 +1,46 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Banknote, History } from "lucide-react";
+import { useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Banknote } from "lucide-react";
 import { Badge } from "@workspace/ui/components/badge";
 import { AmountDisplay } from "@/components/shared/AmountDisplay";
 import { NoteChainScreen } from "@/components/screens/NoteChainScreen";
 import { NotesSection } from "@/components/notes/NotesSection";
 import { ScreenLayout } from "@/components/layout/ScreenLayout";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { NoteChain } from "@shinobi-cash/core";
 import { useNotesScreen } from "@/hooks/useNotesScreen";
 import { NotesScreenSelectors } from "@/controllers/NotesScreenController";
+import { NotesDiscoveryController } from "@/controllers/NotesDiscoveryController";
 
 export default function NotesPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const controller = useNotesScreen();
+
+  // Handle depositIndex query param from Activity → View Note Chain navigation
+  const depositIndexParam = searchParams.get("depositIndex");
+  const { isLoading, selectNoteChain } = controller;
+  useEffect(() => {
+    if (!depositIndexParam || isLoading) return;
+
+    const depositIndex = parseInt(depositIndexParam, 10);
+    if (isNaN(depositIndex)) return;
+
+    // Find matching note chain by deposit index
+    const noteChains = NotesDiscoveryController.state.noteChains;
+    const matchingChain = noteChains.find((chain) => {
+      if (chain.length === 0) return false;
+      return chain[0].depositIndex === depositIndex;
+    });
+
+    if (matchingChain) {
+      selectNoteChain(matchingChain as NoteChain);
+      // Clear the query param to avoid re-selecting on subsequent renders
+      router.replace("/notes", { scroll: false });
+    }
+  }, [depositIndexParam, isLoading, selectNoteChain, router]);
 
   const startWithdrawal = (noteChain: NoteChain) => {
     if (NotesScreenSelectors.canWithdrawFromChain(noteChain)) {
@@ -44,26 +68,11 @@ export default function NotesPage() {
           title="Notes"
           icon={<Banknote className="h-5 w-5" />}
           rightContent={
-            <div className="flex items-center gap-2">
-              {controller.syncError && (
-                <Badge variant="secondary" className="text-yellow-400">
-                  Cached
-                </Badge>
-              )}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Link
-                    href="/activity"
-                    className="rounded p-1.5 text-neutral-400 transition-colors hover:bg-white/10 hover:text-white"
-                  >
-                    <History className="h-5 w-5" />
-                  </Link>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="text-xs">View activity</p>
-                </TooltipContent>
-              </Tooltip>
-            </div>
+            controller.syncError ? (
+              <Badge variant="secondary" className="text-yellow-400">
+                Cached
+              </Badge>
+            ) : undefined
           }
         />
       }
