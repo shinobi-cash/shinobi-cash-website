@@ -196,4 +196,3 @@ export async function fetchLatestIndexedBlock(): Promise<{
     return null;
   }
 }
-

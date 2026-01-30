@@ -82,7 +82,12 @@ export function Header({ rightSlot }: HeaderProps) {
               <DropdownMenuSeparator />
 
               <DropdownMenuItem asChild>
-                <a href="#" target="_blank" rel="noopener noreferrer" className="w-full cursor-pointer">
+                <a
+                  href="#"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full cursor-pointer"
+                >
                   GitHub
                 </a>
               </DropdownMenuItem>
