@@ -96,20 +96,19 @@ export function ActivityList({
   };
 
   return (
-    <div className="h-full space-y-2 overflow-y-auto">
+    <div className="h-full overflow-y-auto">
       {renderEmptyState()}
 
       {entries.length > 0 && (
-        <>
+        <div className="divide-y divide-white/5">
           {entries.map((entry) => (
-            <div key={getActivityId(entry)}>
-              <ActivityRow
-                entry={entry}
-                onClick={() => onActivityClick?.(getActivityId(entry))}
-              />
-            </div>
+            <ActivityRow
+              key={getActivityId(entry)}
+              entry={entry}
+              onClick={() => onActivityClick?.(getActivityId(entry))}
+            />
           ))}
-        </>
+        </div>
       )}
     </div>
   );
