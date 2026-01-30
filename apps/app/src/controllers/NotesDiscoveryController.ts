@@ -6,7 +6,12 @@ import { createStateMachine } from "@/utils/stateMachine";
 import { SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
 import { AuthController } from "@/controllers/AuthController";
 import { NotesError, NotesStatus, ReadonlyNoteChain } from "@/types/notes";
-import { getSpendableNotes, getWithdrawableNotes, getLastNote, getNoteChainCounts } from "@/utils/noteFiltering";
+import {
+  getSpendableNotes,
+  getWithdrawableNotes,
+  getLastNote,
+  getNoteChainCounts,
+} from "@/utils/noteFiltering";
 import { NOTES_SYNC_INTERVAL_MS } from "@/constants/timings";
 
 /**

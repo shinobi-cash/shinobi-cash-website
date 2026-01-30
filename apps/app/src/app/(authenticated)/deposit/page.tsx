@@ -5,7 +5,11 @@ import { useState, useEffect } from "react";
 import { useAppKitNetwork } from "@reown/appkit/react";
 import { useSnapshot } from "valtio";
 import { Button } from "@workspace/ui/components/button";
-import { POOL_CHAIN, SHINOBI_CASH_ETH_POOL, SHINOBI_CASH_SUPPORTED_CHAINS } from "@shinobi-cash/constants";
+import {
+  POOL_CHAIN,
+  SHINOBI_CASH_ETH_POOL,
+  SHINOBI_CASH_SUPPORTED_CHAINS,
+} from "@shinobi-cash/constants";
 import { CardContainer } from "@/components/shared/CardContainer";
 import { AssetPill } from "@/components/shared/AssetPill";
 import { AmountInput } from "@/components/shared/AmountInput";
@@ -225,111 +229,112 @@ export default function DepositPage() {
           className="h-12 w-full rounded-xl text-base font-semibold disabled:cursor-not-allowed disabled:opacity-50 sm:h-14 sm:text-lg"
           size="lg"
         >
-          {state.state.status === "preparing" ? (
-            "Estimating gas..."
-          ) : state.state.status === "ready" ? (
-            "Review Deposit"
-          ) : !state.amount.trim() ? (
-            "Enter Amount to Deposit"
-          ) : !state.wallet.isConnected ? (
-            "Connect Wallet to Continue"
-          ) : !DepositSelectors.isOnSupportedChain() ? (
-            "Switch to Supported Network"
-          ) : (
-            "Review Deposit"
-          )}
+          {state.state.status === "preparing"
+            ? "Estimating gas..."
+            : state.state.status === "ready"
+              ? "Review Deposit"
+              : !state.amount.trim()
+                ? "Enter Amount to Deposit"
+                : !state.wallet.isConnected
+                  ? "Connect Wallet to Continue"
+                  : !DepositSelectors.isOnSupportedChain()
+                    ? "Switch to Supported Network"
+                    : "Review Deposit"}
         </Button>
       }
     >
       <div className="flex flex-col gap-2">
-          {/* You Pay */}
-          <CardContainer>
-            <div className="mb-3 flex items-center justify-between">
-              <span className="text-sm text-neutral-400">You Pay</span>
-              <div className="flex items-center gap-2">
-                {state.wallet.address ? (
-                  <>
-                    <span className="text-sm text-neutral-400">
-                      {formattedBalance} {asset.symbol}
-                    </span>
-                    <button
-                      onClick={handleCopyAddress}
-                      className="flex cursor-pointer items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 text-sm text-neutral-400 transition-colors hover:bg-white/[0.08] hover:text-white"
-                    >
-                      <Wallet className="h-3 w-3" />
-                      {state.wallet.address.slice(0, 6)}...{state.wallet.address.slice(-4)}
-                      {copiedAddress ? (
-                        <Check className="h-3 w-3 text-emerald-400" />
-                      ) : (
-                        <Copy className="h-3 w-3" />
-                      )}
-                    </button>
-                  </>
-                ) : (
+        {/* You Pay */}
+        <CardContainer>
+          <div className="mb-3 flex items-center justify-between">
+            <span className="text-sm text-neutral-400">You Pay</span>
+            <div className="flex items-center gap-2">
+              {state.wallet.address ? (
+                <>
+                  <span className="text-sm text-neutral-400">
+                    {formattedBalance} {asset.symbol}
+                  </span>
                   <button
-                    onClick={handleConnectWallet}
+                    onClick={handleCopyAddress}
                     className="flex cursor-pointer items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 text-sm text-neutral-400 transition-colors hover:bg-white/[0.08] hover:text-white"
                   >
                     <Wallet className="h-3 w-3" />
-                    Connect Wallet
+                    {state.wallet.address.slice(0, 6)}...{state.wallet.address.slice(-4)}
+                    {copiedAddress ? (
+                      <Check className="h-3 w-3 text-emerald-400" />
+                    ) : (
+                      <Copy className="h-3 w-3" />
+                    )}
                   </button>
-                )}
-              </div>
+                </>
+              ) : (
+                <button
+                  onClick={handleConnectWallet}
+                  className="flex cursor-pointer items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 text-sm text-neutral-400 transition-colors hover:bg-white/[0.08] hover:text-white"
+                >
+                  <Wallet className="h-3 w-3" />
+                  Connect Wallet
+                </button>
+              )}
             </div>
+          </div>
 
-            <div className="flex items-center justify-between gap-3">
-              <AssetPill
-                asset={asset}
-                chainId={state.wallet.chainId}
-                onClick={() => screens.navigate("assetSelector")}
-                disabled={isDisabled}
-              />
-              <AmountInput
-                value={state.amount}
-                onChange={(value) => DepositController.setAmount(value)}
-                disabled={isDisabled}
-              />
-            </div>
-            <div className="flex items-center justify-end">
-              <QuickAmountButtons
-                onSelect={handleQuickAmount}
-                disabled={isDisabled || parseFloat(state.wallet.balance) <= 0}
-              />
-            </div>
-          </CardContainer>
+          <div className="flex items-center justify-between gap-3">
+            <AssetPill
+              asset={asset}
+              chainId={state.wallet.chainId}
+              onClick={() => screens.navigate("assetSelector")}
+              disabled={isDisabled}
+            />
+            <AmountInput
+              value={state.amount}
+              onChange={(value) => DepositController.setAmount(value)}
+              disabled={isDisabled}
+            />
+          </div>
+          <div className="flex items-center justify-end">
+            <QuickAmountButtons
+              onSelect={handleQuickAmount}
+              disabled={isDisabled || parseFloat(state.wallet.balance) <= 0}
+            />
+          </div>
+        </CardContainer>
 
-          <SectionDivider
-            networkFee={
-              state.state.status === "ready" && usdPrice
-                ? formatUsdAmount(parseFloat(state.state.gasEstimate.gasCostEth) * usdPrice)
-                : undefined
-            }
-            solverFee={
-              state.state.status === "ready" && usdPrice && state.state.amounts.solverFee > 0
-                ? formatUsdAmount(state.state.amounts.solverFee * usdPrice)
-                : undefined
-            }
-            isCrossChain={DepositSelectors.isCrossChain()}
-            isLoading={state.state.status === "preparing"}
-          />
+        <SectionDivider
+          networkFee={
+            state.state.status === "ready" && usdPrice
+              ? formatUsdAmount(parseFloat(state.state.gasEstimate.gasCostEth) * usdPrice)
+              : undefined
+          }
+          solverFee={
+            state.state.status === "ready" && usdPrice && state.state.amounts.solverFee > 0
+              ? formatUsdAmount(state.state.amounts.solverFee * usdPrice)
+              : undefined
+          }
+          isCrossChain={DepositSelectors.isCrossChain()}
+          isLoading={state.state.status === "preparing"}
+        />
 
-          {/* You Receive */}
-          <CardContainer>
-            <div className="flex items-center justify-between py-1">
-              <span className="text-sm text-neutral-400">You Receive (Deposit Note)</span>
-              <DepositNoteInfo />
-            </div>
+        {/* You Receive */}
+        <CardContainer>
+          <div className="flex items-center justify-between py-1">
+            <span className="text-sm text-neutral-400">You Receive (Deposit Note)</span>
+            <DepositNoteInfo />
+          </div>
 
-            <div className="flex items-center justify-between gap-3">
-              <AssetPill asset={asset} chainId={POOL_CHAIN.id} disabled />
-              <AmountInput value={noteAmount > 0 ? noteAmount.toFixed(DISPLAY_DECIMALS) : "0"} disabled />
-            </div>
+          <div className="flex items-center justify-between gap-3">
+            <AssetPill asset={asset} chainId={POOL_CHAIN.id} disabled />
+            <AmountInput
+              value={noteAmount > 0 ? noteAmount.toFixed(DISPLAY_DECIMALS) : "0"}
+              disabled
+            />
+          </div>
 
-            <div className="flex items-center justify-between py-1">
-              <PriceDisplay symbol={asset.symbol} priceUsd={usdPrice} />
-              <AmountUsd amountUsd={noteAmountUsd} />
-            </div>
-          </CardContainer>
+          <div className="flex items-center justify-between py-1">
+            <PriceDisplay symbol={asset.symbol} priceUsd={usdPrice} />
+            <AmountUsd amountUsd={noteAmountUsd} />
+          </div>
+        </CardContainer>
       </div>
     </ScreenLayout>
   );

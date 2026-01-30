@@ -148,10 +148,7 @@ export function formatUsdAmount(amount: number, decimals?: number): string {
  * e.g. 0.00000824788188 -> "0.0000082"
  * Shows leading zeros + specified significant digits
  */
-export function formatSmallEthAmount(
-  amount: string | number,
-  significantDigits = 2
-): string {
+export function formatSmallEthAmount(amount: string | number, significantDigits = 2): string {
   const num = typeof amount === "string" ? Number.parseFloat(amount) : amount;
 
   if (num === 0 || Number.isNaN(num)) return "0";

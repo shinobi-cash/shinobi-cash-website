@@ -18,10 +18,7 @@ import {
 } from "@/utils/withdrawalContract";
 import { fetchASPData, fetchStateTreeLeaves } from "@/utils/indexer";
 import { withdrawalProofGenerator } from "@/services/ProofGeneratorService";
-import {
-  deriveWithdrawalInputs,
-  deriveCrosschainWithdrawalInputs,
-} from "@shinobi-cash/core";
+import { deriveWithdrawalInputs, deriveCrosschainWithdrawalInputs } from "@shinobi-cash/core";
 import {
   buildWithdrawalCircuitWitness,
   buildCrosschainWithdrawalCircuitWitness,

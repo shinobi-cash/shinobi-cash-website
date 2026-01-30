@@ -41,13 +41,7 @@ export function AssetPill({
     >
       <div className="relative">
         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600">
-          <Image
-            src={asset.icon}
-            alt={asset.symbol}
-            width={20}
-            height={20}
-            className="h-5 w-5"
-          />
+          <Image src={asset.icon} alt={asset.symbol} width={20} height={20} className="h-5 w-5" />
         </div>
         <div className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-neutral-900 bg-white">
           <Image

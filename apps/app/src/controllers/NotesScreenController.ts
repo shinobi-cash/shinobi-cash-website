@@ -7,7 +7,12 @@
 import { proxy } from "valtio";
 import type { NoteChain } from "@shinobi-cash/core";
 import { NoteChainView, NoteFilter, ReadonlyNoteChain } from "@/types/notes";
-import { filterNoteChains, getLastNote, sortNoteChainsByTimestamp, canWithdraw } from "@/utils/noteFiltering";
+import {
+  filterNoteChains,
+  getLastNote,
+  sortNoteChainsByTimestamp,
+  canWithdraw,
+} from "@/utils/noteFiltering";
 
 /**
  * Screen UI state

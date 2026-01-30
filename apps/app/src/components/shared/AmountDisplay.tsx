@@ -87,7 +87,8 @@ export function AmountDisplay({
     <div className={`${layoutClasses[layout]} ${className}`}>
       {/* ETH Amount (always shown) */}
       <span className={ethClassName}>
-        {prefix}{formattedEth} {symbol}
+        {prefix}
+        {formattedEth} {symbol}
       </span>
 
       {/* USD Value (only if enabled and available) */}

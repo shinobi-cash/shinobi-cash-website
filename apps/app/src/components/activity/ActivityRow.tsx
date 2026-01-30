@@ -32,16 +32,19 @@ export function ActivityRow({ entry, onClick }: ActivityRowProps) {
   const isDeposit = type === "deposit";
   // Dot color based on ASP status only
   const dotColor =
-    note.aspStatus === "approved" ? "bg-emerald-500" :
-    note.aspStatus === "rejected" ? "bg-rose-500" :
-    note.aspStatus === "pending" ? "bg-amber-400" :
-    "bg-neutral-500";
+    note.aspStatus === "approved"
+      ? "bg-emerald-500"
+      : note.aspStatus === "rejected"
+        ? "bg-rose-500"
+        : note.aspStatus === "pending"
+          ? "bg-amber-400"
+          : "bg-neutral-500";
   const label = getActivityLabel(entry);
 
   return (
     <button
       type="button"
-      className="hover:bg-white/[0.04] w-full cursor-pointer px-4 py-3 text-left transition-colors"
+      className="w-full cursor-pointer px-4 py-3 text-left transition-colors hover:bg-white/[0.04]"
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
     >

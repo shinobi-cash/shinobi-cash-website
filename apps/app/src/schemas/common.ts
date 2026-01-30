@@ -5,11 +5,9 @@ import { z } from "zod";
 // =============================================================================
 
 /** Hex string starting with 0x */
-export const HexStringSchema = z
-  .string()
-  .refine((s): s is `0x${string}` => s.startsWith("0x"), {
-    message: "Expected hex string starting with 0x",
-  });
+export const HexStringSchema = z.string().refine((s): s is `0x${string}` => s.startsWith("0x"), {
+  message: "Expected hex string starting with 0x",
+});
 
 /** Valid Ethereum address (0x + 40 hex chars) */
 export const HexAddressSchema = z
@@ -18,9 +16,7 @@ export const HexAddressSchema = z
   .transform((s) => s.toLowerCase() as `0x${string}`);
 
 /** Transaction hash (0x + 64 hex chars) */
-export const TxHashSchema = z
-  .string()
-  .regex(/^0x[a-fA-F0-9]{64}$/, "Invalid transaction hash");
+export const TxHashSchema = z.string().regex(/^0x[a-fA-F0-9]{64}$/, "Invalid transaction hash");
 
 /** Numeric string that can be parsed as BigInt */
 export const BigIntStringSchema = z.string().refine(

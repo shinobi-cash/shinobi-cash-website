@@ -15,7 +15,12 @@ interface SectionDividerProps {
  * Section Divider Component
  * Displays fee pills on left, arrow/loader in center, route badge on right (if cross-chain)
  */
-export function SectionDivider({ networkFee, solverFee, isCrossChain, isLoading }: SectionDividerProps) {
+export function SectionDivider({
+  networkFee,
+  solverFee,
+  isCrossChain,
+  isLoading,
+}: SectionDividerProps) {
   return (
     <div className="flex items-center justify-between py-1">
       {/* Left - Fee pills */}

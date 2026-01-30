@@ -22,7 +22,11 @@ interface ActivityDetailsScreenProps {
   onViewNoteChain?: (depositIndex: number) => void;
 }
 
-export function ActivityDetailsScreen({ entry, onBack, onViewNoteChain }: ActivityDetailsScreenProps) {
+export function ActivityDetailsScreen({
+  entry,
+  onBack,
+  onViewNoteChain,
+}: ActivityDetailsScreenProps) {
   if (!entry) return null;
 
   const { note, type, displayAmount, isCrossChain } = entry;
@@ -48,7 +52,7 @@ export function ActivityDetailsScreen({ entry, onBack, onViewNoteChain }: Activi
         <Button
           onClick={() => onViewNoteChain?.(note.depositIndex)}
           disabled={!onViewNoteChain}
-          className="w-full h-12 rounded-xl text-base font-semibold"
+          className="h-12 w-full rounded-xl text-base font-semibold"
           size="lg"
         >
           View Note Chain
@@ -117,19 +121,31 @@ export function ActivityDetailsScreen({ entry, onBack, onViewNoteChain }: Activi
             {fees.vetting && BigInt(fees.vetting) > BigInt(0) && (
               <Row
                 label="Compliance"
-                value={<span className="text-orange-400">-{formatEthAmount(fees.vetting, { maxDecimals: 6 })} ETH</span>}
+                value={
+                  <span className="text-orange-400">
+                    -{formatEthAmount(fees.vetting, { maxDecimals: 6 })} ETH
+                  </span>
+                }
               />
             )}
             {fees.relay && BigInt(fees.relay) > BigInt(0) && (
               <Row
                 label="Relay"
-                value={<span className="text-orange-400">-{formatEthAmount(fees.relay, { maxDecimals: 6 })} ETH</span>}
+                value={
+                  <span className="text-orange-400">
+                    -{formatEthAmount(fees.relay, { maxDecimals: 6 })} ETH
+                  </span>
+                }
               />
             )}
             {fees.solver && BigInt(fees.solver) > BigInt(0) && (
               <Row
                 label="Solver"
-                value={<span className="text-orange-400">-{formatEthAmount(fees.solver, { maxDecimals: 6 })} ETH</span>}
+                value={
+                  <span className="text-orange-400">
+                    -{formatEthAmount(fees.solver, { maxDecimals: 6 })} ETH
+                  </span>
+                }
               />
             )}
           </Section>
@@ -137,16 +153,28 @@ export function ActivityDetailsScreen({ entry, onBack, onViewNoteChain }: Activi
 
         {/* Note Info */}
         <Section title="Note">
-          <Row label="Index" value={<span className="font-mono">{note.depositIndex}-{note.changeIndex}</span>} />
+          <Row
+            label="Index"
+            value={
+              <span className="font-mono">
+                {note.depositIndex}-{note.changeIndex}
+              </span>
+            }
+          />
           <Row label="Pool" value={<CopyableText text={note.poolAddress} />} />
-          {note.label && (!note.isCrossChain || note.intentStatus === 'filled') && (
-            <Row label="Label" value={<CopyableText text={note.label} truncateStart={10} truncateEnd={8} />} />
+          {note.label && (!note.isCrossChain || note.intentStatus === "filled") && (
+            <Row
+              label="Label"
+              value={<CopyableText text={note.label} truncateStart={10} truncateEnd={8} />}
+            />
           )}
           {note.isCrossChain && note.intentStatus && note.intentStatus !== "filled" && (
             <Row
               label="Intent Status"
               value={
-                <span className={`capitalize ${note.intentStatus === "pending" ? "text-yellow-400" : "text-orange-400"}`}>
+                <span
+                  className={`capitalize ${note.intentStatus === "pending" ? "text-yellow-400" : "text-orange-400"}`}
+                >
                   {note.intentStatus}
                 </span>
               }
@@ -156,7 +184,9 @@ export function ActivityDetailsScreen({ entry, onBack, onViewNoteChain }: Activi
             <Row
               label="ASP Status"
               value={
-                <span className={`capitalize ${note.aspStatus === "pending" ? "text-blue-400" : "text-red-400"}`}>
+                <span
+                  className={`capitalize ${note.aspStatus === "pending" ? "text-blue-400" : "text-red-400"}`}
+                >
                   {note.aspStatus}
                 </span>
               }
@@ -167,4 +197,3 @@ export function ActivityDetailsScreen({ entry, onBack, onViewNoteChain }: Activi
     </ScreenLayout>
   );
 }
-

@@ -24,7 +24,7 @@ export function IndexerHealthIndicator() {
           <div className="absolute inset-0 h-2 w-2 animate-ping rounded-full bg-emerald-400 opacity-75" />
         )}
       </div>
-      <span className="text-neutral-400 text-xs">{isHealthy ? "Online" : "Offline"}</span>
+      <span className="text-xs text-neutral-400">{isHealthy ? "Online" : "Offline"}</span>
     </div>
   );
 }

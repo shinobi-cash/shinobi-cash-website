@@ -12,9 +12,9 @@ interface SectionProps {
 
 export function Section({ title, children }: SectionProps) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.02] overflow-hidden">
-      <div className="px-3 py-2 border-b border-white/5">
-        <h3 className="text-xs font-medium text-neutral-500 uppercase tracking-wide">{title}</h3>
+    <div className="overflow-hidden rounded-xl border border-white/10 bg-white/[0.02]">
+      <div className="border-b border-white/5 px-3 py-2">
+        <h3 className="text-xs font-medium uppercase tracking-wide text-neutral-500">{title}</h3>
       </div>
       <div className="divide-y divide-white/5">{children}</div>
     </div>

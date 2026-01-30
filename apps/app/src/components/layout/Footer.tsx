@@ -8,7 +8,7 @@ export function Footer({ indicators }: FooterProps) {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="border-white/10 bg-black/60 border-t backdrop-blur">
+    <footer className="border-t border-white/10 bg-black/60 backdrop-blur">
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
           <div className="text-muted-foreground text-sm">© Shinobi Cash - {currentYear}</div>

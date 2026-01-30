@@ -112,7 +112,7 @@ export function NoteChainScreen({ noteChain, onBack }: NoteChainScreenProps) {
         {/* Balance Summary */}
         <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 text-center">
           <p className="mb-1 text-sm font-medium text-neutral-400">Remaining Balance</p>
-          <div className="flex justify-center items-center gap-2">
+          <div className="flex items-center justify-center gap-2">
             <span className="text-2xl font-bold tabular-nums text-white">
               {formatEthAmount(lastNote.amount, { maxDecimals: 6 })} ETH
             </span>
@@ -131,7 +131,9 @@ export function NoteChainScreen({ noteChain, onBack }: NoteChainScreenProps) {
             <Row
               label="Intent Status"
               value={
-                <span className={`capitalize ${lastNote.intentStatus === "pending" ? "text-yellow-400" : "text-orange-400"}`}>
+                <span
+                  className={`capitalize ${lastNote.intentStatus === "pending" ? "text-yellow-400" : "text-orange-400"}`}
+                >
                   {lastNote.intentStatus}
                 </span>
               }
@@ -140,10 +142,15 @@ export function NoteChainScreen({ noteChain, onBack }: NoteChainScreenProps) {
           <Row
             label="ASP Status"
             value={
-              <span className={`capitalize ${
-                lastNote.aspStatus === "approved" ? "text-emerald-400" :
-                lastNote.aspStatus === "pending" ? "text-blue-400" : "text-red-400"
-              }`}>
+              <span
+                className={`capitalize ${
+                  lastNote.aspStatus === "approved"
+                    ? "text-emerald-400"
+                    : lastNote.aspStatus === "pending"
+                      ? "text-blue-400"
+                      : "text-red-400"
+                }`}
+              >
                 {lastNote.aspStatus}
               </span>
             }
@@ -158,14 +165,15 @@ export function NoteChainScreen({ noteChain, onBack }: NoteChainScreenProps) {
                 const isLastEntry = index === timelineEntries.length - 1;
                 const ethAmount = formatEthAmount(entry.amount, { maxDecimals: 6 });
                 const usdValue = toUsdValue(entry.amount);
-                const amountColorClass = entry.prefix === "-" ? "text-rose-400" : "text-emerald-400";
+                const amountColorClass =
+                  entry.prefix === "-" ? "text-rose-400" : "text-emerald-400";
 
                 // Calculate total fees for this entry
-                const totalFees = entry.fees && (
+                const totalFees =
+                  entry.fees &&
                   (entry.fees.relayFee ? BigInt(entry.fees.relayFee) : BigInt(0)) +
-                  (entry.fees.solverFee ? BigInt(entry.fees.solverFee) : BigInt(0)) +
-                  (entry.fees.vettingFee ? BigInt(entry.fees.vettingFee) : BigInt(0))
-                );
+                    (entry.fees.solverFee ? BigInt(entry.fees.solverFee) : BigInt(0)) +
+                    (entry.fees.vettingFee ? BigInt(entry.fees.vettingFee) : BigInt(0));
                 const hasFeeData = totalFees && totalFees > BigInt(0);
 
                 return (
@@ -179,12 +187,15 @@ export function NoteChainScreen({ noteChain, onBack }: NoteChainScreenProps) {
                       )}
                       <div className="relative flex flex-col space-y-1">
                         <div className="flex items-center space-x-3">
-                          <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full ${entry.dotColor}`} />
-                          <div className="flex flex-1 gap-3 items-center">
+                          <span
+                            className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full ${entry.dotColor}`}
+                          />
+                          <div className="flex flex-1 items-center gap-3">
                             <span className="text-sm font-medium text-white">{entry.label}</span>
-                            <div className="flex items-center gap-2 flex-1 justify-end">
+                            <div className="flex flex-1 items-center justify-end gap-2">
                               <span className={`text-sm tabular-nums ${amountColorClass}`}>
-                                {entry.prefix}{ethAmount} ETH
+                                {entry.prefix}
+                                {ethAmount} ETH
                               </span>
                               {usdValue !== null && (
                                 <span className="text-xs tabular-nums text-neutral-500">
@@ -216,13 +227,17 @@ export function NoteChainScreen({ noteChain, onBack }: NoteChainScreenProps) {
                         </div>
                         {/* Fee breakdown (collapsible for withdrawals) */}
                         {hasFeeData && (
-                          <details className="pl-7 pt-1 group">
-                            <summary className="flex items-center gap-1 text-xs text-neutral-500 cursor-pointer hover:text-neutral-400">
-                              <span>Fees: -{formatEthAmount(totalFees, { maxDecimals: 6 })} ETH</span>
+                          <details className="group pl-7 pt-1">
+                            <summary className="flex cursor-pointer items-center gap-1 text-xs text-neutral-500 hover:text-neutral-400">
+                              <span>
+                                Fees: -{formatEthAmount(totalFees, { maxDecimals: 6 })} ETH
+                              </span>
                               {toUsdValue(totalFees) !== null && (
-                                <span className="text-neutral-600">(~{formatUsdAmount(toUsdValue(totalFees)!)})</span>
+                                <span className="text-neutral-600">
+                                  (~{formatUsdAmount(toUsdValue(totalFees)!)})
+                                </span>
                               )}
-                              <ChevronDown className="h-3 w-3 group-open:rotate-180 transition-transform" />
+                              <ChevronDown className="h-3 w-3 transition-transform group-open:rotate-180" />
                             </summary>
                             <div className="mt-1 space-y-0.5 text-xs">
                               {entry.fees?.relayFee && BigInt(entry.fees.relayFee) > BigInt(0) && (
@@ -230,40 +245,52 @@ export function NoteChainScreen({ noteChain, onBack }: NoteChainScreenProps) {
                                   <span>Relay Fee</span>
                                   <div className="flex items-center gap-1.5">
                                     <span className="text-orange-400/70">
-                                      -{formatEthAmount(entry.fees.relayFee, { maxDecimals: 6 })} ETH
+                                      -{formatEthAmount(entry.fees.relayFee, { maxDecimals: 6 })}{" "}
+                                      ETH
                                     </span>
                                     {toUsdValue(entry.fees.relayFee) !== null && (
-                                      <span className="text-neutral-600">(~{formatUsdAmount(toUsdValue(entry.fees.relayFee)!)})</span>
+                                      <span className="text-neutral-600">
+                                        (~{formatUsdAmount(toUsdValue(entry.fees.relayFee)!)})
+                                      </span>
                                     )}
                                   </div>
                                 </div>
                               )}
-                              {entry.fees?.solverFee && BigInt(entry.fees.solverFee) > BigInt(0) && (
-                                <div className="flex justify-between text-neutral-500">
-                                  <span>Solver Fee</span>
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-orange-400/70">
-                                      -{formatEthAmount(entry.fees.solverFee, { maxDecimals: 6 })} ETH
-                                    </span>
-                                    {toUsdValue(entry.fees.solverFee) !== null && (
-                                      <span className="text-neutral-600">(~{formatUsdAmount(toUsdValue(entry.fees.solverFee)!)})</span>
-                                    )}
+                              {entry.fees?.solverFee &&
+                                BigInt(entry.fees.solverFee) > BigInt(0) && (
+                                  <div className="flex justify-between text-neutral-500">
+                                    <span>Solver Fee</span>
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-orange-400/70">
+                                        -{formatEthAmount(entry.fees.solverFee, { maxDecimals: 6 })}{" "}
+                                        ETH
+                                      </span>
+                                      {toUsdValue(entry.fees.solverFee) !== null && (
+                                        <span className="text-neutral-600">
+                                          (~{formatUsdAmount(toUsdValue(entry.fees.solverFee)!)})
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
-                                </div>
-                              )}
-                              {entry.fees?.vettingFee && BigInt(entry.fees.vettingFee) > BigInt(0) && (
-                                <div className="flex justify-between text-neutral-500">
-                                  <span>Compliance Fee</span>
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-orange-400/70">
-                                      -{formatEthAmount(entry.fees.vettingFee, { maxDecimals: 6 })} ETH
-                                    </span>
-                                    {toUsdValue(entry.fees.vettingFee) !== null && (
-                                      <span className="text-neutral-600">(~{formatUsdAmount(toUsdValue(entry.fees.vettingFee)!)})</span>
-                                    )}
+                                )}
+                              {entry.fees?.vettingFee &&
+                                BigInt(entry.fees.vettingFee) > BigInt(0) && (
+                                  <div className="flex justify-between text-neutral-500">
+                                    <span>Compliance Fee</span>
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-orange-400/70">
+                                        -
+                                        {formatEthAmount(entry.fees.vettingFee, { maxDecimals: 6 })}{" "}
+                                        ETH
+                                      </span>
+                                      {toUsdValue(entry.fees.vettingFee) !== null && (
+                                        <span className="text-neutral-600">
+                                          (~{formatUsdAmount(toUsdValue(entry.fees.vettingFee)!)})
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
-                                </div>
-                              )}
+                                )}
                             </div>
                           </details>
                         )}
@@ -279,4 +306,3 @@ export function NoteChainScreen({ noteChain, onBack }: NoteChainScreenProps) {
     </ScreenLayout>
   );
 }
-

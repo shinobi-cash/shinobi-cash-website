@@ -85,9 +85,6 @@ export function getActivityCounts(entries: ActivityEntry[]) {
 /**
  * Find activity entry by ID
  */
-export function findActivityById(
-  entries: ActivityEntry[],
-  id: string
-): ActivityEntry | undefined {
+export function findActivityById(entries: ActivityEntry[], id: string): ActivityEntry | undefined {
   return entries.find((e) => getActivityId(e) === id);
 }

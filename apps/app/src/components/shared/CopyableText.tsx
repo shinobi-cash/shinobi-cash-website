@@ -55,20 +55,16 @@ export function CopyableText({
       onClick={handleCopy}
       className={cn(
         "group inline-flex items-center gap-1.5 font-mono text-sm",
-        "text-neutral-300 hover:text-white transition-colors",
-        "cursor-pointer focus:outline-none focus:ring-1 focus:ring-white/50 rounded px-1 -mx-1",
+        "text-neutral-300 transition-colors hover:text-white",
+        "-mx-1 cursor-pointer rounded px-1 focus:outline-none focus:ring-1 focus:ring-white/50",
         className
       )}
       title={`Click to copy: ${text}`}
     >
       <span>{shownText}</span>
       {showIcon && (
-        <span className="text-neutral-500 group-hover:text-neutral-300 transition-colors">
-          {copied ? (
-            <Check className="h-3 w-3 text-emerald-400" />
-          ) : (
-            <Copy className="h-3 w-3" />
-          )}
+        <span className="text-neutral-500 transition-colors group-hover:text-neutral-300">
+          {copied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
         </span>
       )}
     </button>

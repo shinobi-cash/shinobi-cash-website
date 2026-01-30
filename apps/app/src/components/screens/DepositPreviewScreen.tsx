@@ -8,7 +8,11 @@ import { Section, Row } from "@/components/shared/Section";
 import { LabelWithHover } from "@/components/shared/LabelWithHover";
 import { usePriceData } from "@/hooks/usePriceData";
 import { formatUsdAmount, formatSmallEthAmount } from "@/utils/formatters";
-import { POOL_CHAIN, SHINOBI_CASH_SUPPORTED_CHAINS, CROSSCHAIN_DEPOSIT_TIMING } from "@shinobi-cash/constants";
+import {
+  POOL_CHAIN,
+  SHINOBI_CASH_SUPPORTED_CHAINS,
+  CROSSCHAIN_DEPOSIT_TIMING,
+} from "@shinobi-cash/constants";
 import { ShinobiCashNote, AssetChain } from "@/components/shared/AssetChain";
 
 interface DepositPreviewScreenProps {
@@ -106,7 +110,9 @@ export function DepositPreviewScreen({
           <div className="flex items-center justify-between">
             <AssetChain assetSymbol="ETH" chainId={originChainId} />
             <div className="flex flex-col items-end">
-              <span className="text-lg font-bold">{formatSmallEthAmount(depositAmountNum)} ETH</span>
+              <span className="text-lg font-bold">
+                {formatSmallEthAmount(depositAmountNum)} ETH
+              </span>
               {depositUsd !== null && (
                 <span className="text-xs text-neutral-500">~{formatUsdAmount(depositUsd)}</span>
               )}
@@ -116,8 +122,18 @@ export function DepositPreviewScreen({
 
         {/* Arrow */}
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-neutral-900">
-          <svg className="h-4 w-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+          <svg
+            className="h-4 w-4 text-neutral-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M14 5l7 7m0 0l-7 7m7-7H3"
+            />
           </svg>
         </div>
 
@@ -127,7 +143,9 @@ export function DepositPreviewScreen({
           <div className="flex items-center justify-between">
             <ShinobiCashNote />
             <div className="flex flex-col items-end">
-              <span className="text-lg font-bold">{formatSmallEthAmount(depositNoteAmount)} ETH</span>
+              <span className="text-lg font-bold">
+                {formatSmallEthAmount(depositNoteAmount)} ETH
+              </span>
               {noteUsd !== null && (
                 <span className="text-xs text-neutral-500">~{formatUsdAmount(noteUsd)}</span>
               )}
@@ -165,10 +183,7 @@ export function DepositPreviewScreen({
           label={`Vetting Fee (${vettingFeePercent.toFixed(0)}%)`}
           value={<FeeValue amount={complianceFee} usdValue={vettingFeeUsd} />}
         />
-        <Row
-          label="Network Gas"
-          value={<FeeValue amount={gasCostNum} usdValue={gasFeeUsd} />}
-        />
+        <Row label="Network Gas" value={<FeeValue amount={gasCostNum} usdValue={gasFeeUsd} />} />
         {isCrossChain && (
           <Row
             label="Fill Deadline"

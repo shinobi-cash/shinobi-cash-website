@@ -76,7 +76,6 @@ export async function fetchActivities(
   }
 }
 
-
 export async function fetchStateTreeLeaves(poolId: string): Promise<StateTreeLeaf[]> {
   assertAuthenticated();
   try {

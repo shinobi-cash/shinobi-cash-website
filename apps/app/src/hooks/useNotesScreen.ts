@@ -14,7 +14,10 @@ import { useSnapshot } from "valtio";
 import type { Note, NoteChain } from "@shinobi-cash/core";
 import type { NotesStatus, NotesError, NoteFilter, NoteChainView } from "@/types/notes";
 import { useNotesDiscovery } from "./useNotesDiscovery";
-import { NotesDiscoveryController, NotesDiscoverySelectors } from "@/controllers/NotesDiscoveryController";
+import {
+  NotesDiscoveryController,
+  NotesDiscoverySelectors,
+} from "@/controllers/NotesDiscoveryController";
 import { NotesScreenController, NotesScreenSelectors } from "@/controllers/NotesScreenController";
 
 /**
@@ -70,7 +73,11 @@ export interface NotesScreenControllerAPI {
 export function useNotesScreen(): NotesScreenControllerAPI {
   // Selective subscription to discovery controller
   // Only access properties we actually need - excludes progress
-  const { noteChains, state: discoveryState, lastError } = useSnapshot(NotesDiscoveryController.state);
+  const {
+    noteChains,
+    state: discoveryState,
+    lastError,
+  } = useSnapshot(NotesDiscoveryController.state);
 
   // Selective subscription to screen controller
   const { activeFilter, selectedNoteChain } = useSnapshot(NotesScreenController.state);

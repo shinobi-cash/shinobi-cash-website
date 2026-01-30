@@ -22,7 +22,7 @@ export function NoteRow({ note, onClick }: NoteRowProps) {
   return (
     <button
       type="button"
-      className="hover:bg-white/[0.04] w-full cursor-pointer px-4 py-3 text-left transition-colors"
+      className="w-full cursor-pointer px-4 py-3 text-left transition-colors hover:bg-white/[0.04]"
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
     >

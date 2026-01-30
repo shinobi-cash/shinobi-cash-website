@@ -17,7 +17,15 @@ import { getTxExplorerUrl } from "@/config/chains";
 import { formatDateTime } from "@/utils/formatters";
 import { POOL_CHAIN } from "@shinobi-cash/constants";
 
-type WithdrawStatus = "idle" | "previewing" | "preparing" | "ready" | "submitting" | "confirmed" | "indexed" | "error";
+type WithdrawStatus =
+  | "idle"
+  | "previewing"
+  | "preparing"
+  | "ready"
+  | "submitting"
+  | "confirmed"
+  | "indexed"
+  | "error";
 
 interface WithdrawalTimelineScreenProps {
   amount: number;
@@ -74,11 +82,7 @@ export function WithdrawalTimelineScreen({
   const isTransactionError = error && error.code === ErrorCode.WITHDRAWAL.TRANSACTION_FAILED;
 
   // Determine which step failed
-  const failedAtStep = isPreparationError
-    ? "preparing"
-    : isTransactionError
-      ? "submitting"
-      : null;
+  const failedAtStep = isPreparationError ? "preparing" : isTransactionError ? "submitting" : null;
 
   // Step 1: Preparing (proof generation)
   const preparingStatus: StepStatus = isPreparationError
@@ -162,7 +166,10 @@ export function WithdrawalTimelineScreen({
       status: submittingStatus,
       description: "Waiting for on-chain confirmation.",
       errorMessage: failedAtStep === "submitting" ? getErrorMessage() : undefined,
-      link: explorerUrl && submittingStatus !== "pending" ? { url: explorerUrl, text: "View transaction" } : undefined,
+      link:
+        explorerUrl && submittingStatus !== "pending"
+          ? { url: explorerUrl, text: "View transaction" }
+          : undefined,
       timestamp: timings["submitting"]?.displayTime,
       duration: timings["submitting"]?.duration,
     },
@@ -181,7 +188,9 @@ export function WithdrawalTimelineScreen({
   return (
     <ScreenLayout
       containerClassName="h-[600px]"
-      header={<ScreenHeader title="Transaction details" onBack={onClose} backDisabled={!canGoBack} />}
+      header={
+        <ScreenHeader title="Transaction details" onBack={onClose} backDisabled={!canGoBack} />
+      }
       footer={
         <Button
           onClick={onClose}

@@ -171,7 +171,10 @@ export function DepositTimelineScreen({
       status: submittingStatus,
       description: "Waiting for on-chain confirmation.",
       errorMessage: failedAtStep === "submitting" ? getErrorMessage() : undefined,
-      link: explorerUrl && submittingStatus !== "pending" ? { url: explorerUrl, text: "View transaction" } : undefined,
+      link:
+        explorerUrl && submittingStatus !== "pending"
+          ? { url: explorerUrl, text: "View transaction" }
+          : undefined,
       timestamp: timings["submitting"]?.displayTime,
       duration: timings["submitting"]?.duration,
     },
@@ -190,7 +193,9 @@ export function DepositTimelineScreen({
   return (
     <ScreenLayout
       containerClassName="h-[600px]"
-      header={<ScreenHeader title="Transaction details" onBack={onClose} backDisabled={!canGoBack} />}
+      header={
+        <ScreenHeader title="Transaction details" onBack={onClose} backDisabled={!canGoBack} />
+      }
       footer={
         <Button
           onClick={onClose}

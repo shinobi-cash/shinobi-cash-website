@@ -39,7 +39,7 @@ export function getLastNote(noteChain: ReadonlyNoteChain): Note {
  * - Cross-chain: in pool when intent is filled
  */
 export function isInPool(note: Note): boolean {
-  return !note.isCrossChain || note.intentStatus === 'filled';
+  return !note.isCrossChain || note.intentStatus === "filled";
 }
 
 // ============================================
@@ -52,22 +52,22 @@ export function isInPool(note: Note): boolean {
  */
 export function getNoteCategory(note: Note): NoteCategory {
   // Spent: Already used or refunded
-  if (note.status === 'spent') return 'spent';
-  if (note.intentStatus === 'refunded') return 'spent';
+  if (note.status === "spent") return "spent";
+  if (note.intentStatus === "refunded") return "spent";
 
   // Zero balance is effectively spent
-  if (BigInt(note.amount) <= BigInt(0)) return 'spent';
+  if (BigInt(note.amount) <= BigInt(0)) return "spent";
 
   // Pending: Not in pool yet (cross-chain waiting for solver)
-  if (!isInPool(note)) return 'pending';
+  if (!isInPool(note)) return "pending";
 
   // Pending: In pool but ASP hasn't decided
-  if (note.aspStatus === 'pending') return 'pending';
+  if (note.aspStatus === "pending") return "pending";
 
   // Spendable: In pool with ASP decision (approved or rejected)
   // - Approved: can withdraw privately or ragequit
   // - Rejected: can only ragequit
-  return 'spendable';
+  return "spendable";
 }
 
 // ============================================
@@ -90,11 +90,7 @@ export function canWithdraw(note: Note): boolean {
  * (Contract only checks: depositor match, valid proof, commitment exists)
  */
 export function canRagequit(note: Note): boolean {
-  return (
-    note.status === "unspent" &&
-    isInPool(note) &&
-    BigInt(note.amount) > BigInt(0)
-  );
+  return note.status === "unspent" && isInPool(note) && BigInt(note.amount) > BigInt(0);
 }
 
 /**
@@ -158,7 +154,6 @@ export function isWaitingForSolver(note: Note): boolean {
   return now <= Number(note.expires);
 }
 
-
 // ============================================
 // FILTER FUNCTIONS
 // ============================================
@@ -176,11 +171,11 @@ export function filterNoteChains(
 
     switch (filter) {
       case "spendable":
-        return category === 'spendable';
+        return category === "spendable";
       case "pending":
-        return category === 'pending';
+        return category === "pending";
       case "spent":
-        return category === 'spent';
+        return category === "spent";
       default:
         return false;
     }
@@ -197,9 +192,9 @@ export function getNoteChainCounts(noteChains: NoteChain[]): {
       const lastNote = getLastNote(noteChain);
       const category = getNoteCategory(lastNote);
 
-      if (category === 'spendable') {
+      if (category === "spendable") {
         counts.spendable++;
-      } else if (category === 'pending') {
+      } else if (category === "pending") {
         counts.pending++;
       } else {
         counts.spent++;

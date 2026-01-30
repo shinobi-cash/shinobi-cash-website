@@ -60,21 +60,19 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
           </div>
 
           {/* Card Content */}
-          <div className="rounded-2xl">
-            {isNotesSyncing ? <NotesSyncingScreen /> : children}
-          </div>
+          <div className="rounded-2xl">{isNotesSyncing ? <NotesSyncingScreen /> : children}</div>
         </div>
       </div>
 
       <div className="hidden shrink-0 md:block">
         <Footer
-              indicators={
-                <>
-                  <NotesSyncIndicator />
-                  <IndexerHealthIndicator />
-                </>
-              }
-            />
+          indicators={
+            <>
+              <NotesSyncIndicator />
+              <IndexerHealthIndicator />
+            </>
+          }
+        />
       </div>
     </div>
   );

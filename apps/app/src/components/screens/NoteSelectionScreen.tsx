@@ -34,7 +34,7 @@ export function NoteSelectionScreen({
     >
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="text-neutral-400 h-6 w-6 animate-spin" />
+          <Loader2 className="h-6 w-6 animate-spin text-neutral-400" />
         </div>
       ) : availableNotes.length === 0 ? (
         <div className="flex flex-col items-center justify-center px-4 py-12">
@@ -66,7 +66,9 @@ export function NoteSelectionScreen({
                   {/* Left: Status dot + Label + Timestamp */}
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ${dotColor}`} />
+                      <span
+                        className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ${dotColor}`}
+                      />
                       <span className="truncate text-sm font-medium text-white">
                         Note #{note.depositIndex + 1}
                       </span>
@@ -87,9 +89,7 @@ export function NoteSelectionScreen({
                         usdClassName="text-xs text-neutral-500"
                       />
                     </div>
-                    {isSelected && (
-                      <Check className="h-4 w-4 text-emerald-400" />
-                    )}
+                    {isSelected && <Check className="h-4 w-4 text-emerald-400" />}
                   </div>
                 </div>
               </button>

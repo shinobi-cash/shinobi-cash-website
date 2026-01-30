@@ -14,10 +14,7 @@ interface CardContainerProps {
 export function CardContainer({ children, className }: CardContainerProps) {
   return (
     <div
-      className={cn(
-        "rounded-2xl border border-white/10 bg-white/[0.02] p-4 space-y-3",
-        className
-      )}
+      className={cn("space-y-3 rounded-2xl border border-white/10 bg-white/[0.02] p-4", className)}
     >
       {children}
     </div>

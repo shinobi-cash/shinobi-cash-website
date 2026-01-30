@@ -76,52 +76,52 @@ export function ProfileMenu() {
             <ChevronDown className="h-3.5 w-3.5" />
           </button>
         </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="border-border bg-background w-56 p-1">
-            <DropdownMenuGroup>
-              <DropdownMenuLabel className="text-muted-foreground px-2 text-xs font-semibold">
-                Account
-              </DropdownMenuLabel>
-              {canAddPasskey && (
-                <>
-                  <DropdownMenuItem
-                    onClick={handleAddPasskey}
-                    className="text-muted-foreground hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground cursor-pointer"
-                  >
-                    <FingerprintIcon className="h-4 w-4" />
-                    Add Passkey
-                  </DropdownMenuItem>
-                </>
-              )}
-
-              {passkeyEnabled && (
+        <DropdownMenuContent align="end" className="border-border bg-background w-56 p-1">
+          <DropdownMenuGroup>
+            <DropdownMenuLabel className="text-muted-foreground px-2 text-xs font-semibold">
+              Account
+            </DropdownMenuLabel>
+            {canAddPasskey && (
+              <>
                 <DropdownMenuItem
-                  onClick={handleRemovePasskey}
-                  className="hover:bg-muted focus:bg-muted cursor-pointer text-yellow-400 hover:text-yellow-300 focus:text-yellow-300"
-                >
-                  <FingerprintIcon className="h-4 w-4" />
-                  Remove Passkey
-                </DropdownMenuItem>
-              )}
-
-              {isConnected && (
-                <DropdownMenuItem
-                  onClick={handleDisconnectWallet}
+                  onClick={handleAddPasskey}
                   className="text-muted-foreground hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground cursor-pointer"
                 >
-                  <WalletIcon className="h-4 w-4" />
-                  Disconnect Wallet
+                  <FingerprintIcon className="h-4 w-4" />
+                  Add Passkey
                 </DropdownMenuItem>
-              )}
+              </>
+            )}
 
+            {passkeyEnabled && (
               <DropdownMenuItem
-                onClick={handleLogout}
-                className="hover:bg-muted focus:bg-muted cursor-pointer text-red-400 hover:text-red-300 focus:text-red-300"
+                onClick={handleRemovePasskey}
+                className="hover:bg-muted focus:bg-muted cursor-pointer text-yellow-400 hover:text-yellow-300 focus:text-yellow-300"
               >
-                <LogOut className="h-4 w-4" />
-                Logout
+                <FingerprintIcon className="h-4 w-4" />
+                Remove Passkey
               </DropdownMenuItem>
-            </DropdownMenuGroup>
-          </DropdownMenuContent>
+            )}
+
+            {isConnected && (
+              <DropdownMenuItem
+                onClick={handleDisconnectWallet}
+                className="text-muted-foreground hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground cursor-pointer"
+              >
+                <WalletIcon className="h-4 w-4" />
+                Disconnect Wallet
+              </DropdownMenuItem>
+            )}
+
+            <DropdownMenuItem
+              onClick={handleLogout}
+              className="hover:bg-muted focus:bg-muted cursor-pointer text-red-400 hover:text-red-300 focus:text-red-300"
+            >
+              <LogOut className="h-4 w-4" />
+              Logout
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
+        </DropdownMenuContent>
       </DropdownMenu>
     </>
   );
