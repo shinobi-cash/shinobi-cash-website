@@ -11,7 +11,6 @@ import { ScreenLayout } from "@/components/layout/ScreenLayout";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";
 import { NoteChain } from "@shinobi-cash/core";
 import { useNotesScreen } from "@/hooks/useNotesScreen";
-import { NotesScreenSelectors } from "@/controllers/NotesScreenController";
 import { NotesDiscoveryController } from "@/controllers/NotesDiscoveryController";
 
 export default function NotesPage() {
@@ -42,20 +41,12 @@ export default function NotesPage() {
     }
   }, [depositIndexParam, isLoading, selectNoteChain, router]);
 
-  const startWithdrawal = (noteChain: NoteChain) => {
-    if (NotesScreenSelectors.canWithdrawFromChain(noteChain)) {
-      controller.clearSelection();
-      router.push("/withdraw");
-    }
-  };
-
   // Show note chain details screen
   if (controller.selectedNoteChain) {
     return (
       <NoteChainScreen
         noteChain={controller.selectedNoteChain}
         onBack={controller.clearSelection}
-        onWithdrawClick={startWithdrawal}
       />
     );
   }

@@ -6,18 +6,16 @@
 import { getTxExplorerUrl } from "@/config/chains";
 import type { NoteChain, Note } from "@shinobi-cash/core";
 import { formatEthAmount, formatTimestamp, formatUsdAmount } from "@/utils/formatters";
-import { canWithdraw, canRagequit } from "@/utils/noteFiltering";
 import { ExternalLink, ChevronDown } from "lucide-react";
-import { Button } from "@workspace/ui/components/button";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";
 import { ScreenLayout } from "@/components/layout/ScreenLayout";
+import { Section, Row } from "@/components/shared/Section";
 import { CopyableText } from "@/components/shared/CopyableText";
 import { usePriceData } from "@/hooks/usePriceData";
 
 interface NoteChainScreenProps {
   noteChain: NoteChain | null;
   onBack: () => void;
-  onWithdrawClick?: (noteChain: NoteChain) => void;
 }
 
 interface TimelineEntry {
@@ -82,14 +80,12 @@ function buildTimelineEntries(noteChain: NoteChain): TimelineEntry[] {
   return entries;
 }
 
-export function NoteChainScreen({ noteChain, onBack, onWithdrawClick }: NoteChainScreenProps) {
+export function NoteChainScreen({ noteChain, onBack }: NoteChainScreenProps) {
   const { usdPrice } = usePriceData("ETH");
 
   if (!noteChain) return null;
 
   const lastNote = noteChain[noteChain.length - 1];
-  const isWithdrawable = canWithdraw(lastNote) && !!onWithdrawClick;
-  const isRagequitable = canRagequit(lastNote);
 
   // Convert ETH amount to USD value
   const toUsdValue = (amount: string | bigint): number | null => {
@@ -110,46 +106,6 @@ export function NoteChainScreen({ noteChain, onBack, onWithdrawClick }: NoteChai
           subtitle="Detail of your private deposit and withdrawals"
           onBack={onBack}
         />
-      }
-      footer={
-        isWithdrawable ? (
-          <div className="flex gap-2">
-            <Button
-              onClick={onBack}
-              variant="outline"
-              className="h-12 flex-1 rounded-xl text-base font-semibold sm:h-14 sm:text-lg"
-              size="lg"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => onWithdrawClick?.(noteChain)}
-              className="h-12 flex-1 rounded-xl text-base font-semibold sm:h-14 sm:text-lg"
-              size="lg"
-            >
-              Withdraw
-            </Button>
-          </div>
-        ) : isRagequitable ? (
-          <div className="flex gap-2">
-            <Button
-              onClick={onBack}
-              variant="outline"
-              className="h-12 flex-1 rounded-xl text-base font-semibold sm:h-14 sm:text-lg"
-              size="lg"
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              disabled
-              className="h-12 flex-1 rounded-xl text-base font-semibold disabled:cursor-not-allowed disabled:opacity-50 sm:h-14 sm:text-lg"
-              size="lg"
-            >
-              Ragequit (Coming Soon)
-            </Button>
-          </div>
-        ) : undefined
       }
     >
       <div className="space-y-4">
@@ -324,24 +280,3 @@ export function NoteChainScreen({ noteChain, onBack, onWithdrawClick }: NoteChai
   );
 }
 
-// Helper components
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.02] overflow-hidden">
-      <div className="px-3 py-2 border-b border-white/5">
-        <h3 className="text-xs font-medium text-neutral-500 uppercase tracking-wide">{title}</h3>
-      </div>
-      <div className="divide-y divide-white/5">{children}</div>
-    </div>
-  );
-}
-
-function Row({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className="flex items-center justify-between px-3 py-2.5">
-      <span className="text-sm text-neutral-400">{label}</span>
-      <span className="text-sm text-white">{value}</span>
-    </div>
-  );
-}
