@@ -127,42 +127,6 @@ export function isWaitingForSolver(note: Note): boolean {
   return now <= Number(note.expires);
 }
 
-/** Cross-chain intent expired - refund available */
-export function isIntentExpired(note: Note): boolean {
-  return canClaimRefund(note);
-}
-
-/** In pool but ASP status is pending (waiting for approval) */
-export function isAwaitingApproval(note: Note): boolean {
-  return note.status === "unspent" && isInPool(note) && note.aspStatus === "pending";
-}
-
-/** In pool but ASP status is rejected (can only ragequit) */
-export function isAspRejected(note: Note): boolean {
-  return note.status === "unspent" && isInPool(note) && note.aspStatus === "rejected";
-}
-
-// ============================================
-// FILTER STATE HELPERS (for UI tabs)
-// ============================================
-
-/** Note is spendable - user can take action (withdraw or ragequit) */
-export function isNoteSpendable(note: Note): boolean {
-  return getNoteCategory(note) === 'spendable';
-}
-
-/** Note is pending - waiting for something (solver, ASP, or expired) */
-export function isNotePending(note: Note): boolean {
-  return getNoteCategory(note) === 'pending';
-}
-
-/** Note is spent - no actions available */
-export function isNoteSpent(note: Note): boolean {
-  return getNoteCategory(note) === 'spent';
-}
-
-// Legacy alias for backwards compatibility
-export const isNoteAvailable = isNoteSpendable;
 
 // ============================================
 // FILTER FUNCTIONS
@@ -190,10 +154,6 @@ export function filterNoteChains(
         return false;
     }
   });
-}
-
-export function countNoteChains(noteChains: NoteChain[], filter: NoteFilter): number {
-  return filterNoteChains(noteChains, filter).length;
 }
 
 export function getNoteChainCounts(noteChains: NoteChain[]): {
@@ -243,7 +203,3 @@ export function getSpendableNotes(noteChains: NoteChain[]): Note[] {
 export function getWithdrawableNotes(noteChains: NoteChain[]): Note[] {
   return getSpendableNotes(noteChains).filter(canWithdraw);
 }
-
-// Legacy aliases for backwards compatibility
-export const getAvailableNoteChains = getSpendableNoteChains;
-export const getAvailableNotes = getWithdrawableNotes;
