@@ -1,9 +1,9 @@
 import { proxy } from "valtio";
 import { depositService, type CashNoteData, type GasEstimate } from "@/utils/deposit";
-import { formatDepositAmountsForDisplay } from "@/utils/depositFees";
 import { isDepositSupported } from "@/utils/depositRoute";
 import { createStateMachine } from "@/utils/stateMachine";
 import { DEPOSIT_FEES, POOL_CHAIN } from "@shinobi-cash/constants";
+import { calculateDepositFeeBreakdown } from "@shinobi-cash/core";
 import type { PublicClient, WalletClient } from "viem";
 import { AuthController } from "@/controllers/AuthController";
 import {
@@ -191,7 +191,7 @@ export const DepositController = {
 
     if (current !== prepareId) return;
 
-    const amounts = formatDepositAmountsForDisplay(amount);
+    const amounts = calculateDepositFeeBreakdown(amount, DEPOSIT_FEES.COMPLIANCE_FEE_BPS);
     const isCrossChain = wallet.chainId !== POOL_CHAIN.id;
     const solverFee = isCrossChain
       ? (parseFloat(amount) * DEPOSIT_FEES.DEFAULT_SOLVER_FEE_BPS) / 10_000

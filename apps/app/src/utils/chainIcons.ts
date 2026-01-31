@@ -42,3 +42,16 @@ export function getChainIcon(chainId: number): string {
 export function getChainName(chainId: number): string {
   return CHAIN_NAME_MAP[chainId] || "Unknown";
 }
+
+const ASSET_ICON_MAP: Record<string, string> = {
+  ETH: "/chains/eth-diamond-black-white.svg",
+  OP: "/chains/OPMainnet_square.svg",
+  ARB: "/chains/AF_logomark.svg",
+};
+
+/**
+ * Get asset icon path by symbol
+ */
+export function getAssetIcon(assetSymbol: string): string {
+  return ASSET_ICON_MAP[assetSymbol] || "/chains/eth-diamond-black-white.svg";
+}

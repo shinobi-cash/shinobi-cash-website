@@ -42,8 +42,7 @@
     "valtio": "^2.3.0",
     "vaul": "^1.1.2",
     "viem": "^2.31.3",
-    "wagmi": "^2.12.31",
-    "zod": "^3.25.76"
+    "wagmi": "^2.12.31"
   },
   "devDependencies": {
     "@next/bundle-analyzer": "^16.1.4",

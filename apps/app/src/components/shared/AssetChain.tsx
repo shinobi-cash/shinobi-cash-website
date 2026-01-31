@@ -5,8 +5,7 @@
  */
 
 import Image from "next/image";
-import { getChainIcon } from "@/utils/chainIcons";
-import { getAssetIcon } from "@/utils/assetIcons";
+import { getChainIcon, getAssetIcon } from "@/utils/chainIcons";
 import { Banknote } from "lucide-react";
 import { POOL_CHAIN } from "@shinobi-cash/constants";
 

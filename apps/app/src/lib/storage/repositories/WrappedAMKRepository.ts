@@ -1,13 +1,20 @@
-import { z } from "zod";
 import { EncryptionService, type WalletAccountId } from "@shinobi-cash/core";
 import { type IndexedDBStore, AMKStorageAdapter } from "../adapters/IndexedDBStore";
 import type { WrappedAMK } from "../interfaces/IDataTypes";
-import { HexStringSchema } from "@/schemas/common";
 
-/** Schema for decrypted AMK data - privateKey is 0x + 64 hex chars */
-const DecryptedAMKSchema = z.object({
-  privateKey: HexStringSchema.refine((s) => s.length === 66, "Private key must be 66 characters"),
-});
+interface DecryptedAMK {
+  privateKey: string;
+}
+
+function isValidDecryptedAMK(value: unknown): value is DecryptedAMK {
+  if (!value || typeof value !== "object") return false;
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.privateKey === "string" &&
+    v.privateKey.startsWith("0x") &&
+    v.privateKey.length === 66
+  );
+}
 
 export class WrappedAMKRepository {
   constructor(
@@ -98,13 +105,12 @@ export class WrappedAMKRepository {
       };
 
       const decrypted = await this.encryptionService.decrypt<unknown>(encrypted);
-      const parsed = DecryptedAMKSchema.safeParse(decrypted);
 
-      if (!parsed.success) {
+      if (!isValidDecryptedAMK(decrypted)) {
         return null;
       }
 
-      return parsed.data.privateKey;
+      return decrypted.privateKey;
     } catch {
       return null;
     }
