@@ -1,27 +1,32 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useTheme } from "next-themes";
 import { Menu, X, Github } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@workspace/ui/components/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@workspace/ui/components/tooltip";
 
-const NAV_LINKS = [
-  { label: "Docs", href: "https://docs.shinobi.cash" },
-  { label: "Contact", href: "#contact" },
-] as const;
+type NavLink = {
+  label: string;
+  href: string;
+  comingSoon?: boolean;
+};
+
+const NAV_LINKS: NavLink[] = [
+  { label: "How it Works", href: "#how-it-works" },
+  { label: "Why Borderless", href: "#why" },
+  { label: "FAQ", href: "#faq" },
+  { label: "Docs", href: "#", comingSoon: true },
+];
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-  const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  // Handle hydration
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   // Handle scroll effect
   useEffect(() => {
@@ -70,35 +75,43 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20 md:h-24">
           {/* Logo */}
-          <Link href="/" className="flex items-center space-x-2 group">
-            {mounted && (
-              <Image
-                src={
-                  resolvedTheme === "dark"
-                    ? "/Shinobi.Cash-white-text.png"
-                    : "/Shinobi.Cash-black-text.png"
-                }
-                width={240}
-                height={100}
-                alt="Shinobi Cash"
-                className="h-8 md:h-10 w-auto transition-transform group-hover:scale-105"
-              />
-            )}
+          <Link href="/" className="flex items-center gap-2 sm:gap-3 group">
+            <Image
+              src="/Shinobi.Cash-icon.svg"
+              alt="Shinobi Cash"
+              width={40}
+              height={40}
+              className="h-8 w-8 md:h-10 md:w-10 transition-transform group-hover:scale-105"
+              priority
+            />
+            <div className="flex flex-col">
+              <span className="text-lg font-semibold text-white md:text-xl">Shinobi Cash</span>
+              <span className="text-[10px] text-neutral-400 sm:text-xs">Borderless Privacy</span>
+            </div>
           </Link>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
-            {NAV_LINKS.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                target={link.href.startsWith("http") ? "_blank" : undefined}
-                rel={link.href.startsWith("http") ? "noopener noreferrer" : undefined}
-                className="text-base font-medium text-neutral-400 hover:text-white transition-colors"
-              >
-                {link.label}
-              </a>
-            ))}
+            {NAV_LINKS.map((link) =>
+              link.comingSoon ? (
+                <Tooltip key={link.label}>
+                  <TooltipTrigger asChild>
+                    <span className="text-base font-medium text-neutral-600 cursor-not-allowed">
+                      {link.label}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>Coming soon</TooltipContent>
+                </Tooltip>
+              ) : (
+                <a
+                  key={link.label}
+                  href={link.href}
+                  className="text-base font-medium text-neutral-400 hover:text-white transition-colors"
+                >
+                  {link.label}
+                </a>
+              )
+            )}
             <a
               href="https://github.com/shinobi-cash"
               target="_blank"
@@ -110,11 +123,10 @@ export default function Navbar() {
             </a>
             <Button
               asChild
-              variant="outline"
               size="lg"
-              className="border border-white/10 text-white hover:bg-white/[0.06] hover:border-white/20 text-base px-6 py-5"
+              className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white border-0 text-base px-6 py-5"
             >
-              <a href="https://app.shinobi.cash" target="_blank" rel="noopener noreferrer">
+              <a href="https://testnet.shinobi.cash" target="_blank" rel="noopener noreferrer">
                 Launch App
               </a>
             </Button>
@@ -141,18 +153,26 @@ export default function Navbar() {
       {isMenuOpen && (
         <div className="md:hidden fixed inset-0 top-20 bg-black/95 backdrop-blur-lg border-t border-white/10">
           <div className="flex flex-col space-y-1 p-4">
-            {NAV_LINKS.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                target={link.href.startsWith("http") ? "_blank" : undefined}
-                rel={link.href.startsWith("http") ? "noopener noreferrer" : undefined}
-                onClick={handleLinkClick}
-                className="px-4 py-3 rounded-lg text-base font-medium text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors"
-              >
-                {link.label}
-              </a>
-            ))}
+            {NAV_LINKS.map((link) =>
+              link.comingSoon ? (
+                <span
+                  key={link.label}
+                  className="px-4 py-3 rounded-lg text-base font-medium text-neutral-600 cursor-not-allowed"
+                >
+                  {link.label}
+                  <span className="ml-1.5 text-[10px]">coming soon</span>
+                </span>
+              ) : (
+                <a
+                  key={link.label}
+                  href={link.href}
+                  onClick={handleLinkClick}
+                  className="px-4 py-3 rounded-lg text-base font-medium text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors"
+                >
+                  {link.label}
+                </a>
+              )
+            )}
             <a
               href="https://github.com/shinobi-cash"
               target="_blank"
@@ -166,10 +186,9 @@ export default function Navbar() {
             <div className="pt-4">
               <Button
                 asChild
-                variant="outline"
-                className="w-full border border-white/10 text-white hover:bg-white/[0.06] hover:border-white/20"
+                className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white border-0"
               >
-                <a href="https://app.shinobi.cash" target="_blank" rel="noopener noreferrer" onClick={handleLinkClick}>
+                <a href="https://testnet.shinobi.cash" target="_blank" rel="noopener noreferrer" onClick={handleLinkClick}>
                   Launch App
                 </a>
               </Button>
