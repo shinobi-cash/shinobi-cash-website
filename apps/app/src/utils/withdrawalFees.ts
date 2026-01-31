@@ -28,9 +28,7 @@ function classifyWithdrawal(
   destinationChainId: number | undefined,
   poolChainId: number
 ): WithdrawalKind {
-  return destinationChainId && destinationChainId !== poolChainId
-    ? "cross-chain"
-    : "same-chain";
+  return destinationChainId && destinationChainId !== poolChainId ? "cross-chain" : "same-chain";
 }
 
 /**

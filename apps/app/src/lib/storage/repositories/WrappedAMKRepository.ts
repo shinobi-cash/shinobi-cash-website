@@ -1,8 +1,4 @@
-import {
-  EncryptionService,
-  arrayBufferToBase64,
-  base64ToArrayBuffer,
-} from "../encryption";
+import { EncryptionService, arrayBufferToBase64, base64ToArrayBuffer } from "../encryption";
 import type { WalletAccountId } from "@shinobi-cash/core/auth";
 import { type IndexedDBStore, AMKStorageAdapter } from "../adapters/IndexedDBStore";
 import type { WrappedAMK } from "../interfaces/IDataTypes";
@@ -15,9 +11,7 @@ function isValidDecryptedAMK(value: unknown): value is DecryptedAMK {
   if (!value || typeof value !== "object") return false;
   const v = value as Record<string, unknown>;
   return (
-    typeof v.privateKey === "string" &&
-    v.privateKey.startsWith("0x") &&
-    v.privateKey.length === 66
+    typeof v.privateKey === "string" && v.privateKey.startsWith("0x") && v.privateKey.length === 66
   );
 }
 

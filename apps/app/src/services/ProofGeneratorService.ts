@@ -65,5 +65,5 @@ const loadCrosschainCircuits: CircuitFileLoader = async () => {
  */
 export const withdrawalProofGenerator = createProofGenerator(
   loadWithdrawalCircuits,
-  loadCrosschainCircuits,
+  loadCrosschainCircuits
 );
