@@ -72,7 +72,7 @@ export function ProfileMenu() {
             className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-medium text-neutral-400 transition-colors hover:bg-white/10 hover:text-white sm:px-3"
           >
             <CircleUserRound className="h-4 w-4" />
-            <span className="hidden sm:inline">Profile</span>
+            <span className="hidden sm:inline">Account</span>
             <ChevronDown className="h-3.5 w-3.5" />
           </button>
         </DropdownMenuTrigger>
@@ -82,24 +82,22 @@ export function ProfileMenu() {
               Account
             </DropdownMenuLabel>
             {canAddPasskey && (
-              <>
-                <DropdownMenuItem
-                  onClick={handleAddPasskey}
-                  className="text-muted-foreground hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground cursor-pointer"
-                >
-                  <FingerprintIcon className="h-4 w-4" />
-                  Add Passkey
-                </DropdownMenuItem>
-              </>
+              <DropdownMenuItem
+                onClick={handleAddPasskey}
+                className="text-muted-foreground hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground cursor-pointer"
+              >
+                <FingerprintIcon className="h-4 w-4" />
+                Enable Quick Unlock
+              </DropdownMenuItem>
             )}
 
             {passkeyEnabled && (
               <DropdownMenuItem
                 onClick={handleRemovePasskey}
-                className="hover:bg-muted focus:bg-muted cursor-pointer text-yellow-400 hover:text-yellow-300 focus:text-yellow-300"
+                className="text-muted-foreground hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground cursor-pointer"
               >
                 <FingerprintIcon className="h-4 w-4" />
-                Remove Passkey
+                Remove Quick Unlock
               </DropdownMenuItem>
             )}
 

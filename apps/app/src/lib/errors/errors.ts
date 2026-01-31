@@ -258,6 +258,7 @@ const CANCELLATION_PATTERNS = [
   "user denied",
   "user rejected",
   "action_rejected",
+  "not allowed", // WebAuthn cancellation
 ];
 
 export function isUserCancellation(error: unknown): boolean {
@@ -298,6 +299,8 @@ export function getUserMessage(error: unknown, fallback = "An unexpected error o
       return "Network error. Please check your connection.";
     if (msg.includes("timeout") || msg.includes("timed out"))
       return "Request timed out. Please try again.";
+    if (msg.includes("not supported")) return "This feature is not supported on your device.";
+    if (msg.includes("already enabled")) return "Quick Unlock is already enabled.";
 
     if (msg.includes("contract call:") || msg.includes("contract function")) {
       const customErrorMatch = error.message.match(/Error:\s*(\w+)\(\)/);

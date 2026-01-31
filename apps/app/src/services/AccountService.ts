@@ -12,7 +12,7 @@ import {
 } from "@/lib/storage/adapters/IndexedDBStore";
 import { AccountData, AccountMetadata } from "@/lib/storage/interfaces/IDataTypes";
 import { EncryptionService, type WalletAccountId } from "@shinobi-cash/core";
-import { Errors, logError } from "@/lib/errors/errors";
+import { Errors, logError, isUserCancellation } from "@/lib/errors/errors";
 
 export class AccountService {
   private currentAccountName: WalletAccountId | null = null;
@@ -109,23 +109,49 @@ export class AccountService {
     return this.currentAccountName;
   }
 
-  async enablePasskeyForCurrentAccount(): Promise<void> {
+  /**
+   * Step 1: Register passkey credential (first biometric prompt)
+   * Returns the credentialId to be used in step 2
+   */
+  async registerPasskeyCredential(): Promise<string> {
     const accountData = await this.getAccountData();
 
     if (accountData.credentialId) {
-      throw new Error("Passkey already enabled for this account");
+      throw Errors.auth.passkeyFailed("Quick Unlock is already enabled");
     }
 
     const publicKeyHash = await EncryptionService.createHash(accountData.publicKey);
-    const { credentialId } = await keyDerivationService.createPasskeyCredential(
-      accountData.accountId,
-      publicKeyHash
-    );
 
-    const passkeyKEK = await keyDerivationService.deriveKEKFromPasskey(
-      accountData.accountId,
-      credentialId
-    );
+    try {
+      const { credentialId } = await keyDerivationService.createPasskeyCredential(
+        accountData.accountId,
+        publicKeyHash
+      );
+      return credentialId;
+    } catch (err) {
+      if (isUserCancellation(err)) throw Errors.auth.cancelled(err);
+      const msg = err instanceof Error ? err.message : "";
+      if (msg.includes("not supported")) throw Errors.auth.passkeyUnsupported(err);
+      throw Errors.auth.passkeyFailed("Failed to register biometrics", err);
+    }
+  }
+
+  /**
+   * Step 2: Verify and complete passkey setup (second biometric prompt)
+   */
+  async completePasskeySetup(credentialId: string): Promise<void> {
+    const accountData = await this.getAccountData();
+
+    let passkeyKEK: CryptoKey;
+    try {
+      passkeyKEK = await keyDerivationService.deriveKEKFromPasskey(
+        accountData.accountId,
+        credentialId
+      );
+    } catch (err) {
+      if (isUserCancellation(err)) throw Errors.auth.cancelled(err);
+      throw Errors.auth.passkeyFailed("Failed to verify biometrics", err);
+    }
 
     const originalMetadata: AccountMetadata = {
       accountId: accountData.accountId,
@@ -147,41 +173,37 @@ export class AccountService {
       };
       await accountRepo.storeAccountData(updatedMetadata);
     } catch (error) {
-      logError(error, { action: "enablePasskey", component: "AccountService" });
+      logError(error, { action: "completePasskeySetup", component: "AccountService" });
 
       try {
         await removePasskeyFromSession();
         await wrappedAMKRepo.deleteWrappedAMK(accountData.accountId, "passkey");
         await accountRepo.storeAccountData(originalMetadata);
       } catch (rollbackError) {
-        logError(rollbackError, { action: "enablePasskey:rollback", component: "AccountService" });
+        logError(rollbackError, {
+          action: "completePasskeySetup:rollback",
+          component: "AccountService",
+        });
       }
-      throw error;
+      throw Errors.auth.passkeyFailed("Failed to complete Quick Unlock setup", error);
     }
   }
 
+  /**
+   * Enable passkey in one call (combines both steps)
+   */
+  async enablePasskeyForCurrentAccount(): Promise<void> {
+    const credentialId = await this.registerPasskeyCredential();
+    await this.completePasskeySetup(credentialId);
+  }
+
   async removePasskeyForCurrentAccount(): Promise<void> {
-    const accountData = await this.getAccountMetadata();
-    if (!accountData) {
-      throw Errors.auth.sessionRequired();
-    }
+    const accountId = this.getCurrentAccountName();
+    if (!accountId) throw Errors.auth.sessionRequired();
 
-    if (!accountData.credentialId) {
-      throw new Error("Passkey unlock is not enabled for this account");
-    }
-
-    try {
-      await wrappedAMKRepo.deleteWrappedAMK(accountData.accountId, "passkey");
-      const updatedMetadata: AccountMetadata = {
-        accountId: accountData.accountId,
-        credentialId: undefined,
-      };
-      await accountRepo.storeAccountData(updatedMetadata);
-      await removePasskeyFromSession();
-    } catch (error) {
-      logError(error, { action: "removePasskey", component: "AccountService" });
-      throw error;
-    }
+    await wrappedAMKRepo.deleteWrappedAMK(accountId, "passkey");
+    await accountRepo.storeAccountData({ accountId, credentialId: undefined });
+    await removePasskeyFromSession();
   }
 
   async loginWithWalletKEK(accountId: WalletAccountId, encryptionKey: Uint8Array): Promise<void> {

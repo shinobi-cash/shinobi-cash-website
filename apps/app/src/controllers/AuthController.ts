@@ -169,13 +169,31 @@ export const AuthController = {
     };
   },
 
-  async enablePasskey(): Promise<void> {
-    await accountService.enablePasskeyForCurrentAccount();
+  /**
+   * Step 1: Register passkey credential (first biometric prompt)
+   */
+  async registerPasskeyCredential(): Promise<string> {
+    return await accountService.registerPasskeyCredential();
+  },
+
+  /**
+   * Step 2: Complete passkey setup (second biometric prompt)
+   */
+  async completePasskeySetup(credentialId: string): Promise<void> {
+    await accountService.completePasskeySetup(credentialId);
 
     // Update state to reflect passkey is now enabled
     if (this.state.state.status === "authenticated") {
       this.state.state.session.passkeyEnabled = true;
     }
+  },
+
+  /**
+   * Enable passkey in one call (combines both steps)
+   */
+  async enablePasskey(): Promise<void> {
+    const credentialId = await this.registerPasskeyCredential();
+    await this.completePasskeySetup(credentialId);
   },
 
   async removePasskey(): Promise<void> {

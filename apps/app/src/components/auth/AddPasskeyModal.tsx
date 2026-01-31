@@ -1,12 +1,6 @@
 "use client";
 
-/**
- * Add Passkey Modal
- * Enables passkey unlock for the current wallet account
- * @file features/auth/components/AddPasskeyModal.tsx
- */
-
-import { AlertCircle, Fingerprint } from "lucide-react";
+import { Fingerprint, Check } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@workspace/ui/components/button";
 import {
@@ -17,92 +11,142 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@workspace/ui/components/dialog";
-import { usePasskeyAuth } from "@/hooks/usePasskeyAuth";
+import { AuthController } from "@/controllers/AuthController";
+import { TimelineSteps, type TimelineItem, type StepStatus } from "@/components/shared/Timeline";
+import { getUserMessage } from "@/lib/errors/errors";
 
 interface AddPasskeyModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
+type SetupStep = "idle" | "registering" | "verifying" | "complete";
+type FailedStep = "registering" | "verifying" | null;
+
 export function AddPasskeyModal({ open, onOpenChange }: AddPasskeyModalProps) {
-  const [setupError, setSetupError] = useState("");
+  const [error, setError] = useState("");
+  const [step, setStep] = useState<SetupStep>("idle");
+  const [failedStep, setFailedStep] = useState<FailedStep>(null);
 
-  // Shared passkey flow
-  const {
-    isProcessing,
-    error: passkeyError,
-    enablePasskey,
-    clearError,
-  } = usePasskeyAuth({
-    onSuccess: () => onOpenChange(false),
-  });
-
-  // Reset error on close
   useEffect(() => {
     if (!open) {
-      setSetupError("");
-      clearError();
+      setError("");
+      setStep("idle");
+      setFailedStep(null);
     }
-  }, [open, clearError]);
+  }, [open]);
 
-  const handleAddPasskey = useCallback(
-    async (e?: React.FormEvent) => {
-      if (e) e.preventDefault();
+  const handleEnable = useCallback(async () => {
+    setError("");
+    setFailedStep(null);
 
-      setSetupError("");
+    // Step 1: Register credential
+    setStep("registering");
+    let credentialId: string;
+    try {
+      credentialId = await AuthController.registerPasskeyCredential();
+    } catch (err) {
+      setError(getUserMessage(err, "Failed to register biometrics"));
+      setFailedStep("registering");
+      return;
+    }
 
-      try {
-        const success = await enablePasskey();
+    // Step 2: Verify and complete setup
+    setStep("verifying");
+    try {
+      await AuthController.completePasskeySetup(credentialId);
+      setStep("complete");
+    } catch (err) {
+      setError(getUserMessage(err, "Failed to verify setup"));
+      setFailedStep("verifying");
+    }
+  }, [onOpenChange]);
 
-        if (!success && passkeyError) {
-          setSetupError(passkeyError.message);
-        }
-      } catch (err) {
-        setSetupError(err instanceof Error ? err.message : "Failed to enable quick unlock");
-      }
+  const isFailed = failedStep !== null;
+  const isProcessing = (step === "registering" || step === "verifying") && !isFailed;
+  const isComplete = step === "complete";
+
+  const getStepStatus = (targetStep: "registering" | "verifying"): StepStatus => {
+    if (failedStep === targetStep) return "failed";
+    if (step === "idle") return "pending";
+    if (step === "registering") {
+      return targetStep === "registering" ? "active" : "pending";
+    }
+    if (step === "verifying") {
+      return targetStep === "registering" ? "completed" : "active";
+    }
+    if (step === "complete") return "completed";
+    return "pending";
+  };
+
+  const timeline: TimelineItem[] = [
+    {
+      label: "Register biometrics",
+      status: getStepStatus("registering"),
+      description: "Authenticate with fingerprint or face ID",
+      errorMessage: failedStep === "registering" ? error : undefined,
     },
-    [enablePasskey, passkeyError]
-  );
-
-  const canSubmit = !isProcessing;
+    {
+      label: "Verify setup",
+      status: getStepStatus("verifying"),
+      description: "Confirm biometric enrollment",
+      errorMessage: failedStep === "verifying" ? error : undefined,
+    },
+  ];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="border-border bg-background sm:max-w-md">
+      <DialogContent className="border-white/10 bg-neutral-900 sm:max-w-sm">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-white">
-            <Fingerprint className="h-5 w-5 text-blue-500" />
+            <Fingerprint className="h-5 w-5 text-emerald-500" />
             Enable Quick Unlock
           </DialogTitle>
-          <DialogDescription className="text-muted-foreground">
-            Use fingerprint or face unlock to skip wallet signatures on reload. Stored securely on
-            this device only.
+          <DialogDescription className="text-neutral-400">
+            Use biometrics to sign in without wallet signatures.
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleAddPasskey} className="space-y-4">
-          {setupError && (
-            <div className="flex items-center gap-2 rounded-lg border border-red-900 bg-red-950/20 p-3">
-              <AlertCircle className="h-4 w-4 text-red-400" />
-              <p className="text-sm text-red-400">{setupError}</p>
-            </div>
-          )}
+        <div className="py-1">
+          <TimelineSteps items={timeline} />
+        </div>
 
+        {isComplete && (
+          <div className="flex items-center justify-center gap-2 pt-2 text-emerald-400">
+            <Check className="h-5 w-5" />
+            <span className="font-medium">Quick Unlock enabled</span>
+          </div>
+        )}
+
+        {isComplete ? (
           <DialogFooter>
             <Button
-              type="button"
+              onClick={() => onOpenChange(false)}
+              className="w-full bg-emerald-600 text-white hover:bg-emerald-700"
+            >
+              Done
+            </Button>
+          </DialogFooter>
+        ) : (
+          <DialogFooter className="gap-2">
+            <Button
               variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={isProcessing}
+              className="border-white/10 bg-transparent text-neutral-300 hover:bg-white/5 hover:text-white"
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={!canSubmit}>
-              <Fingerprint />
-              {isProcessing ? "Enabling..." : "Enable Quick Unlock"}
+            <Button
+              onClick={handleEnable}
+              disabled={isProcessing}
+              className="bg-emerald-600 text-white hover:bg-emerald-700"
+            >
+              <Fingerprint className="h-4 w-4" />
+              {isProcessing ? "Authenticating..." : isFailed ? "Retry" : "Enable"}
             </Button>
           </DialogFooter>
-        </form>
+        )}
       </DialogContent>
     </Dialog>
   );
