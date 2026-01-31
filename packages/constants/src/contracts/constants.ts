@@ -10,10 +10,6 @@ import {
   EntrypointDepositAbi,
   PoolScopeAbi,
   CrosschainDepositEntrypointAbi,
-  RelayWithdrawalPaymasterAbi,
-  CrosschainWithdrawalPaymasterAbi,
-  DepositOutputSettlerAbi,
-  WithdrawalOutputSettlerAbi,
 } from "../abi.js";
 import { arbitrumSepolia, baseSepolia, type Chain } from 'viem/chains';
 import { SUPPORTED_CROSSCHAIN } from "../network";
@@ -21,19 +17,12 @@ import { SUPPORTED_CROSSCHAIN } from "../network";
 // ============ WITHDRAWAL CONSTANTS ============
 
 /**
- * Default withdrawal account private key (deterministic for testing)
- * This should be moved to environment variables in production
+ * Withdrawal relay account private key
+ * This is the well-known Hardhat/Foundry account #0, used deterministically
+ * for the SimpleSmartAccount that the ShinobiCashPaymaster is configured to support.
  */
 export const WITHDRAWAL_ACCOUNT_PRIVATE_KEY =
   "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80" as `0x${string}`;
-
-/**
- * Default withdrawal fee rates
- */
-export const WITHDRAWAL_FEES = {
-  DEFAULT_RELAY_FEE_BPS: BigInt(1500), // 15% relay fee in basis points
-  DEFAULT_SOLVER_FEE_BPS: BigInt(500),  // 5% solver fee in basis points
-} as const;
 
 /**
  * Withdrawal configuration values
@@ -116,20 +105,6 @@ export const CROSSCHAIN_DEPOSIT_TIMING = {
   EXPIRY_SECONDS: 86400, // 24 hours - user can refund after this time if not filled
 } as const;
 
-/**
- * Gas limits for Account Abstraction operations
- */
-export const GAS_LIMITS = {
-  PAYMASTER_POST_OP_GAS_LIMIT: 100000, // Above the 32,000 minimum
-} as const;
-
-// ============ ZK CIRCUIT CONSTANTS ============
-
-/**
- * Zero-knowledge proof and circuit parameters
- */
-export const SNARK_SCALAR_FIELD = "21888242871839275222246405745257275088548364400416034343698204186575808495617";
-
 // ============ INDEXER CONSTANTS ============
 
 /**
@@ -195,7 +170,7 @@ export const SHINOBI_CASH_DEPOSIT_OUTPUT_SETTLER: ContractConfig = {
   chain: arbitrumSepolia as Chain,
   address: "0xCc8F0a74D7E9F283dE8ef420a22067A75c66074a",
   blockNumber: 237779130,
-  abi: DepositOutputSettlerAbi
+  abi: []
 };
 
 /**
@@ -205,7 +180,7 @@ export const SHINOBI_CASH_RELAY_WITHDRAWAL_PAYMASTER: ContractConfig = {
   chain: arbitrumSepolia as Chain,
   address: '0xC57352605D9D535001AA0e032C050B2042e38fCf',
   blockNumber: 237953961,
-  abi: RelayWithdrawalPaymasterAbi
+  abi: []
 };
 
 /**
@@ -215,23 +190,13 @@ export const SHINOBI_CASH_CROSSCHAIN_WITHDRAWAL_PAYMASTER: ContractConfig = {
   chain: arbitrumSepolia as Chain,
   address: '0x98A3c926F86B5368B5e15eC393F81393DA0AE1C5',
   blockNumber: 237953951,
-  abi: CrosschainWithdrawalPaymasterAbi
+  abi: []
 };
 
 /**
  * Oracle for cross-chain withdrawal fills
  */
 export const SHINOBI_CASH_CROSSCHAIN_WITHDRAWAL_FILL_ORACLE: ContractConfig = {
-  chain: arbitrumSepolia as Chain,
-  address: '0x4cb20f4415d3666e5d92e261de98fc9b7843d036',
-  blockNumber: 0,
-  abi: []
-};
-
-/**
- * Oracle for cross-chain deposit intents
- */
-export const SHINOBI_CASH_CROSSCHAIN_DEPOSIT_INTENT_ORACLE: ContractConfig = {
   chain: arbitrumSepolia as Chain,
   address: '0x4cb20f4415d3666e5d92e261de98fc9b7843d036',
   blockNumber: 0,
@@ -256,7 +221,7 @@ export const SHINOBI_CASH_CROSSCHAIN_CONTRACTS = {
       chain: baseSepolia as Chain,
       address: "0xfD25Fd69956E41B41Ee56E4944C03E5F24a7c36f",
       blockNumber: 36944408,
-      abi: WithdrawalOutputSettlerAbi
+      abi: []
     },
     DEPOSIT_INPUT_SETTLER: {
       chain: baseSepolia as Chain,
@@ -272,16 +237,3 @@ export const SHINOBI_CASH_CROSSCHAIN_CONTRACTS = {
     },
   }
 } as const satisfies Record<typeof SUPPORTED_CROSSCHAIN[number]['id'], CrossChainContracts>;
-
-// ============ SHARED CONTRACT ADDRESSES ============
-
-/**
- * Shared contract addresses (standard across all networks)
- */
-export const CONTRACTS = {
-  // Expected smart account for deterministic pattern
-  EXPECTED_SMART_ACCOUNT: "0xa3aBDC7f6334CD3EE466A115f30522377787c024" as `0x${string}`,
-
-  // ERC-4337 EntryPoint (standard across all networks)
-  ERC4337_ENTRYPOINT: "0x0000000071727De22E5E9d8BAf0edAc6f37da032" as `0x${string}`,
-} as const;

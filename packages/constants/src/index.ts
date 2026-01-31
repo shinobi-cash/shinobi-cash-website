@@ -10,11 +10,6 @@ export {
   EntrypointDepositAbi,
   PoolScopeAbi,
   CrosschainDepositEntrypointAbi,
-  RelayWithdrawalPaymasterAbi,
-  CrosschainWithdrawalPaymasterAbi,
-  DepositOutputSettlerAbi,
-  WithdrawalOutputSettlerAbi,
-  InputSettlerAbi,
 } from './abi.js';
 
 // ============ CONTRACTS ============

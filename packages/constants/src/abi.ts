@@ -128,34 +128,3 @@ export const CrosschainDepositEntrypointAbi = [
     stateMutability: 'payable',
   },
 ] as const;
-
-// ============ PAYMASTER ABIs ============
-
-/**
- * Minimal ABI for relay withdrawal paymaster
- * Only includes what's needed for contract config
- */
-export const RelayWithdrawalPaymasterAbi = [] as const;
-
-/**
- * Minimal ABI for cross-chain withdrawal paymaster
- * Only includes what's needed for contract config
- */
-export const CrosschainWithdrawalPaymasterAbi = [] as const;
-
-// ============ SETTLER ABIs ============
-
-/**
- * Minimal ABI for deposit output settler
- */
-export const DepositOutputSettlerAbi = [] as const;
-
-/**
- * Minimal ABI for withdrawal output settler
- */
-export const WithdrawalOutputSettlerAbi = [] as const;
-
-/**
- * Minimal ABI for input settler
- */
-export const InputSettlerAbi = [] as const;
