@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Wallet } from "lucide-react";
-import { useAccount, useChainId, useSwitchChain, useSignTypedData } from "wagmi";
+import { useAccount, useChainId, useSwitchChain, useSignTypedData, useDisconnect } from "wagmi";
 import { openWalletModal } from "@/context/wallet";
 import { AuthController } from "@/controllers/AuthController";
 import { getShinobiAuthMessage } from "@shinobi-cash/core/auth";
@@ -17,6 +17,7 @@ export function WalletAuth() {
   const chainId = useChainId();
   const { switchChainAsync } = useSwitchChain();
   const { signTypedDataAsync } = useSignTypedData();
+  const { disconnect } = useDisconnect();
   const [status, setStatus] = useState<Status>("idle");
   const pendingSignIn = useRef(false);
 
@@ -46,6 +47,7 @@ export function WalletAuth() {
         });
       } catch (e) {
         setStatus("idle");
+        disconnect(); // Clear connection so user can start fresh
 
         // Don't show toast for user cancellations (rejected signature, closed wallet)
         if (!isUserCancellation(e)) {
@@ -53,7 +55,7 @@ export function WalletAuth() {
         }
       }
     },
-    [chainId, switchChainAsync, signTypedDataAsync]
+    [chainId, switchChainAsync, signTypedDataAsync, disconnect]
   );
 
   // Continue sign-in flow after wallet connects via modal
@@ -81,6 +83,7 @@ export function WalletAuth() {
       if (pendingSignIn.current && !isConnected) {
         pendingSignIn.current = false;
         setStatus("idle");
+        disconnect(); // Clear any cached connector state
       }
     });
   };
@@ -116,6 +119,7 @@ export function WalletAuth() {
               onClick={() => {
                 pendingSignIn.current = false;
                 setStatus("idle");
+                disconnect(); // Clear any cached connector state
               }}
               className="mt-4 text-xs text-neutral-500 hover:text-neutral-300"
             >
