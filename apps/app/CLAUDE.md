@@ -659,7 +659,7 @@ Load cached notes from IndexedDB (instant UI)
        ↓
 NotesDiscoveryController.discover()
        ↓
-NoteSyncEngine.sync() (from @shinobi-cash/core)
+NoteDiscovery.sync() (from @shinobi-cash/core)
 ├── Phase 1: Reconciliation
 │   └── Update known deposits with on-chain state
 ├── Phase 2: Live Deposit Extension
@@ -947,7 +947,7 @@ Each step tracks:
 ### Core SDK Highlights
 
 - **Pure functions**: `deriveDepositNullifier()`, `derivePrecommitment()`, `parseUserKey()`
-- **Classes (when needed)**: `WithdrawalProofGenerator`, `EncryptionService`, `NoteSyncEngine`
+- **Classes (when needed)**: `WithdrawalProofGenerator`, `EncryptionService`, `NoteDiscovery`
 - **Hash format**: Decimal strings (BigInt.toString()), never 0x-prefixed hex
 
 ---
