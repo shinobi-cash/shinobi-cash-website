@@ -1,6 +1,5 @@
 import { WITHDRAWAL_CONFIG } from "@shinobi-cash/constants";
-import { WithdrawalPipelineContext } from "@/types/withdrawal";
-import { type FeeQuote, type WithdrawalRequest } from "@shinobi-cash/core";
+import type { WithdrawalPipelineContext, FeeQuote, WithdrawalRequest } from "@/types/withdrawal";
 
 export class WithdrawalValidationError extends Error {
   constructor(

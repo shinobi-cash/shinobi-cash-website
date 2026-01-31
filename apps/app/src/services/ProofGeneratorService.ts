@@ -1,25 +1,13 @@
 /**
  * Withdrawal Proof Generator for Privacy Pool
  *
- * Migrated to use @shinobi-cash/core SDK with browser-specific circuit loaders
- * Original implementation backed up to WithdrawalProofGenerator.ts.backup
- * Migrated: 2025-01-06
+ * Browser-specific circuit loaders for ZK proof generation.
  */
 
-import {
-  WithdrawalProofGenerator as SDKProofGenerator,
-  type CircuitFileLoader,
-  type WithdrawalProofData,
-} from "@shinobi-cash/core/zk";
-
-// Re-export types for convenience
-export type { WithdrawalProofData };
-
-// ============ BROWSER-SPECIFIC CIRCUIT LOADERS ============
+import { createProofGenerator, type CircuitFileLoader } from "@shinobi-cash/core/proof";
 
 /**
- * Browser-specific circuit loader for regular withdrawals
- * Loads circuit files from the /circuits/ public directory using fetch
+ * Load same-chain withdrawal circuits from public directory
  */
 const loadWithdrawalCircuits: CircuitFileLoader = async () => {
   const [wasmResponse, zkeyResponse, vkeyResponse] = await Promise.all([
@@ -29,7 +17,7 @@ const loadWithdrawalCircuits: CircuitFileLoader = async () => {
   ]);
 
   if (!wasmResponse.ok || !zkeyResponse.ok || !vkeyResponse.ok) {
-    throw new Error("Failed to load withdrawal circuit files from public directory");
+    throw new Error("Failed to load withdrawal circuit files");
   }
 
   const [wasmBuffer, zkeyBuffer, vkeyData] = await Promise.all([
@@ -46,8 +34,7 @@ const loadWithdrawalCircuits: CircuitFileLoader = async () => {
 };
 
 /**
- * Browser-specific circuit loader for crosschain withdrawals
- * Loads circuit files from the /circuits/ public directory using fetch
+ * Load cross-chain withdrawal circuits from public directory
  */
 const loadCrosschainCircuits: CircuitFileLoader = async () => {
   const [wasmResponse, zkeyResponse, vkeyResponse] = await Promise.all([
@@ -57,7 +44,7 @@ const loadCrosschainCircuits: CircuitFileLoader = async () => {
   ]);
 
   if (!wasmResponse.ok || !zkeyResponse.ok || !vkeyResponse.ok) {
-    throw new Error("Failed to load crosschain circuit files from public directory");
+    throw new Error("Failed to load crosschain circuit files");
   }
 
   const [wasmBuffer, zkeyBuffer, vkeyData] = await Promise.all([
@@ -73,24 +60,10 @@ const loadCrosschainCircuits: CircuitFileLoader = async () => {
   };
 };
 
-// ============ PROOF GENERATOR CLASS ============
-
 /**
- * Withdrawal Proof Generator with browser-specific circuit loading
- *
- * Extends the SDK's WithdrawalProofGenerator with browser fetch-based circuit loaders.
- * This allows the same SDK to be used in Node.js (with fs loaders) or browsers (with fetch loaders).
+ * Singleton proof generator with browser circuit loaders
  */
-export class WithdrawalProofGenerator extends SDKProofGenerator {
-  constructor() {
-    super(loadWithdrawalCircuits, loadCrosschainCircuits);
-  }
-}
-
-// ============ SINGLETON INSTANCE ============
-
-/**
- * Singleton instance of the withdrawal proof generator
- * Pre-configured with browser circuit loaders
- */
-export const withdrawalProofGenerator = new WithdrawalProofGenerator();
+export const withdrawalProofGenerator = createProofGenerator(
+  loadWithdrawalCircuits,
+  loadCrosschainCircuits,
+);

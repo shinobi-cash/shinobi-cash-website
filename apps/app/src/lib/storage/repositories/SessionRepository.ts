@@ -1,6 +1,6 @@
 import { sessionStorageAdapter } from "../adapters/SessionStorageAdapter";
 import type { SessionInfo } from "../interfaces/IDataTypes";
-import type { WalletAccountId } from "@shinobi-cash/core";
+import type { WalletAccountId } from "@shinobi-cash/core/auth";
 import { Errors, logError } from "@/lib/errors/errors";
 
 const SESSION_KEY = "shinobi_session";

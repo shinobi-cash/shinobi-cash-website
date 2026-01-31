@@ -5,7 +5,7 @@
  * Aligned with explorer design - simple row with status dot.
  */
 
-import type { Note } from "@shinobi-cash/core";
+import type { Note } from "@shinobi-cash/core/discovery";
 import { formatTimestamp } from "@/utils/formatters";
 import { getStatusDotColor } from "@/utils/noteFiltering";
 import { AmountDisplay } from "@/components/shared/AmountDisplay";

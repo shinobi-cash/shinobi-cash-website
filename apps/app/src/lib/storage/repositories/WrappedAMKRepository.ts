@@ -1,4 +1,9 @@
-import { EncryptionService, type WalletAccountId } from "@shinobi-cash/core";
+import {
+  EncryptionService,
+  arrayBufferToBase64,
+  base64ToArrayBuffer,
+} from "../encryption";
+import type { WalletAccountId } from "@shinobi-cash/core/auth";
 import { type IndexedDBStore, AMKStorageAdapter } from "../adapters/IndexedDBStore";
 import type { WrappedAMK } from "../interfaces/IDataTypes";
 
@@ -49,9 +54,9 @@ export class WrappedAMKRepository {
       id: storageKey, // Include id for keyPath
       accountId,
       wrappedBy,
-      encryptedPrivateKey: this.encryptionService.arrayBufferToBase64(encrypted.data),
-      iv: this.encryptionService.arrayBufferToBase64(encrypted.iv),
-      salt: this.encryptionService.arrayBufferToBase64(encrypted.salt),
+      encryptedPrivateKey: arrayBufferToBase64(encrypted.data),
+      iv: arrayBufferToBase64(encrypted.iv),
+      salt: arrayBufferToBase64(encrypted.salt),
       createdAt: Date.now(),
     };
 
@@ -99,9 +104,9 @@ export class WrappedAMKRepository {
 
     try {
       const encrypted = {
-        data: this.encryptionService.base64ToArrayBuffer(wrapped.encryptedPrivateKey),
-        iv: this.encryptionService.base64ToArrayBuffer(wrapped.iv),
-        salt: this.encryptionService.base64ToArrayBuffer(wrapped.salt),
+        data: base64ToArrayBuffer(wrapped.encryptedPrivateKey),
+        iv: base64ToArrayBuffer(wrapped.iv),
+        salt: base64ToArrayBuffer(wrapped.salt),
       };
 
       const decrypted = await this.encryptionService.decrypt<unknown>(encrypted);

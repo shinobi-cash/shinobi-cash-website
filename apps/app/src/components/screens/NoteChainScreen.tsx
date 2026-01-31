@@ -4,7 +4,7 @@
  */
 
 import { getTxExplorerUrl } from "@/config/chains";
-import type { NoteChain, Note } from "@shinobi-cash/core";
+import type { NoteChain, Note } from "@shinobi-cash/core/discovery";
 import { formatEthAmount, formatTimestamp, formatUsdAmount } from "@/utils/formatters";
 import { ExternalLink, ChevronDown } from "lucide-react";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";

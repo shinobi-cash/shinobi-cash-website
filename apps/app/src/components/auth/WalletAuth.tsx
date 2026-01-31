@@ -10,7 +10,7 @@ import {
 } from "@reown/appkit/react";
 import { useSignTypedData } from "wagmi";
 import { AuthController } from "@/controllers/AuthController";
-import { getShinobiAuthMessage } from "@shinobi-cash/core";
+import { getShinobiAuthMessage } from "@shinobi-cash/core/auth";
 import { showToast } from "@/lib/toast";
 import { getUserMessage, isUserCancellation } from "@/lib/errors/errors";
 import { POOL_CHAIN } from "@shinobi-cash/constants";

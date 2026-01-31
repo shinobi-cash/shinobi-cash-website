@@ -1,4 +1,4 @@
-import { EncryptionService } from "@shinobi-cash/core";
+import { EncryptionService } from "../encryption";
 import { indexedDBDatabase, StoreName, STORES } from "./IndexedDB";
 import { IEncryptedStorageAdapter } from "./types";
 

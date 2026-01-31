@@ -6,7 +6,7 @@ import {
   deriveDepositNullifier,
   deriveDepositSecret,
   derivePrecommitment,
-} from "@shinobi-cash/core";
+} from "@shinobi-cash/core/deposit";
 import { NotesRepository } from "@/lib/storage/repositories/NotesRepository";
 import { TX_RECEIPT_TIMEOUT_MS } from "@/constants/timings";
 import {

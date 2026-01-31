@@ -1,5 +1,5 @@
 import { proxy } from "valtio";
-import type { NoteChain, DiscoveryProgress, Note } from "@shinobi-cash/core";
+import type { NoteChain, DiscoveryProgress, Note } from "@shinobi-cash/core/discovery";
 import { notesRepo } from "@/lib/storage/repositories/NotesRepository";
 import { fetchActivities } from "@/utils/indexer";
 import { createStateMachine } from "@/utils/stateMachine";

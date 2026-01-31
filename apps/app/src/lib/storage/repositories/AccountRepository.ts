@@ -1,7 +1,7 @@
 import { privateKeyToAccount } from "viem/accounts";
 import { accountStorageAdapter } from "../adapters/IndexedDBStore";
 import type { AccountMetadata, AccountData } from "../interfaces/IDataTypes";
-import { assertWalletAccountId, type WalletAccountId } from "@shinobi-cash/core";
+import { assertWalletAccountId, type WalletAccountId } from "@shinobi-cash/core/auth";
 import { IndexedDBStore } from "../adapters/IndexedDBStore";
 
 /**

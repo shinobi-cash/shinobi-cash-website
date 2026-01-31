@@ -11,7 +11,8 @@ import {
   sharedEncryptionService,
 } from "@/lib/storage/adapters/IndexedDBStore";
 import { AccountData, AccountMetadata } from "@/lib/storage/interfaces/IDataTypes";
-import { EncryptionService, type WalletAccountId } from "@shinobi-cash/core";
+import { createHash } from "@/lib/storage/encryption";
+import type { WalletAccountId } from "@shinobi-cash/core/auth";
 import { Errors, logError, isUserCancellation } from "@/lib/errors/errors";
 
 export class AccountService {
@@ -120,7 +121,7 @@ export class AccountService {
       throw Errors.auth.passkeyFailed("Quick Unlock is already enabled");
     }
 
-    const publicKeyHash = await EncryptionService.createHash(accountData.publicKey);
+    const publicKeyHash = await createHash(accountData.publicKey);
 
     try {
       const { credentialId } = await keyDerivationService.createPasskeyCredential(

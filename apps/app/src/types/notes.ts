@@ -1,4 +1,4 @@
-import { Note, NoteChain } from "@shinobi-cash/core";
+import type { Note, NoteChain } from "@shinobi-cash/core/discovery";
 
 export type ReadonlyNoteChain = readonly Readonly<Note>[];
 

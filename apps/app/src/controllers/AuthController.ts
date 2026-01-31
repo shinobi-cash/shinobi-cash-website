@@ -12,7 +12,7 @@ import {
   deriveKeysFromSignature,
   generateKeysFromRandomSeed,
   getWalletAccountId,
-} from "@shinobi-cash/core";
+} from "@shinobi-cash/core/auth";
 import { proxy } from "valtio";
 import { type AppError, logError } from "@/lib/errors/errors";
 

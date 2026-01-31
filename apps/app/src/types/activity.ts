@@ -5,7 +5,7 @@
  * This provides a view model for the activity list/details screens.
  */
 
-import type { Note } from "@shinobi-cash/core";
+import type { Note } from "@shinobi-cash/core/discovery";
 
 /**
  * Display type derived from note type

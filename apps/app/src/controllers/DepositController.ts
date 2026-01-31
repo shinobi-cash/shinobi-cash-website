@@ -3,7 +3,7 @@ import { depositService, type CashNoteData, type GasEstimate } from "@/utils/dep
 import { isDepositSupported } from "@/utils/depositRoute";
 import { createStateMachine } from "@/utils/stateMachine";
 import { DEPOSIT_FEES, POOL_CHAIN } from "@shinobi-cash/constants";
-import { calculateDepositFeeBreakdown } from "@shinobi-cash/core";
+import { calculateDepositFeeBreakdown } from "@/utils/depositFees";
 import type { PublicClient, WalletClient } from "viem";
 import { AuthController } from "@/controllers/AuthController";
 import {

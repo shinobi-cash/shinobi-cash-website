@@ -3,7 +3,7 @@
  * Full-screen view for selecting a note to withdraw from
  */
 
-import type { Note } from "@shinobi-cash/core";
+import type { Note } from "@shinobi-cash/core/discovery";
 import { formatTimestamp } from "@/utils/formatters";
 import { getStatusDotColor } from "@/utils/noteFiltering";
 import { Loader2, Check } from "lucide-react";

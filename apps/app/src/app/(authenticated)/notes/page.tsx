@@ -9,7 +9,7 @@ import { NoteChainScreen } from "@/components/screens/NoteChainScreen";
 import { NotesSection } from "@/components/notes/NotesSection";
 import { ScreenLayout } from "@/components/layout/ScreenLayout";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";
-import { NoteChain } from "@shinobi-cash/core";
+import type { NoteChain } from "@shinobi-cash/core/discovery";
 import { useNotesScreen } from "@/hooks/useNotesScreen";
 import { NotesDiscoveryController } from "@/controllers/NotesDiscoveryController";
 

@@ -1,12 +1,67 @@
 import type {
   WithdrawalDerivation,
   CrosschainWithdrawalDerivation,
-  WithdrawalKind,
-  FeeQuote,
-  WithdrawalRequest,
-} from "@shinobi-cash/core";
+} from "@shinobi-cash/core/withdrawal";
+import type { Note } from "@shinobi-cash/core/discovery";
 import type { SmartAccountClient } from "permissionless";
 import type { UserOperation } from "viem/account-abstraction";
+
+/**
+ * Type of withdrawal operation
+ */
+export type WithdrawalKind = "same-chain" | "cross-chain";
+
+/**
+ * Fee quote for a withdrawal operation
+ */
+export interface FeeQuote {
+  /** Type of withdrawal */
+  kind: WithdrawalKind;
+
+  /** Relay fee in basis points */
+  relayFeeBPS: number;
+
+  /** Solver fee in basis points (cross-chain only) */
+  solverFeeBPS: number;
+
+  /** Execution/relay fee in wei */
+  executionFeeWei: bigint;
+
+  /** Solver fee in wei */
+  solverFeeWei: bigint;
+
+  /** Total fees in wei */
+  totalFeeWei: bigint;
+
+  /** Net amount after fees in wei */
+  netAmountWei: bigint;
+
+  /** Gas price used for fee calculation */
+  gasPrice: {
+    maxFeePerGas: bigint;
+    maxPriorityFeePerGas: bigint;
+  };
+}
+
+/**
+ * Request for a withdrawal operation
+ */
+export interface WithdrawalRequest {
+  /** Note to withdraw from */
+  note: Note;
+
+  /** Amount to withdraw in wei */
+  withdrawAmountWei: bigint;
+
+  /** Recipient address (hex) */
+  recipient: `0x${string}`;
+
+  /** Account key for deriving nullifiers and secrets */
+  accountKey: bigint;
+
+  /** Destination chain ID for cross-chain withdrawals */
+  destinationChainId?: number;
+}
 
 export interface WithdrawalPipelineContext {
   kind: WithdrawalKind;

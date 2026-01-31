@@ -1,4 +1,4 @@
-import type { Note, NoteChain } from "@shinobi-cash/core";
+import type { Note, NoteChain } from "@shinobi-cash/core/discovery";
 import type { NoteFilter, NoteCategory, ReadonlyNoteChain } from "@/types/notes";
 
 /**

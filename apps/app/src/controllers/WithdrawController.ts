@@ -1,6 +1,7 @@
 import { proxy } from "valtio";
 import { parseEther, formatEther, isAddress } from "viem/utils";
-import { type FeeQuote, type Note, type WithdrawalRequest } from "@shinobi-cash/core";
+import type { Note } from "@shinobi-cash/core/discovery";
+import type { FeeQuote, WithdrawalRequest } from "@/types/withdrawal";
 import { POOL_CHAIN } from "@shinobi-cash/constants";
 import { AuthController } from "@/controllers/AuthController";
 import { NotesDiscoveryController } from "@/controllers/NotesDiscoveryController";

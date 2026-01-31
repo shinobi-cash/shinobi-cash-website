@@ -2,7 +2,8 @@
  * App-Specific Data Type Interfaces
  */
 
-import type { WalletAccountId } from "@shinobi-cash/core";
+import type { WalletAccountId } from "@shinobi-cash/core/auth";
+import type { NoteChain } from "@shinobi-cash/core/discovery";
 
 /**
  * Account Metadata - This is stored in IndexedDB account store
@@ -19,6 +20,18 @@ export interface AccountMetadata {
 export interface AccountData extends AccountMetadata {
   privateKey: string; // AMK - in memory only (from wrapped-amk store)
   publicKey: string; // Derived from privateKey at runtime
+}
+
+/**
+ * Cached note data stored locally with discovery metadata
+ */
+export interface CachedNoteData {
+  poolAddress: string;
+  publicKey: string;
+  notes: NoteChain[];
+  lastUsedDepositIndex: number;
+  lastSyncTime: number;
+  lastProcessedOffset?: number;
 }
 
 export interface EncryptedNotesData {

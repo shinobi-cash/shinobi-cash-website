@@ -4,7 +4,7 @@
  * Converts note chains into activity entries for display.
  */
 
-import type { Note } from "@shinobi-cash/core";
+import type { Note } from "@shinobi-cash/core/discovery";
 import type { ReadonlyNoteChain } from "@/types/notes";
 import type { ActivityEntry, ActivityType } from "@/types/activity";
 import { getActivityType, getActivityId } from "@/types/activity";

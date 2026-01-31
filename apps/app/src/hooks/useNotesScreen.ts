@@ -11,7 +11,7 @@
 
 import { useMemo } from "react";
 import { useSnapshot } from "valtio";
-import type { Note, NoteChain } from "@shinobi-cash/core";
+import type { Note, NoteChain } from "@shinobi-cash/core/discovery";
 import type { NotesStatus, NotesError, NoteFilter, NoteChainView } from "@/types/notes";
 import { useNotesDiscovery } from "./useNotesDiscovery";
 import {

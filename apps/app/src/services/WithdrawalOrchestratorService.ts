@@ -4,6 +4,8 @@ import type {
   WithdrawalProof,
   PreparedUserOperation,
   ExecutionResult,
+  FeeQuote,
+  WithdrawalRequest,
 } from "@/types/withdrawal";
 import { Errors } from "@/lib/errors/errors";
 import { validateWithdrawalRequest, validateWithdrawalContext } from "@/utils/withdrawalInvariants";
@@ -19,13 +21,11 @@ import { withdrawalProofGenerator } from "@/services/ProofGeneratorService";
 import {
   deriveWithdrawalInputs,
   deriveCrosschainWithdrawalInputs,
-  type FeeQuote,
-  type WithdrawalRequest,
-} from "@shinobi-cash/core";
+} from "@shinobi-cash/core/withdrawal";
 import {
   buildWithdrawalCircuitWitness,
   buildCrosschainWithdrawalCircuitWitness,
-} from "@shinobi-cash/core/zk";
+} from "@shinobi-cash/core/proof";
 import {
   SHINOBI_CASH_RELAY_WITHDRAWAL_PAYMASTER,
   SHINOBI_CASH_CROSSCHAIN_WITHDRAWAL_PAYMASTER,

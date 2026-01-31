@@ -7,7 +7,7 @@ import { RefreshCw } from "lucide-react";
 import { NoteRow } from "./NoteRow";
 import { type NotesScreenControllerAPI } from "@/hooks/useNotesScreen";
 import { NOTE_FILTER_LABELS, type NoteFilter } from "@/types/notes";
-import { NoteChain } from "@shinobi-cash/core";
+import type { NoteChain } from "@shinobi-cash/core/discovery";
 
 interface NotesSectionProps {
   controller: NotesScreenControllerAPI;

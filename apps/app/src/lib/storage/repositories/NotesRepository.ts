@@ -1,20 +1,22 @@
 import {
   EncryptionService,
-  type CachedNoteData,
-  type DiscoveryResult,
-  type DiscoveryOptions,
   type EncryptedData,
-  type NoteChain,
-  NoteSyncEngine,
+  createHash,
+  arrayBufferToBase64,
+  base64ToArrayBuffer,
+} from "../encryption";
+import {
+  NoteDiscovery,
   type ActivityFetcher,
   type DiscoveryState,
-} from "@shinobi-cash/core";
+} from "@shinobi-cash/core/discovery";
+import type { DiscoveryResult, DiscoveryOptions, NoteChain } from "@shinobi-cash/core/discovery";
 import {
   type IndexedDBStore,
   notesStorageAdapter,
   sharedEncryptionService,
 } from "../adapters/IndexedDBStore";
-import type { EncryptedNotesData } from "../interfaces/IDataTypes";
+import type { CachedNoteData, EncryptedNotesData } from "../interfaces/IDataTypes";
 
 export class NotesRepository {
   constructor(
@@ -26,10 +28,9 @@ export class NotesRepository {
    * Generate storage key
    */
   private async getKey(publicKey: string, poolAddress: string): Promise<string> {
-    const publicKeyHash = await EncryptionService.createHash(publicKey);
-    const poolAddressHash = await EncryptionService.createHash(poolAddress);
-    const key = `${publicKeyHash}_${poolAddressHash}`;
-    return key;
+    const publicKeyHash = await createHash(publicKey);
+    const poolAddressHash = await createHash(poolAddress);
+    return `${publicKeyHash}_${poolAddressHash}`;
   }
 
   /**
@@ -96,9 +97,9 @@ export class NotesRepository {
     const storageData: EncryptedNotesData = {
       id: await this.getKey(publicKey, poolAddress),
       encryptedPayload: {
-        iv: this.encryptionService.arrayBufferToBase64(encrypted.iv),
-        data: this.encryptionService.arrayBufferToBase64(encrypted.data),
-        salt: this.encryptionService.arrayBufferToBase64(encrypted.salt),
+        iv: arrayBufferToBase64(encrypted.iv),
+        data: arrayBufferToBase64(encrypted.data),
+        salt: arrayBufferToBase64(encrypted.salt),
       },
       lastSyncTime: sensitiveData.lastSyncTime,
     };
@@ -118,9 +119,9 @@ export class NotesRepository {
 
     if (result) {
       const encryptedData: EncryptedData = {
-        iv: this.encryptionService.base64ToArrayBuffer(result.encryptedPayload.iv),
-        data: this.encryptionService.base64ToArrayBuffer(result.encryptedPayload.data),
-        salt: this.encryptionService.base64ToArrayBuffer(result.encryptedPayload.salt),
+        iv: base64ToArrayBuffer(result.encryptedPayload.iv),
+        data: base64ToArrayBuffer(result.encryptedPayload.data),
+        salt: base64ToArrayBuffer(result.encryptedPayload.salt),
       };
 
       try {
@@ -136,7 +137,7 @@ export class NotesRepository {
   }
 
   /**
-   * Discover notes using NoteSyncEngine
+   * Discover notes using NoteDiscovery
    *
    * Clean stateful architecture with pure state transitions.
    * Engine handles orchestration, primitives handle logic.
@@ -156,7 +157,7 @@ export class NotesRepository {
     options?: DiscoveryOptions
   ): Promise<DiscoveryResult> {
     // Create sync engine with persistence callbacks
-    const engine = new NoteSyncEngine(fetchActivities, {
+    const engine = new NoteDiscovery(fetchActivities, {
       loadState: async (pubKey: string, pool: string) => {
         const cached = await this.getCachedNotes(pubKey, pool);
         if (!cached) return null;
