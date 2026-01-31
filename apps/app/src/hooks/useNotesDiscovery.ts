@@ -15,7 +15,7 @@ import { NotesDiscoveryController } from "@/controllers/NotesDiscoveryController
  * 1. Subscribe to controller state via valtio
  *
  * Note: Discovery is handled by background worker via NotesDiscoveryController.
- * Transaction indexed events trigger refresh via TransactionTrackingController.
+ * Deposit and withdrawal controllers trigger refresh after transaction confirmation.
  *
  * @returns Snapshot of discovery controller state (read-only)
  */

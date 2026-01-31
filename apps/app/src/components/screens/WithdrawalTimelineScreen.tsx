@@ -24,7 +24,6 @@ type WithdrawStatus =
   | "ready"
   | "submitting"
   | "confirmed"
-  | "indexed"
   | "error";
 
 interface WithdrawalTimelineScreenProps {
@@ -54,7 +53,7 @@ export function WithdrawalTimelineScreen({
   // Derive states from controller status directly
   const isPreparing = status === "preparing";
   const isSubmitting = status === "submitting";
-  const isConfirmed = status === "confirmed" || status === "indexed";
+  const isConfirmed = status === "confirmed";
 
   // Complete when tx is confirmed on-chain
   const isComplete = isConfirmed;

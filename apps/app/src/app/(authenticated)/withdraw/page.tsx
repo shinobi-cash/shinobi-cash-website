@@ -15,7 +15,6 @@ import { AssetChainSelectorScreen } from "@/components/screens/AssetChainSelecto
 import { NoteSelectionScreen } from "@/components/screens/NoteSelectionScreen";
 import { WithdrawalPreviewScreen } from "@/components/screens/WithdrawalPreviewScreen";
 import { WithdrawalTimelineScreen } from "@/components/screens/WithdrawalTimelineScreen";
-import { useTransactionTracking } from "@/hooks/useTransactionTracking";
 import { DISPLAY_DECIMALS, ETH_ASSET } from "@/constants/withdraw";
 import { formatEthAmount, formatUsdAmount } from "@/utils/formatters";
 import { ScreenLayout } from "@/components/layout/ScreenLayout";
@@ -45,15 +44,6 @@ export default function WithdrawPage() {
     }
   }, [state.amount, state.recipientAddress, state.selectedNote, state.destinationChainId]);
 
-  const { trackTransaction, onTransactionIndexed } = useTransactionTracking();
-
-  // Listen for indexed event to update controller
-  useEffect(() => {
-    return onTransactionIndexed(() => {
-      WithdrawController.markIndexed();
-    });
-  }, [onTransactionIndexed]);
-
   // Review = navigate to preview screen
   const handleReviewWithdrawal = () => {
     screens.navigate("preview");
@@ -72,19 +62,7 @@ export default function WithdrawPage() {
   };
 
   // Get transaction details
-  const txHash = (() => {
-    if (state.state.status === "confirmed" || state.state.status === "indexed") {
-      return state.state.txHash;
-    }
-    return null;
-  })();
-
-  // Track transaction for indexing when txHash becomes available
-  useEffect(() => {
-    if (txHash) {
-      trackTransaction(txHash, POOL_CHAIN.id);
-    }
-  }, [txHash, trackTransaction]);
+  const txHash = state.state.status === "confirmed" ? state.state.txHash : null;
 
   const hasError = state.state.status === "error";
   const error = hasError ? state.state.error : state.lastError;

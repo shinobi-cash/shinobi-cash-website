@@ -6,7 +6,10 @@ import { createStateMachine } from "@/utils/stateMachine";
 import { DEPOSIT_FEES, POOL_CHAIN } from "@shinobi-cash/constants";
 import type { PublicClient, WalletClient } from "viem";
 import { AuthController } from "@/controllers/AuthController";
-import { NotesDiscoverySelectors } from "@/controllers/NotesDiscoveryController";
+import {
+  NotesDiscoveryController,
+  NotesDiscoverySelectors,
+} from "@/controllers/NotesDiscoveryController";
 import { type AppError, Errors, getUserMessage } from "@/lib/errors/errors";
 import {
   PREPARE_DEBOUNCE_MS,
@@ -26,8 +29,7 @@ type DepositState =
   | { status: "ready"; amounts: DepositAmounts; gasEstimate: GasEstimate; noteData: CashNoteData }
   | { status: "submitting" }
   | { status: "confirming"; txHash: `0x${string}` }
-  | { status: "confirmed-onchain"; txHash: `0x${string}` }
-  | { status: "indexed"; txHash: `0x${string}` }
+  | { status: "confirmed"; txHash: `0x${string}` }
   | { status: "failed"; txHash: `0x${string}`; reason: string }
   | { status: "error"; error: AppError };
 
@@ -91,9 +93,8 @@ const { transition } = createStateMachine<DepositState>({
     preparing: ["ready", "error", "idle", "preparing"],
     ready: ["submitting", "preparing", "idle"],
     submitting: ["confirming", "error"],
-    confirming: ["confirmed-onchain", "failed"],
-    "confirmed-onchain": ["indexed"],
-    indexed: ["idle"],
+    confirming: ["confirmed", "failed"],
+    confirmed: ["idle"],
     failed: ["preparing", "idle"],
     error: ["idle", "preparing"],
   },
@@ -246,12 +247,6 @@ export const DepositController = {
     }
   },
 
-  markIndexed() {
-    if (state.state.status === "confirmed-onchain") {
-      transition({ status: "indexed", txHash: state.state.txHash });
-    }
-  },
-
   _updateWallet(wallet: WalletContext) {
     state.wallet = wallet;
   },
@@ -266,7 +261,9 @@ export const DepositController = {
 
     await depositService.trackTransaction(txHash, wallet.publicClient, (status, reason) => {
       if (status === "confirmed") {
-        transition({ status: "confirmed-onchain", txHash });
+        transition({ status: "confirmed", txHash });
+        // Trigger notes refresh - background sync will handle indexer catching up
+        NotesDiscoveryController.refresh();
       } else if (status === "failed") {
         transition({ status: "failed", txHash, reason: reason ?? "Unknown error" });
       }

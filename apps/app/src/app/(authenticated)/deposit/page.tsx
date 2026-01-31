@@ -21,7 +21,6 @@ import { AssetChainSelectorScreen } from "@/components/screens/AssetChainSelecto
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { modal } from "@/context";
 import { useDepositController } from "@/hooks/useDepositController";
-import { useTransactionTracking } from "@/hooks/useTransactionTracking";
 import { usePriceData } from "@/hooks/usePriceData";
 import { DepositController, DepositSelectors } from "@/controllers/DepositController";
 import { AuthController } from "@/controllers/AuthController";
@@ -58,14 +57,7 @@ export default function DepositPage() {
   const screens = useScreenNavigation<DepositScreen>();
 
   const state = useDepositController();
-  const { trackTransaction, onTransactionIndexed } = useTransactionTracking();
   const { usdPrice } = usePriceData("ETH");
-
-  useEffect(() => {
-    return onTransactionIndexed(() => {
-      DepositController.markIndexed();
-    });
-  }, [onTransactionIndexed]);
 
   const authState = useSnapshot(AuthController.state);
   const cryptoReady = authState.crypto.cryptoReady;
@@ -98,17 +90,10 @@ export default function DepositPage() {
 
   const txHash =
     state.state.status === "confirming" ||
-    state.state.status === "confirmed-onchain" ||
-    state.state.status === "indexed" ||
+    state.state.status === "confirmed" ||
     state.state.status === "failed"
       ? state.state.txHash
       : null;
-
-  useEffect(() => {
-    if (txHash) {
-      trackTransaction(txHash, state.wallet.chainId);
-    }
-  }, [txHash, state.wallet.chainId, trackTransaction]);
 
   const handleReviewDeposit = () => {
     if (state.state.status === "ready") {
@@ -139,8 +124,7 @@ export default function DepositPage() {
       const s = state.state.status;
       if (s === "submitting") return "submitting" as const;
       if (s === "confirming") return "confirming" as const;
-      if (s === "confirmed-onchain") return "confirmed-onchain" as const;
-      if (s === "indexed") return "indexed" as const;
+      if (s === "confirmed") return "confirmed" as const;
       if (s === "failed") return "failed" as const;
       if (s === "error") return "error" as const;
       return "submitting" as const;
