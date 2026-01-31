@@ -60,7 +60,7 @@ The SDK follows two strict architectural principles:
 import { deriveDepositNullifier, buildNoteChain } from '@shinobi-cash/core';
 
 // ✅ Core SDK exports stateful classes only where necessary
-import { NoteSyncEngine, WithdrawalProofGenerator } from '@shinobi-cash/core';
+import { NoteDiscovery, WithdrawalProofGenerator } from '@shinobi-cash/core';
 ```
 
 > **Rule of thumb:**
@@ -97,7 +97,7 @@ The Core SDK **never**:
 ### Note Discovery Flow
 
 ```
-1. Create NoteSyncEngine
+1. Create NoteDiscovery
    ↓
 2. Load cached state (via your persistence callbacks)
    ↓
@@ -300,12 +300,12 @@ const persistence: PersistenceCallbacks = {
 
 ---
 
-### Step 4: Use NoteSyncEngine (Recommended)
+### Step 4: Use NoteDiscovery (Recommended)
 
 ```ts
-import { NoteSyncEngine } from '@shinobi-cash/core';
+import { NoteDiscovery } from '@shinobi-cash/core';
 
-const engine = new NoteSyncEngine(activityFetcher, persistence);
+const engine = new NoteDiscovery(activityFetcher, persistence);
 
 const result = await engine.sync(
   publicKey,
@@ -318,17 +318,17 @@ const result = await engine.sync(
 );
 ```
 
-> **Most applications should use `NoteSyncEngine`.**
+> **Most applications should use `NoteDiscovery`.**
 > Only use lower-level primitives for custom flows or testing.
 
 ---
 
 ## API Reference
 
-### NoteSyncEngine
+### NoteDiscovery
 
 ```ts
-class NoteSyncEngine {
+class NoteDiscovery {
   constructor(
     fetcher: ActivityFetcher,
     persistence: PersistenceCallbacks
@@ -464,7 +464,7 @@ Real-world integration from the Shinobi Cash app:
 ```typescript
 // File: NotesRepository.ts
 import {
-  NoteSyncEngine,
+  NoteDiscovery,
   type DiscoveryResult,
   type DiscoveryOptions,
   type DiscoveryState,
@@ -480,7 +480,7 @@ export class NotesRepository {
     fetchActivities: ActivityFetcher,
     options?: DiscoveryOptions,
   ): Promise<DiscoveryResult> {
-    const engine = new NoteSyncEngine(fetchActivities, {
+    const engine = new NoteDiscovery(fetchActivities, {
       loadState: async (pubKey, pool) => {
         const cached = await this.getCachedNotes(pubKey, pool);
         if (!cached) return null;
@@ -747,7 +747,7 @@ If migrating from manual discovery:
 1. **Remove manual orchestration** — delete loops and state tracking
 2. **Implement callbacks** — wrap storage in PersistenceCallbacks
 3. **Create fetcher** — wrap indexer calls in ActivityFetcher
-4. **Replace with NoteSyncEngine** — single method call
+4. **Replace with NoteDiscovery** — single method call
 5. **Test thoroughly** — verify same results
 
 **Expected benefits:**

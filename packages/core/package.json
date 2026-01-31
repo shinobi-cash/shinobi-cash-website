@@ -3,19 +3,31 @@
   "version": "0.0.0-canary-20251229091317",
   "description": "Core SDK for Shinobi Cash - note generation, discovery, and ZK proof operations",
   "sideEffects": false,
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
-  "types": "dist/index.d.ts",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+    "./auth": {
+      "types": "./dist/auth.d.ts",
+      "import": "./dist/auth.mjs",
+      "require": "./dist/auth.js"
     },
-    "./zk": {
-      "types": "./dist/zk.d.ts",
-      "import": "./dist/zk.mjs",
-      "require": "./dist/zk.js"
+    "./deposit": {
+      "types": "./dist/deposit.d.ts",
+      "import": "./dist/deposit.mjs",
+      "require": "./dist/deposit.js"
+    },
+    "./withdrawal": {
+      "types": "./dist/withdrawal.d.ts",
+      "import": "./dist/withdrawal.mjs",
+      "require": "./dist/withdrawal.js"
+    },
+    "./discovery": {
+      "types": "./dist/discovery.d.ts",
+      "import": "./dist/discovery.mjs",
+      "require": "./dist/discovery.js"
+    },
+    "./proof": {
+      "types": "./dist/proof.d.ts",
+      "import": "./dist/proof.mjs",
+      "require": "./dist/proof.js"
     }
   },
   "files": [

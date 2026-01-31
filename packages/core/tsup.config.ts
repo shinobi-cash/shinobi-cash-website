@@ -2,8 +2,11 @@ import { defineConfig } from 'tsup';
 
 export default defineConfig({
   entry: {
-    index: 'src/index.ts',
-    zk: 'src/zk.ts',
+    auth: 'src/auth/index.ts',
+    deposit: 'src/deposit/index.ts',
+    withdrawal: 'src/withdrawal/index.ts',
+    discovery: 'src/discovery/index.ts',
+    proof: 'src/proof/index.ts',
   },
   format: ['cjs', 'esm'],
   dts: {
