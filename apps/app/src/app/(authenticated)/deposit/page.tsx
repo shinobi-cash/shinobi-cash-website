@@ -2,14 +2,10 @@
 
 import { Copy, Check, CircleQuestionMarkIcon, ArrowDownToLine, Wallet } from "lucide-react";
 import { useState, useEffect } from "react";
-import { useAppKitNetwork } from "@reown/appkit/react";
+import { useSwitchChain } from "wagmi";
 import { useSnapshot } from "valtio";
 import { Button } from "@workspace/ui/components/button";
-import {
-  POOL_CHAIN,
-  SHINOBI_CASH_ETH_POOL,
-  SHINOBI_CASH_SUPPORTED_CHAINS,
-} from "@shinobi-cash/constants";
+import { POOL_CHAIN, SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
 import { CardContainer } from "@/components/shared/CardContainer";
 import { AssetPill } from "@/components/shared/AssetPill";
 import { AmountInput } from "@/components/shared/AmountInput";
@@ -19,7 +15,7 @@ import { AmountUsd } from "@/components/shared/AmountUsd";
 import { SectionDivider } from "@/components/shared/SectionDivider";
 import { AssetChainSelectorScreen } from "@/components/screens/AssetChainSelectorScreen";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
-import { modal } from "@/context";
+import { openWalletModal } from "@/context/wallet";
 import { useDepositController } from "@/hooks/useDepositController";
 import { usePriceData } from "@/hooks/usePriceData";
 import { DepositController, DepositSelectors } from "@/controllers/DepositController";
@@ -51,7 +47,7 @@ function DepositNoteInfo() {
 export default function DepositPage() {
   const asset = ETH_ASSET;
 
-  const { switchNetwork } = useAppKitNetwork();
+  const { switchChain } = useSwitchChain();
   const [copiedAddress, setCopiedAddress] = useState(false);
 
   const screens = useScreenNavigation<DepositScreen>();
@@ -74,7 +70,7 @@ export default function DepositPage() {
   };
 
   const handleConnectWallet = () => {
-    modal.open();
+    openWalletModal();
   };
 
   const handleConfirmDeposit = () => {
@@ -190,10 +186,7 @@ export default function DepositPage() {
         <AssetChainSelectorScreen
           selectedChainId={state.wallet.chainId}
           onChainChange={(newChainId) => {
-            const network = SHINOBI_CASH_SUPPORTED_CHAINS.find((c) => c.id === newChainId);
-            if (network) {
-              switchNetwork(network);
-            }
+            switchChain({ chainId: newChainId });
           }}
           onSelect={screens.close}
         />

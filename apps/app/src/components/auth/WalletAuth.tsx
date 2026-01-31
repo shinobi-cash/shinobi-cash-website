@@ -2,13 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Wallet } from "lucide-react";
-import {
-  useAppKit,
-  useAppKitAccount,
-  useAppKitEvents,
-  useAppKitNetwork,
-} from "@reown/appkit/react";
-import { useSignTypedData } from "wagmi";
+import { useAccount, useChainId, useSwitchChain, useSignTypedData } from "wagmi";
+import { openWalletModal } from "@/context/wallet";
 import { AuthController } from "@/controllers/AuthController";
 import { getShinobiAuthMessage } from "@shinobi-cash/core/auth";
 import { showToast } from "@/lib/toast";
@@ -18,10 +13,9 @@ import { POOL_CHAIN } from "@shinobi-cash/constants";
 type Status = "idle" | "connecting" | "switching" | "signing" | "authenticating";
 
 export function WalletAuth() {
-  const { open } = useAppKit();
-  const { address, isConnected } = useAppKitAccount();
-  const events = useAppKitEvents();
-  const { chainId, switchNetwork } = useAppKitNetwork();
+  const { address, isConnected } = useAccount();
+  const chainId = useChainId();
+  const { switchChainAsync } = useSwitchChain();
   const { signTypedDataAsync } = useSignTypedData();
   const [status, setStatus] = useState<Status>("idle");
   const pendingSignIn = useRef(false);
@@ -32,7 +26,7 @@ export function WalletAuth() {
         // Switch to pool chain if not already on it (required for EIP-712 signature)
         if (chainId !== POOL_CHAIN.id) {
           setStatus("switching");
-          await switchNetwork(POOL_CHAIN);
+          await switchChainAsync({ chainId: POOL_CHAIN.id });
         }
 
         setStatus("signing");
@@ -59,16 +53,8 @@ export function WalletAuth() {
         }
       }
     },
-    [chainId, switchNetwork, signTypedDataAsync]
+    [chainId, switchChainAsync, signTypedDataAsync]
   );
-
-  // Detect when user closes modal without connecting
-  useEffect(() => {
-    if (events.data.event === "MODAL_CLOSE" && pendingSignIn.current && !isConnected) {
-      pendingSignIn.current = false;
-      setStatus("idle");
-    }
-  }, [events, isConnected]);
 
   // Continue sign-in flow after wallet connects via modal
   useEffect(() => {
@@ -87,10 +73,16 @@ export function WalletAuth() {
       return;
     }
 
-    // Open Reown modal for wallet selection
+    // Open wallet modal for wallet selection
     setStatus("connecting");
     pendingSignIn.current = true;
-    open();
+    openWalletModal(() => {
+      // Reset to idle when modal is closed without connecting
+      if (pendingSignIn.current && !isConnected) {
+        pendingSignIn.current = false;
+        setStatus("idle");
+      }
+    });
   };
 
   return (
@@ -107,7 +99,7 @@ export function WalletAuth() {
           <p className="text-xs text-neutral-400">Sign with your wallet to access your account.</p>
         </button>
       ) : (
-        <>
+        <div className="flex flex-col items-center">
           <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-white/10 border-t-white" />
           <p className="text-sm text-neutral-400">
             {
@@ -119,7 +111,18 @@ export function WalletAuth() {
               }[status]
             }
           </p>
-        </>
+          {status === "connecting" && (
+            <button
+              onClick={() => {
+                pendingSignIn.current = false;
+                setStatus("idle");
+              }}
+              className="mt-4 text-xs text-neutral-500 hover:text-neutral-300"
+            >
+              Cancel
+            </button>
+          )}
+        </div>
       )}
     </div>
   );
