@@ -1,4 +1,4 @@
-import { useSettings } from "@/contexts/SettingsContext";
+import { useSettings } from "@/context/SettingsContext";
 
 export function useAutoSync() {
   const { settings, updateSettings } = useSettings();
