@@ -33,11 +33,16 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
   );
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden sm:min-h-dvh sm:overflow-y-auto">
+    <div className="relative flex h-dvh flex-col overflow-hidden sm:min-h-dvh sm:overflow-y-auto">
+      {/* Subtle radial gradient background */}
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+        <div className="h-[600px] w-[600px] bg-[radial-gradient(circle,_rgba(249,115,22,0.05)_0%,_rgba(239,68,68,0.03)_40%,_transparent_70%)]" />
+      </div>
+
       <Header />
 
       <div
-        className={`min-h-0 flex-1 py-4 sm:py-8 ${!isAuthenticated ? "flex items-center justify-center" : ""}`}
+        className={`relative min-h-0 flex-1 py-4 sm:py-8 ${!isAuthenticated ? "flex items-center justify-center" : ""}`}
       >
         <div className="mx-auto flex h-full w-full max-w-md flex-col md:max-w-lg lg:max-w-xl">
           {content}

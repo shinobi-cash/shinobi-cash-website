@@ -15,10 +15,10 @@ export default function Page() {
   return (
     <main>
       {/* Hero Section */}
-      <section className="relative flex items-center justify-center min-h-svh px-4 overflow-hidden">
+      <section className="relative flex items-center justify-center min-h-svh px-4 overflow-hidden bg-linear-to-br from-neutral-950 via-neutral-900 to-black">
         {/* Subtle radial gradient background */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="w-[800px] h-[800px] bg-[radial-gradient(circle,_rgba(249,115,22,0.07)_0%,_rgba(239,68,68,0.04)_40%,_transparent_70%)]" />
+          <div className="h-[600px] w-[600px] bg-[radial-gradient(circle,_rgba(249,115,22,0.10)_0%,_rgba(239,68,68,0.06)_40%,_transparent_70%)]" />
         </div>
 
         <div className="relative z-10 flex flex-col items-center justify-center gap-6 sm:gap-8 text-center max-w-4xl mx-auto">
