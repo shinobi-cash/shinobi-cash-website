@@ -13,27 +13,33 @@ import {
   type StepTiming,
 } from "@/components/shared/Timeline";
 import { type AppError, getUserMessage, ErrorCode } from "@/lib/errors/errors";
-import type { EnginePhase } from "@/services/WithdrawalOrchestratorService";
 import { getTxExplorerUrl } from "@/config/chains";
 import { formatDateTime } from "@/utils/formatters";
 import { POOL_CHAIN } from "@shinobi-cash/constants";
 
+type WithdrawStatus =
+  | "idle"
+  | "previewing"
+  | "preparing"
+  | "ready"
+  | "submitting"
+  | "confirmed"
+  | "error";
+
 interface WithdrawalTimelineScreenProps {
   amount: number;
-  currentPhase: EnginePhase | null;
+  status: WithdrawStatus;
   txHash: string | null;
   error: AppError | null;
-  isConfirmed: boolean;
   isCrossChain: boolean;
   onClose: () => void;
 }
 
 export function WithdrawalTimelineScreen({
   amount,
-  currentPhase,
+  status,
   txHash,
   error,
-  isConfirmed,
   isCrossChain,
   onClose,
 }: WithdrawalTimelineScreenProps) {
@@ -44,10 +50,12 @@ export function WithdrawalTimelineScreen({
   // Track timestamps and durations for each step
   const [timings, setTimings] = useState<Record<string, StepTiming>>({});
 
-  const isPreparing = currentPhase !== null && currentPhase !== "prepared";
-  const isConfirming = txHash !== null && !isConfirmed && !error;
+  // Derive states from controller status directly
+  const isPreparing = status === "preparing";
+  const isSubmitting = status === "submitting";
+  const isConfirmed = status === "confirmed";
 
-  // Complete when tx is confirmed on-chain (don't wait for indexer)
+  // Complete when tx is confirmed on-chain
   const isComplete = isConfirmed;
 
   // Title based on state
@@ -55,7 +63,7 @@ export function WithdrawalTimelineScreen({
     ? "Withdrawal complete"
     : hasError
       ? "Withdrawal failed"
-      : isConfirming
+      : isSubmitting
         ? "Submitting withdrawal"
         : isPreparing
           ? "Preparing withdrawal"
@@ -73,31 +81,25 @@ export function WithdrawalTimelineScreen({
   const isTransactionError = error && error.code === ErrorCode.WITHDRAWAL.TRANSACTION_FAILED;
 
   // Determine which step failed
-  const failedAtStep = isPreparationError
-    ? "preparing"
-    : isTransactionError
-      ? "submitting"
-      : null;
+  const failedAtStep = isPreparationError ? "preparing" : isTransactionError ? "submitting" : null;
 
   // Step 1: Preparing (proof generation)
   const preparingStatus: StepStatus = isPreparationError
     ? "failed"
-    : txHash || isConfirming || isComplete
+    : isSubmitting || isComplete
       ? "completed"
-      : isPreparing || currentPhase === "prepared"
+      : isPreparing
         ? "active"
         : "pending";
 
-  // Step 2: Submitting (tx confirmation)
+  // Step 2: Submitting (tx submission + wait for receipt)
   const submittingStatus: StepStatus = isTransactionError
     ? "failed"
     : isComplete
       ? "completed"
-      : isConfirming
+      : isSubmitting
         ? "active"
-        : preparingStatus === "completed"
-          ? "active"
-          : "pending";
+        : "pending";
 
   // Step 3: Complete
   const completeStatus: StepStatus = isComplete ? "completed" : "pending";
@@ -163,7 +165,10 @@ export function WithdrawalTimelineScreen({
       status: submittingStatus,
       description: "Waiting for on-chain confirmation.",
       errorMessage: failedAtStep === "submitting" ? getErrorMessage() : undefined,
-      link: explorerUrl && submittingStatus !== "pending" ? { url: explorerUrl, text: "View transaction" } : undefined,
+      link:
+        explorerUrl && submittingStatus !== "pending"
+          ? { url: explorerUrl, text: "View transaction" }
+          : undefined,
       timestamp: timings["submitting"]?.displayTime,
       duration: timings["submitting"]?.duration,
     },
@@ -181,8 +186,10 @@ export function WithdrawalTimelineScreen({
 
   return (
     <ScreenLayout
-      containerClassName="h-[600px]"
-      header={<ScreenHeader title="Transaction details" onBack={onClose} backDisabled={!canGoBack} />}
+      containerClassName="flex-1 sm:flex-none sm:h-[600px]"
+      header={
+        <ScreenHeader title="Transaction details" onBack={onClose} backDisabled={!canGoBack} />
+      }
       footer={
         <Button
           onClick={onClose}
@@ -192,7 +199,7 @@ export function WithdrawalTimelineScreen({
           Close
         </Button>
       }
-      contentClassName="space-y-4 px-6 py-4"
+      contentClassName="space-y-4 px-4 py-4"
     >
       <div className="flex flex-1 flex-col items-center space-y-4">
         <div className="flex flex-col items-center space-y-2 text-center">

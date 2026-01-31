@@ -28,7 +28,7 @@ export class KeyDerivationService {
   async deriveDataEncryptionKey(amkPrivateKey: string): Promise<CryptoKey> {
     let privateKeyBytes: Uint8Array;
     try {
-      const hexKey = amkPrivateKey.startsWith('0x') ? amkPrivateKey : `0x${amkPrivateKey}`;
+      const hexKey = amkPrivateKey.startsWith("0x") ? amkPrivateKey : `0x${amkPrivateKey}`;
       privateKeyBytes = hexToBytes(hexKey as `0x${string}`);
     } catch {
       throw Errors.auth.decryptionFailed("Account key is malformed");

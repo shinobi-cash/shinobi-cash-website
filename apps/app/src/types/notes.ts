@@ -17,10 +17,21 @@ export interface NoteChainView {
   key: string;
 }
 
-export type NoteFilter = "available" | "pending" | "spent";
+/**
+ * Note category for the 3-category model
+ * - spendable: User can take action (withdraw or ragequit)
+ * - pending: Waiting for something (solver, ASP approval)
+ * - spent: Already used or refunded
+ */
+export type NoteCategory = "spendable" | "pending" | "spent";
+
+/**
+ * Filter type for note list tabs
+ */
+export type NoteFilter = NoteCategory;
 
 export const NOTE_FILTER_LABELS: Record<NoteFilter, string> = {
-  available: "Available",
+  spendable: "Spendable",
   pending: "Pending",
   spent: "Spent",
 };

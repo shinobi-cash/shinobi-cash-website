@@ -7,7 +7,12 @@
 import { proxy } from "valtio";
 import type { NoteChain } from "@shinobi-cash/core";
 import { NoteChainView, NoteFilter, ReadonlyNoteChain } from "@/types/notes";
-import { filterNoteChains, getLastNote, sortNoteChainsByTimestamp, canWithdraw } from "@/utils/noteFiltering";
+import {
+  filterNoteChains,
+  getLastNote,
+  sortNoteChainsByTimestamp,
+  canWithdraw,
+} from "@/utils/noteFiltering";
 
 /**
  * Screen UI state
@@ -22,7 +27,7 @@ interface NotesScreenState {
 }
 
 const state = proxy<NotesScreenState>({
-  activeFilter: "available",
+  activeFilter: "spendable",
   selectedNoteChain: null,
 });
 
@@ -114,7 +119,7 @@ export const NotesScreenController = {
    * Reset all UI state
    */
   reset(): void {
-    state.activeFilter = "available";
+    state.activeFilter = "spendable";
     state.selectedNoteChain = null;
   },
 };

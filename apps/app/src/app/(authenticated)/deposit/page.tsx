@@ -1,11 +1,15 @@
 "use client";
 
-import { Copy, Check, Loader2, CircleQuestionMarkIcon, ArrowDownToLine, Wallet } from "lucide-react";
+import { Copy, Check, CircleQuestionMarkIcon, ArrowDownToLine, Wallet } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAppKitNetwork } from "@reown/appkit/react";
 import { useSnapshot } from "valtio";
 import { Button } from "@workspace/ui/components/button";
-import { POOL_CHAIN, SHINOBI_CASH_ETH_POOL, SHINOBI_CASH_SUPPORTED_CHAINS } from "@shinobi-cash/constants";
+import {
+  POOL_CHAIN,
+  SHINOBI_CASH_ETH_POOL,
+  SHINOBI_CASH_SUPPORTED_CHAINS,
+} from "@shinobi-cash/constants";
 import { CardContainer } from "@/components/shared/CardContainer";
 import { AssetPill } from "@/components/shared/AssetPill";
 import { AmountInput } from "@/components/shared/AmountInput";
@@ -13,12 +17,10 @@ import { QuickAmountButtons } from "@/components/shared/QuickAmountButtons";
 import { PriceDisplay } from "@/components/shared/PriceDisplay";
 import { AmountUsd } from "@/components/shared/AmountUsd";
 import { SectionDivider } from "@/components/shared/SectionDivider";
-import { FeeBreakdown } from "@/components/shared/FeeBreakdown";
 import { AssetChainSelectorScreen } from "@/components/screens/AssetChainSelectorScreen";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { modal } from "@/context";
 import { useDepositController } from "@/hooks/useDepositController";
-import { useTransactionTracking } from "@/hooks/useTransactionTracking";
 import { usePriceData } from "@/hooks/usePriceData";
 import { DepositController, DepositSelectors } from "@/controllers/DepositController";
 import { AuthController } from "@/controllers/AuthController";
@@ -29,6 +31,7 @@ import { ScreenLayout } from "@/components/layout/ScreenLayout";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";
 import { useScreenNavigation } from "@/hooks/useScreenNavigation";
 import { ETH_ASSET, DISPLAY_DECIMALS } from "@/constants/withdraw";
+import { formatUsdAmount } from "@/utils/formatters";
 
 type DepositScreen = "timeline" | "preview" | "assetSelector";
 
@@ -54,14 +57,7 @@ export default function DepositPage() {
   const screens = useScreenNavigation<DepositScreen>();
 
   const state = useDepositController();
-  const { trackTransaction, onTransactionIndexed } = useTransactionTracking();
   const { usdPrice } = usePriceData("ETH");
-
-  useEffect(() => {
-    return onTransactionIndexed(() => {
-      DepositController.markIndexed();
-    });
-  }, [onTransactionIndexed]);
 
   const authState = useSnapshot(AuthController.state);
   const cryptoReady = authState.crypto.cryptoReady;
@@ -94,17 +90,10 @@ export default function DepositPage() {
 
   const txHash =
     state.state.status === "confirming" ||
-    state.state.status === "confirmed-onchain" ||
-    state.state.status === "indexed" ||
+    state.state.status === "confirmed" ||
     state.state.status === "failed"
       ? state.state.txHash
       : null;
-
-  useEffect(() => {
-    if (txHash) {
-      trackTransaction(txHash, state.wallet.chainId);
-    }
-  }, [txHash, state.wallet.chainId, trackTransaction]);
 
   const handleReviewDeposit = () => {
     if (state.state.status === "ready") {
@@ -135,8 +124,7 @@ export default function DepositPage() {
       const s = state.state.status;
       if (s === "submitting") return "submitting" as const;
       if (s === "confirming") return "confirming" as const;
-      if (s === "confirmed-onchain") return "confirmed-onchain" as const;
-      if (s === "indexed") return "indexed" as const;
+      if (s === "confirmed") return "confirmed" as const;
       if (s === "failed") return "failed" as const;
       if (s === "error") return "error" as const;
       return "submitting" as const;
@@ -196,7 +184,7 @@ export default function DepositPage() {
   if (screens.is("assetSelector")) {
     return (
       <ScreenLayout
-        containerClassName="h-[600px]"
+        containerClassName="flex-1 sm:flex-none sm:h-[600px]"
         header={<ScreenHeader title="Select Asset & Chain" onBack={screens.close} />}
       >
         <AssetChainSelectorScreen
@@ -217,120 +205,120 @@ export default function DepositPage() {
   return (
     <ScreenLayout
       header={<ScreenHeader title="Deposit" icon={<ArrowDownToLine className="h-5 w-5" />} />}
-      contentClassName="px-4 py-4 sm:px-6"
-    >
-      <div className="flex-1 space-y-3 overflow-y-auto">
-        <div className="relative flex flex-col gap-2">
-          {/* You Pay */}
-          <CardContainer>
-            <div className="mb-3 flex items-center justify-between">
-              <span className="text-sm text-neutral-400">You Pay</span>
-              <div className="flex items-center gap-2">
-                {state.wallet.address ? (
-                  <>
-                    <span className="text-sm text-neutral-400">
-                      {formattedBalance} {asset.symbol}
-                    </span>
-                    <button
-                      onClick={handleCopyAddress}
-                      className="flex cursor-pointer items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 text-sm text-neutral-400 transition-colors hover:bg-white/[0.08] hover:text-white"
-                    >
-                      <Wallet className="h-3 w-3" />
-                      {state.wallet.address.slice(0, 6)}...{state.wallet.address.slice(-4)}
-                      {copiedAddress ? (
-                        <Check className="h-3 w-3 text-emerald-400" />
-                      ) : (
-                        <Copy className="h-3 w-3" />
-                      )}
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    onClick={handleConnectWallet}
-                    className="flex cursor-pointer items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 text-sm text-neutral-400 transition-colors hover:bg-white/[0.08] hover:text-white"
-                  >
-                    <Wallet className="h-3 w-3" />
-                    Connect Wallet
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between gap-3">
-              <AssetPill
-                asset={asset}
-                chainId={state.wallet.chainId}
-                onClick={() => screens.navigate("assetSelector")}
-                disabled={isDisabled}
-              />
-              <AmountInput
-                value={state.amount}
-                onChange={(value) => DepositController.setAmount(value)}
-                disabled={isDisabled}
-              />
-            </div>
-            <div className="flex items-center justify-end">
-              <QuickAmountButtons
-                onSelect={handleQuickAmount}
-                disabled={isDisabled || parseFloat(state.wallet.balance) <= 0}
-              />
-            </div>
-          </CardContainer>
-
-          <SectionDivider />
-
-          {/* You Receive */}
-          <CardContainer>
-            <div className="flex items-center justify-between py-1">
-              <span className="text-sm text-neutral-400">You Receive (Deposit Note)</span>
-              <DepositNoteInfo />
-            </div>
-
-            <div className="flex items-center justify-between gap-3">
-              <AssetPill asset={asset} chainId={POOL_CHAIN.id} disabled />
-              <AmountInput value={noteAmount > 0 ? noteAmount.toFixed(DISPLAY_DECIMALS) : "0"} disabled />
-            </div>
-
-            <div className="flex items-center justify-between py-1">
-              <PriceDisplay symbol={asset.symbol} priceUsd={usdPrice} />
-              <AmountUsd amountUsd={noteAmountUsd} />
-            </div>
-          </CardContainer>
-        </div>
-
+      contentClassName="px-4 py-4"
+      footer={
         <Button
           disabled={!DepositSelectors.canDeposit()}
           onClick={handleReviewDeposit}
           className="h-12 w-full rounded-xl text-base font-semibold disabled:cursor-not-allowed disabled:opacity-50 sm:h-14 sm:text-lg"
           size="lg"
         >
-          {state.state.status === "preparing" ? (
-            <div className="flex items-center gap-2">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Preparing Deposit...
-            </div>
-          ) : state.state.status === "ready" ? (
-            "Review Deposit"
-          ) : !state.amount.trim() ? (
-            "Enter Amount to Deposit"
-          ) : !state.wallet.isConnected ? (
-            "Connect Wallet to Continue"
-          ) : !DepositSelectors.isOnSupportedChain() ? (
-            "Switch to Supported Network"
-          ) : (
-            "Review Deposit"
-          )}
+          {state.state.status === "preparing"
+            ? "Estimating gas..."
+            : state.state.status === "ready"
+              ? "Review Deposit"
+              : !state.amount.trim()
+                ? "Enter Amount to Deposit"
+                : !state.wallet.isConnected
+                  ? "Connect Wallet to Continue"
+                  : !DepositSelectors.isOnSupportedChain()
+                    ? "Switch to Supported Network"
+                    : "Review Deposit"}
         </Button>
+      }
+    >
+      <div className="flex flex-col gap-2">
+        {/* You Pay */}
+        <CardContainer>
+          <div className="mb-3 flex items-center justify-between">
+            <span className="text-sm text-neutral-400">You Pay</span>
+            <div className="flex items-center gap-2">
+              {state.wallet.address ? (
+                <>
+                  <span className="text-sm text-neutral-400">
+                    {formattedBalance} {asset.symbol}
+                  </span>
+                  <button
+                    onClick={handleCopyAddress}
+                    className="flex cursor-pointer items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 text-sm text-neutral-400 transition-colors hover:bg-white/[0.08] hover:text-white"
+                  >
+                    <Wallet className="h-3 w-3" />
+                    {state.wallet.address.slice(0, 6)}...{state.wallet.address.slice(-4)}
+                    {copiedAddress ? (
+                      <Check className="h-3 w-3 text-emerald-400" />
+                    ) : (
+                      <Copy className="h-3 w-3" />
+                    )}
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={handleConnectWallet}
+                  className="flex cursor-pointer items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 text-sm text-neutral-400 transition-colors hover:bg-white/[0.08] hover:text-white"
+                >
+                  <Wallet className="h-3 w-3" />
+                  Connect Wallet
+                </button>
+              )}
+            </div>
+          </div>
 
-        {state.state.status === "ready" && (
-          <FeeBreakdown
-            executionFee={state.state.gasEstimate.gasCostEth}
-            assetSymbol={asset.symbol}
-            solverFee={state.state.amounts.solverFee}
-            isCrossChain={DepositSelectors.isCrossChain()}
-            decimals={6}
-          />
-        )}
+          <div className="flex items-center justify-between gap-3">
+            <AssetPill
+              asset={asset}
+              chainId={state.wallet.chainId}
+              onClick={() => screens.navigate("assetSelector")}
+              disabled={isDisabled}
+            />
+            <AmountInput
+              value={state.amount}
+              onChange={(value) => DepositController.setAmount(value)}
+              disabled={isDisabled}
+            />
+          </div>
+          <div className="flex items-center justify-end">
+            <QuickAmountButtons
+              onSelect={handleQuickAmount}
+              disabled={isDisabled || parseFloat(state.wallet.balance) <= 0}
+            />
+          </div>
+        </CardContainer>
+
+        <SectionDivider
+          networkFee={
+            state.state.status === "ready" && usdPrice
+              ? formatUsdAmount(parseFloat(state.state.gasEstimate.gasCostEth) * usdPrice)
+              : undefined
+          }
+          solverFee={
+            state.state.status === "ready" && usdPrice && state.state.amounts.solverFee > 0
+              ? formatUsdAmount(state.state.amounts.solverFee * usdPrice)
+              : undefined
+          }
+          isCrossChain={DepositSelectors.isCrossChain()}
+          isLoading={state.state.status === "preparing"}
+        />
+
+        {/* You Receive */}
+        <CardContainer>
+          <div className="flex items-center justify-between py-1">
+            <span className="text-sm text-neutral-400">You Receive (Deposit Note)</span>
+            <DepositNoteInfo />
+          </div>
+
+          <div className="flex items-center justify-between gap-3">
+            <AssetPill asset={asset} chainId={POOL_CHAIN.id} disabled />
+            <AmountInput
+              value={noteAmount > 0 ? noteAmount.toFixed(DISPLAY_DECIMALS) : "0"}
+              disabled
+            />
+          </div>
+
+          <div className="flex items-center justify-between py-1">
+            <PriceDisplay symbol={asset.symbol} priceUsd={usdPrice} />
+            <AmountUsd amountUsd={noteAmountUsd} />
+          </div>
+        </CardContainer>
       </div>
     </ScreenLayout>
   );

@@ -40,7 +40,7 @@ export function AmountInput({
       placeholder={placeholder}
       disabled={disabled}
       className={cn(
-        "min-w-0 flex-1 border-none bg-transparent text-right text-3xl font-semibold",
+        "min-w-0 flex-1 border-none bg-transparent text-right text-2xl font-semibold sm:text-3xl",
         "text-white placeholder:text-white",
         "focus:outline-none",
         "disabled:cursor-not-allowed disabled:opacity-40",

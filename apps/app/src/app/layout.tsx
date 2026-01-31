@@ -34,7 +34,7 @@ export default async function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className="dark">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} bg-linear-to-br from-neutral-950 via-neutral-900 to-black text-foreground antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} bg-linear-to-br text-foreground from-neutral-950 via-neutral-900 to-black antialiased`}
       >
         <ContextProvider cookies={cookies}>{children}</ContextProvider>
       </body>

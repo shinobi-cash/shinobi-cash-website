@@ -1,16 +1,16 @@
 /**
  * Activity List Component
  *
- * Scrollable list of activities with empty states.
+ * Scrollable list of activity entries with empty states.
  */
 
 import { RefreshCw } from "lucide-react";
 import { ActivityRow } from "./ActivityRow";
-import type { Activity, ActivityFilter } from "@/types/activity";
-import type { ActivityStatus } from "@/types/activity";
+import type { ActivityEntry, ActivityFilter, ActivityStatus } from "@/types/activity";
+import { getActivityId } from "@/types/activity";
 
 interface ActivityListProps {
-  activities: readonly Activity[];
+  entries: readonly ActivityEntry[];
   status: ActivityStatus;
   activeFilter: ActivityFilter;
   totalCount: number;
@@ -18,7 +18,7 @@ interface ActivityListProps {
 }
 
 export function ActivityList({
-  activities,
+  entries,
   status,
   activeFilter,
   totalCount,
@@ -47,7 +47,6 @@ export function ActivityList({
       );
     }
 
-    // No activities at all
     if (status.type === "empty") {
       return (
         <div className="flex items-center justify-center py-12">
@@ -63,7 +62,7 @@ export function ActivityList({
     }
 
     // Has activities but none match current filter
-    if (activities.length === 0 && totalCount > 0) {
+    if (entries.length === 0 && totalCount > 0) {
       return (
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
@@ -97,18 +96,19 @@ export function ActivityList({
   };
 
   return (
-    <div className="h-full space-y-2 overflow-y-auto">
+    <div className="h-full overflow-y-auto">
       {renderEmptyState()}
 
-      {/* Render filtered activities */}
-      {activities.length > 0 && (
-        <>
-          {activities.map((activity) => (
-            <div key={activity.id}>
-              <ActivityRow activity={activity} onClick={() => onActivityClick?.(activity.id)} />
-            </div>
+      {entries.length > 0 && (
+        <div className="divide-y divide-white/5">
+          {entries.map((entry) => (
+            <ActivityRow
+              key={getActivityId(entry)}
+              entry={entry}
+              onClick={() => onActivityClick?.(getActivityId(entry))}
+            />
           ))}
-        </>
+        </div>
       )}
     </div>
   );

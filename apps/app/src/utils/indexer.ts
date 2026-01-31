@@ -76,7 +76,6 @@ export async function fetchActivities(
   }
 }
 
-
 export async function fetchStateTreeLeaves(poolId: string): Promise<StateTreeLeaf[]> {
   assertAuthenticated();
   try {
@@ -169,26 +168,6 @@ export async function fetchASPData() {
   }
 }
 
-export async function checkIndexerHealth(): Promise<boolean> {
-  if (!isAuthenticated()) {
-    return false;
-  }
-  try {
-    const response = await fetch("/api/indexer", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        endpoint: "health",
-      }),
-    });
-
-    const result = await response.json();
-    return result.success && result.data?.status === true;
-  } catch {
-    return false;
-  }
-}
-
 export async function fetchLatestIndexedBlock(): Promise<{
   blockNumber: string;
   timestamp: string;
@@ -216,8 +195,4 @@ export async function fetchLatestIndexedBlock(): Promise<{
     logError(error, { action: "fetchLatestIndexedBlock" });
     return null;
   }
-}
-
-export async function checkIndexerResponsive(): Promise<boolean> {
-  return checkIndexerHealth();
 }

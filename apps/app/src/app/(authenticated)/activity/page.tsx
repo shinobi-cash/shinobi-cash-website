@@ -14,24 +14,29 @@ export default function ActivityPage() {
   const router = useRouter();
   const controller = useActivityScreen();
 
+  const handleViewNoteChain = (depositIndex: number) => {
+    // Navigate to notes page with the deposit index as query param
+    router.push(`/notes?depositIndex=${depositIndex}`);
+  };
+
   // Show activity details if selected
-  if (controller.selectedActivity) {
+  if (controller.selectedEntry) {
     return (
       <ActivityDetailsScreen
-        activity={controller.selectedActivity}
+        entry={controller.selectedEntry}
         onBack={controller.clearSelection}
+        onViewNoteChain={handleViewNoteChain}
       />
     );
   }
 
   return (
     <ScreenLayout
-      containerClassName="h-[600px]"
+      containerClassName="flex-1 sm:flex-none sm:h-[600px]"
       header={
         <ScreenHeader
           title="Activity"
           icon={<History className="h-5 w-5" />}
-          onBack={() => router.push("/notes")}
           rightContent={
             <div className="flex items-center gap-2">
               {controller.syncError && (
@@ -53,10 +58,10 @@ export default function ActivityPage() {
           }
         />
       }
-      contentClassName="px-4 pb-4 pt-2 sm:px-6"
+      contentClassName="pb-4 pt-2"
     >
       <ActivityList
-        activities={controller.filteredActivities}
+        entries={controller.filteredEntries}
         status={controller.status}
         activeFilter={controller.activeFilter}
         totalCount={controller.totalCount}

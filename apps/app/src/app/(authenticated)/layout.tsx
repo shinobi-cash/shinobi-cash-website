@@ -6,16 +6,10 @@ import { Footer } from "@/components/layout/Footer";
 import { NavLinks } from "@/components/layout/NavLinks";
 import { useSnapshot } from "valtio";
 import { AuthController } from "@/controllers/AuthController";
-import { IndexerHealthIndicator } from "@/components/indicators/IndexerHealthIndicator";
 import { NotesSyncIndicator } from "@/components/indicators/NotesSyncIndicator";
 import { NotesSyncingScreen } from "@/components/indicators/NotesSyncingBanner";
 import { NotesDiscoveryController } from "@/controllers/NotesDiscoveryController";
 
-/**
- * Authenticated Layout
- * Wraps all authenticated routes (notes, deposit, withdraw, activity)
- * Provides auth check, header, card UI with tabs, and footer
- */
 export default function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const state = useSnapshot(AuthController.state);
   const notesState = useSnapshot(NotesDiscoveryController.state);
@@ -24,57 +18,34 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
   const isNotesSyncing =
     notesState.state.status === "discovering" && notesState.noteChains.length === 0;
 
-  // Show auth screen if not authenticated
-  if (!isAuthenticated) {
-    return (
-      <div className="flex min-h-dvh flex-col overflow-y-auto">
-        <div className="p-4">
-          <Header />
-        </div>
-
-        <div className="flex flex-1 items-center justify-center py-8">
-          <div className="w-full max-w-md md:max-w-lg lg:max-w-xl">
-            <AuthScreen />
-          </div>
-        </div>
-
-        <div className="hidden shrink-0 md:block">
-          <Footer />
-        </div>
+  const content = isAuthenticated ? (
+    <>
+      <div className="flex shrink-0 items-center justify-between pb-4">
+        <NavLinks />
+        <NotesSyncIndicator />
       </div>
-    );
-  }
+      <div className="flex min-h-0 flex-1 flex-col rounded-2xl sm:flex-none">
+        {isNotesSyncing ? <NotesSyncingScreen /> : children}
+      </div>
+    </>
+  ) : (
+    <AuthScreen />
+  );
 
-  // Authenticated layout with card UI
   return (
-    <div className="flex min-h-dvh flex-col overflow-y-auto">
-      <div className="p-4">
-        <Header />
-      </div>
+    <div className="flex h-dvh flex-col overflow-hidden sm:min-h-dvh sm:overflow-y-auto">
+      <Header />
 
-      <div className="flex-1 py-8">
-        <div className="mx-auto w-full max-w-md md:max-w-lg lg:max-w-xl">
-          {/* Navigation Tabs */}
-          <div className="mb-4">
-            <NavLinks />
-          </div>
-
-          {/* Card Content */}
-          <div className="border-white/10 bg-white/[0.02] rounded-2xl border">
-            {isNotesSyncing ? <NotesSyncingScreen /> : children}
-          </div>
+      <div
+        className={`min-h-0 flex-1 py-4 sm:py-8 ${!isAuthenticated ? "flex items-center justify-center" : ""}`}
+      >
+        <div className="mx-auto flex h-full w-full max-w-md flex-col md:max-w-lg lg:max-w-xl">
+          {content}
         </div>
       </div>
 
       <div className="hidden shrink-0 md:block">
-        <Footer
-              indicators={
-                <>
-                  <NotesSyncIndicator />
-                  <IndexerHealthIndicator />
-                </>
-              }
-            />
+        <Footer />
       </div>
     </div>
   );

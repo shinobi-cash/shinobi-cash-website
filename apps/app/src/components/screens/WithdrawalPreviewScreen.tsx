@@ -4,10 +4,15 @@ import { Loader2, Globe, Clock } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";
 import { ScreenLayout } from "@/components/layout/ScreenLayout";
+import { Section, Row } from "@/components/shared/Section";
 import { LabelWithHover } from "@/components/shared/LabelWithHover";
 import { usePriceData } from "@/hooks/usePriceData";
 import { formatUsdAmount, formatHash, formatSmallEthAmount } from "@/utils/formatters";
-import { POOL_CHAIN, SHINOBI_CASH_SUPPORTED_CHAINS, CROSSCHAIN_DEPOSIT_TIMING } from "@shinobi-cash/constants";
+import {
+  POOL_CHAIN,
+  SHINOBI_CASH_SUPPORTED_CHAINS,
+  CROSSCHAIN_DEPOSIT_TIMING,
+} from "@shinobi-cash/constants";
 import { ShinobiCashNote, AssetChain } from "@/components/shared/AssetChain";
 
 interface WithdrawalPreviewScreenProps {
@@ -61,9 +66,9 @@ export function WithdrawalPreviewScreen({
 
   return (
     <ScreenLayout
-      containerClassName="h-[600px]"
+      containerClassName="flex-1 sm:flex-none sm:h-[600px]"
       header={<ScreenHeader title="Transaction Preview" onBack={onBack} />}
-      contentClassName="space-y-4 px-6 py-4 font-sans text-white"
+      contentClassName="space-y-4 px-4 py-4"
       footer={
         <Button
           onClick={onConfirm}
@@ -82,15 +87,17 @@ export function WithdrawalPreviewScreen({
         </Button>
       }
     >
-      {/* Assets - Horizontal Layout */}
-      <div className="flex w-full items-center gap-2">
+      {/* Assets - Stack on mobile, horizontal on desktop */}
+      <div className="flex w-full flex-col items-center gap-2 sm:flex-row">
         {/* From */}
-        <div className="flex flex-1 flex-col rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+        <div className="flex w-full flex-col rounded-2xl border border-white/10 bg-white/[0.02] p-3 sm:flex-1 sm:p-4">
           <span className="mb-2 text-xs text-neutral-500">You withdraw</span>
           <div className="flex items-center justify-between">
             <ShinobiCashNote />
             <div className="flex flex-col items-end">
-              <span className="text-lg font-bold">{formatSmallEthAmount(withdrawAmountNum)} ETH</span>
+              <span className="text-base font-bold sm:text-lg">
+                {formatSmallEthAmount(withdrawAmountNum)} ETH
+              </span>
               {withdrawUsd !== null && (
                 <span className="text-xs text-neutral-500">~{formatUsdAmount(withdrawUsd)}</span>
               )}
@@ -99,19 +106,31 @@ export function WithdrawalPreviewScreen({
         </div>
 
         {/* Arrow */}
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-neutral-900">
-          <svg className="h-4 w-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+        <div className="flex h-8 w-8 shrink-0 rotate-90 items-center justify-center rounded-full border border-white/10 bg-neutral-900 sm:rotate-0">
+          <svg
+            className="h-4 w-4 text-neutral-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M14 5l7 7m0 0l-7 7m7-7H3"
+            />
           </svg>
         </div>
 
         {/* To */}
-        <div className="flex flex-1 flex-col rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+        <div className="flex w-full flex-col rounded-2xl border border-white/10 bg-white/[0.02] p-3 sm:flex-1 sm:p-4">
           <span className="mb-2 text-xs text-neutral-500">You receive</span>
           <div className="flex items-center justify-between">
             <AssetChain assetSymbol="ETH" chainId={destinationChainId} />
             <div className="flex flex-col items-end">
-              <span className="text-lg font-bold">{formatSmallEthAmount(youReceive)} ETH</span>
+              <span className="text-base font-bold sm:text-lg">
+                {formatSmallEthAmount(youReceive)} ETH
+              </span>
               {receiveUsd !== null && (
                 <span className="text-xs text-neutral-500">~{formatUsdAmount(receiveUsd)}</span>
               )}
@@ -121,10 +140,9 @@ export function WithdrawalPreviewScreen({
       </div>
 
       {/* Details */}
-      <div className="w-full space-y-2">
-        {/* Route indicator for cross-chain */}
+      <Section title="Details">
         {isCrossChain && (
-          <DetailRow
+          <Row
             label="Route"
             value={
               <span className="flex items-center gap-1.5 text-blue-400">
@@ -134,61 +152,40 @@ export function WithdrawalPreviewScreen({
             }
           />
         )}
+        <Row label="Origin" value={POOL_CHAIN.name} />
+        <Row label="Destination" value={destinationChain.name} />
+        <Row label="Recipient" value={formatHash(recipientAddress)} />
+      </Section>
 
-        <DetailRow label="Origin" value={POOL_CHAIN.name} />
-        <DetailRow label="Destination" value={destinationChain.name} />
-        <DetailRow label="Recipient" value={formatHash(recipientAddress)} />
-
-        {/* Solver fee for cross-chain */}
+      {/* Fees */}
+      <Section title="Fees">
         {isCrossChain && solverFee > 0 && (
-          <DetailRow
+          <Row
             label="Solver Fee (5%)"
-            value={
-              <FeeValue
-                amount={solverFee}
-                usdValue={solverFeeUsd}
-              />
-            }
+            value={<FeeValue amount={solverFee} usdValue={solverFeeUsd} />}
           />
         )}
-
-        <DetailRow
-          label={isCrossChain ? "Relay Fee (Max)" : "Execution Fee (Max)"}
-          value={
-            <FeeValue
-              amount={executionFee}
-              usdValue={executionFeeUsd}
-            />
-          }
+        <Row
+          label="Relay Fee (Max)"
+          value={<FeeValue amount={executionFee} usdValue={executionFeeUsd} />}
         />
-
-        {/* Cross-chain timing info */}
         {isCrossChain && (
-          <DetailRow
+          <Row
             label="Fill Deadline"
             value={
               <span className="flex items-center gap-1.5">
-                <Clock className="h-3.5 w-3.5 text-zinc-500" />
+                <Clock className="h-3.5 w-3.5 text-neutral-500" />
                 {fillDeadline}
               </span>
             }
           />
         )}
-      </div>
+      </Section>
     </ScreenLayout>
   );
 }
 
 /* ---------- helpers ---------- */
-
-function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className="flex items-center justify-between">
-      <span className="text-sm text-zinc-500">{label}</span>
-      <span className="text-sm font-medium text-zinc-200">{value}</span>
-    </div>
-  );
-}
 
 function FeeValue({ amount, usdValue }: { amount: number; usdValue: number | null }) {
   const ethText = `${formatSmallEthAmount(amount)} ETH`;

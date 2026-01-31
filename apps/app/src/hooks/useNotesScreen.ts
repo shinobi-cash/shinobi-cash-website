@@ -14,7 +14,10 @@ import { useSnapshot } from "valtio";
 import type { Note, NoteChain } from "@shinobi-cash/core";
 import type { NotesStatus, NotesError, NoteFilter, NoteChainView } from "@/types/notes";
 import { useNotesDiscovery } from "./useNotesDiscovery";
-import { NotesDiscoveryController, NotesDiscoverySelectors } from "@/controllers/NotesDiscoveryController";
+import {
+  NotesDiscoveryController,
+  NotesDiscoverySelectors,
+} from "@/controllers/NotesDiscoveryController";
 import { NotesScreenController, NotesScreenSelectors } from "@/controllers/NotesScreenController";
 
 /**
@@ -31,7 +34,7 @@ export interface NotesScreenControllerAPI {
 
   // Filter state
   activeFilter: NoteFilter;
-  availableCount: number;
+  spendableCount: number;
   pendingCount: number;
   spentCount: number;
   totalCount: number;
@@ -40,11 +43,11 @@ export interface NotesScreenControllerAPI {
   isLoading: boolean;
   isRefreshing: boolean;
 
-  // Balance (derived from available notes)
+  // Balance (derived from spendable notes)
   totalBalance: bigint;
 
-  // Available notes
-  availableNotes: Note[];
+  // Spendable notes (can withdraw or ragequit)
+  spendableNotes: Note[];
 
   // Selected note chain (domain data)
   // NoteChain = Note[] (represents full deposit history)
@@ -70,7 +73,11 @@ export interface NotesScreenControllerAPI {
 export function useNotesScreen(): NotesScreenControllerAPI {
   // Selective subscription to discovery controller
   // Only access properties we actually need - excludes progress
-  const { noteChains, state: discoveryState, lastError } = useSnapshot(NotesDiscoveryController.state);
+  const {
+    noteChains,
+    state: discoveryState,
+    lastError,
+  } = useSnapshot(NotesDiscoveryController.state);
 
   // Selective subscription to screen controller
   const { activeFilter, selectedNoteChain } = useSnapshot(NotesScreenController.state);
@@ -91,12 +98,12 @@ export function useNotesScreen(): NotesScreenControllerAPI {
     [noteChains, activeFilter]
   );
 
-  // Calculate total balance from available notes
+  // Calculate total balance from spendable notes
   const totalBalance = useMemo(() => {
-    return viewState.availableNotes.reduce((total, note) => {
+    return viewState.spendableNotes.reduce((total, note) => {
       return total + BigInt(note.amount);
     }, BigInt(0));
-  }, [viewState.availableNotes]);
+  }, [viewState.spendableNotes]);
 
   return {
     // UI status (from domain)
@@ -109,7 +116,7 @@ export function useNotesScreen(): NotesScreenControllerAPI {
 
     // Filter state
     activeFilter,
-    availableCount: viewState.counts.available,
+    spendableCount: viewState.counts.spendable,
     pendingCount: viewState.counts.pending,
     spentCount: viewState.counts.spent,
     totalCount: viewState.totalCount,
@@ -121,8 +128,8 @@ export function useNotesScreen(): NotesScreenControllerAPI {
     // Balance
     totalBalance,
 
-    // Available notes (canonical)
-    availableNotes: viewState.availableNotes,
+    // Spendable notes (canonical)
+    spendableNotes: viewState.spendableNotes,
 
     // Selection
     selectedNoteChain: selectedNoteChain as NoteChain | null,

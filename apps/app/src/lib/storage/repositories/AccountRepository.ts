@@ -11,7 +11,7 @@ import { IndexedDBStore } from "../adapters/IndexedDBStore";
 function deriveKeysFromPrivateKey(privateKey: string): {
   publicKey: string;
 } {
-  const hexKey = privateKey.startsWith('0x') ? privateKey : `0x${privateKey}`;
+  const hexKey = privateKey.startsWith("0x") ? privateKey : `0x${privateKey}`;
   const account = privateKeyToAccount(hexKey as `0x${string}`);
   return {
     publicKey: account.publicKey,

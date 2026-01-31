@@ -65,7 +65,9 @@ export function usePriceData(
     gcTime: 5 * PRICE_STALE_TIME_MS, // Keep in cache for 5 minutes after last use
 
     // Background refresh
-    refetchInterval: options?.disableRefresh ? false : (options?.refreshInterval ?? PRICE_STALE_TIME_MS),
+    refetchInterval: options?.disableRefresh
+      ? false
+      : (options?.refreshInterval ?? PRICE_STALE_TIME_MS),
 
     // Retry configuration
     retry: 2,

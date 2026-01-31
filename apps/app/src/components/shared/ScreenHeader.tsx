@@ -25,7 +25,7 @@ export function ScreenHeader({
   rightContent,
 }: ScreenHeaderProps) {
   return (
-    <div className="flex items-center gap-3 px-4 py-3">
+    <div className="flex items-center gap-2 px-3 py-3 sm:gap-3 sm:px-4">
       {onBack ? (
         <Button
           size="icon-sm"
@@ -37,13 +37,15 @@ export function ScreenHeader({
           <ChevronLeft className="h-4 w-4 text-neutral-400" />
         </Button>
       ) : icon ? (
-        <div className="flex h-8 w-8 items-center justify-center text-neutral-400">{icon}</div>
+        <div className="flex h-7 w-7 items-center justify-center text-neutral-400 sm:h-8 sm:w-8">
+          {icon}
+        </div>
       ) : null}
-      <div className="flex-1">
-        <h2 className="text-lg font-semibold text-white">{title}</h2>
-        {subtitle && <p className="text-xs text-neutral-400">{subtitle}</p>}
+      <div className="min-w-0 flex-1">
+        <h2 className="truncate text-base font-semibold text-white sm:text-lg">{title}</h2>
+        {subtitle && <p className="truncate text-xs text-neutral-400">{subtitle}</p>}
       </div>
-      {rightContent && <div>{rightContent}</div>}
+      {rightContent && <div className="shrink-0">{rightContent}</div>}
     </div>
   );
 }

@@ -6,7 +6,12 @@ import { createStateMachine } from "@/utils/stateMachine";
 import { SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
 import { AuthController } from "@/controllers/AuthController";
 import { NotesError, NotesStatus, ReadonlyNoteChain } from "@/types/notes";
-import { getAvailableNotes, getLastNote, getNoteChainCounts } from "@/utils/noteFiltering";
+import {
+  getSpendableNotes,
+  getWithdrawableNotes,
+  getLastNote,
+  getNoteChainCounts,
+} from "@/utils/noteFiltering";
 import { NOTES_SYNC_INTERVAL_MS } from "@/constants/timings";
 
 /**
@@ -42,14 +47,14 @@ interface NotesDiscoveryViewState {
   status: NotesStatus;
 
   counts: {
-    available: number;
+    spendable: number;
     pending: number;
     spent: number;
   };
 
   totalCount: number;
 
-  availableNotes: Note[];
+  spendableNotes: Note[];
 
   isLoading: boolean;
   isRefreshing: boolean;
@@ -117,9 +122,14 @@ export const NotesDiscoverySelectors = {
   getNoteChains: (): ReadonlyNoteChain[] => state.noteChains,
 
   /**
-   * Get available notes (for withdrawal)
+   * Get spendable notes (for balance display - includes approved + rejected)
    */
-  getAvailableNotes: (): Note[] => getAvailableNotes(state.noteChains),
+  getSpendableNotes: (): Note[] => getSpendableNotes(state.noteChains),
+
+  /**
+   * Get withdrawable notes (for private withdrawal - ASP approved only)
+   */
+  getWithdrawableNotes: (): Note[] => getWithdrawableNotes(state.noteChains),
 
   /**
    * Get counts by status
@@ -156,7 +166,7 @@ export const NotesDiscoverySelectors = {
     const { noteChains, state: discoveryState, lastError } = state;
 
     const counts = getNoteChainCounts(noteChains);
-    const availableNotes = getAvailableNotes(noteChains);
+    const spendableNotes = getSpendableNotes(noteChains);
 
     const isDiscovering = discoveryState.status === "discovering";
     const isEmpty = noteChains.length === 0;
@@ -186,7 +196,7 @@ export const NotesDiscoverySelectors = {
       status,
       counts,
       totalCount: noteChains.length,
-      availableNotes,
+      spendableNotes,
       isLoading: isDiscovering && isEmpty,
       isRefreshing: isDiscovering && !isEmpty,
       isEmpty,

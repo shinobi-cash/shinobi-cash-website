@@ -47,6 +47,9 @@ export interface AmountDisplayProps {
 
   /** Disable price fetching (useful for static displays) */
   disablePriceFetch?: boolean;
+
+  /** Optional prefix for amount (e.g., "+" or "−") */
+  prefix?: string;
 }
 
 export function AmountDisplay({
@@ -59,6 +62,7 @@ export function AmountDisplay({
   ethClassName = "",
   usdClassName = "",
   disablePriceFetch = false,
+  prefix = "",
 }: AmountDisplayProps) {
   // Fetch current price (React Query handles caching and deduplication)
   const { usdPrice } = usePriceData(symbol, {
@@ -83,6 +87,7 @@ export function AmountDisplay({
     <div className={`${layoutClasses[layout]} ${className}`}>
       {/* ETH Amount (always shown) */}
       <span className={ethClassName}>
+        {prefix}
         {formattedEth} {symbol}
       </span>
 

@@ -16,13 +16,7 @@ import { type AppError, getUserMessage, isUserCancellation } from "@/lib/errors/
 import { getTxExplorerUrl } from "@/config/chains";
 import { formatDateTime } from "@/utils/formatters";
 
-type DepositStatus =
-  | "submitting"
-  | "confirming"
-  | "confirmed-onchain"
-  | "indexed"
-  | "failed"
-  | "error";
+type DepositStatus = "submitting" | "confirming" | "confirmed" | "failed" | "error";
 
 interface DepositTimelineScreenProps {
   noteAmount: number;
@@ -52,13 +46,12 @@ export function DepositTimelineScreen({
 
   const isSubmitting = status === "submitting";
   const isConfirming = status === "confirming";
-  const isConfirmedOnChain = status === "confirmed-onchain";
-  const isIndexed = status === "indexed";
+  const isConfirmed = status === "confirmed";
   const isFailed = status === "failed";
   const isError = status === "error";
 
-  // Complete when tx is confirmed on-chain (don't wait for indexer)
-  const isComplete = isConfirmedOnChain || isIndexed;
+  // Complete when tx is confirmed on-chain
+  const isComplete = isConfirmed;
 
   const isUserCancelled = error && isUserCancellation(error);
   const hasError = isUserCancelled || isFailed || isError;
@@ -171,7 +164,10 @@ export function DepositTimelineScreen({
       status: submittingStatus,
       description: "Waiting for on-chain confirmation.",
       errorMessage: failedAtStep === "submitting" ? getErrorMessage() : undefined,
-      link: explorerUrl && submittingStatus !== "pending" ? { url: explorerUrl, text: "View transaction" } : undefined,
+      link:
+        explorerUrl && submittingStatus !== "pending"
+          ? { url: explorerUrl, text: "View transaction" }
+          : undefined,
       timestamp: timings["submitting"]?.displayTime,
       duration: timings["submitting"]?.duration,
     },
@@ -189,8 +185,10 @@ export function DepositTimelineScreen({
 
   return (
     <ScreenLayout
-      containerClassName="h-[600px]"
-      header={<ScreenHeader title="Transaction details" onBack={onClose} backDisabled={!canGoBack} />}
+      containerClassName="flex-1 sm:flex-none sm:h-[600px]"
+      header={
+        <ScreenHeader title="Transaction details" onBack={onClose} backDisabled={!canGoBack} />
+      }
       footer={
         <Button
           onClick={onClose}
@@ -200,7 +198,7 @@ export function DepositTimelineScreen({
           Close
         </Button>
       }
-      contentClassName="space-y-4 px-6 py-4"
+      contentClassName="space-y-4 px-4 py-4"
     >
       <div className="flex flex-1 flex-col items-center space-y-4">
         <div className="flex flex-col items-center space-y-2 text-center">

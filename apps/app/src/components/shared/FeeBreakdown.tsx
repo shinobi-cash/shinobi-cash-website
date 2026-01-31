@@ -62,17 +62,14 @@ export function FeeBreakdown({
     `${prefix}${amount.toFixed(decimals)} ${assetSymbol}`;
 
   // Render fee value: USD shown, ETH on hover (if USD available)
-  const renderFeeValue = (
-    feeAmount: number,
-    feeUsd: number | null,
-    estimating = false
-  ) => {
+  const renderFeeValue = (feeAmount: number, feeUsd: number | null, estimating = false) => {
     if (estimating) return "Estimating...";
     const tokenText = formatTokenAmount(feeAmount);
     if (feeUsd !== null) {
       return (
         <LabelWithHover hoverText={tokenText} className="cursor-help">
-          {prefix}{formatUsdAmount(feeUsd)}
+          {prefix}
+          {formatUsdAmount(feeUsd)}
         </LabelWithHover>
       );
     }
@@ -87,7 +84,8 @@ export function FeeBreakdown({
           <div className="flex items-center gap-2">
             {!isEstimating && totalFeesUsd !== null && (
               <span className="text-muted-foreground text-sm">
-                {prefix}{formatUsdAmount(totalFeesUsd)}
+                {prefix}
+                {formatUsdAmount(totalFeesUsd)}
               </span>
             )}
             <ChevronDown className="hover:bg-muted/80 h-4 w-4" />
@@ -103,9 +101,7 @@ export function FeeBreakdown({
           {isCrossChain && solverFee !== undefined && solverFee > 0 && (
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Solver Fee (5%)</span>
-              <span className="text-orange-400">
-                {renderFeeValue(solverFee, solverFeeUsd)}
-              </span>
+              <span className="text-orange-400">{renderFeeValue(solverFee, solverFeeUsd)}</span>
             </div>
           )}
         </div>

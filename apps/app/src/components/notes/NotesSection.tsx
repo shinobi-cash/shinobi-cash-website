@@ -23,7 +23,7 @@ export function NotesSection({ controller, onNoteChainClick }: NotesSectionProps
       onClick={() => controller.setFilter(filter)}
       className={`flex-1 cursor-pointer px-4 py-2 text-sm font-semibold transition-colors ${
         controller.activeFilter === filter
-          ? `text-white border-b-2 ${borderColor}`
+          ? `border-b-2 text-white ${borderColor}`
           : "text-neutral-400 hover:text-white"
       }`}
     >
@@ -36,8 +36,8 @@ export function NotesSection({ controller, onNoteChainClick }: NotesSectionProps
       return (
         <div className="flex items-center justify-center py-8">
           <div className="text-center">
-            <p className="text-neutral-400 mb-1">Unable to load notes</p>
-            <p className="text-neutral-500 text-sm">Please check your connection and try again</p>
+            <p className="mb-1 text-neutral-400">Unable to load notes</p>
+            <p className="text-sm text-neutral-500">Please check your connection and try again</p>
           </div>
         </div>
       );
@@ -47,7 +47,7 @@ export function NotesSection({ controller, onNoteChainClick }: NotesSectionProps
       return (
         <div className="flex items-center justify-center py-8">
           <div className="text-center">
-            <RefreshCw className="text-neutral-400 mx-auto mb-2 h-6 w-6 animate-spin" />
+            <RefreshCw className="mx-auto mb-2 h-6 w-6 animate-spin text-neutral-400" />
             <p className="text-neutral-400">Discovering your notes...</p>
           </div>
         </div>
@@ -60,8 +60,8 @@ export function NotesSection({ controller, onNoteChainClick }: NotesSectionProps
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
             <span className="mb-2 block text-2xl">💰</span>
-            <p className="text-neutral-400 mb-1">No deposits yet</p>
-            <p className="text-neutral-500 text-sm">
+            <p className="mb-1 text-neutral-400">No deposits yet</p>
+            <p className="text-sm text-neutral-500">
               Make your first private deposit to get started
             </p>
           </div>
@@ -74,25 +74,27 @@ export function NotesSection({ controller, onNoteChainClick }: NotesSectionProps
       return (
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
-            {controller.activeFilter === "available" ? (
+            {controller.activeFilter === "spendable" ? (
               <>
                 <span className="mb-2 block text-2xl">💸</span>
-                <p className="text-neutral-400 mb-1">No available funds</p>
-                <p className="text-neutral-500 text-sm">All your deposits have been spent</p>
+                <p className="mb-1 text-neutral-400">No spendable funds</p>
+                <p className="text-sm text-neutral-500">
+                  All your deposits have been spent or are pending
+                </p>
               </>
             ) : controller.activeFilter === "pending" ? (
               <>
                 <span className="mb-2 block text-2xl">⏳</span>
-                <p className="text-neutral-400 mb-1">No pending deposits</p>
-                <p className="text-neutral-500 text-sm">
+                <p className="mb-1 text-neutral-400">No pending deposits</p>
+                <p className="text-sm text-neutral-500">
                   All cross-chain deposits have been filled
                 </p>
               </>
             ) : (
               <>
                 <span className="mb-2 block text-2xl">🔒</span>
-                <p className="text-neutral-400 mb-1">No spent deposits</p>
-                <p className="text-neutral-500 text-sm">Your deposits are still available</p>
+                <p className="mb-1 text-neutral-400">No spent deposits</p>
+                <p className="text-sm text-neutral-500">Your deposits are still spendable</p>
               </>
             )}
           </div>
@@ -104,28 +106,30 @@ export function NotesSection({ controller, onNoteChainClick }: NotesSectionProps
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col space-y-2">
-      <div className="flex-shrink-0">
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex-shrink-0 border-b border-white/10">
         <div className="flex">
-          {renderFilterButton("available", controller.availableCount, "border-emerald-400")}
+          {renderFilterButton("spendable", controller.spendableCount, "border-emerald-400")}
           {renderFilterButton("pending", controller.pendingCount, "border-yellow-400")}
           {renderFilterButton("spent", controller.spentCount, "border-rose-400")}
         </div>
       </div>
 
       <div className="flex-1 overflow-hidden">
-        <div className="h-full space-y-2 overflow-y-auto">
+        <div className="h-full overflow-y-auto">
           {renderEmptyState()}
 
           {/* Render filtered notes */}
           {controller.filteredNoteViews.length > 0 && (
-            <>
+            <div className="divide-y divide-white/5">
               {controller.filteredNoteViews.map((view) => (
-                <div key={view.key} className="border-white/10 border-b last:border-b-0">
-                  <NoteRow note={view.lastNote} onClick={() => onNoteChainClick(view.chain)} />
-                </div>
+                <NoteRow
+                  key={view.key}
+                  note={view.lastNote}
+                  onClick={() => onNoteChainClick(view.chain)}
+                />
               ))}
-            </>
+            </div>
           )}
         </div>
       </div>

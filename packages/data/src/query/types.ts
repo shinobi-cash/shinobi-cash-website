@@ -28,6 +28,7 @@ import type {
   CrossChainIntent,
   ActivityType,
   ASPStatus,
+  IntentStatus,
 } from '../types/indexer.js';
 
 /**
@@ -326,8 +327,8 @@ export interface ActivityFilters {
   before?: string;
   /** Minimum amount */
   minAmount?: string;
-  /** Only activated deposits */
-  isActivated?: boolean;
+  /** Filter by intent status (cross-chain only) */
+  intentStatus?: IntentStatus;
   /** Filter by origin chain */
   originChainId?: string;
   /** Filter by destination chain */

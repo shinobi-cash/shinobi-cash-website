@@ -25,7 +25,7 @@ export function QuickAmountButtons({ onSelect, disabled = false }: QuickAmountBu
           onClick={() => onSelect(btn.value)}
           disabled={disabled}
           className={cn(
-            "cursor-pointer rounded-lg px-3 py-1 text-sm font-medium transition-colors",
+            "cursor-pointer rounded-lg px-2 py-1 text-xs font-medium transition-colors sm:px-3 sm:text-sm",
             "text-neutral-400 hover:bg-white/[0.08] hover:text-white",
             "disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-neutral-400"
           )}

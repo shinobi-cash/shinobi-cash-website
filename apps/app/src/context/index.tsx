@@ -19,7 +19,10 @@ const queryClient = new QueryClient();
 const metadata = {
   name: "Shinobi Cash",
   description: "One click, borderless and complaint privacy",
-  url: process.env.NODE_ENV === "development" ? "http://localhost:3000" : "https://testnet.shinobi.cash",
+  url:
+    process.env.NODE_ENV === "development"
+      ? "http://localhost:3000"
+      : "https://testnet.shinobi.cash",
   icons: ["https://testnet.shinobi.cash/icon.svg"],
 };
 

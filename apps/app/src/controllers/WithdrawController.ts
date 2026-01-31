@@ -3,6 +3,7 @@ import { parseEther, formatEther, isAddress } from "viem/utils";
 import { Note } from "@shinobi-cash/core";
 import { POOL_CHAIN } from "@shinobi-cash/constants";
 import { AuthController } from "@/controllers/AuthController";
+import { NotesDiscoveryController } from "@/controllers/NotesDiscoveryController";
 import { EnginePhase, WithdrawalEngine } from "@/services/WithdrawalOrchestratorService";
 import { createStateMachine } from "@/utils/stateMachine";
 import {
@@ -21,7 +22,6 @@ type WithdrawState =
   | { status: "ready"; preparedUserOp: PreparedUserOperation }
   | { status: "submitting" }
   | { status: "confirmed"; txHash: `0x${string}`; executionResult: ExecutionResult }
-  | { status: "indexed"; txHash: `0x${string}`; executionResult: ExecutionResult }
   | { status: "error"; error: AppError };
 
 export interface NotesContext {
@@ -143,8 +143,7 @@ const { transition } = createStateMachine<WithdrawState>({
     preparing: ["ready", "error"],
     ready: ["submitting", "preparing", "idle"],
     submitting: ["confirmed", "error"],
-    confirmed: ["indexed", "idle"],
-    indexed: ["idle"],
+    confirmed: ["idle"],
     error: ["idle", "preparing"],
   },
   getState: () => state.state,
@@ -287,6 +286,9 @@ export const WithdrawController = {
         txHash: result.transactionHash as `0x${string}`,
         executionResult: engineState.executionResult,
       });
+
+      // Trigger notes refresh - background sync will handle indexer catching up
+      NotesDiscoveryController.refresh();
     } catch (error) {
       const userMessage = getUserMessage(error, "Withdrawal failed");
       transition({
@@ -311,16 +313,6 @@ export const WithdrawController = {
     if (state.state.status === "error") {
       currentEngine = null;
       await this.prepare();
-    }
-  },
-
-  markIndexed(): void {
-    if (state.state.status === "confirmed") {
-      transition({
-        status: "indexed",
-        txHash: state.state.txHash,
-        executionResult: state.state.executionResult,
-      });
     }
   },
 
