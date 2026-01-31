@@ -1,17 +1,12 @@
 import { proxy } from "valtio";
 import { parseEther, formatEther, isAddress } from "viem/utils";
-import { Note } from "@shinobi-cash/core";
+import { type FeeQuote, type Note, type WithdrawalRequest } from "@shinobi-cash/core";
 import { POOL_CHAIN } from "@shinobi-cash/constants";
 import { AuthController } from "@/controllers/AuthController";
 import { NotesDiscoveryController } from "@/controllers/NotesDiscoveryController";
 import { EnginePhase, WithdrawalEngine } from "@/services/WithdrawalOrchestratorService";
 import { createStateMachine } from "@/utils/stateMachine";
-import {
-  ExecutionResult,
-  FeeQuote,
-  PreparedUserOperation,
-  WithdrawalRequest,
-} from "@/types/withdrawal";
+import { ExecutionResult, PreparedUserOperation } from "@/types/withdrawal";
 import { type AppError, Errors, getUserMessage } from "@/lib/errors/errors";
 import { PREVIEW_DEBOUNCE_MS } from "@/constants/timings";
 

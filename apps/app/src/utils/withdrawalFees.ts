@@ -1,10 +1,11 @@
-import type { WithdrawalRequest, FeeQuote } from "@/types/withdrawal";
 import {
   classifyWithdrawal,
   calculateFeesFromBPS,
   calculateTotalGas,
   calculateRelayFeeBPS,
   calculateSolverFeeBPS,
+  type FeeQuote,
+  type WithdrawalRequest,
 } from "@shinobi-cash/core";
 import {
   SAME_CHAIN_GAS_LIMITS,

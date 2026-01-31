@@ -1,22 +1,12 @@
 import type {
-  Note,
   WithdrawalDerivation,
   CrosschainWithdrawalDerivation,
+  WithdrawalKind,
+  FeeQuote,
+  WithdrawalRequest,
 } from "@shinobi-cash/core";
 import type { SmartAccountClient } from "permissionless";
 import type { UserOperation } from "viem/account-abstraction";
-
-// Re-export SDK types for convenience
-export type { WithdrawalKind, FeeQuote } from "@shinobi-cash/core";
-import type { WithdrawalKind, FeeQuote } from "@shinobi-cash/core";
-
-export interface WithdrawalRequest {
-  note: Note;
-  withdrawAmountWei: bigint;
-  recipient: `0x${string}`;
-  accountKey: bigint;
-  destinationChainId?: number;
-}
 
 export interface WithdrawalPipelineContext {
   kind: WithdrawalKind;

@@ -47,19 +47,19 @@ export interface FeeQuote {
  * Request for a withdrawal operation
  */
 export interface WithdrawalRequest {
-  /** Note to spend */
+  /** Note to withdraw from */
   note: Note;
 
-  /** Amount to withdraw (in wei as string) */
-  withdrawAmount: string;
+  /** Amount to withdraw in wei */
+  withdrawAmountWei: bigint;
 
-  /** Recipient address for the withdrawal */
-  recipientAddress: string;
+  /** Recipient address (hex) */
+  recipient: `0x${string}`;
 
   /** Account key for deriving nullifiers and secrets */
   accountKey: bigint;
 
-  /** Destination chain ID for cross-chain withdrawals (undefined for same-chain) */
+  /** Destination chain ID for cross-chain withdrawals */
   destinationChainId?: number;
 }
 

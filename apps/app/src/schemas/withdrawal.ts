@@ -12,65 +12,6 @@ import {
 } from "./common";
 
 // =============================================================================
-// Note Schemas (from @shinobi-cash/core)
-// =============================================================================
-
-const ASPStatusSchema = z.enum(["pending", "approved", "rejected"]);
-const NoteStatusSchema = z.enum(["unspent", "spent"]);
-
-const IntentStatusSchema = z.enum(["pending", "filled", "refunded"]);
-
-/** Base note fields shared by all note types */
-const BaseNoteSchema = z.object({
-  poolAddress: z.string(),
-  depositIndex: z.number().int().nonnegative(),
-  amount: z.string(),
-  originTransactionHash: z.string(),
-  destinationTransactionHash: z.string(),
-  originChainId: z.string(),
-  destinationChainId: z.string(),
-  blockNumber: z.string(),
-  timestamp: z.string(),
-  status: NoteStatusSchema,
-  aspStatus: ASPStatusSchema,
-  label: z.string(),
-  isCrossChain: z.boolean(),
-  orderId: z.string().optional(),
-  intentStatus: IntentStatusSchema.optional(),
-});
-
-/** Deposit note schema */
-export const DepositNoteSchema = BaseNoteSchema.extend({
-  noteType: z.literal("deposit"),
-  changeIndex: z.literal(0),
-  precommitmentHash: z.string(),
-});
-
-/** Change note schema */
-export const ChangeNoteSchema = BaseNoteSchema.extend({
-  noteType: z.literal("change"),
-  changeIndex: z.number().int().positive(),
-  refundCommitment: z.string().optional(),
-});
-
-/** Refund note schema */
-export const RefundNoteSchema = BaseNoteSchema.extend({
-  noteType: z.literal("refund"),
-  changeIndex: z.number().int().nonnegative(),
-  refundIndex: z.number().int().nonnegative(),
-  refundCommitment: z.string(),
-});
-
-/** Union note schema */
-export const NoteSchema = z.discriminatedUnion("noteType", [
-  DepositNoteSchema,
-  ChangeNoteSchema,
-  RefundNoteSchema,
-]);
-
-export type Note = z.infer<typeof NoteSchema>;
-
-// =============================================================================
 // User Input Schemas
 // =============================================================================
 
@@ -96,16 +37,14 @@ export type WithdrawalUserInput = z.infer<typeof WithdrawalUserInputSchema>;
 export const WithdrawalKindSchema = z.enum(["same-chain", "cross-chain"]);
 export type WithdrawalKind = z.infer<typeof WithdrawalKindSchema>;
 
-/** Withdrawal request to be processed */
+/** Withdrawal request to be processed (note uses core's Note type, not validated here) */
 export const WithdrawalRequestSchema = z.object({
-  note: NoteSchema,
+  note: z.object({}).passthrough(),
   withdrawAmountWei: PositiveBigIntSchema,
   recipient: HexAddressSchema,
   accountKey: BigIntSchema,
   destinationChainId: ChainIdSchema.optional(),
 });
-
-export type WithdrawalRequest = z.infer<typeof WithdrawalRequestSchema>;
 
 // =============================================================================
 // Fee Quote Schema
@@ -262,11 +201,6 @@ export function validateWithdrawalDataTuple(data: unknown) {
 /** Parse withdrawal data tuple (throws on invalid) */
 export function parseWithdrawalDataTuple(data: unknown): WithdrawalDataTuple {
   return WithdrawalDataTupleSchema.parse(data);
-}
-
-/** Validate note */
-export function validateNote(data: unknown) {
-  return NoteSchema.safeParse(data);
 }
 
 /** Validate external data from indexer */
