@@ -1,0 +1,88 @@
+# Depositing
+
+How to deposit ETH into Shinobi Cash.
+
+## Overview
+
+Depositing adds your funds to the privacy pool, creating a commitment that only you can later withdraw.
+
+## Same-Chain Deposit
+
+When depositing on the pool chain (Arbitrum Sepolia):
+
+1. **Navigate to Deposit** — Select the Deposit tab
+2. **Enter Amount** — Minimum 0.01 ETH
+3. **Review Fees** — 1% compliance fee
+4. **Confirm** — Sign the transaction in your wallet
+
+Your deposit is added directly to the pool's Merkle tree.
+
+## Cross-Chain Deposit
+
+When depositing from another chain (e.g., Base Sepolia):
+
+1. **Select Source Chain** — Choose where your funds are
+2. **Enter Amount** — Minimum 0.01 ETH
+3. **Review Fees**:
+   - 1% compliance fee
+   - 5% solver fee (for cross-chain)
+4. **Confirm** — Sign the transaction
+
+### What Happens Behind the Scenes
+
+```
+Your wallet → DepositEntrypoint → InputSettler (escrows funds)
+                                        │
+                    Solver detects intent ◄───┘
+                           │
+                           ▼
+              DepositOutputSettler → Pool (commitment inserted)
+                           │
+              Solver claims escrowed funds
+```
+
+The solver fronts the capital on the destination chain and claims your escrowed funds after proving the fill.
+
+## After Depositing
+
+### Deposit States
+
+| Status | Meaning |
+|--------|---------|
+| **Confirming** | Transaction submitted, awaiting block confirmation |
+| **Confirmed** | On-chain, waiting for indexer |
+| **Indexed** | Visible in your notes |
+| **Pending (Cross-chain)** | Waiting for solver to fill |
+| **Pending (ASP)** | Waiting for compliance approval |
+| **Available** | Ready to withdraw |
+
+### Activation Time
+
+Deposits need to be "activated" before withdrawal:
+- Same-chain: ~1-2 minutes (indexer sync + ASP)
+- Cross-chain: ~2-5 minutes (solver fill + indexer + ASP)
+
+## Tips
+
+:::tip[Privacy Best Practice]
+Wait for more deposits after yours before withdrawing. A larger anonymity set means stronger privacy.
+:::
+
+:::warning[Minimum Amount]
+The minimum deposit is 0.01 ETH. Smaller amounts are rejected.
+:::
+
+## Troubleshooting
+
+### Deposit stuck in "Pending"
+- **Cross-chain**: Wait for solver — usually fills within minutes
+- **ASP pending**: Testnet ASP auto-approves; should resolve quickly
+
+### Transaction failed
+- Check you have enough ETH for gas + deposit amount
+- Ensure you're on the correct network
+
+## Next Steps
+
+- **[Withdrawing](/guides/withdraw)** — How to withdraw privately
+- **[Privacy Pools](/concepts/privacy-pools)** — Understand the technology

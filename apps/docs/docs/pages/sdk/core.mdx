@@ -1,0 +1,62 @@
+# @shinobi-cash/core
+
+:::info[Coming Soon]
+Detailed documentation for this package is being written. Check back soon.
+:::
+
+## Overview
+
+Core cryptographic primitives and utilities for Shinobi Cash.
+
+## Installation
+
+```bash
+npm install @shinobi-cash/core
+```
+
+## Key Exports
+
+### Key Derivation
+
+```typescript
+import {
+  derivePrecommitment,
+  deriveDepositNullifier,
+  parseUserKey
+} from '@shinobi-cash/core'
+```
+
+### Note Discovery
+
+```typescript
+import { NoteDiscovery } from '@shinobi-cash/core'
+
+const discovery = new NoteDiscovery(indexerClient)
+const notes = await discovery.sync(publicKey, poolAddress)
+```
+
+### Proof Generation
+
+```typescript
+import { WithdrawalProofGenerator } from '@shinobi-cash/core'
+
+const generator = new WithdrawalProofGenerator()
+const proof = await generator.generate(inputs)
+```
+
+### Encryption
+
+```typescript
+import { EncryptionService } from '@shinobi-cash/core'
+
+const encrypted = EncryptionService.encrypt(data, key)
+const decrypted = EncryptionService.decrypt(encrypted, key)
+```
+
+## Hash Format
+
+All Poseidon hashes use decimal strings (`BigInt.toString()`), never `0x`-prefixed hex.
+
+## Source Code
+
+[View on GitHub](https://github.com/aspect-eth/shinobi-cash-website/tree/main/packages/core)

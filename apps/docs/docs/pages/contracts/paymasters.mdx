@@ -1,0 +1,61 @@
+# Paymasters
+
+:::info[Coming Soon]
+Detailed documentation for these contracts is being written. Check back soon.
+:::
+
+## Overview
+
+ERC-4337 paymasters enable private withdrawals without requiring wallet gas. They:
+
+- **Sponsor gas upfront** — Users don't need ETH in their wallet
+- **Validate ZK proofs** — Embedded proof validation, no external calls
+- **Deduct relay fees** — Gas cost covered by the withdrawal amount
+- **Use standard AA infra** — Works with any ERC-4337 bundler, no custom relayer
+
+## Contracts
+
+### SimpleShinobiCashPoolPaymaster
+
+Sponsors gas for same-chain withdrawals.
+
+**Key Features:**
+- Embedded ZK proof validation
+- Economics validation (relay fee covers gas)
+- Transient storage (EIP-1153) for efficiency
+- PostOp refunds excess fees
+
+**Gas Limits:**
+```solidity
+POST_OP_GAS_LIMIT = 100,000
+MIN_CALL_GAS_LIMIT = 550,000
+MIN_PAYMASTER_VERIFICATION_GAS = 400,000
+```
+
+### CrossChainWithdrawalPaymaster
+
+Sponsors gas for cross-chain withdrawals.
+
+**Key Features:**
+- Validates 9-signal cross-chain proofs
+- Higher gas limits for cross-chain operations
+
+**Gas Limits:**
+```solidity
+MIN_CALL_GAS_LIMIT = 687,500
+MIN_PAYMASTER_VERIFICATION_GAS = 500,000
+```
+
+## Validation Flow
+
+1. Check expected smart account is configured
+2. Verify UserOp from expected account
+3. Check gas limits are sufficient
+4. Extract and validate withdrawal call
+5. Verify ZK proof
+6. Validate economics (relay fee >= gas cost)
+
+## Source Code
+
+- [SimpleShinobiCashPoolPaymaster](https://github.com/aspect-eth/shinobi-cash-contracts/blob/main/src/paymaster/SimpleShinobiCashPoolPaymaster.sol)
+- [CrossChainWithdrawalPaymaster](https://github.com/aspect-eth/shinobi-cash-contracts/blob/main/src/paymaster/CrossChainWithdrawalPaymaster.sol)

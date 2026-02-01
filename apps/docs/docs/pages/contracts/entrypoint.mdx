@@ -1,0 +1,45 @@
+# ShinobiCashEntrypoint
+
+:::info[Coming Soon]
+Detailed documentation for this contract is being written. Check back soon.
+:::
+
+## Overview
+
+The central orchestrator on the pool chain (Arbitrum Sepolia).
+
+## Key Responsibilities
+
+- Cross-chain withdrawal intent creation
+- Cross-chain deposit processing
+- Refund handling for failed intents
+- Pool and settler configuration
+
+## Key Functions
+
+```solidity
+// Process cross-chain withdrawal with ZK proof
+function crosschainWithdrawal(
+    IPrivacyPool.Withdrawal calldata _withdrawal,
+    CrossChainProofLib.CrossChainWithdrawProof calldata _proof,
+    uint256 _scope
+) external
+
+// Handle verified cross-chain deposit
+function crosschainDeposit(
+    address _depositor,
+    uint256 _amount,
+    uint256 _precommitment
+) external payable
+
+// Handle refund for failed withdrawal
+function handleRefund(
+    uint256 _refundCommitmentHash,
+    uint256 _amount,
+    uint256 _scope
+) external payable
+```
+
+## Source Code
+
+[View on GitHub](https://github.com/aspect-eth/shinobi-cash-contracts/blob/main/src/core/ShinobiCashEntrypoint.sol)

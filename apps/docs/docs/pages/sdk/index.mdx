@@ -1,0 +1,94 @@
+# SDK Overview
+
+Shinobi Cash SDK packages for building privacy-enabled applications.
+
+## Packages
+
+### @shinobi-cash/core
+
+Core cryptographic primitives and utilities:
+- Key derivation and management
+- Commitment and nullifier generation
+- ZK proof generation
+- Note discovery and sync
+
+[Learn more →](/sdk/core)
+
+### @shinobi-cash/constants
+
+Chain configurations, contract addresses, and ABIs:
+- Supported chain configs
+- Contract addresses (pool, entrypoints, settlers)
+- ABIs for all contracts
+- Fee constants
+
+[Learn more →](/sdk/constants)
+
+### @shinobi-cash/data
+
+Indexer client and query utilities:
+- Fluent query builder for indexer
+- Deposit/withdrawal history
+- Note state queries
+- Pool statistics
+
+[Learn more →](/sdk/data)
+
+## Installation
+
+```bash
+# Core cryptographic utilities
+npm install @shinobi-cash/core
+
+# Chain configs and addresses
+npm install @shinobi-cash/constants
+
+# Indexer client
+npm install @shinobi-cash/data
+```
+
+## Quick Example
+
+```typescript
+import { derivePrecommitment, deriveDepositNullifier } from '@shinobi-cash/core'
+import { POOL_CHAIN, SHINOBI_CASH_POOL_ADDRESS } from '@shinobi-cash/constants'
+import { IndexerClient } from '@shinobi-cash/data'
+
+// Generate deposit commitment
+const { precommitment, nullifier, secret } = derivePrecommitment({
+  accountKey: userAccountKey,
+  depositIndex: nextIndex,
+})
+
+// Query indexer for notes
+const client = new IndexerClient()
+const notes = await client.getNotes({ publicKey: userPublicKey })
+```
+
+## Architecture
+
+```
+@shinobi-cash/core      ← Crypto, ZK, types (framework-agnostic)
+        ↓
+@shinobi-cash/constants ← Pure constants (ABIs, addresses, configs)
+        ↓
+@shinobi-cash/data      ← Indexer, queries, contract routing
+```
+
+All packages are framework-agnostic and can be used in any JavaScript/TypeScript environment.
+
+## Requirements
+
+- Node.js 18+
+- TypeScript 5+ (recommended)
+- Peer dependencies: `viem ^2.0.0`
+
+## Source Code
+
+- [GitHub Repository](https://github.com/aspect-eth/shinobi-cash-website/tree/main/packages)
+
+## Next Steps
+
+- **[Core Package](/sdk/core)** — Cryptographic primitives
+- **[Constants Package](/sdk/constants)** — Chain configs and addresses
+- **[Data Package](/sdk/data)** — Indexer client

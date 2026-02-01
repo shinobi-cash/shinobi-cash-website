@@ -1,0 +1,50 @@
+# OIF Settlers
+
+:::info[Coming Soon]
+Detailed documentation for these contracts is being written. Check back soon.
+:::
+
+## Overview
+
+Open Intent Framework settlers manage cross-chain settlement.
+
+## Contracts
+
+### ShinobiInputSettler
+
+Manages intent creation and escrow on origin chains.
+
+**Key Functions:**
+- `open()` - Create intent and escrow funds
+- `finalise()` - Release funds to solver after fill proof
+- `refund()` - Return funds on expiry
+
+### ShinobiDepositOutputSettler
+
+Handles deposit fills on the pool chain.
+
+**Key Features:**
+- **Mandatory** intentOracle validation
+- Calls `crosschainDeposit()` on entrypoint
+
+### ShinobiWithdrawalOutputSettler
+
+Handles withdrawal fills on destination chains.
+
+**Key Features:**
+- **Optimistic** settlement (ZK proof already validated)
+- Simple ETH transfer to recipient
+
+## Settlement Flow
+
+```
+Intent Created → Deposited → (Solver Fills) → Claimed
+                    ↓
+              (Expiry) → Refunded
+```
+
+## Source Code
+
+- [ShinobiInputSettler](https://github.com/aspect-eth/shinobi-cash-contracts/blob/main/src/oif/ShinobiInputSettler.sol)
+- [ShinobiDepositOutputSettler](https://github.com/aspect-eth/shinobi-cash-contracts/blob/main/src/oif/ShinobiDepositOutputSettler.sol)
+- [ShinobiWithdrawalOutputSettler](https://github.com/aspect-eth/shinobi-cash-contracts/blob/main/src/oif/ShinobiWithdrawalOutputSettler.sol)

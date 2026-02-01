@@ -1,0 +1,126 @@
+# Cross-Chain Architecture
+
+How Shinobi Cash enables privacy across multiple chains.
+
+## The Problem
+
+Traditional privacy solutions deploy separate pools on each chain. This creates fragmented anonymity sets — each pool has fewer users, weakening privacy.
+
+## The Solution
+
+Shinobi Cash maintains a **single privacy pool** on one chain (Arbitrum Sepolia) while accepting deposits and withdrawals from any supported chain.
+
+```
+┌─────────────────┐     ┌─────────────────┐
+│   Base Sepolia  │     │ Arbitrum Sepolia│
+│   (Origin)      │     │  (Pool Chain)   │
+│                 │     │                 │
+│  ┌───────────┐  │     │  ┌───────────┐  │
+│  │  Deposit  │──┼─────┼─►│  Privacy  │  │
+│  │ Entrypoint│  │     │  │   Pool    │  │
+│  └───────────┘  │     │  └───────────┘  │
+│                 │     │                 │
+│  ┌───────────┐  │     │                 │
+│  │ Withdrawal│◄─┼─────┼──│  Withdrawal │  │
+│  │  Output   │  │     │  │   Intent    │  │
+│  └───────────┘  │     │                 │
+└─────────────────┘     └─────────────────┘
+```
+
+## Open Intent Framework (OIF)
+
+Cross-chain operations use the **Open Intent Framework** — a standard for expressing user intents that solvers fulfill.
+
+### Intent Structure
+
+```solidity
+struct ShinobiIntent {
+    address user;           // Intent creator
+    uint256 nonce;          // Unique identifier
+    uint256 originChainId;  // Source chain
+    uint32 expires;         // Expiry timestamp
+    uint32 fillDeadline;    // Deadline for filling
+    address fillOracle;     // Validates fills
+    uint256[2][] inputs;    // Escrowed tokens
+    MandateOutput[] outputs;// Actions on destination
+
+    // Shinobi extensions
+    address intentOracle;   // Validates intent existence
+    bytes refundCalldata;   // Custom refund logic
+}
+```
+
+### Solvers
+
+**Solvers** are off-chain actors that monitor intents and fulfill them:
+
+1. Detect new intent on origin chain
+2. Execute the output on destination chain
+3. Prove the fill via oracle
+4. Claim escrowed funds on origin chain
+
+Solvers earn fees for providing this service.
+
+## Cross-Chain Deposit Flow
+
+```
+User (Base) → DepositEntrypoint → InputSettler (escrow)
+                                        │
+                    Solver monitors ◄───┘
+                           │
+                           ▼
+              DepositOutputSettler (Arbitrum) → Entrypoint → Pool
+                           │
+              Fill proof via oracle
+                           │
+                           ▼
+              InputSettler releases funds to solver
+```
+
+**Key Security**: Deposits require **intentOracle validation** to verify the depositor address came from a legitimate user on the origin chain.
+
+## Cross-Chain Withdrawal Flow
+
+```
+User generates ZK proof
+          │
+          ▼
+Entrypoint (Arbitrum) → Pool validates proof → InputSettler (escrow)
+                                                      │
+                                  Solver monitors ◄───┘
+                                         │
+                                         ▼
+                        WithdrawalOutputSettler (Base) → User receives ETH
+                                         │
+                        Fill proof via oracle
+                                         │
+                                         ▼
+                        InputSettler releases funds to solver
+```
+
+**Key Security**: Withdrawals use **optimistic settlement** — the ZK proof on the origin chain already validated the user's ownership, so no additional intent proof is needed.
+
+## Oracle System
+
+Two oracles ensure secure cross-chain settlement:
+
+| Oracle | Direction | Purpose |
+|--------|-----------|---------|
+| **fillOracle** | Dest → Origin | Proves the solver filled the intent |
+| **intentOracle** | Origin → Dest | Proves the intent is legitimate (deposits only) |
+
+## Refund Mechanism
+
+If a cross-chain withdrawal intent expires without being filled:
+
+1. The escrowed funds return to the pool
+2. A **refund commitment** is inserted (from the 9th proof signal)
+3. User can withdraw the refund as a normal privacy pool withdrawal
+
+This ensures funds are never lost, even if solvers fail to fill.
+
+## Learn More
+
+- **[Privacy Pools](/concepts/privacy-pools)** — Core cryptographic primitives
+- **[OIF Settlers](/contracts/settlers)** — Smart contract implementation
+- **[Compliance](/concepts/compliance)** — How ASPs work with cross-chain

@@ -1,0 +1,44 @@
+# ShinobiCashPool
+
+:::info[Coming Soon]
+Detailed documentation for this contract is being written. Check back soon.
+:::
+
+## Overview
+
+Extended Privacy Pool with cross-chain withdrawal support.
+
+## Key Responsibilities
+
+- Commitment insertion (deposits)
+- Nullifier spending (withdrawals)
+- ZK proof verification (8-signal standard, 9-signal cross-chain)
+- Refund commitment handling
+
+## Key Functions
+
+```solidity
+// Process cross-chain withdrawal with 9-signal proof
+function crosschainWithdraw(
+    Withdrawal memory _withdrawal,
+    CrossChainProofLib.CrossChainWithdrawProof memory _proof
+) external
+
+// Handle refund for failed cross-chain withdrawal
+function handleRefund(
+    uint256 _refundCommitmentHash,
+    uint256 _amount
+) external payable onlyEntrypoint
+```
+
+## Inheritance
+
+```
+PrivacyPool (privacy-pools-core)
+    └── ShinobiCashPool (abstract)
+        └── ShinobiCashPoolSimple (native ETH)
+```
+
+## Source Code
+
+[View on GitHub](https://github.com/aspect-eth/shinobi-cash-contracts/blob/main/src/core/ShinobiCashPool.sol)

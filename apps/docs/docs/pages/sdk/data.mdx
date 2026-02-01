@@ -1,0 +1,65 @@
+# @shinobi-cash/data
+
+:::info[Coming Soon]
+Detailed documentation for this package is being written. Check back soon.
+:::
+
+## Overview
+
+Indexer client and query utilities for Shinobi Cash.
+
+## Installation
+
+```bash
+npm install @shinobi-cash/data
+```
+
+## Key Exports
+
+### IndexerClient
+
+```typescript
+import { IndexerClient } from '@shinobi-cash/data'
+
+const client = new IndexerClient({
+  baseUrl: 'https://indexer.shinobi.cash'
+})
+```
+
+### Fluent Query Builder
+
+```typescript
+// Get deposits for a public key
+const deposits = await client
+  .deposits()
+  .byPublicKey(publicKey)
+  .onPool(poolAddress)
+  .execute()
+
+// Get withdrawal history
+const withdrawals = await client
+  .withdrawals()
+  .byNullifier(nullifier)
+  .execute()
+
+// Get pool statistics
+const stats = await client
+  .pool(poolAddress)
+  .stats()
+  .execute()
+```
+
+### Query Types
+
+```typescript
+import type {
+  Deposit,
+  Withdrawal,
+  PoolStats,
+  MerkleProof
+} from '@shinobi-cash/data'
+```
+
+## Source Code
+
+[View on GitHub](https://github.com/aspect-eth/shinobi-cash-website/tree/main/packages/data)

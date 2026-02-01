@@ -1,0 +1,118 @@
+# Smart Contracts
+
+Overview of Shinobi Cash smart contract architecture.
+
+## Contract Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Pool Chain (Arbitrum)                    │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌─────────────────────┐    ┌─────────────────────┐        │
+│  │ ShinobiCashEntrypoint│    │  ShinobiCashPool    │        │
+│  │  (orchestrator)      │───►│  (privacy pool)     │        │
+│  └─────────────────────┘    └─────────────────────┘        │
+│           │                                                 │
+│           │                                                 │
+│  ┌────────▼────────┐    ┌─────────────────────────┐        │
+│  │ShinobiInputSettler│   │ShinobiDepositOutputSettler│      │
+│  │ (escrow/refund)  │    │  (deposit fills)        │        │
+│  └─────────────────┘    └─────────────────────────┘        │
+│                                                             │
+│  ┌─────────────────────────────────────────────────┐        │
+│  │            Paymasters (ERC-4337)                │        │
+│  │  SimpleShinobiCashPoolPaymaster                 │        │
+│  │  CrossChainWithdrawalPaymaster                  │        │
+│  └─────────────────────────────────────────────────┘        │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│                   Origin Chain (Base)                       │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌───────────────────────────────┐                         │
+│  │ShinobiCrosschainDepositEntrypoint│                       │
+│  │  (deposit interface)            │                        │
+│  └───────────────────────────────┘                         │
+│           │                                                 │
+│  ┌────────▼────────┐    ┌─────────────────────────┐        │
+│  │ShinobiInputSettler│   │ShinobiWithdrawalOutputSettler│   │
+│  │ (escrow/refund)  │    │  (withdrawal fills)      │       │
+│  └─────────────────┘    └─────────────────────────┘        │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Core Contracts
+
+### ShinobiCashEntrypoint
+The central orchestrator on the pool chain. Handles:
+- Cross-chain withdrawal intent creation
+- Cross-chain deposit processing
+- Refund handling for failed intents
+
+[Learn more →](/contracts/entrypoint)
+
+### ShinobiCashPool
+Extended Privacy Pool with cross-chain support. Handles:
+- Commitment insertion (deposits)
+- Nullifier spending (withdrawals)
+- ZK proof verification (9-signal cross-chain proofs)
+
+[Learn more →](/contracts/pool)
+
+## OIF Settlers
+
+### ShinobiInputSettler
+Manages intent creation and escrow on origin chains:
+- Escrows funds when intent is opened
+- Releases to solver after fill proof
+- Refunds on expiry
+
+### ShinobiDepositOutputSettler
+Handles deposit fills on the pool chain:
+- **Mandatory** intentOracle validation
+- Calls `crosschainDeposit()` on entrypoint
+
+### ShinobiWithdrawalOutputSettler
+Handles withdrawal fills on destination chains:
+- **Optimistic** settlement (ZK proof already validated)
+- Simple ETH transfer to recipient
+
+[Learn more →](/contracts/settlers)
+
+## Paymasters
+
+ERC-4337 paymasters that enable withdrawals without wallet gas:
+
+### SimpleShinobiCashPoolPaymaster
+Sponsors gas for same-chain withdrawals. Embeds ZK proof validation.
+
+### CrossChainWithdrawalPaymaster
+Sponsors gas for cross-chain withdrawals. Validates 9-signal proofs.
+
+[Learn more →](/contracts/paymasters)
+
+## Key Addresses (Testnet)
+
+:::info[Testnet Addresses]
+See the [constants package](https://github.com/aspect-eth/shinobi-cash-website/tree/main/packages/constants) for current deployed addresses.
+:::
+
+## Dependencies
+
+| Package | Purpose |
+|---------|---------|
+| `privacy-pools-core` | Base privacy pool implementation |
+| `oif-contracts` | Open Intent Framework |
+| `account-abstraction` | ERC-4337 implementation |
+| `@zk-kit/lean-imt.sol` | Incremental Merkle Tree |
+| `poseidon-solidity` | Poseidon hash function |
+
+## Next Steps
+
+- **[Entrypoint](/contracts/entrypoint)** — Central orchestrator details
+- **[Privacy Pool](/contracts/pool)** — Pool contract details
+- **[OIF Settlers](/contracts/settlers)** — Settlement contracts
+- **[Paymasters](/contracts/paymasters)** — Gas sponsorship

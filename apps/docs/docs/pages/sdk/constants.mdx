@@ -1,0 +1,67 @@
+# @shinobi-cash/constants
+
+:::info[Coming Soon]
+Detailed documentation for this package is being written. Check back soon.
+:::
+
+## Overview
+
+Chain configurations, contract addresses, and ABIs.
+
+## Installation
+
+```bash
+npm install @shinobi-cash/constants
+```
+
+## Key Exports
+
+### Chain Configuration
+
+```typescript
+import {
+  POOL_CHAIN,
+  ORIGIN_CHAIN,
+  SHINOBI_CASH_SUPPORTED_CHAINS
+} from '@shinobi-cash/constants'
+
+// Pool chain (Arbitrum Sepolia)
+console.log(POOL_CHAIN.id) // 421614
+
+// Origin chain (Base Sepolia)
+console.log(ORIGIN_CHAIN.id) // 84532
+```
+
+### Contract Addresses
+
+```typescript
+import {
+  SHINOBI_CASH_ENTRYPOINT_ADDRESS,
+  SHINOBI_CASH_POOL_ADDRESS,
+  SHINOBI_INPUT_SETTLER_ADDRESS
+} from '@shinobi-cash/constants'
+```
+
+### ABIs
+
+```typescript
+import {
+  SHINOBI_CASH_ENTRYPOINT_ABI,
+  SHINOBI_CASH_POOL_ABI,
+  SHINOBI_INPUT_SETTLER_ABI
+} from '@shinobi-cash/constants'
+```
+
+### Fee Constants
+
+```typescript
+import {
+  COMPLIANCE_FEE_BPS,
+  DEFAULT_SOLVER_FEE_BPS,
+  MAX_RELAY_FEE_BPS
+} from '@shinobi-cash/constants'
+```
+
+## Source Code
+
+[View on GitHub](https://github.com/aspect-eth/shinobi-cash-website/tree/main/packages/constants)
