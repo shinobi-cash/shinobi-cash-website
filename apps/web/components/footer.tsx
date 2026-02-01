@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Github, Twitter } from "lucide-react";
+import { Github } from "lucide-react";
 
 const FOOTER_LINKS = {
   product: [
@@ -15,7 +15,6 @@ const FOOTER_LINKS = {
 
 const SOCIAL_LINKS = [
   { label: "GitHub", href: "https://github.com/shinobi-cash", icon: Github },
-  { label: "X", href: "https://x.com/kdsinghsaini", icon: Twitter },
 ];
 
 export function Footer() {
@@ -111,22 +110,12 @@ export function Footer() {
             <ul className="space-y-3">
               <li>
                 <a
-                  href="https://t.me/kdsinghsaini"
+                  href="https://t.me/+tRxvbyeFuDNmMzUx"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-sm text-neutral-400 hover:text-white transition-colors"
                 >
                   Telegram
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://x.com/kdsinghsaini"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-neutral-400 hover:text-white transition-colors"
-                >
-                  X (Twitter)
                 </a>
               </li>
             </ul>

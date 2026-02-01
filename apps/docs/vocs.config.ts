@@ -88,12 +88,8 @@ export default defineConfig({
       link: 'https://github.com/shinobi-cash',
     },
     {
-      icon: 'x',
-      link: 'https://x.com/kdsinghsaini',
-    },
-    {
       icon: 'telegram',
-      link: 'https://t.me/kdsinghsaini',
+      link: 'https://t.me/+tRxvbyeFuDNmMzUx',
     },
   ],
 
