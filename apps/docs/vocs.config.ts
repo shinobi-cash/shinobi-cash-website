@@ -3,7 +3,10 @@ import { defineConfig } from 'vocs';
 export default defineConfig({
   title: 'Shinobi Cash',
   description: 'Cross-chain privacy protocol powered by Privacy Pools and zero-knowledge proofs',
-  logoUrl: '/logo.svg',
+  logoUrl: {
+    light: '/logo.svg',
+    dark: '/logo.svg',
+  },
   iconUrl: '/logo.svg',
 
   // Navigation sidebar
@@ -72,8 +75,8 @@ export default defineConfig({
     {
       text: 'GitHub',
       items: [
-        { text: 'Website & App', link: 'https://github.com/aspect-eth/shinobi-cash-website' },
-        { text: 'Smart Contracts', link: 'https://github.com/aspect-eth/shinobi-cash-contracts' },
+        { text: 'Website & App', link: 'https://github.com/shinobi-cash/shinobi.cash-website' },
+        { text: 'Smart Contracts', link: 'https://github.com/shinobi-cash/shinobi.cash-contracts' },
       ],
     },
   ],
@@ -82,7 +85,7 @@ export default defineConfig({
   socials: [
     {
       icon: 'github',
-      link: 'https://github.com/aspect-eth',
+      link: 'https://github.com/shinobi-cash',
     },
     {
       icon: 'x',
