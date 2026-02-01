@@ -1,12 +1,10 @@
 # @shinobi-cash/constants
 
-:::info[Coming Soon]
-Detailed documentation for this package is being written. Check back soon.
+:::note[Audience]
+This page is for **Developers** building applications with Shinobi Cash.
 :::
 
-## Overview
-
-Chain configurations, contract addresses, and ABIs.
+Chain configurations, contract addresses, and ABIs for Shinobi Cash.
 
 ## Installation
 
@@ -14,9 +12,21 @@ Chain configurations, contract addresses, and ABIs.
 npm install @shinobi-cash/constants
 ```
 
-## Key Exports
+**Peer dependencies:** `viem ^2.0.0`
 
-### Chain Configuration
+## Overview
+
+This package contains pure constants with no runtime dependencies. It exports:
+
+- Contract ABIs
+- Contract addresses
+- Chain configurations
+- Gas limits
+- Fee constants
+
+## Chain Configuration
+
+### Supported Chains
 
 ```typescript
 import {
@@ -25,43 +35,319 @@ import {
   SHINOBI_CASH_SUPPORTED_CHAINS
 } from '@shinobi-cash/constants'
 
-// Pool chain (Arbitrum Sepolia)
-console.log(POOL_CHAIN.id) // 421614
+// Pool chain - where the privacy pool lives
+console.log(POOL_CHAIN.id)     // 421614 (Arbitrum Sepolia)
+console.log(POOL_CHAIN.name)   // 'Arbitrum Sepolia'
 
-// Origin chain (Base Sepolia)
-console.log(ORIGIN_CHAIN.id) // 84532
+// Origin chain - where users deposit from
+console.log(ORIGIN_CHAIN.id)   // 84532 (Base Sepolia)
+console.log(ORIGIN_CHAIN.name) // 'Base Sepolia'
+
+// All supported chains
+SHINOBI_CASH_SUPPORTED_CHAINS.forEach(chain => {
+  console.log(chain.id, chain.name)
+})
 ```
 
-### Contract Addresses
+### Chain IDs
 
 ```typescript
 import {
+  POOL_CHAIN_ID,
+  ORIGIN_CHAIN_ID,
+  DESTINATION_CHAIN_IDS
+} from '@shinobi-cash/constants'
+
+// Pool chain
+const poolChainId = POOL_CHAIN_ID  // 421614n
+
+// Origin chains for deposits
+const originChainId = ORIGIN_CHAIN_ID  // 84532n
+
+// All valid destination chains
+const isValidDestination = DESTINATION_CHAIN_IDS.includes(chainId)
+```
+
+## Contract Addresses
+
+### Pool Chain (Arbitrum Sepolia)
+
+```typescript
+import {
+  // Core contracts
   SHINOBI_CASH_ENTRYPOINT_ADDRESS,
   SHINOBI_CASH_POOL_ADDRESS,
-  SHINOBI_INPUT_SETTLER_ADDRESS
+
+  // OIF Settlers
+  SHINOBI_INPUT_SETTLER_ADDRESS,
+  SHINOBI_DEPOSIT_OUTPUT_SETTLER_ADDRESS,
+
+  // Paymasters
+  SHINOBI_PAYMASTER_ADDRESS,
+  CROSS_CHAIN_PAYMASTER_ADDRESS,
 } from '@shinobi-cash/constants'
 ```
 
-### ABIs
+### Origin Chain (Base Sepolia)
+
+```typescript
+import {
+  // Origin settler for deposits
+  SHINOBI_ORIGIN_INPUT_SETTLER_ADDRESS,
+
+  // Withdrawal output settler
+  SHINOBI_WITHDRAWAL_OUTPUT_SETTLER_ADDRESS,
+} from '@shinobi-cash/constants'
+```
+
+### Address Types
+
+All addresses are typed as `0x${string}` for viem compatibility:
+
+```typescript
+import type { Address } from 'viem'
+import { SHINOBI_CASH_POOL_ADDRESS } from '@shinobi-cash/constants'
+
+const pool: Address = SHINOBI_CASH_POOL_ADDRESS
+```
+
+## Contract ABIs
+
+### Core ABIs
 
 ```typescript
 import {
   SHINOBI_CASH_ENTRYPOINT_ABI,
   SHINOBI_CASH_POOL_ABI,
-  SHINOBI_INPUT_SETTLER_ABI
 } from '@shinobi-cash/constants'
+
+// Use with viem
+import { getContract } from 'viem'
+
+const pool = getContract({
+  address: SHINOBI_CASH_POOL_ADDRESS,
+  abi: SHINOBI_CASH_POOL_ABI,
+  client: publicClient,
+})
+
+const scope = await pool.read.SCOPE()
 ```
 
-### Fee Constants
+### Settler ABIs
 
 ```typescript
 import {
-  COMPLIANCE_FEE_BPS,
-  DEFAULT_SOLVER_FEE_BPS,
-  MAX_RELAY_FEE_BPS
+  SHINOBI_INPUT_SETTLER_ABI,
+  SHINOBI_DEPOSIT_OUTPUT_SETTLER_ABI,
+  SHINOBI_WITHDRAWAL_OUTPUT_SETTLER_ABI,
 } from '@shinobi-cash/constants'
+```
+
+### Paymaster ABIs
+
+```typescript
+import {
+  SHINOBI_PAYMASTER_ABI,
+  CROSS_CHAIN_PAYMASTER_ABI,
+} from '@shinobi-cash/constants'
+```
+
+### SimpleAccount ABI
+
+For ERC-4337 account abstraction:
+
+```typescript
+import { SIMPLE_ACCOUNT_ABI } from '@shinobi-cash/constants'
+```
+
+## Gas Limits
+
+### Proof Verification
+
+```typescript
+import {
+  WITHDRAW_PROOF_VERIFICATION_GAS,
+  CROSS_CHAIN_PROOF_VERIFICATION_GAS,
+} from '@shinobi-cash/constants'
+
+// 8-signal proof verification
+const sameChainGas = WITHDRAW_PROOF_VERIFICATION_GAS  // 550_000n
+
+// 9-signal proof verification
+const crossChainGas = CROSS_CHAIN_PROOF_VERIFICATION_GAS  // 687_500n
+```
+
+### Paymaster Gas Limits
+
+```typescript
+import {
+  POST_OP_GAS_LIMIT,
+  MIN_CALL_GAS_LIMIT,
+  MIN_PAYMASTER_VERIFICATION_GAS,
+} from '@shinobi-cash/constants'
+
+// Gas for postOp callback
+const postOpGas = POST_OP_GAS_LIMIT  // 100_000n
+
+// Minimum call gas for UserOp
+const minCallGas = MIN_CALL_GAS_LIMIT  // 550_000n
+
+// Minimum verification gas
+const minVerifyGas = MIN_PAYMASTER_VERIFICATION_GAS  // 400_000n
+```
+
+### Cross-Chain Operations
+
+```typescript
+import {
+  CROSS_CHAIN_MIN_CALL_GAS_LIMIT,
+  CROSS_CHAIN_MIN_PAYMASTER_VERIFICATION_GAS,
+} from '@shinobi-cash/constants'
+
+// Higher limits for cross-chain
+const crossChainCallGas = CROSS_CHAIN_MIN_CALL_GAS_LIMIT  // 687_500n
+const crossChainVerifyGas = CROSS_CHAIN_MIN_PAYMASTER_VERIFICATION_GAS  // 500_000n
+```
+
+## Fee Constants
+
+### Basis Points
+
+All fees are expressed in basis points (BPS), where 10000 = 100%.
+
+```typescript
+import {
+  MAX_RELAY_FEE_BPS,
+  DEFAULT_RELAY_FEE_BPS,
+  DEFAULT_SOLVER_FEE_BPS,
+  COMPLIANCE_FEE_BPS,
+} from '@shinobi-cash/constants'
+
+// Maximum relay fee (prevents griefing)
+const maxRelay = MAX_RELAY_FEE_BPS  // 2500n (25%)
+
+// Default fees
+const defaultRelay = DEFAULT_RELAY_FEE_BPS  // 1500n (15%)
+const solverFee = DEFAULT_SOLVER_FEE_BPS    // 100n (1%)
+const complianceFee = COMPLIANCE_FEE_BPS    // 50n (0.5%)
+```
+
+### Fee Calculations
+
+```typescript
+import { MAX_RELAY_FEE_BPS } from '@shinobi-cash/constants'
+
+// Calculate fee amount
+const amount = parseEther('1')
+const relayFeeBPS = 1500n
+const relayFee = (amount * relayFeeBPS) / 10000n
+// 0.15 ETH
+```
+
+## Protocol Constants
+
+### Pool Configuration
+
+```typescript
+import {
+  ROOT_HISTORY_SIZE,
+  SNARK_SCALAR_FIELD,
+  MAX_TREE_DEPTH,
+} from '@shinobi-cash/constants'
+
+// Number of historical roots kept
+const rootHistory = ROOT_HISTORY_SIZE  // 30
+
+// Field modulus for ZK proofs
+const field = SNARK_SCALAR_FIELD
+// 21888242871839275222246405745257275088548364400416034343698204186575808495617n
+
+// Maximum merkle tree depth
+const maxDepth = MAX_TREE_DEPTH  // 20
+```
+
+### Intent Configuration
+
+```typescript
+import {
+  DEFAULT_FILL_DEADLINE,
+  DEFAULT_INTENT_EXPIRY,
+} from '@shinobi-cash/constants'
+
+// Default fill deadline for intents (seconds)
+const fillDeadline = DEFAULT_FILL_DEADLINE  // 3600 (1 hour)
+
+// Default expiry for intents (seconds)
+const expiry = DEFAULT_INTENT_EXPIRY  // 86400 (24 hours)
+```
+
+## RPC URLs
+
+```typescript
+import {
+  POOL_CHAIN_RPC_URL,
+  ORIGIN_CHAIN_RPC_URL,
+} from '@shinobi-cash/constants'
+
+// Public RPC endpoints
+const poolRpc = POOL_CHAIN_RPC_URL
+const originRpc = ORIGIN_CHAIN_RPC_URL
+```
+
+## Bundler Configuration
+
+For ERC-4337 account abstraction:
+
+```typescript
+import {
+  BUNDLER_URL,
+  BUNDLER_CHAIN_ID,
+} from '@shinobi-cash/constants'
+
+// Bundler endpoint for UserOperations
+const bundler = BUNDLER_URL
+```
+
+## Type Exports
+
+```typescript
+import type {
+  ChainConfig,
+  ContractAddresses,
+  GasLimits,
+  FeeConfig,
+} from '@shinobi-cash/constants'
+```
+
+## Using with viem
+
+```typescript
+import { createPublicClient, http } from 'viem'
+import {
+  POOL_CHAIN,
+  SHINOBI_CASH_POOL_ADDRESS,
+  SHINOBI_CASH_POOL_ABI,
+  POOL_CHAIN_RPC_URL,
+} from '@shinobi-cash/constants'
+
+const client = createPublicClient({
+  chain: POOL_CHAIN,
+  transport: http(POOL_CHAIN_RPC_URL),
+})
+
+const scope = await client.readContract({
+  address: SHINOBI_CASH_POOL_ADDRESS,
+  abi: SHINOBI_CASH_POOL_ABI,
+  functionName: 'SCOPE',
+})
 ```
 
 ## Source Code
 
-[View on GitHub](https://github.com/aspect-eth/shinobi-cash-website/tree/main/packages/constants)
+[View on GitHub](https://github.com/shinobi-cash/shinobi.cash-website/tree/main/packages/constants)
+
+## Related
+
+- **[Core Package](/sdk/core)** — Uses constants for crypto operations
+- **[Data Package](/sdk/data)** — Uses addresses for queries
+- **[Smart Contracts](/contracts/)** — Contract documentation

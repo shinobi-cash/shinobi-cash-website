@@ -1,94 +1,190 @@
 # SDK Overview
 
+:::note[Audience]
+This page is for **Developers** building applications with Shinobi Cash.
+:::
+
 Shinobi Cash SDK packages for building privacy-enabled applications.
 
 ## Packages
 
+| Package | Purpose | Peer Dependencies |
+|---------|---------|-------------------|
+| `@shinobi-cash/core` | Crypto, ZK proofs, types | viem, snarkjs |
+| `@shinobi-cash/constants` | ABIs, addresses, configs | viem |
+| `@shinobi-cash/data` | Indexer client, queries | None |
+
+## Package Hierarchy
+
+```
+@shinobi-cash/constants  ← Pure constants (no runtime deps)
+        ↓
+@shinobi-cash/core       ← Crypto primitives (uses constants)
+        ↓
+@shinobi-cash/data       ← Indexer queries (uses core types)
+```
+
+All packages are **framework-agnostic** and work in any JavaScript/TypeScript environment.
+
+## Installation
+
+```bash
+# All packages
+npm install @shinobi-cash/core @shinobi-cash/constants @shinobi-cash/data
+
+# Or individually
+npm install @shinobi-cash/core
+npm install @shinobi-cash/constants
+npm install @shinobi-cash/data
+```
+
+## Quick Example
+
+### Deriving a Deposit Commitment
+
+```typescript
+import {
+  derivePrecommitment,
+  deriveNoteCommitmentHash
+} from '@shinobi-cash/core'
+import { SHINOBI_CASH_POOL_ADDRESS } from '@shinobi-cash/constants'
+
+// Derive deposit parameters
+const { precommitment, accountSecret, nullifier } = derivePrecommitment({
+  accountMasterKey: userKey,
+  poolAddress: SHINOBI_CASH_POOL_ADDRESS,
+  depositIndex: 0n,
+})
+
+// Compute the commitment hash for the smart contract
+const commitment = deriveNoteCommitmentHash({
+  precommitment,
+  value: 1000000000000000000n, // 1 ETH in wei
+})
+```
+
+### Querying Notes from Indexer
+
+```typescript
+import { IndexerClient, DepositQueryBuilder } from '@shinobi-cash/data'
+
+const client = new IndexerClient({
+  baseUrl: 'https://indexer.shinobi.cash'
+})
+
+// Fetch all deposits for a pool
+const query = new DepositQueryBuilder()
+  .pool(poolAddress)
+  .first(100)
+  .build()
+
+const deposits = await client.query(query)
+```
+
+### Generating a Withdrawal Proof
+
+```typescript
+import {
+  generateWithdrawalProof,
+  createWithdrawProofInputs
+} from '@shinobi-cash/core'
+
+// Prepare proof inputs (note details, merkle paths, etc.)
+const inputs = createWithdrawProofInputs({
+  note,
+  merklePath,
+  aspPath,
+  withdrawParams,
+})
+
+// Generate Groth16 proof
+const proof = await generateWithdrawalProof(inputs)
+```
+
+## What Each Package Provides
+
 ### @shinobi-cash/core
 
-Core cryptographic primitives and utilities:
-- Key derivation and management
-- Commitment and nullifier generation
-- ZK proof generation
-- Note discovery and sync
+The core cryptographic library:
+
+- **Authentication** — Key derivation, signatures, encryption
+- **Deposits** — Precommitment generation, commitment hashing
+- **Withdrawals** — Proof inputs, context hashing, fee calculations
+- **Note Discovery** — Brute-force discovery of encrypted notes
+- **Proof Generation** — Groth16 proofs via snarkjs
 
 [Learn more →](/sdk/core)
 
 ### @shinobi-cash/constants
 
-Chain configurations, contract addresses, and ABIs:
-- Supported chain configs
-- Contract addresses (pool, entrypoints, settlers)
-- ABIs for all contracts
-- Fee constants
+Pure constants with no runtime dependencies:
+
+- **ABIs** — All contract interfaces
+- **Addresses** — Pool, entrypoint, settlers, paymasters
+- **Chain Configs** — Supported networks (Arbitrum, Base)
+- **Gas Limits** — Proof verification, cross-chain operations
+- **Fee Constants** — Relay fees, solver fees, compliance fees
 
 [Learn more →](/sdk/constants)
 
 ### @shinobi-cash/data
 
 Indexer client and query utilities:
-- Fluent query builder for indexer
-- Deposit/withdrawal history
-- Note state queries
-- Pool statistics
+
+- **IndexerClient** — HTTP client for the indexer API
+- **Query Builders** — Fluent APIs for deposits, withdrawals, intents
+- **Types** — API response types, serializers
+- **Merkle Proofs** — Proof fetching for note paths
 
 [Learn more →](/sdk/data)
 
-## Installation
-
-```bash
-# Core cryptographic utilities
-npm install @shinobi-cash/core
-
-# Chain configs and addresses
-npm install @shinobi-cash/constants
-
-# Indexer client
-npm install @shinobi-cash/data
-```
-
-## Quick Example
-
-```typescript
-import { derivePrecommitment, deriveDepositNullifier } from '@shinobi-cash/core'
-import { POOL_CHAIN, SHINOBI_CASH_POOL_ADDRESS } from '@shinobi-cash/constants'
-import { IndexerClient } from '@shinobi-cash/data'
-
-// Generate deposit commitment
-const { precommitment, nullifier, secret } = derivePrecommitment({
-  accountKey: userAccountKey,
-  depositIndex: nextIndex,
-})
-
-// Query indexer for notes
-const client = new IndexerClient()
-const notes = await client.getNotes({ publicKey: userPublicKey })
-```
-
-## Architecture
-
-```
-@shinobi-cash/core      ← Crypto, ZK, types (framework-agnostic)
-        ↓
-@shinobi-cash/constants ← Pure constants (ABIs, addresses, configs)
-        ↓
-@shinobi-cash/data      ← Indexer, queries, contract routing
-```
-
-All packages are framework-agnostic and can be used in any JavaScript/TypeScript environment.
-
 ## Requirements
 
-- Node.js 18+
-- TypeScript 5+ (recommended)
-- Peer dependencies: `viem ^2.0.0`
+- **Node.js** 18+ (recommended 20+)
+- **TypeScript** 5+ (recommended)
+- **Peer Dependencies:**
+  - `viem ^2.0.0` (for core and constants)
+  - `snarkjs` (for core proof generation)
+
+## Browser Support
+
+All packages work in modern browsers. For proof generation, you'll need:
+
+```typescript
+// Load proof artifacts (circuit files)
+const wasmUrl = '/circuits/withdraw.wasm'
+const zkeyUrl = '/circuits/withdraw_final.zkey'
+
+// Generate proof
+const proof = await generateWithdrawalProof(inputs, wasmUrl, zkeyUrl)
+```
+
+## TypeScript
+
+All packages export TypeScript types:
+
+```typescript
+import type {
+  Note,
+  Commitment,
+  WithdrawProofInputs
+} from '@shinobi-cash/core'
+
+import type {
+  IndexedDeposit,
+  IndexedWithdrawal
+} from '@shinobi-cash/data'
+```
 
 ## Source Code
 
-- [GitHub Repository](https://github.com/aspect-eth/shinobi-cash-website/tree/main/packages)
+- [SDK Packages](https://github.com/shinobi-cash/shinobi.cash-website/tree/main/packages)
+- [Core](https://github.com/shinobi-cash/shinobi.cash-website/tree/main/packages/core)
+- [Constants](https://github.com/shinobi-cash/shinobi.cash-website/tree/main/packages/constants)
+- [Data](https://github.com/shinobi-cash/shinobi.cash-website/tree/main/packages/data)
 
 ## Next Steps
 
-- **[Core Package](/sdk/core)** — Cryptographic primitives
-- **[Constants Package](/sdk/constants)** — Chain configs and addresses
-- **[Data Package](/sdk/data)** — Indexer client
+- **[Core Package](/sdk/core)** — Cryptographic primitives and proof generation
+- **[Constants Package](/sdk/constants)** — Chain configs and contract addresses
+- **[Data Package](/sdk/data)** — Indexer client and queries

@@ -1,10 +1,8 @@
 # @shinobi-cash/data
 
-:::info[Coming Soon]
-Detailed documentation for this package is being written. Check back soon.
+:::note[Audience]
+This page is for **Developers** building applications with Shinobi Cash.
 :::
-
-## Overview
 
 Indexer client and query utilities for Shinobi Cash.
 
@@ -14,52 +12,408 @@ Indexer client and query utilities for Shinobi Cash.
 npm install @shinobi-cash/data
 ```
 
-## Key Exports
+No peer dependencies required.
 
-### IndexerClient
+## Overview
+
+This package provides:
+
+- **IndexerClient** — HTTP client for the indexer API
+- **Query Builders** — Fluent APIs for building queries
+- **Types** — API response types and serializers
+- **Utilities** — Merkle proof fetching, pagination
+
+## IndexerClient
+
+The main client for interacting with the Shinobi Cash indexer.
+
+### Creating a Client
 
 ```typescript
 import { IndexerClient } from '@shinobi-cash/data'
 
 const client = new IndexerClient({
-  baseUrl: 'https://indexer.shinobi.cash'
+  baseUrl: 'https://indexer.shinobi.cash',
+  timeout: 30000,  // optional, defaults to 30s
 })
 ```
 
-### Fluent Query Builder
+### Basic Queries
 
 ```typescript
-// Get deposits for a public key
-const deposits = await client
-  .deposits()
-  .byPublicKey(publicKey)
-  .onPool(poolAddress)
-  .execute()
+// Get deposits for a pool
+const deposits = await client.getDeposits({
+  pool: poolAddress,
+  first: 100,
+})
 
-// Get withdrawal history
-const withdrawals = await client
-  .withdrawals()
-  .byNullifier(nullifier)
-  .execute()
+// Get withdrawal by nullifier
+const withdrawal = await client.getWithdrawal({
+  nullifier: nullifierHash,
+})
 
 // Get pool statistics
-const stats = await client
-  .pool(poolAddress)
-  .stats()
-  .execute()
+const stats = await client.getPoolStats(poolAddress)
 ```
 
-### Query Types
+## Query Builders
+
+Fluent APIs for building complex queries.
+
+### DepositQueryBuilder
+
+```typescript
+import { DepositQueryBuilder } from '@shinobi-cash/data'
+
+const query = new DepositQueryBuilder()
+  .pool(poolAddress)
+  .after(lastCursor)
+  .first(50)
+  .orderBy('blockNumber', 'desc')
+  .build()
+
+const deposits = await client.query(query)
+```
+
+### Available Methods
+
+| Method | Description |
+|--------|-------------|
+| `.pool(address)` | Filter by pool address |
+| `.depositor(address)` | Filter by depositor (cross-chain only) |
+| `.after(cursor)` | Pagination cursor |
+| `.first(n)` | Limit results |
+| `.orderBy(field, dir)` | Sort results |
+| `.build()` | Build the query object |
+
+### WithdrawalQueryBuilder
+
+```typescript
+import { WithdrawalQueryBuilder } from '@shinobi-cash/data'
+
+const query = new WithdrawalQueryBuilder()
+  .pool(poolAddress)
+  .recipient(recipientAddress)
+  .first(100)
+  .build()
+
+const withdrawals = await client.query(query)
+```
+
+### IntentQueryBuilder
+
+```typescript
+import { IntentQueryBuilder } from '@shinobi-cash/data'
+
+const query = new IntentQueryBuilder()
+  .status('pending')
+  .destinationChain(84532n)
+  .first(20)
+  .build()
+
+const intents = await client.query(query)
+```
+
+### Intent Status Values
+
+| Status | Description |
+|--------|-------------|
+| `pending` | Intent created, awaiting fill |
+| `filled` | Solver filled the intent |
+| `claimed` | Solver claimed funds on origin |
+| `refunded` | Intent expired and refunded |
+
+## Response Types
+
+### IndexedDeposit
+
+```typescript
+interface IndexedDeposit {
+  id: string
+  pool: Address
+  commitment: string          // Decimal string
+  leafIndex: bigint
+  value: bigint
+  blockNumber: bigint
+  transactionHash: Hash
+  encryptedNote?: string      // For note discovery
+}
+```
+
+### IndexedWithdrawal
+
+```typescript
+interface IndexedWithdrawal {
+  id: string
+  pool: Address
+  nullifier: string           // Decimal string
+  recipient: Address
+  value: bigint
+  fee: bigint
+  blockNumber: bigint
+  transactionHash: Hash
+}
+```
+
+### IndexedIntent
+
+```typescript
+interface IndexedIntent {
+  id: string
+  orderId: Hash
+  status: IntentStatus
+  originChainId: bigint
+  destinationChainId: bigint
+  amount: bigint
+  solverFee: bigint
+  fillDeadline: bigint
+  expiry: bigint
+  createdAt: bigint
+  filledAt?: bigint
+  claimedAt?: bigint
+  refundedAt?: bigint
+}
+```
+
+### PoolStats
+
+```typescript
+interface PoolStats {
+  pool: Address
+  totalDeposits: bigint
+  totalWithdrawals: bigint
+  totalValueLocked: bigint
+  depositCount: number
+  withdrawalCount: number
+  uniqueDepositors: number
+}
+```
+
+## Merkle Proofs
+
+Fetch merkle proofs for note spending.
+
+### State Tree Proof
+
+```typescript
+const statePath = await client.getStateProof({
+  pool: poolAddress,
+  leafIndex: note.leafIndex,
+  root: currentRoot,  // optional, defaults to latest
+})
+
+// Returns:
+// {
+//   path: bigint[],
+//   indices: number[],
+//   root: bigint,
+// }
+```
+
+### ASP Tree Proof
+
+```typescript
+const aspPath = await client.getASPProof({
+  pool: poolAddress,
+  commitment: note.commitment,
+})
+```
+
+### Using Proofs
+
+```typescript
+import { createWithdrawProofInputs } from '@shinobi-cash/core'
+
+const inputs = createWithdrawProofInputs({
+  note,
+  merklePath: statePath,
+  aspPath: aspPath,
+  withdrawParams,
+  scope,
+})
+```
+
+## Pagination
+
+### Cursor-Based Pagination
+
+```typescript
+let cursor: string | undefined
+const allDeposits: IndexedDeposit[] = []
+
+do {
+  const query = new DepositQueryBuilder()
+    .pool(poolAddress)
+    .after(cursor)
+    .first(100)
+    .build()
+
+  const { deposits, pageInfo } = await client.queryWithPageInfo(query)
+  allDeposits.push(...deposits)
+  cursor = pageInfo.endCursor
+} while (cursor)
+```
+
+### Page Info
+
+```typescript
+interface PageInfo {
+  hasNextPage: boolean
+  hasPreviousPage: boolean
+  startCursor?: string
+  endCursor?: string
+}
+```
+
+## Subscriptions
+
+Real-time updates via WebSocket (where supported).
+
+```typescript
+const subscription = client.subscribeToDeposits({
+  pool: poolAddress,
+  onDeposit: (deposit) => {
+    console.log('New deposit:', deposit)
+  },
+  onError: (error) => {
+    console.error('Subscription error:', error)
+  },
+})
+
+// Later: unsubscribe
+subscription.unsubscribe()
+```
+
+## Error Handling
+
+```typescript
+import { IndexerError, NetworkError } from '@shinobi-cash/data'
+
+try {
+  const deposits = await client.getDeposits({ pool: poolAddress })
+} catch (error) {
+  if (error instanceof NetworkError) {
+    // Network/connection issue
+    console.error('Network error:', error.message)
+  } else if (error instanceof IndexerError) {
+    // Indexer returned an error
+    console.error('Indexer error:', error.code, error.message)
+  }
+}
+```
+
+### Error Types
+
+| Error | Description |
+|-------|-------------|
+| `NetworkError` | Connection failed, timeout |
+| `IndexerError` | Indexer returned error response |
+| `ValidationError` | Invalid query parameters |
+
+## Serializers
+
+Convert between API formats and SDK types.
+
+```typescript
+import {
+  serializeDeposit,
+  deserializeDeposit,
+  serializeWithdrawal,
+  deserializeWithdrawal,
+} from '@shinobi-cash/data'
+
+// API response → SDK type
+const deposit = deserializeDeposit(apiResponse)
+
+// SDK type → API format
+const payload = serializeDeposit(deposit)
+```
+
+## Configuration
+
+### Custom Fetch
+
+```typescript
+const client = new IndexerClient({
+  baseUrl: 'https://indexer.shinobi.cash',
+  fetch: customFetchFn,  // Override fetch implementation
+})
+```
+
+### Retry Configuration
+
+```typescript
+const client = new IndexerClient({
+  baseUrl: 'https://indexer.shinobi.cash',
+  retry: {
+    attempts: 3,
+    delay: 1000,
+    backoff: 2,
+  },
+})
+```
+
+## Type Exports
 
 ```typescript
 import type {
-  Deposit,
-  Withdrawal,
+  // Client
+  IndexerClientConfig,
+  QueryResult,
+  PageInfo,
+
+  // Queries
+  DepositQuery,
+  WithdrawalQuery,
+  IntentQuery,
+
+  // Responses
+  IndexedDeposit,
+  IndexedWithdrawal,
+  IndexedIntent,
   PoolStats,
-  MerkleProof
+
+  // Proofs
+  MerklePath,
+  StateProof,
+  ASPProof,
+
+  // Errors
+  IndexerError,
+  NetworkError,
 } from '@shinobi-cash/data'
+```
+
+## Usage with React Query
+
+```typescript
+import { useQuery } from '@tanstack/react-query'
+import { IndexerClient, DepositQueryBuilder } from '@shinobi-cash/data'
+
+const client = new IndexerClient({
+  baseUrl: 'https://indexer.shinobi.cash'
+})
+
+function useDeposits(poolAddress: Address) {
+  return useQuery({
+    queryKey: ['deposits', poolAddress],
+    queryFn: async () => {
+      const query = new DepositQueryBuilder()
+        .pool(poolAddress)
+        .first(100)
+        .build()
+      return client.query(query)
+    },
+  })
+}
 ```
 
 ## Source Code
 
-[View on GitHub](https://github.com/aspect-eth/shinobi-cash-website/tree/main/packages/data)
+[View on GitHub](https://github.com/shinobi-cash/shinobi.cash-website/tree/main/packages/data)
+
+## Related
+
+- **[Core Package](/sdk/core)** — Uses merkle proofs for proof generation
+- **[Trust Assumptions](/concepts/trust-assumptions)** — Indexer trust model
+- **[Privacy Pool](/contracts/pool)** — On-chain state

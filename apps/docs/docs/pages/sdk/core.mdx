@@ -1,10 +1,8 @@
 # @shinobi-cash/core
 
-:::info[Coming Soon]
-Detailed documentation for this package is being written. Check back soon.
+:::note[Audience]
+This page is for **Developers** building applications with Shinobi Cash.
 :::
-
-## Overview
 
 Core cryptographic primitives and utilities for Shinobi Cash.
 
@@ -14,49 +12,369 @@ Core cryptographic primitives and utilities for Shinobi Cash.
 npm install @shinobi-cash/core
 ```
 
-## Key Exports
+**Peer dependencies:** `viem ^2.0.0`, `snarkjs`
+
+## Modules
+
+The core package is organized into five modules:
+
+| Module | Purpose |
+|--------|---------|
+| `auth` | Key derivation, encryption, signatures |
+| `deposit` | Precommitment and commitment generation |
+| `withdrawal` | Proof inputs, context hashing, fee calculations |
+| `discovery` | Brute-force note discovery |
+| `proof` | Groth16 proof generation |
+
+## Authentication Module
+
+Handles key derivation, encryption, and signatures.
 
 ### Key Derivation
 
 ```typescript
 import {
-  derivePrecommitment,
-  deriveDepositNullifier,
-  parseUserKey
+  deriveAccountMasterKey,
+  deriveShieldedPublicKey,
+  derivePrecommitmentKeys
 } from '@shinobi-cash/core'
+
+// Derive master key from wallet signature
+const accountMasterKey = deriveAccountMasterKey(signature)
+
+// Derive public key for note discovery
+const publicKey = deriveShieldedPublicKey(accountMasterKey)
+
+// Derive keys for a specific deposit
+const { precommitmentKey, nullifierKey } = derivePrecommitmentKeys({
+  accountMasterKey,
+  poolAddress,
+  depositIndex: 0n,
+})
 ```
 
-### Note Discovery
+### Account Master Key Format
+
+The Account Master Key (AMK) is a 32-byte value derived from:
+1. User signs a deterministic message
+2. Signature is hashed with Poseidon
+3. Result is used as the seed for all derived keys
 
 ```typescript
-import { NoteDiscovery } from '@shinobi-cash/core'
+// Message format
+const message = `Sign this message to access your Shinobi Cash account.\n\nThis signature is used to derive your private viewing and spending keys. It does not grant access to your wallet funds.`
 
-const discovery = new NoteDiscovery(indexerClient)
-const notes = await discovery.sync(publicKey, poolAddress)
-```
-
-### Proof Generation
-
-```typescript
-import { WithdrawalProofGenerator } from '@shinobi-cash/core'
-
-const generator = new WithdrawalProofGenerator()
-const proof = await generator.generate(inputs)
+// Derive AMK
+const signature = await wallet.signMessage(message)
+const amk = deriveAccountMasterKey(signature)
 ```
 
 ### Encryption
 
 ```typescript
-import { EncryptionService } from '@shinobi-cash/core'
+import {
+  encryptNote,
+  decryptNote,
+  encryptForPublicKey
+} from '@shinobi-cash/core'
 
-const encrypted = EncryptionService.encrypt(data, key)
-const decrypted = EncryptionService.decrypt(encrypted, key)
+// Encrypt a note with the account key
+const encrypted = encryptNote(note, accountMasterKey)
+
+// Decrypt a note
+const decrypted = decryptNote(encrypted, accountMasterKey)
+
+// Encrypt for a public key (async encryption)
+const ciphertext = await encryptForPublicKey(data, publicKey)
 ```
 
-## Hash Format
+## Deposit Module
 
-All Poseidon hashes use decimal strings (`BigInt.toString()`), never `0x`-prefixed hex.
+Handles deposit commitment generation.
+
+### Deriving Precommitment
+
+```typescript
+import {
+  derivePrecommitment,
+  deriveNoteCommitmentHash
+} from '@shinobi-cash/core'
+
+// Derive all deposit parameters
+const {
+  precommitment,      // Hash for commitment
+  accountSecret,      // Secret for nullifier
+  nullifier,          // Unique identifier for spending
+  precommitmentKey,   // Key used in precommitment
+} = derivePrecommitment({
+  accountMasterKey,
+  poolAddress: SHINOBI_CASH_POOL_ADDRESS,
+  depositIndex: 0n,   // Increment for each deposit
+})
+
+// Compute the final commitment hash
+const commitmentHash = deriveNoteCommitmentHash({
+  precommitment,
+  value: parseEther('1'),  // Deposit amount in wei
+})
+```
+
+### Commitment Structure
+
+A commitment is `Poseidon(precommitment, value)` where:
+- `precommitment = Poseidon(precommitmentKey)`
+- `precommitmentKey` is derived from AMK + pool + index
+
+### Cross-Chain Deposits
+
+For deposits from non-pool chains:
+
+```typescript
+import { createCrossChainDepositIntent } from '@shinobi-cash/core'
+
+const intent = createCrossChainDepositIntent({
+  depositor: userAddress,
+  precommitment,
+  amount: parseEther('1'),
+  originChainId: 84532n,  // Base Sepolia
+})
+```
+
+## Withdrawal Module
+
+Handles withdrawal proof inputs and fee calculations.
+
+### Creating Proof Inputs
+
+```typescript
+import {
+  createWithdrawProofInputs,
+  createCrossChainWithdrawProofInputs
+} from '@shinobi-cash/core'
+
+// Same-chain withdrawal (8 signals)
+const inputs = createWithdrawProofInputs({
+  note: {
+    precommitment,
+    value,
+    nullifier,
+    accountSecret,
+    leafIndex,
+  },
+  merklePath: stateTree,     // From indexer
+  aspPath: aspTree,          // From indexer
+  withdrawParams: {
+    recipient,
+    amount,
+    relayFee,
+    processooor,
+  },
+  scope,
+})
+
+// Cross-chain withdrawal (9 signals)
+const crossChainInputs = createCrossChainWithdrawProofInputs({
+  ...inputs,
+  refundCommitment,  // 9th signal for failed intents
+})
+```
+
+### Context Hash
+
+The context binds the proof to specific withdrawal parameters:
+
+```typescript
+import { computeWithdrawalContext } from '@shinobi-cash/core'
+
+const context = computeWithdrawalContext({
+  recipient,
+  amount,
+  feeRecipient,
+  relayFeeBPS,
+  scope,
+})
+// Returns: keccak256(abi.encode(withdrawal, scope)) % SNARK_SCALAR_FIELD
+```
+
+### Fee Calculations
+
+```typescript
+import {
+  calculateRelayFee,
+  calculateSolverFee,
+  calculateTotalFees,
+  estimateReceivedAmount
+} from '@shinobi-cash/core'
+
+// Calculate individual fees
+const relayFee = calculateRelayFee(amount, relayFeeBPS)
+const solverFee = calculateSolverFee(amount, solverFeeBPS)
+
+// Calculate what user receives
+const { received, totalFees } = estimateReceivedAmount({
+  withdrawAmount: parseEther('1'),
+  relayFeeBPS: 1500n,      // 15%
+  solverFeeBPS: 100n,      // 1%
+  complianceFeeBPS: 50n,   // 0.5%
+})
+```
+
+### Withdrawal Classification
+
+```typescript
+import { classifyWithdrawal } from '@shinobi-cash/core'
+
+const type = classifyWithdrawal({
+  noteChainId: 421614n,     // Arbitrum Sepolia
+  destinationChainId: 84532n, // Base Sepolia
+})
+// Returns: 'cross-chain' | 'same-chain' | 'paymaster'
+```
+
+## Discovery Module
+
+Brute-force discovery of notes encrypted on-chain.
+
+### Note Discovery
+
+```typescript
+import { NoteDiscoveryService } from '@shinobi-cash/core'
+
+const discovery = new NoteDiscoveryService()
+
+// Discover notes for an account
+const notes = await discovery.discoverNotes({
+  accountMasterKey,
+  poolAddress: SHINOBI_CASH_POOL_ADDRESS,
+  encryptedNotes,  // From indexer
+  maxIndex: 1000,  // Max deposits to check
+})
+
+// Returns: Note[] with decrypted values
+```
+
+### How Discovery Works
+
+1. Fetch all encrypted notes from the indexer
+2. For each deposit index (0 to maxIndex):
+   - Derive the precommitment for that index
+   - Try to decrypt each note
+   - If decryption succeeds, the note belongs to this account
+
+### Incremental Sync
+
+```typescript
+// Start from last known index
+const newNotes = await discovery.discoverNotes({
+  accountMasterKey,
+  poolAddress,
+  encryptedNotes,
+  startIndex: lastKnownIndex + 1,
+  maxIndex: lastKnownIndex + 100,
+})
+```
+
+## Proof Module
+
+Groth16 proof generation using snarkjs.
+
+### Generating Withdrawal Proofs
+
+```typescript
+import { generateWithdrawalProof } from '@shinobi-cash/core'
+
+// Generate proof (browser)
+const proof = await generateWithdrawalProof(
+  inputs,
+  '/circuits/withdraw.wasm',      // WASM circuit
+  '/circuits/withdraw_final.zkey' // Proving key
+)
+
+// Returns: { pA, pB, pC, pubSignals }
+```
+
+### Proof Structure
+
+```typescript
+interface WithdrawProof {
+  pA: [bigint, bigint]           // G1 point
+  pB: [[bigint, bigint], [bigint, bigint]]  // G2 point
+  pC: [bigint, bigint]           // G1 point
+  pubSignals: bigint[]           // 8 or 9 signals
+}
+```
+
+### Public Signals
+
+| Index | Signal | Description |
+|-------|--------|-------------|
+| 0 | `newCommitmentHash` | Change note commitment |
+| 1 | `existingNullifierHash` | Spent deposit nullifier |
+| 2 | `withdrawnValue` | Amount being withdrawn |
+| 3 | `stateRoot` | Merkle root of deposits |
+| 4 | `stateTreeDepth` | Depth of state tree |
+| 5 | `ASPRoot` | Merkle root of ASP set |
+| 6 | `ASPTreeDepth` | Depth of ASP tree |
+| 7 | `context` | Binding context |
+| 8 | `refundCommitmentHash` | (9-signal only) Refund commitment |
+
+### Verifying Proofs (Client-side)
+
+```typescript
+import { verifyWithdrawalProof } from '@shinobi-cash/core'
+
+const isValid = await verifyWithdrawalProof(
+  proof,
+  '/circuits/withdraw_verification_key.json'
+)
+```
+
+## Hash Format Convention
+
+:::warning
+All Poseidon hashes use **decimal strings** (`BigInt.toString()`), never `0x`-prefixed hex. This is critical for compatibility with the indexer and smart contracts.
+:::
+
+```typescript
+// Correct
+const hash = poseidon([a, b]).toString()
+// "12345678901234567890123456789012345678901234567890"
+
+// Wrong - don't use hex
+const hash = '0x' + poseidon([a, b]).toString(16)
+```
+
+## Type Exports
+
+```typescript
+import type {
+  // Auth
+  AccountMasterKey,
+  ShieldedPublicKey,
+  EncryptedNote,
+
+  // Deposit
+  Precommitment,
+  Commitment,
+  Note,
+
+  // Withdrawal
+  WithdrawProofInputs,
+  CrossChainWithdrawProofInputs,
+  WithdrawalContext,
+
+  // Proof
+  WithdrawProof,
+  Groth16Proof,
+} from '@shinobi-cash/core'
+```
 
 ## Source Code
 
-[View on GitHub](https://github.com/aspect-eth/shinobi-cash-website/tree/main/packages/core)
+[View on GitHub](https://github.com/shinobi-cash/shinobi.cash-website/tree/main/packages/core)
+
+## Related
+
+- **[Constants Package](/sdk/constants)** — ABIs and addresses
+- **[Data Package](/sdk/data)** — Indexer client for merkle proofs
+- **[Privacy Pools](/concepts/privacy-pools)** — Cryptographic foundations
