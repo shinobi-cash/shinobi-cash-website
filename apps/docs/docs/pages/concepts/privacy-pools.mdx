@@ -2,9 +2,45 @@
 
 Understanding the core cryptographic primitives behind Shinobi Cash.
 
+:::note[Audience]
+This page is for **Developers and Security Reviewers**. For user guides, see [Deposit](/guides/deposit) and [Withdraw](/guides/withdraw).
+:::
+
+:::info[TL;DR]
+Deposits create **commitments** in a Merkle tree. Withdrawals reveal **nullifiers** that prove ownership without revealing which deposit. Zero-knowledge proofs verify everything on-chain without leaking information.
+:::
+
+## Key Terms
+
+| Term | Meaning |
+|------|---------|
+| **Commitment** | A hash representing your deposit, added to the Merkle tree |
+| **Nullifier** | A unique value revealed during withdrawal to prevent double-spend |
+| **Merkle Tree** | Data structure that allows proving membership without revealing position |
+| **ZK Proof** | Cryptographic proof that verifies claims without revealing inputs |
+
 ## Overview
 
 Privacy Pools enable private transactions by breaking the on-chain link between deposits and withdrawals. Users deposit funds into a shared pool and later withdraw using zero-knowledge proofs that verify ownership without revealing which deposit is theirs.
+
+## Concrete Example
+
+```
+Alice deposits 1 ETH:
+  → Commitment C₁ added to Merkle tree
+  → Alice stores secret S₁ locally
+
+Later, Alice withdraws 0.3 ETH:
+  → Generates ZK proof: "I know secret for some commitment in the tree"
+  → Reveals nullifier N₁ (derived from S₁)
+  → Receives 0.3 ETH to recipient address
+  → Change note: 0.7 ETH commitment C₂ created
+
+On-chain, observers see:
+  → Deposit: someone added C₁
+  → Withdrawal: someone spent N₁, created C₂
+  → No link between C₁ and N₁ visible
+```
 
 ## Key Concepts
 

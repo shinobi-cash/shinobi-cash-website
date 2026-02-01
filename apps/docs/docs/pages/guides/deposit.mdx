@@ -2,6 +2,10 @@
 
 How to deposit ETH into Shinobi Cash.
 
+:::note[Audience]
+This page is for **Users**. No protocol knowledge required.
+:::
+
 ## Overview
 
 Depositing adds your funds to the privacy pool, creating a commitment that only you can later withdraw.
@@ -81,6 +85,15 @@ The minimum deposit is 0.01 ETH. Smaller amounts are rejected.
 ### Transaction failed
 - Check you have enough ETH for gas + deposit amount
 - Ensure you're on the correct network
+
+## What Can Go Wrong?
+
+| Issue | Impact | Recovery |
+|-------|--------|----------|
+| **ASP rejects deposit** | Cannot withdraw normally | Ragequit (recover funds, lose privacy) |
+| **Solver doesn't fill** | Cross-chain deposit delayed | Wait for another solver, or intent expires and refunds |
+| **Browser crash mid-deposit** | Transaction may not submit | Check wallet history; retry if needed |
+| **Wrong amount** | Funds in pool at that amount | Withdraw in parts or wait for more deposits at same amount |
 
 ## Next Steps
 

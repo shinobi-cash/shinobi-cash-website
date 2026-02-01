@@ -2,6 +2,23 @@
 
 How Shinobi Cash enables privacy across multiple chains.
 
+:::note[Audience]
+This page is for **Developers and Security Reviewers**. For user guides, see [Deposit](/guides/deposit) and [Withdraw](/guides/withdraw).
+:::
+
+:::info[TL;DR]
+One pool lives on Arbitrum. Deposits and withdrawals from other chains are expressed as **intents** and fulfilled by **solvers**. Funds are always escrowed or provably recoverable. A malicious solver can delay but **cannot steal**.
+:::
+
+## Key Terms
+
+| Term | Meaning |
+|------|---------|
+| **Intent** | A signed request to move funds cross-chain |
+| **Solver** | An off-chain actor that fulfills intents for a fee |
+| **Escrow** | Funds locked until intent is filled or expires |
+| **Refund Commitment** | Fallback if intent expires — funds return to pool |
+
 ## The Problem
 
 Traditional privacy solutions deploy separate pools on each chain. This creates fragmented anonymity sets — each pool has fewer users, weakening privacy.

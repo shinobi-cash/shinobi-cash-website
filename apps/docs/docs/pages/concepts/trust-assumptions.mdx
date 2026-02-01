@@ -1,0 +1,96 @@
+# Trust Assumptions
+
+:::note[Audience]
+This page is for **Security Reviewers and Advanced Users** who want a quick reference of what Shinobi Cash trusts and doesn't trust.
+:::
+
+A bullet-point summary of Shinobi Cash's trust model. For detailed analysis, see the [Threat Model](/concepts/threat-model).
+
+## What Shinobi Cash Trusts
+
+### Smart Contracts
+- ✅ Contracts execute correctly as written
+- ⚠️ **Contracts are NOT YET AUDITED** — bugs may exist
+- ✅ ERC-4337 EntryPoint is battle-tested (used by many protocols)
+
+### Zero-Knowledge Proofs
+- ✅ Groth16 cryptography is sound
+- ✅ Circuit constraints correctly encode withdrawal rules
+- ✅ Trusted setup was performed correctly (uses established ceremony)
+
+### Ethereum Consensus
+- ✅ Blocks are final after sufficient confirmations
+- ✅ Transactions cannot be reversed post-finality
+
+## What Shinobi Cash Does NOT Trust
+
+### Association Set Providers (ASPs)
+- ❌ ASPs may censor deposits (refuse approval)
+- ❌ ASPs may delay indefinitely
+- ❌ ASPs may apply inconsistent criteria
+- ✅ But: ASPs **cannot steal funds**
+- ✅ But: ASPs **cannot deanonymize withdrawals**
+- ✅ But: Censored users can **ragequit** (recover funds)
+
+### Solvers
+- ❌ Solvers may go offline
+- ❌ Solvers may delay filling intents
+- ❌ Solvers may prioritize profitable intents
+- ✅ But: Solvers **cannot steal escrowed funds**
+- ✅ But: Expired intents **return as refund commitments**
+- ✅ But: Solvers are **permissionless** — anyone can run one
+
+### Indexer
+- ❌ Indexer may withhold data
+- ❌ Indexer may serve stale information
+- ❌ Indexer may go offline
+- ✅ But: Indexer **cannot forge proofs or deposits**
+- ✅ But: Users can query **on-chain data directly**
+
+### User Interface
+- ❌ UI may be compromised
+- ❌ UI may display incorrect information
+- ❌ UI may attempt phishing
+- ✅ But: All operations require **wallet signature**
+- ✅ But: Users can **self-host** or use CLI
+- ✅ But: Proofs are generated **client-side**
+
+### Bundlers (ERC-4337)
+- ❌ Bundlers see transaction data (not private)
+- ❌ Bundlers may censor transactions
+- ✅ But: Bundlers **cannot steal funds**
+- ✅ But: Multiple bundlers exist (Pimlico, Alchemy, etc.)
+
+## The Security Contract
+
+**If you use Shinobi Cash correctly:**
+
+| Guarantee | Condition |
+|-----------|-----------|
+| Funds cannot be stolen | Unless contracts have bugs (unaudited) |
+| Withdrawals cannot be linked to deposits | Unless you leak information yourself |
+| Cross-chain funds cannot be lost | Refund mechanism ensures recovery |
+| No one can withdraw your funds | Unless your wallet is compromised |
+
+## Key Risks to Understand
+
+:::warning[Unaudited Contracts]
+Smart contracts have **not been audited**. Use testnet only. Do not deposit real funds.
+:::
+
+:::warning[Privacy Hygiene]
+Your privacy depends on your behavior:
+- Don't withdraw immediately after depositing
+- Don't withdraw exact deposit amounts
+- Use fresh recipient addresses
+:::
+
+:::warning[ASP Dependency]
+Withdrawals require ASP approval. If an ASP rejects your deposit, you can only ragequit (recover funds but lose privacy).
+:::
+
+## Related Pages
+
+- **[Threat Model](/concepts/threat-model)** — Detailed adversary analysis
+- **[Compliance](/concepts/compliance)** — How ASPs work
+- **[Privacy Pools](/concepts/privacy-pools)** — Cryptographic foundations

@@ -2,6 +2,14 @@
 
 How Shinobi Cash enables privacy without enabling illicit activity.
 
+:::note[Audience]
+This page is for **Users, Developers, and Regulators** seeking to understand how Shinobi Cash balances privacy with compliance.
+:::
+
+:::info[TL;DR]
+Association Set Providers (ASPs) review deposits and approve compliant ones. Withdrawals prove ASP membership **without revealing which deposit**. Privacy is preserved; compliance is verifiable.
+:::
+
 ## The Compliance Problem
 
 Traditional mixers face a fundamental tension:
@@ -26,6 +34,15 @@ Shinobi Cash solves this with **Association Set Providers** — trusted entities
 > "My funds came from a compliant source (I'm in the ASP set), but I won't tell you which specific deposit is mine."
 
 This is the key innovation — compliance without surveillance.
+
+### What Compliance Does NOT Mean
+
+- ❌ ASPs do **not** know which withdrawal belongs to which deposit
+- ❌ ASPs **cannot** retroactively deanonymize past withdrawals
+- ❌ ASPs **cannot** seize or redirect funds
+- ❌ ASPs **cannot** see your wallet address or identity
+
+ASPs only see: "This deposit source appears compliant" → approve/reject.
 
 ## ASP Approval States
 

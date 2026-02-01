@@ -24,6 +24,13 @@ export default defineConfig({
       ],
     },
     {
+      text: 'Security & Trust',
+      items: [
+        { text: 'Threat Model', link: '/concepts/threat-model' },
+        { text: 'Trust Assumptions', link: '/concepts/trust-assumptions' },
+      ],
+    },
+    {
       text: 'Guides',
       items: [
         { text: 'Depositing', link: '/guides/deposit' },

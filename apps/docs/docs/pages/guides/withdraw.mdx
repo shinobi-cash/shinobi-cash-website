@@ -2,6 +2,10 @@
 
 How to withdraw ETH privately from Shinobi Cash.
 
+:::note[Audience]
+This page is for **Users**. No protocol knowledge required.
+:::
+
 ## Overview
 
 Withdrawing uses a zero-knowledge proof to verify you own a deposit without revealing which one. The recipient can be any address on any supported chain.
@@ -138,6 +142,20 @@ You can make multiple partial withdrawals from a single deposit. Each creates a 
 - Solvers usually fill within minutes
 - If expired, funds return as a refund commitment
 - Refund can be withdrawn normally
+
+## What Can Go Wrong?
+
+| Issue | Impact | Recovery |
+|-------|--------|----------|
+| **Browser crash during proof gen** | Proof not generated | Retry; no funds lost |
+| **Transaction reverts** | Withdrawal fails | Check error; retry with valid note |
+| **Solver doesn't fill (cross-chain)** | Withdrawal delayed | Intent expires → refund commitment created |
+| **Wrong recipient address** | Funds sent to wrong address | **Unrecoverable** — double-check before confirming |
+| **Note already spent** | Transaction fails | Note was used in another session/device |
+
+:::warning[Recipient Address]
+Always double-check the recipient address. Withdrawals to wrong addresses **cannot be recovered**.
+:::
 
 ## Next Steps
 
