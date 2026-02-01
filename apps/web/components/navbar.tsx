@@ -21,7 +21,7 @@ const NAV_LINKS: NavLink[] = [
   { label: "How it Works", href: "#how-it-works" },
   { label: "Why Borderless", href: "#why" },
   { label: "FAQ", href: "#faq" },
-  { label: "Docs", href: "#", comingSoon: true },
+  { label: "Docs", href: "https://docs.shinobi.cash" },
 ];
 
 export default function Navbar() {

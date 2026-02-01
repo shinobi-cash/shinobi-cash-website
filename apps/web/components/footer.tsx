@@ -5,7 +5,7 @@ import { Github, Twitter } from "lucide-react";
 const FOOTER_LINKS = {
   product: [
     { label: "Launch App", href: "https://testnet.shinobi.cash", external: true },
-    { label: "Documentation", href: "#", external: false, comingSoon: true },
+    { label: "Documentation", href: "https://docs.shinobi.cash", external: true },
   ],
   resources: [
     { label: "GitHub", href: "https://github.com/shinobi-cash", external: true },
@@ -15,7 +15,7 @@ const FOOTER_LINKS = {
 
 const SOCIAL_LINKS = [
   { label: "GitHub", href: "https://github.com/shinobi-cash", icon: Github },
-  { label: "Twitter", href: "https://twitter.com/ShinobiCash", icon: Twitter },
+  { label: "X", href: "https://x.com/kdsinghsaini", icon: Twitter },
 ];
 
 export function Footer() {
