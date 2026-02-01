@@ -111,10 +111,22 @@ export function Footer() {
             <ul className="space-y-3">
               <li>
                 <a
-                  href="mailto:hello@shinobi.cash"
+                  href="https://t.me/kdsinghsaini"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="text-sm text-neutral-400 hover:text-white transition-colors"
                 >
-                  hello@shinobi.cash
+                  Telegram
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://x.com/kdsinghsaini"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-neutral-400 hover:text-white transition-colors"
+                >
+                  X (Twitter)
                 </a>
               </li>
             </ul>
