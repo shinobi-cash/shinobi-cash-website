@@ -1,0 +1,145 @@
+# FAQ
+
+Frequently asked questions about Shinobi Cash.
+
+## General
+
+### What is Shinobi Cash?
+
+Shinobi Cash is a cross-chain privacy protocol that enables private transactions across the Ethereum ecosystem. It uses Privacy Pools and zero-knowledge proofs to let you deposit from any chain and withdraw to any chain while maintaining privacy.
+
+### Is this a mixer?
+
+Shinobi Cash provides mixer-like privacy outcomes, but uses a different cryptographic model — one that preserves ownership proofs and enables compliance without surveillance.
+
+### Is it safe to use?
+
+:::warning[Testnet Only]
+Shinobi Cash is currently on testnet and has NOT been audited. Use testnet ETH only. Do not deposit real funds.
+:::
+
+### What chains are supported?
+
+Currently on testnet:
+- **Arbitrum Sepolia** — Pool chain (where the privacy pool lives)
+- **Base Sepolia** — Origin chain (deposit/withdraw)
+
+More chains planned for mainnet.
+
+## Privacy
+
+### How private are my transactions?
+
+When you withdraw:
+- **Hidden**: Which deposit you're spending, your deposit history, your identity
+- **Revealed**: That you have a valid deposit, the withdrawal amount, the recipient address
+
+### Can my deposits be linked to my withdrawals?
+
+Not by default. The zero-knowledge proof verifies you own a valid deposit without revealing which one.
+
+However:
+- Withdrawing immediately after depositing reduces anonymity
+- Withdrawing the exact same amount you deposited can be correlated
+- Using the same recipient address multiple times creates links
+
+### What's an anonymity set?
+
+The anonymity set is all the deposits your withdrawal could be from. Larger is better. Shinobi Cash's cross-chain approach creates a larger anonymity set than per-chain solutions.
+
+## Compliance
+
+### How does compliance work?
+
+Association Set Providers (ASPs) review deposits and approve compliant ones. Your withdrawal proof must show membership in both the deposit tree AND the ASP tree.
+
+### What if my deposit is rejected?
+
+You can "ragequit" — withdraw by revealing you were the depositor. This recovers your funds but removes privacy.
+
+### Do I need to KYC?
+
+No. Compliance is enforced at the protocol level via ASPs. You prove membership in a compliant set without revealing your identity.
+
+## Technical
+
+### How long do transactions take?
+
+- **Same-chain deposit**: ~1-2 minutes
+- **Cross-chain deposit**: ~2-5 minutes (solver fill)
+- **Same-chain withdrawal**: ~1-2 minutes (+ proof generation)
+- **Cross-chain withdrawal**: ~2-5 minutes (+ proof generation)
+
+Proof generation takes 5-15 seconds in your browser.
+
+### Why is proof generation slow?
+
+Groth16 SNARK proofs are computationally intensive. The 5-15 second generation time is normal. Keep your browser tab active during generation.
+
+### Do I need ETH in my wallet for gas?
+
+No. Withdrawals are relayed via standard ERC-4337 bundlers. A paymaster sponsors the gas upfront, and the cost is deducted from your withdrawal amount (relay fee). No custom relayer infrastructure required.
+
+### What happens if a cross-chain transaction fails?
+
+If a solver doesn't fill your intent before the deadline:
+- Your escrowed funds are returned to the pool as a refund commitment
+- You can withdraw the refund like any other deposit
+
+## Fees
+
+### What are the fees?
+
+:::info[Testnet Configuration]
+All fees are configurable. These are current testnet values and may change for mainnet.
+:::
+
+**Deposits:**
+- Compliance fee: 1%
+- Solver fee: 5% (cross-chain only)
+
+**Withdrawals:**
+- Relay fee: Up to 15% (covers gas)
+- Solver fee: 5% (cross-chain only)
+
+### Why are fees high?
+
+Fees cover:
+- Gas costs (sponsored by paymasters)
+- Solver incentives (for cross-chain settlement)
+- Protocol sustainability
+
+Fees may decrease as the protocol scales.
+
+### Why are cross-chain operations slow?
+
+Solver availability on testnet is limited. Cross-chain deposits and withdrawals depend on solvers to fill intents. On mainnet, more solvers will provide faster settlement.
+
+## Troubleshooting
+
+### My deposit isn't showing up
+
+1. Wait for transaction confirmation (~1-2 blocks)
+2. Wait for indexer sync (~30 seconds)
+3. For cross-chain, wait for solver fill (~1-5 minutes)
+4. Try refreshing the page
+
+### Withdrawal failed
+
+Common causes:
+- Note already spent (check another session didn't use it)
+- ASP approval pending (wait a bit longer)
+- Proof generation interrupted (try again, keep tab active)
+
+### Transaction stuck
+
+For cross-chain transactions, solvers usually fill within minutes. If expired:
+- Funds return as a refund commitment
+- Refund appears in your notes
+- Withdraw the refund normally
+
+## More Questions?
+
+- **[Telegram](https://t.me/kdsinghsaini)** — DM for questions
+- **[X](https://x.com/kdsinghsaini)** — Follow for updates
+- **[GitHub](https://github.com/shinobi-cash)** — Report issues

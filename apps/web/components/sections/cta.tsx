@@ -35,12 +35,12 @@ export function CTASection() {
             <Button
               variant="outline"
               size="lg"
-              disabled
-              className="border-white/10 text-neutral-500 px-8 py-6 text-base cursor-not-allowed"
-              title="Coming soon"
+              className="border-white/10 hover:bg-white/5 px-8 py-6 text-base"
+              asChild
             >
-              Docs
-              <span className="ml-1.5 text-[10px] text-neutral-600">soon</span>
+              <a href="https://docs.shinobi.cash" target="_blank" rel="noopener noreferrer">
+                Docs
+              </a>
             </Button>
           </div>
         </div>

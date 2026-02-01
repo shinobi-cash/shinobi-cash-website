@@ -1,0 +1,88 @@
+# Quick Start
+
+Get started with Shinobi Cash in minutes.
+
+## Prerequisites
+
+- A wallet (MetaMask, Rabby, etc.)
+- Testnet ETH on Arbitrum Sepolia or Base Sepolia
+
+:::tip[Get Testnet ETH]
+Search for "Arbitrum Sepolia faucet" or "Base Sepolia faucet" to find current working faucets.
+:::
+
+## Step 1: Connect Your Wallet
+
+1. Visit [testnet.shinobi.cash](https://testnet.shinobi.cash)
+2. Click **"Sign in with Wallet"**
+3. Connect your wallet and sign the authentication message
+
+This signature derives your private keys for the privacy pool — your wallet never has direct access to your deposits.
+
+## Step 2: Make a Deposit
+
+1. Navigate to the **Deposit** tab
+2. Select your source chain (Arbitrum Sepolia or Base Sepolia)
+3. Enter the amount of ETH to deposit
+4. Review the fees and confirm
+
+**What happens:**
+- Your ETH is deposited into the privacy pool
+- A commitment is added to the Merkle tree
+- For cross-chain deposits, a solver fills your intent on the pool chain
+
+## Step 3: Wait for Activation
+
+After depositing, your funds need to be "activated" before you can withdraw:
+
+1. **On-chain confirmation** — Transaction included in a block
+2. **Indexer sync** — Our indexer detects your deposit
+3. **ASP approval** — Association Set Provider verifies compliance
+
+This typically takes a few minutes.
+
+## Step 4: Withdraw Privately
+
+1. Navigate to the **Withdraw** tab
+2. Select a note with available balance
+3. Enter the recipient address (can be any address, any supported chain)
+4. Select the destination chain
+5. Review fees and confirm
+
+**What happens:**
+- A zero-knowledge proof is generated in your browser
+- The proof verifies you own a valid deposit without revealing which one
+- For cross-chain withdrawals, a solver fills your intent on the destination chain
+- Gas is sponsored — you don't need ETH on the destination chain
+
+## Understanding Your Notes
+
+In the **Notes** tab, you'll see your deposits organized as "note chains":
+
+| Status | Meaning |
+|--------|---------|
+| **Available** | Ready to withdraw |
+| **Pending** | Waiting for activation or ASP approval |
+| **Spent** | Already withdrawn |
+
+Each withdrawal creates a "change note" for the remaining balance, similar to how cash transactions work.
+
+## Fees
+
+:::info[Testnet Configuration]
+All fees are configurable. The values below are current testnet settings and may change for mainnet. Solver availability on testnet is limited, so cross-chain operations may be slower than expected.
+:::
+
+### Deposit Fees
+- **Compliance Fee**: 1% (goes to the protocol)
+- **Solver Fee**: 5% (cross-chain deposits only)
+
+### Withdrawal Fees
+- **Relay Fee**: Up to 15% (covers gas sponsorship)
+- **Solver Fee**: 5% (cross-chain withdrawals only)
+
+## Next Steps
+
+- **[Privacy Pools](/concepts/privacy-pools)** — Understand how the technology works
+- **[Cross-Chain Architecture](/concepts/cross-chain)** — Learn about OIF and solvers
+- **[FAQ](/faq)** — Common questions answered

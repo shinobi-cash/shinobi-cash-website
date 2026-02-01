@@ -1,0 +1,224 @@
+# Paymasters
+
+:::note[Audience]
+This page is for **Developers and Security Reviewers**.
+:::
+
+ERC-4337 paymasters that enable private withdrawals without requiring wallet gas.
+
+## Overview
+
+Shinobi Cash paymasters:
+- **Sponsor gas upfront** — Users don't need ETH in their wallet
+- **Validate ZK proofs** — Embedded proof validation, no external calls
+- **Deduct relay fees** — Gas cost covered by the withdrawal amount
+- **Use standard AA infra** — Works with any ERC-4337 bundler
+
+## Contracts
+
+| Contract | Purpose |
+|----------|---------|
+| `SimpleShinobiCashPoolPaymaster` | Same-chain withdrawals (8-signal proofs) |
+| `CrossChainWithdrawalPaymaster` | Cross-chain withdrawals (9-signal proofs) |
+
+## SimpleShinobiCashPoolPaymaster
+
+### Gas Limits
+
+```solidity
+uint256 public constant POST_OP_GAS_LIMIT = 100_000;
+uint256 public constant MIN_CALL_GAS_LIMIT = 550_000;
+uint256 public constant MIN_PAYMASTER_VERIFICATION_GAS = 400_000;
+```
+
+### Validation Flow
+
+The paymaster validates UserOperations in `_validatePaymasterUserOp`:
+
+```
+1. Check expectedSmartAccount is configured
+2. Verify UserOp from expected smart account
+3. Ensure no initCode (account already deployed)
+4. Check gas limits are sufficient:
+   - postOp gas limit >= POST_OP_GAS_LIMIT (100,000)
+   - call gas limit >= MIN_CALL_GAS_LIMIT (550,000)
+   - paymaster verification gas >= MIN_PAYMASTER_VERIFICATION_GAS (400,000)
+5. Extract SimpleAccount.execute(target, value, data)
+6. Call internal relay() to validate withdrawal:
+   a. Verify processooor is SHINOBI_CASH_ENTRYPOINT
+   b. Decode RelayData, verify feeRecipient is this paymaster
+   c. Verify scope matches ETH_CASH_POOL.SCOPE()
+   d. Validate ZK proof (context, tree depths, roots, nullifier, Groth16)
+   e. Store values in transient storage
+7. Validate economics: expectedFee >= maxCost
+8. Return context with userOpHash, recipient, expectedFee
+```
+
+### Embedded Relay Method
+
+The paymaster calls itself to validate the withdrawal without executing it:
+
+```solidity
+/// Called by paymaster itself to validate withdrawal
+/// External function that checks msg.sender == address(this)
+function relay(
+    IPrivacyPool.Withdrawal calldata withdrawal,
+    ProofLib.WithdrawProof calldata proof,
+    uint256 scope
+) external {
+    if (msg.sender != address(this)) revert UnauthorizedCaller();
+
+    // Validate processooor, feeRecipient, scope
+    // Verify ZK proof via _validateWithdrawCall()
+    // Store in transient storage for economic checks
+    assembly {
+        tstore(0, withdrawnValue)
+        tstore(1, relayFeeBPS)
+        tstore(2, withdrawalRecipient)
+    }
+}
+```
+
+### Transient Storage (EIP-1153)
+
+The paymaster uses transient storage for gas efficiency:
+
+```solidity
+// Store in validation
+assembly {
+    tstore(0, withdrawnValue)
+    tstore(1, relayFeeBPS)
+    tstore(2, withdrawalRecipient)
+}
+
+// Read in postOp
+uint256 withdrawnValue;
+assembly {
+    withdrawnValue := tload(0)
+}
+
+// Clear after use
+assembly {
+    tstore(0, 0)
+}
+```
+
+### PostOp Handling
+
+After execution, `_postOp` refunds excess fees to the user:
+
+```solidity
+function _postOp(
+    PostOpMode mode,
+    bytes calldata context,
+    uint256 actualGasCost,
+    uint256 actualUserOpFeePerGas
+) internal override {
+    // Calculate actual cost
+    uint256 actualCost = actualGasCost +
+        (POST_OP_GAS_LIMIT * actualUserOpFeePerGas);
+
+    // Refund excess to recipient
+    uint256 excess = expectedFee - actualCost;
+    if (excess > 0) {
+        (bool success, ) = recipient.call{value: excess}("");
+        // Handle refund result
+    }
+}
+```
+
+## CrossChainWithdrawalPaymaster
+
+Similar to `SimpleShinobiCashPoolPaymaster` but validates 9-signal cross-chain proofs.
+
+### Gas Limits
+
+Higher limits for cross-chain operations:
+
+```solidity
+uint256 public constant MIN_CALL_GAS_LIMIT = 687_500;
+uint256 public constant MIN_PAYMASTER_VERIFICATION_GAS = 500_000;
+```
+
+### Key Differences
+
+1. Uses `CrossChainWithdrawalVerifier` instead of standard verifier
+2. Validates 9-signal proofs (includes refundCommitmentHash)
+3. Higher gas limits for intent creation
+
+## Fee Structure
+
+### RelayData
+
+```solidity
+struct RelayData {
+    address feeRecipient;   // Paymaster address (receives relay fee)
+    uint256 relayFeeBPS;    // Basis points (e.g., 1500 = 15%)
+}
+```
+
+### Economics Validation
+
+```solidity
+// Calculate expected fee from withdrawal
+uint256 expectedFee = (withdrawnValue * relayFeeBPS) / 10000;
+
+// Validate it covers gas cost
+if (expectedFee < maxCost) revert InsufficientRelayFee();
+```
+
+## Security Considerations
+
+### 1. Expected Smart Account
+
+Only UserOps from a pre-configured smart account are accepted:
+
+```solidity
+if (userOp.sender != expectedSmartAccount) revert UnauthorizedAccount();
+```
+
+### 2. No InitCode
+
+Prevents deployment cost attacks:
+
+```solidity
+if (userOp.initCode.length != 0) revert InitCodeNotAllowed();
+```
+
+### 3. Embedded Proof Validation
+
+The paymaster validates proofs internally rather than trusting external calls:
+
+```solidity
+// Call self to validate (protected by msg.sender check)
+(bool success, ) = address(this).call(
+    abi.encodeCall(this.relay, (withdrawal, proof, scope))
+);
+```
+
+### 4. Economics Validation
+
+Ensures the relay fee covers actual gas costs:
+
+```solidity
+if (expectedFee < maxCost) revert InsufficientRelayFee();
+```
+
+## Why Embedded Validation?
+
+The paymaster embeds ZK proof validation rather than trusting the pool contract because:
+
+1. **Security** — Bundlers could submit malicious UserOps
+2. **Atomicity** — Validation must happen before execution
+3. **Gas efficiency** — Transient storage avoids re-validation in postOp
+
+## Source Code
+
+- [SimpleShinobiCashPoolPaymaster](https://github.com/shinobi-cash/shinobi.cash-contracts/blob/main/src/paymaster/SimpleShinobiCashPoolPaymaster.sol)
+- [CrossChainWithdrawalPaymaster](https://github.com/shinobi-cash/shinobi.cash-contracts/blob/main/src/paymaster/CrossChainWithdrawalPaymaster.sol)
+
+## Related
+
+- **[Entrypoint](/contracts/entrypoint)** — Withdrawal orchestration
+- **[Privacy Pool](/contracts/pool)** — Proof validation
+- **[Trust Assumptions](/concepts/trust-assumptions)** — Bundler trust model

@@ -1,0 +1,101 @@
+# Compliance
+
+How Shinobi Cash enables privacy without enabling illicit activity.
+
+:::note[Audience]
+This page is for **Users, Developers, and Regulators** seeking to understand how Shinobi Cash balances privacy with compliance.
+:::
+
+:::info[TL;DR]
+Association Set Providers (ASPs) review deposits and approve compliant ones. Withdrawals prove ASP membership **without revealing which deposit**. Privacy is preserved; compliance is verifiable.
+:::
+
+## The Compliance Problem
+
+Traditional mixers face a fundamental tension:
+- **Full privacy** → Can't prove funds are clean → Regulatory issues
+- **Full transparency** → No privacy → Defeats the purpose
+
+## Association Set Providers (ASPs)
+
+Shinobi Cash solves this with **Association Set Providers** — trusted entities that curate sets of "compliant" deposits.
+
+### How ASPs Work
+
+1. **Deposit occurs** — Commitment added to the state tree
+2. **ASP reviews** — Provider analyzes the deposit source
+3. **Approval/Rejection** — If compliant, commitment added to ASP tree
+4. **Withdrawal proof** — User proves membership in both state AND ASP trees
+
+### What This Enables
+
+**Prove compliance without revealing identity:**
+
+> "My funds came from a compliant source (I'm in the ASP set), but I won't tell you which specific deposit is mine."
+
+This is the key innovation — compliance without surveillance.
+
+### What Compliance Does NOT Mean
+
+- ❌ ASPs do **not** know which withdrawal belongs to which deposit
+- ❌ ASPs **cannot** retroactively deanonymize past withdrawals
+- ❌ ASPs **cannot** seize or redirect funds
+- ❌ ASPs **cannot** see your wallet address or identity
+
+ASPs only see: "This deposit source appears compliant" → approve/reject.
+
+## ASP Approval States
+
+| State | Meaning | Can Withdraw? |
+|-------|---------|---------------|
+| **Pending** | Awaiting ASP review | No |
+| **Approved** | In the compliant set | Yes |
+| **Rejected** | Not approved by ASP | Only ragequit |
+
+### Ragequit
+
+If your deposit is rejected by the ASP, you can still recover your funds through a "ragequit" — a withdrawal that reveals you were the depositor.
+
+This ensures users are never trapped, but removes privacy for rejected deposits.
+
+## Zero-Knowledge Compliance
+
+The withdrawal proof includes ASP membership:
+
+```
+Proof verifies:
+1. Commitment exists in state tree (valid deposit)
+2. Commitment exists in ASP tree (compliant deposit)
+3. You know the secret (ownership)
+```
+
+The verifier learns that your deposit is compliant but not which deposit it is.
+
+## Current Implementation
+
+:::info[Testnet Note]
+On testnet, a mock ASP automatically approves all deposits. Production will use real ASP providers with actual compliance review.
+:::
+
+## Benefits
+
+### For Users
+- **Privacy preserved** — No one knows which deposit is yours
+- **Regulatory comfort** — Can prove funds are clean if needed
+- **Self-custody** — You control your keys and funds
+
+### For Regulators
+- **Compliance visible** — All withdrawals prove ASP membership
+- **Bad actors excluded** — Rejected deposits can't mix with compliant ones
+- **Audit trail** — ASP decisions are on-chain
+
+### For Society
+- **Financial privacy** — A human right, not just for criminals
+- **Legitimate use cases** — Salary privacy, donations, business transactions
+- **Balanced approach** — Privacy AND accountability
+
+## Learn More
+
+- **[Privacy Pools Paper](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4563364)** — The research behind ASPs
+- **[Privacy Pools](/concepts/privacy-pools)** — Core cryptographic primitives
+- **[Smart Contracts](/contracts/)** — Implementation details

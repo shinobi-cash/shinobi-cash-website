@@ -1,0 +1,168 @@
+# Withdrawing
+
+How to withdraw ETH privately from Shinobi Cash.
+
+:::note[Audience]
+This page is for **Users**. No protocol knowledge required.
+:::
+
+## Overview
+
+Withdrawing uses a zero-knowledge proof to verify you own a deposit without revealing which one. The recipient can be any address on any supported chain.
+
+## Withdrawal Steps
+
+1. **Navigate to Withdraw** — Select the Withdraw tab
+2. **Select a Note** — Choose a note with available balance
+3. **Enter Amount** — Up to the note's full balance
+4. **Enter Recipient** — Any valid Ethereum address
+5. **Select Destination Chain** — Where funds should arrive
+6. **Review Fees** — Relay fee + solver fee (if cross-chain)
+7. **Confirm** — Proof generates in your browser, then submits
+
+## Proof Generation
+
+When you confirm a withdrawal, your browser generates a Groth16 SNARK proof:
+
+```
+Generating proof... (~5-15 seconds)
+```
+
+This proof verifies:
+- You know the secret for a valid commitment
+- The commitment is in the state tree
+- The commitment is in the ASP tree (compliant)
+- The nullifier hasn't been spent
+
+**Keep the tab active** — Proof generation uses your browser's compute resources.
+
+## No Wallet Gas Required
+
+Shinobi Cash uses **ERC-4337 Account Abstraction** to relay withdrawals:
+
+- You don't need ETH in your wallet for gas
+- Transaction is relayed via standard ERC-4337 bundlers (no custom relayer)
+- A paymaster sponsors the gas upfront
+- Gas cost is deducted from your withdrawal amount (relay fee)
+
+This means you can withdraw to a fresh address without needing to fund it with gas first.
+
+## Same-Chain Withdrawal
+
+When withdrawing on the pool chain (Arbitrum Sepolia):
+
+1. Proof validates in the pool contract
+2. Funds transfer directly to recipient
+3. Paymaster sponsors gas
+
+**Fees**: Relay fee only (covers gas)
+
+## Cross-Chain Withdrawal
+
+When withdrawing to another chain (e.g., Base Sepolia):
+
+1. Proof validates on pool chain
+2. Intent created with escrowed funds
+3. Solver fills on destination chain
+4. Recipient receives funds
+5. Solver claims escrow after proving fill
+
+**Fees**: Relay fee + 5% solver fee
+
+### What Happens Behind the Scenes
+
+```
+Your browser generates ZK proof
+          │
+          ▼
+Entrypoint validates → Pool spends nullifier → InputSettler (escrow)
+                                                      │
+                                  Solver detects ◄────┘
+                                         │
+                                         ▼
+                        WithdrawalOutputSettler → Recipient gets ETH
+                                         │
+                        Solver claims escrow
+```
+
+## Change Notes
+
+If you don't withdraw the full balance, a **change note** is created:
+
+```
+Original Note: 1.0 ETH
+Withdrawal:    0.3 ETH
+Change Note:   0.7 ETH (minus fees)
+```
+
+This mirrors how cash transactions work — you get change back.
+
+## Fee Structure
+
+:::info[Testnet Values]
+Fees are configurable. Values below are testnet settings. Solver availability on testnet is limited.
+:::
+
+| Fee | Amount | When |
+|-----|--------|------|
+| **Relay Fee** | Up to 15% | Always (covers gas) |
+| **Solver Fee** | 5% | Cross-chain only |
+
+The relay fee is dynamic based on gas prices. Maximum 15%.
+
+## Withdrawal States
+
+| Status | Meaning |
+|--------|---------|
+| **Preparing** | Generating ZK proof |
+| **Submitting** | Transaction being sent |
+| **Confirming** | Waiting for block confirmation |
+| **Confirmed** | On-chain, waiting for indexer |
+| **Indexed** | Complete |
+
+## Tips
+
+:::tip[Privacy Best Practice]
+Withdraw to a fresh address that has no connection to your depositing address.
+:::
+
+:::tip[Partial Withdrawals]
+You can make multiple partial withdrawals from a single deposit. Each creates a change note.
+:::
+
+## Troubleshooting
+
+### Proof generation is slow
+- Keep the browser tab active and focused
+- Close other resource-heavy tabs
+- Normal time: 5-15 seconds
+
+### Transaction failed
+- Check the note is still available (not spent elsewhere)
+- Verify recipient address is valid
+- Ensure ASP approval is complete
+
+### Cross-chain withdrawal stuck
+- Solvers usually fill within minutes
+- If expired, funds return as a refund commitment
+- Refund can be withdrawn normally
+
+## What Can Go Wrong?
+
+| Issue | Impact | Recovery |
+|-------|--------|----------|
+| **Browser crash during proof gen** | Proof not generated | Retry; no funds lost |
+| **Transaction reverts** | Withdrawal fails | Check error; retry with valid note |
+| **Solver doesn't fill (cross-chain)** | Withdrawal delayed | Intent expires → refund commitment created |
+| **Wrong recipient address** | Funds sent to wrong address | **Unrecoverable** — double-check before confirming |
+| **Note already spent** | Transaction fails | Note was used in another session/device |
+
+:::warning[Recipient Address]
+Always double-check the recipient address. Withdrawals to wrong addresses **cannot be recovered**.
+:::
+
+## Next Steps
+
+- **[Privacy Pools](/concepts/privacy-pools)** — Understand the cryptography
+- **[Cross-Chain Architecture](/concepts/cross-chain)** — How OIF works
+- **[FAQ](/faq)** — Common questions

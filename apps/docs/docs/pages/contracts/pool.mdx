@@ -1,0 +1,183 @@
+# ShinobiCashPool
+
+:::note[Audience]
+This page is for **Developers and Security Reviewers**.
+:::
+
+Extended Privacy Pool with cross-chain withdrawal support and refund handling.
+
+## Overview
+
+`ShinobiCashPool` is an abstract contract that extends the base `PrivacyPool` from privacy-pools-core. It adds:
+
+- Cross-chain withdrawal with 9-signal proofs
+- Refund commitment handling for failed intents
+
+## Inheritance
+
+```
+PrivacyPool (privacy-pools-core)
+    └── ShinobiCashPool (abstract)
+        └── ShinobiCashPoolSimple (native ETH implementation)
+```
+
+## State Variables
+
+```solidity
+// Cross-chain proof verifier
+ICrossChainWithdrawalProofVerifier public immutable CROSS_CHAIN_WITHDRAWAL_VERIFIER;
+```
+
+The pool also inherits state from `PrivacyPool`:
+- Merkle tree for commitments
+- Nullifier registry (spent nullifiers)
+- Root history for proof validation
+- ASP (Association Set Provider) root
+
+## Key Functions
+
+### crosschainWithdraw
+
+Process a cross-chain withdrawal with an enhanced 9-signal proof.
+
+```solidity
+function crosschainWithdraw(
+    Withdrawal memory _withdrawal,
+    CrossChainProofLib.CrossChainWithdrawProof memory _proof
+) external
+```
+
+**Parameters:**
+- `_withdrawal` — Withdrawal request (recipient, amount, processooor, data)
+- `_proof` — 9-signal Groth16 proof
+
+**Validation Flow:**
+1. Validate processooor (msg.sender matches expected)
+2. Validate context matches `hash(withdrawal, SCOPE) % SNARK_SCALAR_FIELD`
+3. Validate tree depths within bounds
+4. Validate state root is in recent history (`ROOT_HISTORY_SIZE`)
+5. Validate ASP root is the latest
+6. Verify Groth16 proof via `CROSS_CHAIN_WITHDRAWAL_VERIFIER`
+7. Spend nullifier (mark as used)
+8. Insert new commitment (change note)
+9. Transfer withdrawn value to processooor
+10. Emit `CrosschainWithdrawn` event
+
+### handleRefund
+
+Insert a refund commitment for a failed cross-chain withdrawal.
+
+```solidity
+function handleRefund(
+    uint256 _refundCommitmentHash,
+    uint256 _amount
+) external payable onlyEntrypoint
+```
+
+**Parameters:**
+- `_refundCommitmentHash` — The refund commitment (9th proof signal)
+- `_amount` — Amount being refunded
+
+**Flow:**
+1. Validate caller is the entrypoint
+2. Validate `msg.value` matches `_amount`
+3. Insert `_refundCommitmentHash` into the Merkle tree
+4. User can later withdraw this commitment normally
+
+## 9-Signal Proof Structure
+
+Cross-chain withdrawals use an enhanced proof with 9 public signals:
+
+```solidity
+struct CrossChainWithdrawProof {
+    uint256[2] pA;
+    uint256[2][2] pB;
+    uint256[2] pC;
+    uint256[9] pubSignals;
+}
+```
+
+| Index | Signal | Description |
+|-------|--------|-------------|
+| 0 | `newCommitmentHash` | Change note commitment |
+| 1 | `existingNullifierHash` | Spent deposit nullifier |
+| 2 | `refundCommitmentHash` | Fallback if intent fails |
+| 3 | `withdrawnValue` | Amount being withdrawn |
+| 4 | `stateRoot` | Merkle root of deposits |
+| 5 | `stateTreeDepth` | Depth of state tree |
+| 6 | `ASPRoot` | Merkle root of ASP set |
+| 7 | `ASPTreeDepth` | Depth of ASP tree |
+| 8 | `context` | Binding context (prevents replay) |
+
+The 9th signal (`refundCommitmentHash`) is the key addition for cross-chain — it enables fund recovery if the intent expires without being filled.
+
+## Standard vs Cross-Chain Proofs
+
+| Feature | Standard (8 signals) | Cross-Chain (9 signals) |
+|---------|---------------------|------------------------|
+| Change note | ✅ | ✅ |
+| Nullifier | ✅ | ✅ |
+| Refund commitment | ❌ | ✅ |
+| Used for | Same-chain withdrawals | Cross-chain withdrawals |
+
+## ShinobiCashPoolSimple
+
+The concrete implementation for native ETH:
+
+```solidity
+contract ShinobiCashPoolSimple is ShinobiCashPool {
+    function _pull(address, uint256 _amount) internal override {
+        // Pull ETH from msg.sender (via msg.value)
+    }
+
+    function _push(address _to, uint256 _amount) internal override {
+        // Push ETH to recipient
+        (bool success, ) = _to.call{value: _amount}("");
+        require(success, "ETH transfer failed");
+    }
+}
+```
+
+## Context Validation
+
+The context binds the proof to specific withdrawal parameters:
+
+```solidity
+uint256 expectedContext = uint256(
+    keccak256(abi.encode(_withdrawal, SCOPE))
+) % SNARK_SCALAR_FIELD;
+
+if (proof.context() != expectedContext) revert ContextMismatch();
+```
+
+This prevents proof replay across different withdrawals or pools.
+
+## Root History
+
+The pool maintains a history of recent Merkle roots:
+
+```solidity
+uint32 public constant ROOT_HISTORY_SIZE = 30;
+mapping(uint32 => uint256) public roots;
+uint32 public currentRootIndex;
+```
+
+Proofs can use any root from the last 30 insertions, allowing for concurrent proof generation.
+
+## Security Considerations
+
+1. **Nullifier uniqueness** — Each nullifier can only be spent once
+2. **Root validation** — State root must be in recent history
+3. **ASP enforcement** — ASP root must be the latest (no stale proofs)
+4. **Context binding** — Proofs cannot be replayed
+5. **Entrypoint-only refunds** — Only the entrypoint can insert refund commitments
+
+## Source Code
+
+[View on GitHub](https://github.com/shinobi-cash/shinobi.cash-contracts/blob/main/src/core/ShinobiCashPool.sol)
+
+## Related
+
+- **[Entrypoint](/contracts/entrypoint)** — Orchestrator that calls the pool
+- **[Privacy Pools](/concepts/privacy-pools)** — Cryptographic foundations
+- **[OIF Settlers](/contracts/settlers)** — Cross-chain settlement
