@@ -89,7 +89,11 @@ export default defineConfig({
     },
     {
       icon: 'x',
-      link: 'https://twitter.com/ShinobiCash',
+      link: 'https://x.com/kdsinghsaini',
+    },
+    {
+      icon: 'telegram',
+      link: 'https://t.me/kdsinghsaini',
     },
   ],
 
