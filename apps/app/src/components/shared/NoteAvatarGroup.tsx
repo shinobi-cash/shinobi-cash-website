@@ -102,9 +102,6 @@ export function NoteAvatarGroup({
             : `${notes.length} Notes`
           }
         </span>
-        {notes.length === 2 && (
-          <span className="text-[10px] text-emerald-400">Merge Mode</span>
-        )}
       </div>
     </button>
   );
@@ -118,7 +115,7 @@ export function NoteAvatarStack({
   size = "sm",
   className,
 }: {
-  notes: Note[];
+  notes: readonly Note[];
   size?: "sm" | "md";
   className?: string;
 }) {

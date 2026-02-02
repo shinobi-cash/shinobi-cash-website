@@ -1,11 +1,13 @@
 "use client";
 
+import type { Note } from "@shinobi-cash/core/discovery";
 import { Loader2, Globe, Clock } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";
 import { ScreenLayout } from "@/components/layout/ScreenLayout";
 import { Section, Row } from "@/components/shared/Section";
 import { LabelWithHover } from "@/components/shared/LabelWithHover";
+import { NoteAvatarStack } from "@/components/shared/NoteAvatarGroup";
 import { usePriceData } from "@/hooks/usePriceData";
 import { formatUsdAmount, formatHash, formatSmallEthAmount } from "@/utils/formatters";
 import {
@@ -26,6 +28,7 @@ interface WithdrawalPreviewScreenProps {
   destinationChainId: number;
   isCrossChain: boolean;
   isProcessing: boolean;
+  selectedNotes: readonly Note[];
 }
 
 export function WithdrawalPreviewScreen({
@@ -39,6 +42,7 @@ export function WithdrawalPreviewScreen({
   destinationChainId,
   isCrossChain,
   isProcessing,
+  selectedNotes,
 }: WithdrawalPreviewScreenProps) {
   const withdrawAmountNum = Number.parseFloat(withdrawAmount) || 0;
 
@@ -141,6 +145,19 @@ export function WithdrawalPreviewScreen({
 
       {/* Details */}
       <Section title="Details">
+        <Row
+          label={selectedNotes.length > 1 ? "Notes" : "Note"}
+          value={
+            <span className="flex items-center gap-2">
+              <NoteAvatarStack notes={selectedNotes} size="sm" />
+              <span className="text-neutral-300">
+                {selectedNotes.length === 1
+                  ? `#${selectedNotes[0].depositIndex + 1}`
+                  : `#${selectedNotes[0].depositIndex + 1} + #${selectedNotes[1].depositIndex + 1}`}
+              </span>
+            </span>
+          }
+        />
         {isCrossChain && (
           <Row
             label="Route"

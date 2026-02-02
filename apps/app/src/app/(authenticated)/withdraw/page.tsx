@@ -97,6 +97,7 @@ export default function WithdrawPage() {
         destinationChainId={state.destinationChainId}
         isCrossChain={WithdrawSelectors.isCrossChain()}
         isProcessing={state.state.status === "submitting"}
+        selectedNotes={state.selectedNotes}
       />
     );
   }

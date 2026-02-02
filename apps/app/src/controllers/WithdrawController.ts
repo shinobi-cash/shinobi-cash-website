@@ -203,6 +203,7 @@ export const WithdrawController = {
   setAmount(amount: string): void {
     state.amount = amount;
     state.lastError = null;
+    this._updateSelection();
     if (state.state.status === "error") transition({ status: "idle" });
     if (state.state.status === "ready") transition({ status: "idle" });
   },
