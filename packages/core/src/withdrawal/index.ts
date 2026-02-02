@@ -200,11 +200,64 @@ export function encodeCrossChainWithdrawalCallData(
 
 // ============ WITHDRAW2 (2:1) CONTRACT ENCODING ============
 
-/** Format snarkjs proof for Withdraw2 Solidity verifier (10 signals) */
-export function formatWithdraw2ProofForContract(
+/**
+ * Format snarkjs proof for same-chain Withdraw2 Solidity verifier (9 signals)
+ *
+ * Public signals order:
+ * [0] newCommitmentHash - Change output commitment
+ * [1] nullifierHash0 - Primary input nullifier (spent)
+ * [2] nullifierHash1 - Secondary input nullifier (spent)
+ * [3] withdrawnValue - Amount withdrawn
+ * [4] stateRoot - State merkle root
+ * [5] stateTreeDepth - State tree depth
+ * [6] ASPRoot - ASP merkle root
+ * [7] ASPTreeDepth - ASP tree depth
+ * [8] context - Binding context hash
+ */
+export function formatWithdraw2SameChainProofForContract(
   proof: SnarkJsProof,
   publicSignals: string[],
-): ContractWithdraw2Proof {
+): ContractWithdraw2SameChainProof {
+  return {
+    pA: [BigInt(proof.pi_a[0]), BigInt(proof.pi_a[1])],
+    pB: [
+      [BigInt(proof.pi_b[0][1]), BigInt(proof.pi_b[0][0])],
+      [BigInt(proof.pi_b[1][1]), BigInt(proof.pi_b[1][0])],
+    ],
+    pC: [BigInt(proof.pi_c[0]), BigInt(proof.pi_c[1])],
+    pubSignals: [
+      BigInt(publicSignals[0]), // newCommitmentHash
+      BigInt(publicSignals[1]), // nullifierHash0
+      BigInt(publicSignals[2]), // nullifierHash1
+      BigInt(publicSignals[3]), // withdrawnValue
+      BigInt(publicSignals[4]), // stateRoot
+      BigInt(publicSignals[5]), // stateTreeDepth
+      BigInt(publicSignals[6]), // ASPRoot
+      BigInt(publicSignals[7]), // ASPTreeDepth
+      BigInt(publicSignals[8]), // context
+    ],
+  };
+}
+
+/**
+ * Format snarkjs proof for cross-chain Withdraw2 Solidity verifier (10 signals)
+ *
+ * Public signals order:
+ * [0] newCommitmentHash - Change output commitment
+ * [1] nullifierHash0 - Primary input nullifier (spent)
+ * [2] nullifierHash1 - Secondary input nullifier (spent)
+ * [3] refundCommitmentHash - Cross-chain refund commitment
+ * [4] withdrawnValue - Amount withdrawn
+ * [5] stateRoot - State merkle root
+ * [6] stateTreeDepth - State tree depth
+ * [7] ASPRoot - ASP merkle root
+ * [8] ASPTreeDepth - ASP tree depth
+ * [9] context - Binding context hash
+ */
+export function formatWithdraw2CrossChainProofForContract(
+  proof: SnarkJsProof,
+  publicSignals: string[],
+): ContractCrosschainWithdraw2Proof {
   return {
     pA: [BigInt(proof.pi_a[0]), BigInt(proof.pi_a[1])],
     pB: [
@@ -225,6 +278,14 @@ export function formatWithdraw2ProofForContract(
       BigInt(publicSignals[9]), // context
     ],
   };
+}
+
+/** @deprecated Use formatWithdraw2SameChainProofForContract or formatWithdraw2CrossChainProofForContract */
+export function formatWithdraw2ProofForContract(
+  proof: SnarkJsProof,
+  publicSignals: string[],
+): ContractWithdraw2Proof {
+  return formatWithdraw2CrossChainProofForContract(proof, publicSignals);
 }
 
 export function encodeWithdraw2RelayCallData(

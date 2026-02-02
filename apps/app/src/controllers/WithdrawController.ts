@@ -1,7 +1,12 @@
 import { proxy } from "valtio";
 import { parseEther, formatEther, isAddress } from "viem/utils";
 import type { Note } from "@shinobi-cash/core/discovery";
-import type { FeeQuote, WithdrawalRequest } from "@/types/withdrawal";
+import {
+  selectNotesForWithdrawal,
+  isWithdraw2Selection,
+  type WithdrawalSelection,
+} from "@shinobi-cash/core/withdrawal";
+import type { FeeQuote, WithdrawalRequest, Withdraw2Request } from "@/types/withdrawal";
 import { POOL_CHAIN } from "@shinobi-cash/constants";
 import { AuthController } from "@/controllers/AuthController";
 import { NotesDiscoveryController } from "@/controllers/NotesDiscoveryController";
@@ -25,12 +30,18 @@ export interface NotesContext {
   isLoading: boolean;
 }
 
+/** Withdrawal type determined by note selection */
+export type WithdrawalMode = "standard" | "withdraw2";
+
 interface WithdrawControllerState {
   state: WithdrawState;
   amount: string;
   recipientAddress: string;
   destinationChainId: number;
-  selectedNote: Note | null;
+  /** Selected notes (1 for standard, 2 for withdraw2) */
+  selectedNotes: Note[];
+  /** Computed withdrawal selection result */
+  selection: WithdrawalSelection | null;
   previewFeeQuote: FeeQuote | null;
   lastError: AppError | null;
   notes: NotesContext;
@@ -41,7 +52,8 @@ const state = proxy<WithdrawControllerState>({
   amount: "",
   recipientAddress: "",
   destinationChainId: POOL_CHAIN.id,
-  selectedNote: null,
+  selectedNotes: [],
+  selection: null,
   previewFeeQuote: null,
   lastError: null,
   notes: { notes: [], isLoading: false },
@@ -52,7 +64,8 @@ export const WithdrawSelectors = {
     const crypto = AuthController.state.crypto;
     return (
       state.state.status === "idle" &&
-      state.selectedNote !== null &&
+      state.selectedNotes.length > 0 &&
+      state.selection !== null &&
       state.amount.trim() !== "" &&
       state.recipientAddress.trim() !== "" &&
       isAddress(state.recipientAddress) &&
@@ -65,7 +78,7 @@ export const WithdrawSelectors = {
     return (
       state.amount.trim() !== "" &&
       state.recipientAddress.trim() !== "" &&
-      state.selectedNote !== null &&
+      state.selectedNotes.length > 0 &&
       isAddress(state.recipientAddress) &&
       crypto.cryptoReady
     );
@@ -75,12 +88,48 @@ export const WithdrawSelectors = {
 
   isOnSupportedChain: () => true,
 
+  /** Get the withdrawal mode based on selection */
+  getWithdrawalMode: (): WithdrawalMode | null => {
+    if (!state.selection) return null;
+    return state.selection.type === "withdraw2" ? "withdraw2" : "standard";
+  },
+
+  /** Check if this is a Withdraw2 (2:1 merge) */
+  isWithdraw2: () => state.selection?.type === "withdraw2",
+
+  /** Get total input amount from selected notes */
+  getTotalInputAmount: (): bigint => {
+    return state.selectedNotes.reduce((sum, note) => sum + BigInt(note.amount), BigInt(0));
+  },
+
+  /** Get the primary selected note (for display) */
+  getPrimaryNote: (): Note | null => {
+    if (state.selectedNotes.length === 0) return null;
+    if (state.selection?.type === "withdraw2") {
+      return state.selection.primaryInput.note;
+    }
+    return state.selectedNotes[0] ?? null;
+  },
+
+  /** Get the secondary selected note (for Withdraw2) */
+  getSecondaryNote: (): Note | null => {
+    if (state.selection?.type === "withdraw2") {
+      return state.selection.secondaryInput.note;
+    }
+    return null;
+  },
+
+  /** Legacy getter for backward compatibility */
+  get selectedNote(): Note | null {
+    return WithdrawSelectors.getPrimaryNote();
+  },
+
   getRemainingBalance: (): number | null => {
-    if (!state.selectedNote || !state.amount) return null;
+    if (state.selectedNotes.length === 0 || !state.amount) return null;
     try {
-      const noteAmountWei = parseEther(state.selectedNote.amount.toString());
+      const totalAmountWei = WithdrawSelectors.getTotalInputAmount();
       const withdrawWei = parseEther(state.amount);
-      const remainingWei = noteAmountWei > withdrawWei ? noteAmountWei - withdrawWei : BigInt(0);
+      const remainingWei = totalAmountWei > withdrawWei ? totalAmountWei - withdrawWei : BigInt(0);
       return parseFloat(formatEther(remainingWei));
     } catch {
       return null;
@@ -175,18 +224,69 @@ export const WithdrawController = {
     if (state.state.status === "ready") transition({ status: "idle" });
   },
 
+  /**
+   * Select a single note for withdrawal (replaces any existing selection)
+   */
   selectNote(note: Note | null): void {
-    state.selectedNote = note;
+    state.selectedNotes = note ? [note] : [];
+    state.selection = null;
+    state.lastError = null;
+    this._updateSelection();
+    if (state.state.status === "error") transition({ status: "idle" });
+    if (state.state.status === "ready") transition({ status: "idle" });
+  },
+
+  /**
+   * Add a note to selection for Withdraw2 (max 2 notes)
+   */
+  addNote(note: Note): void {
+    if (state.selectedNotes.length >= 2) {
+      state.lastError = Errors.withdrawal.precondition("Maximum 2 notes can be selected");
+      return;
+    }
+    // Don't add duplicate
+    if (state.selectedNotes.some((n) => n.depositIndex === note.depositIndex && n.changeIndex === note.changeIndex)) {
+      return;
+    }
+    state.selectedNotes = [...state.selectedNotes, note];
+    state.selection = null;
+    state.lastError = null;
+    this._updateSelection();
+    if (state.state.status === "error") transition({ status: "idle" });
+    if (state.state.status === "ready") transition({ status: "idle" });
+  },
+
+  /**
+   * Remove a note from selection
+   */
+  removeNote(note: Note): void {
+    state.selectedNotes = state.selectedNotes.filter(
+      (n) => !(n.depositIndex === note.depositIndex && n.changeIndex === note.changeIndex)
+    );
+    state.selection = null;
+    state.lastError = null;
+    this._updateSelection();
+    if (state.state.status === "error") transition({ status: "idle" });
+    if (state.state.status === "ready") transition({ status: "idle" });
+  },
+
+  /**
+   * Clear all selected notes
+   */
+  clearNotes(): void {
+    state.selectedNotes = [];
+    state.selection = null;
     state.lastError = null;
     if (state.state.status === "error") transition({ status: "idle" });
     if (state.state.status === "ready") transition({ status: "idle" });
   },
 
   setMax(): void {
-    if (!state.selectedNote) return;
-    const noteAmountWei = BigInt(state.selectedNote.amount);
-    state.amount = formatEther(noteAmountWei);
+    if (state.selectedNotes.length === 0) return;
+    const totalAmountWei = state.selectedNotes.reduce((sum, note) => sum + BigInt(note.amount), BigInt(0));
+    state.amount = formatEther(totalAmountWei);
     state.lastError = null;
+    this._updateSelection();
     if (state.state.status === "ready") transition({ status: "idle" });
   },
 
@@ -210,12 +310,22 @@ export const WithdrawController = {
     transition({ status: "previewing" });
 
     try {
-      const request = this._buildRequest();
       // Use fresh engine for preview (stateless quote)
       const previewEngine = new WithdrawalEngine();
-      const feeQuote = await previewEngine.quoteFees(request);
-      if (current !== previewId) return;
-      state.previewFeeQuote = feeQuote;
+
+      // Route based on withdrawal type
+      if (this._isWithdraw2()) {
+        const request = this._buildWithdraw2Request();
+        const feeQuote = await previewEngine.quoteWithdraw2Fees(request);
+        if (current !== previewId) return;
+        state.previewFeeQuote = feeQuote;
+      } else {
+        const request = this._buildRequest();
+        const feeQuote = await previewEngine.quoteFees(request);
+        if (current !== previewId) return;
+        state.previewFeeQuote = feeQuote;
+      }
+
       transition({ status: "idle" });
     } catch (error) {
       if (current !== previewId) return;
@@ -234,11 +344,20 @@ export const WithdrawController = {
     }
 
     try {
-      const request = this._buildRequest();
       transition({ status: "preparing", phase: "idle" });
       // Create fresh engine for this withdrawal flow
       currentEngine = new WithdrawalEngine();
-      const preparedUserOp = await currentEngine.prepare(request);
+
+      // Route based on withdrawal type
+      let preparedUserOp;
+      if (this._isWithdraw2()) {
+        const request = this._buildWithdraw2Request();
+        preparedUserOp = await currentEngine.prepareWithdraw2(request);
+      } else {
+        const request = this._buildRequest();
+        preparedUserOp = await currentEngine.prepare(request);
+      }
+
       if (current !== prepareId) return;
       transition({ status: "ready", preparedUserOp });
     } catch (error) {
@@ -298,7 +417,8 @@ export const WithdrawController = {
   reset(): void {
     state.amount = "";
     state.recipientAddress = "";
-    state.selectedNote = null;
+    state.selectedNotes = [];
+    state.selection = null;
     state.previewFeeQuote = null;
     state.lastError = null;
     currentEngine = null;
@@ -316,38 +436,108 @@ export const WithdrawController = {
     state.notes = notes;
   },
 
+  /**
+   * Update the selection based on current notes and amount
+   */
+  _updateSelection(): void {
+    if (state.selectedNotes.length === 0 || !state.amount) {
+      state.selection = null;
+      return;
+    }
+
+    try {
+      const withdrawAmountWei = parseEther(state.amount);
+      const result = selectNotesForWithdrawal(state.selectedNotes, withdrawAmountWei);
+
+      if (result.success) {
+        state.selection = result.selection;
+        state.lastError = null;
+      } else {
+        state.selection = null;
+        // Map selection error to AppError
+        switch (result.error.code) {
+          case "INSUFFICIENT_BALANCE":
+            state.lastError = Errors.withdrawal.insufficientBalance(result.error.message);
+            break;
+          case "NOTE_NOT_SPENDABLE":
+            state.lastError = Errors.withdrawal.precondition(result.error.message);
+            break;
+          default:
+            state.lastError = Errors.withdrawal.precondition(result.error.message);
+        }
+      }
+    } catch {
+      state.selection = null;
+    }
+  },
+
   _validateInputs(): boolean {
-    const { amount, recipientAddress, selectedNote } = state;
+    const { amount, recipientAddress, selectedNotes } = state;
     const crypto = AuthController.state.crypto;
 
-    if (!amount || !recipientAddress || !selectedNote) return false;
+    if (!amount || !recipientAddress || selectedNotes.length === 0) return false;
     if (!crypto.cryptoReady || !crypto.accountKey) return false;
     if (!isAddress(recipientAddress)) return false;
 
-    try {
-      const amountWei = parseEther(amount);
-      const noteAmountWei = parseEther(selectedNote.amount.toString());
-      if (amountWei > noteAmountWei) {
-        state.lastError = Errors.withdrawal.insufficientBalance(
-          `Amount exceeds note balance (${parseFloat(selectedNote.amount.toString()).toFixed(4)} ETH)`
-        );
-        return false;
-      }
-    } catch {
+    // Update selection if not already done
+    if (!state.selection) {
+      this._updateSelection();
+    }
+
+    // Check selection is valid
+    if (!state.selection) {
       return false;
     }
 
     return true;
   },
 
+  /**
+   * Build request for standard 1:1 withdrawal
+   */
   _buildRequest(): WithdrawalRequest {
     const crypto = AuthController.state.crypto;
+    const selection = state.selection;
+
+    if (!selection || selection.type !== "standard") {
+      throw new Error("Invalid selection for standard withdrawal");
+    }
+
     return {
-      note: state.selectedNote!,
-      withdrawAmountWei: parseEther(state.amount),
+      note: selection.input.note,
+      withdrawAmountWei: selection.withdrawAmount,
       recipient: state.recipientAddress as `0x${string}`,
       accountKey: crypto.accountKey!,
       destinationChainId: state.destinationChainId,
     };
+  },
+
+  /**
+   * Build request for Withdraw2 (2:1 merge)
+   */
+  _buildWithdraw2Request(): Withdraw2Request {
+    const crypto = AuthController.state.crypto;
+    const selection = state.selection;
+
+    if (!selection || selection.type !== "withdraw2") {
+      throw new Error("Invalid selection for withdraw2");
+    }
+
+    return {
+      primaryNote: selection.primaryInput.note,
+      secondaryNote: selection.secondaryInput.note,
+      withdrawAmountWei: selection.withdrawAmount,
+      recipient: state.recipientAddress as `0x${string}`,
+      accountKey: crypto.accountKey!,
+      destinationChainId: state.destinationChainId,
+      labelSelector: selection.labelSelector,
+    };
+  },
+
+  /**
+   * Check if current selection requires Withdraw2
+   */
+  _isWithdraw2(): boolean {
+    return state.selection?.type === "withdraw2";
   },
 };

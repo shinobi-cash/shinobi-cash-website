@@ -96,8 +96,8 @@ export interface WithdrawalProof {
 }
 
 export interface PreparedUserOperation {
-  context: WithdrawalPipelineContext;
-  proof: WithdrawalProof;
+  context: WithdrawalPipelineContext | Withdraw2PipelineContext;
+  proof: WithdrawalProof | Withdraw2Proof;
   userOperation: UserOperation<"0.7">;
   smartAccountClient: SmartAccountClient;
 }

@@ -25,6 +25,8 @@ export type {
   CrossChainWithdrawalData,
   ContractProof,
   ContractCrossChainProof,
+  ContractWithdraw2SameChainProof,
+  ContractCrosschainWithdraw2Proof,
   SnarkJsProof,
 } from "@shinobi-cash/core/withdrawal";
 
@@ -33,8 +35,12 @@ export {
   createCrossChainWithdrawalData,
   formatProofForContract,
   formatCrossChainProofForContract,
+  formatWithdraw2SameChainProofForContract,
+  formatWithdraw2CrossChainProofForContract,
   encodeRelayCallData,
   encodeCrossChainWithdrawalCallData,
+  encodeWithdraw2RelayCallData,
+  encodeCrossChainWithdraw2CallData,
 } from "@shinobi-cash/core/withdrawal";
 
 export interface SmartAccountConfig {

@@ -37,12 +37,15 @@ export default function WithdrawPage() {
   const state = useWithdrawController();
   const { usdPrice } = usePriceData("ETH");
 
+  // Get the primary selected note for display
+  const selectedNote = WithdrawSelectors.getPrimaryNote();
+
   // Auto-preview: Schedule lightweight fee preview when inputs change (debounced 500ms)
   useEffect(() => {
     if (WithdrawSelectors.canAutoPreview()) {
       WithdrawController.schedulePreview();
     }
-  }, [state.amount, state.recipientAddress, state.selectedNote, state.destinationChainId]);
+  }, [state.amount, state.recipientAddress, state.selectedNotes, state.destinationChainId]);
 
   // Review = navigate to preview screen
   const handleReviewWithdrawal = () => {
@@ -104,7 +107,7 @@ export default function WithdrawPage() {
     return (
       <NoteSelectionScreen
         availableNotes={[...state.notes.notes]}
-        selectedNote={state.selectedNote}
+        selectedNote={selectedNote}
         onSelectNote={(note) => WithdrawController.selectNote(note)}
         onBack={screens.close}
         isLoading={state.notes.isLoading}
@@ -132,11 +135,11 @@ export default function WithdrawPage() {
 
   // Main Withdrawal Form
   const isProcessing = state.state.status === "preparing" || state.state.status === "submitting";
-  const isDisabled = !state.selectedNote || isProcessing;
+  const isDisabled = !selectedNote || isProcessing;
 
   // Convert note amount from wei string to ETH number
-  const noteBalance = state.selectedNote
-    ? parseFloat(formatEthAmount(state.selectedNote.amount))
+  const noteBalance = selectedNote
+    ? parseFloat(formatEthAmount(selectedNote.amount))
     : 0;
 
   // Calculate USD values
@@ -167,7 +170,7 @@ export default function WithdrawPage() {
         >
           {state.state.status === "previewing"
             ? "Estimating gas..."
-            : !state.selectedNote
+            : !selectedNote
               ? "Select a Note"
               : !state.amount.trim()
                 ? "Enter Amount"
@@ -183,7 +186,7 @@ export default function WithdrawPage() {
           <div className="mb-3 flex items-center justify-between">
             <span className="text-sm text-neutral-400">You Pay</span>
             <div className="flex items-center gap-2">
-              {state.selectedNote && (
+              {selectedNote && (
                 <span className="text-sm text-neutral-400">
                   {noteBalance.toFixed(DISPLAY_DECIMALS)} {asset.symbol}
                 </span>
@@ -194,8 +197,8 @@ export default function WithdrawPage() {
                 disabled={isProcessing}
               >
                 <Banknote className="h-3 w-3" />
-                {state.selectedNote
-                  ? `Note #${state.selectedNote.depositIndex + 1}`
+                {selectedNote
+                  ? `Note #${selectedNote.depositIndex + 1}`
                   : "Select Note"}
                 <ChevronDown className="h-3 w-3" />
               </button>

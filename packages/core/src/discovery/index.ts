@@ -23,6 +23,7 @@ import { poseidon1 } from 'poseidon-lite/poseidon1';
 export type {
   Note,
   NoteChain,
+  NoteStatus,
   DepositNote,
   ChangeNote,
   RefundNote,

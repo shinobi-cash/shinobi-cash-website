@@ -4,7 +4,7 @@
  * Validates manually selected notes and determines withdrawal type (1:1 or 2:1)
  */
 
-import type { Note } from '../discovery-v2/types.js';
+import type { Note } from '../discovery/types.js';
 
 // ============================================================================
 // Types

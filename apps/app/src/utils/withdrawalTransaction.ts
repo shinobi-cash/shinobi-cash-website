@@ -1,6 +1,8 @@
 import type {
   WithdrawalPipelineContext,
+  Withdraw2PipelineContext,
   WithdrawalProof,
+  Withdraw2Proof,
   PreparedUserOperation,
   ExecutionResult,
 } from "@/types/withdrawal";
@@ -11,8 +13,12 @@ import {
 import {
   formatProofForContract,
   formatCrossChainProofForContract,
+  formatWithdraw2SameChainProofForContract,
+  formatWithdraw2CrossChainProofForContract,
   encodeRelayCallData,
   encodeCrossChainWithdrawalCallData,
+  encodeWithdraw2RelayCallData,
+  encodeCrossChainWithdraw2CallData,
   prepareWithdrawalUserOperation,
   prepareCrossChainWithdrawalUserOperation,
   executeWithdrawalUserOperation,
@@ -60,4 +66,39 @@ export async function executeUserOperation(
     isCrossChain
   );
   return { transactionHash, success: true };
+}
+
+// ============ WITHDRAW2 (2:1) ============
+
+export async function prepareWithdraw2UserOperation(
+  context: Withdraw2PipelineContext,
+  proof: Withdraw2Proof
+): Promise<PreparedUserOperation> {
+  const [processooor, data] = context.withdrawalData;
+  const withdrawalData = { processooor, data };
+
+  const isCrossChain = context.kind === "cross-chain";
+
+  // Format proof based on withdrawal type (9 signals for same-chain, 10 for cross-chain)
+  const callData = isCrossChain
+    ? encodeCrossChainWithdraw2CallData(
+        withdrawalData,
+        formatWithdraw2CrossChainProofForContract(proof.proof, proof.publicSignals),
+        context.poolScope
+      )
+    : encodeWithdraw2RelayCallData(
+        withdrawalData,
+        formatWithdraw2SameChainProofForContract(proof.proof, proof.publicSignals),
+        context.poolScope
+      );
+
+  const smartAccountClient = isCrossChain
+    ? await getCrosschainWithdrawalSmartAccountClient()
+    : await getWithdrawalSmartAccountClient();
+
+  const userOperation = isCrossChain
+    ? await prepareCrossChainWithdrawalUserOperation(smartAccountClient, callData)
+    : await prepareWithdrawalUserOperation(smartAccountClient, callData);
+
+  return { context, proof, userOperation, smartAccountClient };
 }

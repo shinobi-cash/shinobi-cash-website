@@ -8,6 +8,9 @@ import type { ASPStatus, IntentStatus } from '@shinobi-cash/data';
 // Note Types
 // ============================================================================
 
+/** Note status including merged for Withdraw2 */
+export type NoteStatus = 'unspent' | 'spent' | 'merged';
+
 interface BaseNote {
   poolAddress: string;
   depositIndex: number;
@@ -18,7 +21,7 @@ interface BaseNote {
   destinationChainId: string;
   blockNumber: string;
   timestamp: string;
-  status: 'unspent' | 'spent';
+  status: NoteStatus;
   aspStatus: ASPStatus;
   label: string;
   isCrossChain: boolean;
