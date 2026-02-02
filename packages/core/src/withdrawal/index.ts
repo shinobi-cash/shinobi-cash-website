@@ -36,6 +36,25 @@ export type {
   CrosschainWithdrawalDerivation,
 } from './types.js';
 
+// Re-export note selection
+export {
+  selectSingleNote,
+  selectTwoNotes,
+  selectNotesForWithdrawal,
+  isWithdraw2Selection,
+  getTotalInputAmount,
+  getChangeNoteLabel,
+} from './note-selection.js';
+export type {
+  WithdrawalType,
+  SelectedNote,
+  StandardWithdrawalSelection,
+  Withdraw2Selection,
+  WithdrawalSelection,
+  SelectionError,
+  SelectionResult,
+} from './note-selection.js';
+
 // ============ CONTRACT ENCODING ============
 
 export function createWithdrawalData(
