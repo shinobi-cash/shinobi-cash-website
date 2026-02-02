@@ -6,8 +6,14 @@ interface Props {
 }
 
 export function ActivityStatusDot({ type, status }: Props) {
-  // withdrawals always final
-  if (type === "WITHDRAWAL" || type === "RAGEQUIT" || type === "CROSSCHAIN_WITHDRAWAL") {
+  // withdrawals always final (include Withdraw2 types)
+  if (
+    type === "WITHDRAWAL" ||
+    type === "WITHDRAW2" ||
+    type === "RAGEQUIT" ||
+    type === "CROSSCHAIN_WITHDRAWAL" ||
+    type === "CROSSCHAIN_WITHDRAW2"
+  ) {
     return <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />;
   }
 
