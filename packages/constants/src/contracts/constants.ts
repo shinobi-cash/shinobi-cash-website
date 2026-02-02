@@ -87,6 +87,50 @@ export const CROSS_CHAIN_GAS_LIMITS = {
 } as const;
 
 /**
+ * UserOperation Gas Limits for Withdraw2 (2:1 merge) Same-Chain
+ * ~50% higher than standard withdrawal due to verifying 2 inputs
+ * Total: ~2,025,000 gas
+ */
+export const WITHDRAW2_SAME_CHAIN_GAS_LIMITS = {
+  /** Gas for executing the main withdrawal call (+50%) */
+  CALL_GAS_LIMIT: BigInt(900000),
+
+  /** Gas for account verification */
+  VERIFICATION_GAS_LIMIT: BigInt(200000),
+
+  /** Pre-verification gas overhead */
+  PRE_VERIFICATION_GAS: BigInt(200000),
+
+  /** Gas for paymaster verification (+50%) */
+  PAYMASTER_VERIFICATION_GAS_LIMIT: BigInt(675000),
+
+  /** Gas for paymaster post-operation */
+  POST_OP_GAS_LIMIT: BigInt(150000),
+} as const;
+
+/**
+ * UserOperation Gas Limits for Withdraw2 (2:1 merge) Cross-Chain
+ * ~75% higher than standard withdrawal due to verifying 2 inputs + cross-chain complexity
+ * Total: ~2,362,500 gas
+ */
+export const WITHDRAW2_CROSS_CHAIN_GAS_LIMITS = {
+  /** Gas for executing the main withdrawal call (+75%) */
+  CALL_GAS_LIMIT: BigInt(1050000),
+
+  /** Gas for account verification */
+  VERIFICATION_GAS_LIMIT: BigInt(200000),
+
+  /** Pre-verification gas overhead */
+  PRE_VERIFICATION_GAS: BigInt(200000),
+
+  /** Gas for paymaster verification (+75%) */
+  PAYMASTER_VERIFICATION_GAS_LIMIT: BigInt(750000),
+
+  /** Gas for paymaster post-operation */
+  POST_OP_GAS_LIMIT: BigInt(150000),
+} as const;
+
+/**
  * Deposit fee configuration
  */
 export const DEPOSIT_FEES = {
@@ -198,8 +242,8 @@ export const SHINOBI_CASH_CROSSCHAIN_WITHDRAWAL_PAYMASTER: ContractConfig = {
  */
 export const SHINOBI_CASH_WITHDRAW2_PAYMASTER: ContractConfig = {
   chain: arbitrumSepolia as Chain,
-  address: '0x533795ccca8Eb0a4D10e5d006dcC7D475cC00b29',
-  blockNumber: 239166004,
+  address: '0x498CB728B62146d324449f7a75E784bd4162a639',
+  blockNumber: 239189801,
   abi: []
 };
 
