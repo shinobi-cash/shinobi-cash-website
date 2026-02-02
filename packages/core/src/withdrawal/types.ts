@@ -54,13 +54,34 @@ export interface CrosschainWithdrawalDerivation extends WithdrawalDerivation {
 // ============ WITHDRAW2 (2:1) TYPES ============
 
 /**
- * Withdraw2 contract-ready proof (10 signals)
+ * Same-chain Withdraw2 contract-ready proof (9 signals)
  *
  * Public signals order:
  * [0] newCommitmentHash - Change output commitment
  * [1] nullifierHash0 - Primary input nullifier (spent)
  * [2] nullifierHash1 - Secondary input nullifier (spent)
- * [3] refundCommitmentHash - Cross-chain refund (0 for same-chain)
+ * [3] withdrawnValue - Amount withdrawn
+ * [4] stateRoot - State merkle root
+ * [5] stateTreeDepth - State tree depth
+ * [6] ASPRoot - ASP merkle root
+ * [7] ASPTreeDepth - ASP tree depth
+ * [8] context - Binding context hash
+ */
+export interface ContractWithdraw2SameChainProof {
+  pA: [bigint, bigint];
+  pB: [[bigint, bigint], [bigint, bigint]];
+  pC: [bigint, bigint];
+  pubSignals: [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint];
+}
+
+/**
+ * Cross-chain Withdraw2 contract-ready proof (10 signals)
+ *
+ * Public signals order:
+ * [0] newCommitmentHash - Change output commitment
+ * [1] nullifierHash0 - Primary input nullifier (spent)
+ * [2] nullifierHash1 - Secondary input nullifier (spent)
+ * [3] refundCommitmentHash - Cross-chain refund commitment
  * [4] withdrawnValue - Amount withdrawn
  * [5] stateRoot - State merkle root
  * [6] stateTreeDepth - State tree depth
@@ -68,12 +89,17 @@ export interface CrosschainWithdrawalDerivation extends WithdrawalDerivation {
  * [8] ASPTreeDepth - ASP tree depth
  * [9] context - Binding context hash
  */
-export interface ContractWithdraw2Proof {
+export interface ContractCrosschainWithdraw2Proof {
   pA: [bigint, bigint];
   pB: [[bigint, bigint], [bigint, bigint]];
   pC: [bigint, bigint];
   pubSignals: [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint];
 }
+
+/**
+ * @deprecated Use ContractWithdraw2SameChainProof or ContractCrosschainWithdraw2Proof
+ */
+export type ContractWithdraw2Proof = ContractCrosschainWithdraw2Proof;
 
 /**
  * Withdraw2 derivation for primary input (continuing chain)

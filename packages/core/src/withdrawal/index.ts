@@ -21,6 +21,8 @@ import type {
   ContractProof,
   ContractCrossChainProof,
   ContractWithdraw2Proof,
+  ContractWithdraw2SameChainProof,
+  ContractCrosschainWithdraw2Proof,
   SnarkJsProof,
   ContextHash,
   WithdrawalDerivation,
@@ -38,6 +40,8 @@ export type {
   ContractProof,
   ContractCrossChainProof,
   ContractWithdraw2Proof,
+  ContractWithdraw2SameChainProof,
+  ContractCrosschainWithdraw2Proof,
   SnarkJsProof,
   ContextHash,
   WithdrawalDerivation,
@@ -225,12 +229,12 @@ export function formatWithdraw2ProofForContract(
 
 export function encodeWithdraw2RelayCallData(
   withdrawalData: WithdrawalData,
-  proof: ContractWithdraw2Proof,
+  proof: ContractWithdraw2SameChainProof,
   scope: bigint,
 ): `0x${string}` {
   return encodeFunctionData({
     abi: EntrypointWithdraw2RelayAbi,
-    functionName: 'relayWithdraw2',
+    functionName: 'relay2',
     args: [
       { processooor: withdrawalData.processooor, data: withdrawalData.data },
       { pA: proof.pA, pB: proof.pB, pC: proof.pC, pubSignals: proof.pubSignals },
@@ -241,12 +245,12 @@ export function encodeWithdraw2RelayCallData(
 
 export function encodeCrossChainWithdraw2CallData(
   withdrawalData: CrossChainWithdrawalData,
-  proof: ContractWithdraw2Proof,
+  proof: ContractCrosschainWithdraw2Proof,
   scope: bigint,
 ): `0x${string}` {
   return encodeFunctionData({
     abi: EntrypointCrosschainWithdraw2Abi,
-    functionName: 'crosschainWithdraw2',
+    functionName: 'crosschainWithdrawal2',
     args: [
       { processooor: withdrawalData.processooor, data: withdrawalData.data },
       { pA: proof.pA, pB: proof.pB, pC: proof.pC, pubSignals: proof.pubSignals },
