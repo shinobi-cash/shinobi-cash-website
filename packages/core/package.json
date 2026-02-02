@@ -24,6 +24,11 @@
       "import": "./dist/discovery.mjs",
       "require": "./dist/discovery.js"
     },
+    "./discovery-v2": {
+      "types": "./dist/discovery-v2.d.ts",
+      "import": "./dist/discovery-v2.mjs",
+      "require": "./dist/discovery-v2.js"
+    },
     "./proof": {
       "types": "./dist/proof.d.ts",
       "import": "./dist/proof.mjs",
