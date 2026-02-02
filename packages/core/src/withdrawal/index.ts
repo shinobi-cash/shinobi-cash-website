@@ -11,6 +11,8 @@ import { deriveDepositNullifier, deriveDepositSecret } from '../deposit/index.js
 import {
   EntrypointRelayAbi,
   EntrypointCrosschainWithdrawalAbi,
+  EntrypointWithdraw2RelayAbi,
+  EntrypointCrosschainWithdraw2Abi,
   SHINOBI_CASH_ENTRYPOINT,
 } from '@shinobi-cash/constants';
 import type {
@@ -18,10 +20,13 @@ import type {
   CrossChainWithdrawalData,
   ContractProof,
   ContractCrossChainProof,
+  ContractWithdraw2Proof,
   SnarkJsProof,
   ContextHash,
   WithdrawalDerivation,
   CrosschainWithdrawalDerivation,
+  Withdraw2Derivation,
+  CrosschainWithdraw2Derivation,
 } from './types.js';
 
 // Re-export types
@@ -30,10 +35,15 @@ export type {
   CrossChainWithdrawalData,
   ContractProof,
   ContractCrossChainProof,
+  ContractWithdraw2Proof,
   SnarkJsProof,
   ContextHash,
   WithdrawalDerivation,
   CrosschainWithdrawalDerivation,
+  Withdraw2Derivation,
+  Withdraw2PrimaryDerivation,
+  Withdraw2SecondaryDerivation,
+  CrosschainWithdraw2Derivation,
 } from './types.js';
 
 // Re-export note selection
@@ -174,6 +184,67 @@ export function encodeCrossChainWithdrawalCallData(
   return encodeFunctionData({
     abi: EntrypointCrosschainWithdrawalAbi,
     functionName: 'crosschainWithdrawal',
+    args: [
+      { processooor: withdrawalData.processooor, data: withdrawalData.data },
+      { pA: proof.pA, pB: proof.pB, pC: proof.pC, pubSignals: proof.pubSignals },
+      scope,
+    ],
+  });
+}
+
+// ============ WITHDRAW2 (2:1) CONTRACT ENCODING ============
+
+/** Format snarkjs proof for Withdraw2 Solidity verifier (10 signals) */
+export function formatWithdraw2ProofForContract(
+  proof: SnarkJsProof,
+  publicSignals: string[],
+): ContractWithdraw2Proof {
+  return {
+    pA: [BigInt(proof.pi_a[0]), BigInt(proof.pi_a[1])],
+    pB: [
+      [BigInt(proof.pi_b[0][1]), BigInt(proof.pi_b[0][0])],
+      [BigInt(proof.pi_b[1][1]), BigInt(proof.pi_b[1][0])],
+    ],
+    pC: [BigInt(proof.pi_c[0]), BigInt(proof.pi_c[1])],
+    pubSignals: [
+      BigInt(publicSignals[0]), // newCommitmentHash
+      BigInt(publicSignals[1]), // nullifierHash0
+      BigInt(publicSignals[2]), // nullifierHash1
+      BigInt(publicSignals[3]), // refundCommitmentHash
+      BigInt(publicSignals[4]), // withdrawnValue
+      BigInt(publicSignals[5]), // stateRoot
+      BigInt(publicSignals[6]), // stateTreeDepth
+      BigInt(publicSignals[7]), // ASPRoot
+      BigInt(publicSignals[8]), // ASPTreeDepth
+      BigInt(publicSignals[9]), // context
+    ],
+  };
+}
+
+export function encodeWithdraw2RelayCallData(
+  withdrawalData: WithdrawalData,
+  proof: ContractWithdraw2Proof,
+  scope: bigint,
+): `0x${string}` {
+  return encodeFunctionData({
+    abi: EntrypointWithdraw2RelayAbi,
+    functionName: 'relayWithdraw2',
+    args: [
+      { processooor: withdrawalData.processooor, data: withdrawalData.data },
+      { pA: proof.pA, pB: proof.pB, pC: proof.pC, pubSignals: proof.pubSignals },
+      scope,
+    ],
+  });
+}
+
+export function encodeCrossChainWithdraw2CallData(
+  withdrawalData: CrossChainWithdrawalData,
+  proof: ContractWithdraw2Proof,
+  scope: bigint,
+): `0x${string}` {
+  return encodeFunctionData({
+    abi: EntrypointCrosschainWithdraw2Abi,
+    functionName: 'crosschainWithdraw2',
     args: [
       { processooor: withdrawalData.processooor, data: withdrawalData.data },
       { pA: proof.pA, pB: proof.pB, pC: proof.pC, pubSignals: proof.pubSignals },

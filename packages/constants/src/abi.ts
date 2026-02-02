@@ -94,6 +94,80 @@ export const EntrypointDepositAbi = [
   },
 ] as const;
 
+// ============ WITHDRAW2 (2:1 JoinSplit) ABIs ============
+
+/**
+ * ABI for same-chain Withdraw2 relay (2:1 merge)
+ * Uses 10 public signals
+ */
+export const EntrypointWithdraw2RelayAbi = [
+  {
+    type: 'function',
+    name: 'relayWithdraw2',
+    inputs: [
+      {
+        name: '_withdrawal',
+        type: 'tuple',
+        internalType: 'struct IShinobiCashEntrypoint.Withdrawal',
+        components: [
+          { name: 'processooor', type: 'address', internalType: 'address' },
+          { name: 'data', type: 'bytes', internalType: 'bytes' },
+        ],
+      },
+      {
+        name: '_proof',
+        type: 'tuple',
+        internalType: 'struct IShinobiCashEntrypoint.Groth16ProofWithdraw2',
+        components: [
+          { name: 'pA', type: 'uint256[2]', internalType: 'uint256[2]' },
+          { name: 'pB', type: 'uint256[2][2]', internalType: 'uint256[2][2]' },
+          { name: 'pC', type: 'uint256[2]', internalType: 'uint256[2]' },
+          { name: 'pubSignals', type: 'uint256[10]', internalType: 'uint256[10]' },
+        ],
+      },
+      { name: '_scope', type: 'uint256', internalType: 'uint256' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+] as const;
+
+/**
+ * ABI for cross-chain Withdraw2 (2:1 merge with refund commitment)
+ * Uses 10 public signals (refundCommitmentHash included)
+ */
+export const EntrypointCrosschainWithdraw2Abi = [
+  {
+    type: 'function',
+    name: 'crosschainWithdraw2',
+    inputs: [
+      {
+        name: '_withdrawal',
+        type: 'tuple',
+        internalType: 'struct IShinobiCashEntrypoint.Withdrawal',
+        components: [
+          { name: 'processooor', type: 'address', internalType: 'address' },
+          { name: 'data', type: 'bytes', internalType: 'bytes' },
+        ],
+      },
+      {
+        name: '_proof',
+        type: 'tuple',
+        internalType: 'struct IShinobiCashEntrypoint.Groth16ProofWithdraw2',
+        components: [
+          { name: 'pA', type: 'uint256[2]', internalType: 'uint256[2]' },
+          { name: 'pB', type: 'uint256[2][2]', internalType: 'uint256[2][2]' },
+          { name: 'pC', type: 'uint256[2]', internalType: 'uint256[2]' },
+          { name: 'pubSignals', type: 'uint256[10]', internalType: 'uint256[10]' },
+        ],
+      },
+      { name: '_scope', type: 'uint256', internalType: 'uint256' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+] as const;
+
 // ============ POOL ABIs ============
 
 /**

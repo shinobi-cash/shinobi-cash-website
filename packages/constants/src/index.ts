@@ -10,6 +10,8 @@ export {
   EntrypointDepositAbi,
   PoolScopeAbi,
   CrosschainDepositEntrypointAbi,
+  EntrypointWithdraw2RelayAbi,
+  EntrypointCrosschainWithdraw2Abi,
 } from './abi.js';
 
 // ============ CONTRACTS ============
