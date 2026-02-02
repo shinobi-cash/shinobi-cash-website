@@ -4,9 +4,9 @@
  */
 
 import { getTxExplorerUrl } from "@/config/chains";
-import type { NoteChain, Note } from "@shinobi-cash/core/discovery";
+import type { NoteChain, Note, ChangeNote } from "@shinobi-cash/core/discovery";
 import { formatEthAmount, formatTimestamp, formatUsdAmount } from "@/utils/formatters";
-import { ExternalLink, ChevronDown } from "lucide-react";
+import { ExternalLink, ChevronDown, Merge } from "lucide-react";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";
 import { ScreenLayout } from "@/components/layout/ScreenLayout";
 import { Section, Row } from "@/components/shared/Section";
@@ -22,7 +22,7 @@ interface TimelineEntry {
   key: string;
   label: string;
   amount: bigint;
-  prefix: "+" | "-";
+  prefix: "+" | "-" | "";
   dotColor: string;
   txHash: string;
   txUrl: string;
@@ -34,6 +34,10 @@ interface TimelineEntry {
     solverFee?: string;
     vettingFee?: string;
   };
+  // Merge information
+  isMerged?: boolean;
+  mergedIntoNoteIndex?: number;
+  mergedFromNoteIndex?: number;
 }
 
 function buildTimelineEntries(noteChain: NoteChain): TimelineEntry[] {
@@ -53,28 +57,64 @@ function buildTimelineEntries(noteChain: NoteChain): TimelineEntry[] {
     note: firstNote,
   });
 
-  // Subsequent entries: Each represents a withdrawal
+  // Subsequent entries: Each represents a withdrawal or merge
   for (let i = 1; i < noteChain.length; i++) {
     const prevNote = noteChain[i - 1];
     const note = noteChain[i];
-    const withdrawnAmount = BigInt(prevNote.amount) - BigInt(note.amount);
+    const changeNote = note as ChangeNote;
 
-    entries.push({
-      key: `withdraw-${note.depositIndex}-${note.changeIndex}`,
-      label: "Withdrew",
-      amount: withdrawnAmount,
-      prefix: "-",
-      dotColor: "bg-rose-400",
-      txHash: note.destinationTransactionHash,
-      txUrl: getTxExplorerUrl(note.destinationChainId, note.destinationTransactionHash),
-      timestamp: note.timestamp,
-      note: note,
-      fees: {
-        relayFee: note.activityData.relayFeeAmount,
-        solverFee: note.activityData.solverFeeAmount,
-        vettingFee: note.activityData.vettingFeeAmount,
-      },
-    });
+    // Check if this note was created from a Withdraw2 merge (primary chain)
+    const mergedFromNoteIndex = changeNote.mergedFromDepositIndex;
+
+    // Check if this note is a merged note (secondary chain in Withdraw2)
+    // The merged note has status 'merged' and mergedIntoDepositIndex set
+    const isMergedNote = note.status === "merged" && note.mergedIntoDepositIndex !== undefined;
+
+    if (isMergedNote) {
+      // Secondary chain: This chain's balance was merged into another chain via Withdraw2
+      // Show as "Withdrew + Merged" with the contributed balance (from prevNote)
+      const contributedAmount = BigInt(prevNote.amount);
+
+      entries.push({
+        key: `merged-${note.depositIndex}-${note.changeIndex}`,
+        label: "Withdrew + Merged",
+        amount: contributedAmount,
+        prefix: "-",
+        dotColor: "bg-violet-400",
+        txHash: note.destinationTransactionHash,
+        txUrl: getTxExplorerUrl(note.destinationChainId, note.destinationTransactionHash),
+        timestamp: note.timestamp,
+        note: note,
+        isMerged: true,
+        mergedIntoNoteIndex: note.mergedIntoDepositIndex,
+        fees: {
+          relayFee: note.activityData.relayFeeAmount,
+          solverFee: note.activityData.solverFeeAmount,
+          vettingFee: note.activityData.vettingFeeAmount,
+        },
+      });
+    } else {
+      // Regular withdrawal or Withdraw2 on primary chain
+      const withdrawnAmount = BigInt(prevNote.amount) - BigInt(note.amount);
+
+      entries.push({
+        key: `withdraw-${note.depositIndex}-${note.changeIndex}`,
+        label: mergedFromNoteIndex !== undefined ? "Withdrew + Merged" : "Withdrew",
+        amount: withdrawnAmount,
+        prefix: "-",
+        dotColor: mergedFromNoteIndex !== undefined ? "bg-violet-400" : "bg-rose-400",
+        txHash: note.destinationTransactionHash,
+        txUrl: getTxExplorerUrl(note.destinationChainId, note.destinationTransactionHash),
+        timestamp: note.timestamp,
+        note: note,
+        mergedFromNoteIndex: mergedFromNoteIndex,
+        fees: {
+          relayFee: note.activityData.relayFeeAmount,
+          solverFee: note.activityData.solverFeeAmount,
+          vettingFee: note.activityData.vettingFeeAmount,
+        },
+      });
+    }
   }
 
   return entries;
@@ -127,6 +167,22 @@ export function NoteChainScreen({ noteChain, onBack }: NoteChainScreenProps) {
         {/* Status Section */}
         <Section title="Status">
           <Row label="Note" value={`#${lastNote.depositIndex + 1}`} />
+          <Row
+            label="Status"
+            value={
+              <span
+                className={`capitalize ${
+                  lastNote.status === "merged"
+                    ? "text-violet-400"
+                    : lastNote.status === "spent"
+                      ? "text-neutral-400"
+                      : "text-emerald-400"
+                }`}
+              >
+                {lastNote.status}
+              </span>
+            }
+          />
           {lastNote.isCrossChain && lastNote.intentStatus && lastNote.intentStatus !== "filled" && (
             <Row
               label="Intent Status"
@@ -225,6 +281,29 @@ export function NoteChainScreen({ noteChain, onBack }: NoteChainScreenProps) {
                           <span className="mx-2">|</span>
                           <span>{formatTimestamp(entry.timestamp)}</span>
                         </div>
+                        {/* Merge information */}
+                        {entry.isMerged && entry.mergedIntoNoteIndex !== undefined && (
+                          <div className="flex items-center gap-1.5 pl-7 pt-1 text-xs">
+                            <Merge className="h-3 w-3 text-violet-400" />
+                            <span className="text-neutral-400">
+                              Balance merged into{" "}
+                              <span className="font-medium text-violet-400">
+                                Note #{entry.mergedIntoNoteIndex + 1}
+                              </span>
+                            </span>
+                          </div>
+                        )}
+                        {entry.mergedFromNoteIndex !== undefined && (
+                          <div className="flex items-center gap-1.5 pl-7 pt-1 text-xs">
+                            <Merge className="h-3 w-3 text-violet-400" />
+                            <span className="text-neutral-400">
+                              Includes balance from{" "}
+                              <span className="font-medium text-violet-400">
+                                Note #{entry.mergedFromNoteIndex + 1}
+                              </span>
+                            </span>
+                          </div>
+                        )}
                         {/* Fee breakdown (collapsible for withdrawals) */}
                         {hasFeeData && (
                           <details className="group pl-7 pt-1">
