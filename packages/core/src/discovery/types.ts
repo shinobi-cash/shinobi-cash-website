@@ -1,68 +1,85 @@
 /**
- * Discovery Types
+ * @shinobi-cash/core/discovery
+ * Type definitions for Note Discovery v2
  */
 
 import type { ASPStatus, IntentStatus } from '@shinobi-cash/data';
 
 // ============================================================================
-// Note Types
+// Note Status
 // ============================================================================
 
-/** Note status including merged for Withdraw2 */
 export type NoteStatus = 'unspent' | 'spent' | 'merged';
+
+// ============================================================================
+// Activity Metadata
+// ============================================================================
+
+export interface ActivityMetadata {
+  originalAmount?: string;
+  vettingFeeAmount?: string;
+  relayFeeAmount?: string;
+  solverFeeAmount?: string;
+  paymasterFeeRefund?: string;
+  user?: string;
+  recipient?: string;
+  relayer?: string;
+  solver?: string;
+  vettingFeeRecipient?: string;
+  commitment?: string;
+  spentNullifier?: string;
+  /** Second nullifier for Withdraw2 (2:1 JoinSplit) */
+  spentNullifier1?: string;
+  newCommitment?: string;
+  isSponsored?: boolean;
+}
+
+// ============================================================================
+// Note Types
+// ============================================================================
 
 interface BaseNote {
   poolAddress: string;
   depositIndex: number;
+  changeIndex: number;
   amount: string;
+  label: string;
+  status: NoteStatus;
+  // Blockchain metadata
+  blockNumber: string;
+  timestamp: string;
   originTransactionHash: string;
   destinationTransactionHash: string;
   originChainId: string;
   destinationChainId: string;
-  blockNumber: string;
-  timestamp: string;
-  status: NoteStatus;
-  aspStatus: ASPStatus;
-  label: string;
+  // Cross-chain
   isCrossChain: boolean;
   orderId?: string;
   intentStatus?: IntentStatus;
   fillDeadline?: string;
   expires?: string;
-  activityData: {
-    originalAmount?: string;
-    vettingFeeAmount?: string;
-    relayFeeAmount?: string;
-    solverFeeAmount?: string;
-    paymasterFeeRefund?: string;
-    user?: string;
-    recipient?: string;
-    relayer?: string;
-    solver?: string;
-    vettingFeeRecipient?: string;
-    commitment?: string;
-    spentNullifier?: string;
-    newCommitment?: string;
-    isSponsored?: boolean;
-  };
+  // ASP
+  aspStatus: ASPStatus;
+  // Merge tracking (for 'merged' status)
+  mergedIntoDepositIndex?: number;
+  // Activity data
+  activityData: ActivityMetadata;
 }
 
-/** Deposit note - the first note in a chain */
+/** Deposit note - the first note in a chain (changeIndex = 0) */
 export interface DepositNote extends BaseNote {
   noteType: 'deposit';
   changeIndex: 0;
-  refundIndex?: never;
-  refundCommitment?: never;
   precommitmentHash: string;
 }
 
-/** Change note - created from withdrawals */
+/** Change note - created from withdrawals (changeIndex > 0) */
 export interface ChangeNote extends BaseNote {
   noteType: 'change';
   changeIndex: number;
-  refundIndex?: never;
-  precommitmentHash?: never;
   refundCommitment?: string;
+  /** For Withdraw2 change notes: which chain was merged into this one */
+  mergedFromDepositIndex?: number;
 }
 
 /** Refund note - created from failed cross-chain withdrawals */
@@ -70,7 +87,6 @@ export interface RefundNote extends BaseNote {
   noteType: 'refund';
   changeIndex: number;
   refundIndex: number;
-  precommitmentHash?: never;
   refundCommitment: string;
 }
 
@@ -78,28 +94,50 @@ export type Note = DepositNote | ChangeNote | RefundNote;
 export type NoteChain = Note[];
 
 // ============================================================================
+// Nullifier Tracking
+// ============================================================================
+
+/** Maps a nullifier hash to its note location */
+export interface NullifierInfo {
+  depositIndex: number;
+  changeIndex: number;
+}
+
+// ============================================================================
 // Discovery State
 // ============================================================================
 
-export interface LiveDeposit {
-  depositIndex: number;
-  chain: NoteChain;
-  remaining: bigint;
-}
-
 export interface DiscoveryState {
-  notes: NoteChain[];
+  /** All discovered note chains, keyed by depositIndex */
+  chains: Map<number, NoteChain>;
+  /** Nullifier hash -> note location for quick lookups */
+  nullifierMap: Map<string, NullifierInfo>;
+  /** Next deposit index to scan */
   nextDepositIndex: number;
-  liveDeposits: LiveDeposit[];
-  offset?: number;
+  /** Pagination offset for activity fetching */
+  offset: number;
+  /** Count of new deposits found in this sync */
   newDepositsFound: number;
 }
+
+/** Serializable version of DiscoveryState for persistence */
+export interface SerializableDiscoveryState {
+  chains: Array<{ depositIndex: number; chain: NoteChain }>;
+  nullifierMap: Array<{ hash: string; info: NullifierInfo }>;
+  nextDepositIndex: number;
+  offset: number;
+  newDepositsFound: number;
+}
+
+// ============================================================================
+// Discovery Results
+// ============================================================================
 
 export interface DiscoveryResult {
   notes: NoteChain[];
   lastUsedIndex: number;
   newNotesFound: number;
-  lastProcessedOffset?: number;
+  lastProcessedOffset: number;
 }
 
 export interface DiscoveryProgress {
@@ -107,13 +145,20 @@ export interface DiscoveryProgress {
   currentPageActivityCount: number;
   depositsChecked: number;
   depositsMatched: number;
-  lastOffset?: number;
+  lastOffset: number;
   complete: boolean;
 }
 
+// ============================================================================
+// Discovery Configuration
+// ============================================================================
+
 export interface DiscoveryPolicy {
+  /** Maximum deposit indices to scan per page */
   maxDepositScan: number;
+  /** Activities per page fetch */
   pageSize: number;
+  /** Persist state every N pages */
   persistEveryPages: number;
 }
 
@@ -129,4 +174,25 @@ export interface DiscoveryOptions {
   maxPages?: number;
   pageSize?: number;
   policy?: DiscoveryPolicy;
+}
+
+// ============================================================================
+// I/O Interfaces
+// ============================================================================
+
+export interface ActivityPage {
+  items: import('@shinobi-cash/data').Activity[];
+  pageInfo: { hasNextPage: boolean; hasPreviousPage: boolean };
+}
+
+export type ActivityFetcher = (
+  poolAddress: string,
+  limit: number,
+  offset?: number,
+  orderDirection?: 'asc' | 'desc',
+) => Promise<ActivityPage>;
+
+export interface PersistenceCallbacks {
+  loadState: (publicKey: string, poolAddress: string) => Promise<SerializableDiscoveryState | null>;
+  saveState: (publicKey: string, poolAddress: string, state: SerializableDiscoveryState) => Promise<void>;
 }

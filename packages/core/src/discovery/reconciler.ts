@@ -1,5 +1,5 @@
 /**
- * @shinobi-cash/core/discovery-v2
+ * @shinobi-cash/core/discovery
  * Phase 3: Reconciliation
  * Updates existing notes with fresh activity data (ASP status, labels, etc.)
  */

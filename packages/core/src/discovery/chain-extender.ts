@@ -1,5 +1,5 @@
 /**
- * @shinobi-cash/core/discovery-v2
+ * @shinobi-cash/core/discovery
  * Phase 2: Chain Extension
  * Extends note chains with withdrawals (both 1:1 and 2:1 Withdraw2)
  */
@@ -8,7 +8,7 @@ import type { Activity } from '@shinobi-cash/data';
 import type { NoteChain, NullifierInfo, Note } from './types.js';
 import type { ActivityIndex } from './activity-indexer.js';
 import { deriveAndHashNullifier } from './nullifier-utils.js';
-import { createChangeNote, createWithdraw2ChangeNote } from './note-factory.js';
+import { createChangeNote, createWithdraw2ChangeNote, createMergedNote } from './note-factory.js';
 
 // ============================================================================
 // Extension Result Type
@@ -216,9 +216,9 @@ function processWithdraw2(
 
   // Check if other chain already processed this Withdraw2
   if (otherLastNote.status !== 'unspent') {
-    if (otherLastNote.status === 'merged' && isPrimaryChain) {
-      // Secondary chain processed first and marked itself merged
-      // Primary chain still needs to create the change note
+    if ((otherLastNote.status === 'spent' || otherLastNote.status === 'merged') && isPrimaryChain) {
+      // Secondary chain processed first and marked itself spent
+      // Primary chain still needs to handle both chains
       // Fall through to processAsPrimaryChain
     } else {
       // Either: primary already processed (both are done), or
@@ -280,20 +280,29 @@ function processAsPrimaryChain(
   // Mark primary note as spent
   primaryLastNote.status = 'spent';
 
-  // Mark secondary note as merged into primary
-  secondaryLastNote.status = 'merged';
-  secondaryLastNote.mergedIntoDepositIndex = primaryDepositIndex;
+  // Mark secondary note as spent (it contributed to the merge)
+  secondaryLastNote.status = 'spent';
 
-  // Create change note on primary chain
-  const newChangeIndex = primaryLastNote.changeIndex + 1;
+  // Create change note on primary chain (receives combined balance minus withdrawal)
+  const primaryNewChangeIndex = primaryLastNote.changeIndex + 1;
   const changeNote = createWithdraw2ChangeNote(
     primaryLastNote,
     activity,
-    newChangeIndex,
+    primaryNewChangeIndex,
     remaining,
     secondaryDepositIndex,
   );
   primaryChain.push(changeNote);
+
+  // Create merged note on secondary chain (balance = 0, linked to primary)
+  const secondaryNewChangeIndex = secondaryLastNote.changeIndex + 1;
+  const mergedNote = createMergedNote(
+    secondaryLastNote,
+    activity,
+    secondaryNewChangeIndex,
+    primaryDepositIndex,
+  );
+  secondaryChain.push(mergedNote);
 
   // Update nullifier map - remove both old nullifiers
   nullifierMap.delete(primaryNullifierHash);
@@ -305,18 +314,19 @@ function processAsPrimaryChain(
       accountKey,
       poolAddress,
       primaryDepositIndex,
-      newChangeIndex,
+      primaryNewChangeIndex,
     );
-    nullifierMap.set(newNullifierHash, { depositIndex: primaryDepositIndex, changeIndex: newChangeIndex });
+    nullifierMap.set(newNullifierHash, { depositIndex: primaryDepositIndex, changeIndex: primaryNewChangeIndex });
   }
 }
 
 /**
  * Process current chain as the secondary (terminating) chain in a Withdraw2
- * - Marks note as merged into the primary chain
- * - Does NOT delete nullifier (primary chain needs it to find this chain)
+ * - Marks note as spent so the while loop exits
+ * - The primary chain will handle creating the merged note when processed
  */
-function processAsSecondaryChain(currentLastNote: Note, primaryDepositIndex: number): void {
-  currentLastNote.status = 'merged';
-  currentLastNote.mergedIntoDepositIndex = primaryDepositIndex;
+function processAsSecondaryChain(currentLastNote: Note, _primaryDepositIndex: number): void {
+  // Mark as spent so the while loop exits (note is no longer 'unspent')
+  // The primary chain will create the proper merged note and update this chain
+  currentLastNote.status = 'spent';
 }

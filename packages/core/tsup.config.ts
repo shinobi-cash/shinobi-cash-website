@@ -6,7 +6,6 @@ export default defineConfig({
     deposit: 'src/deposit/index.ts',
     withdrawal: 'src/withdrawal/index.ts',
     discovery: 'src/discovery/index.ts',
-    'discovery-v2': 'src/discovery-v2/index.ts',
     proof: 'src/proof/index.ts',
   },
   format: ['cjs', 'esm'],

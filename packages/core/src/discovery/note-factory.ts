@@ -1,5 +1,5 @@
 /**
- * @shinobi-cash/core/discovery-v2
+ * @shinobi-cash/core/discovery
  * Factory functions for creating notes from activities
  */
 
@@ -134,6 +134,52 @@ export function createWithdraw2ChangeNote(
     aspStatus: winnerNote.aspStatus,
     refundCommitment: activity.refundCommitment ?? undefined,
     mergedFromDepositIndex,
+    activityData: buildWithdraw2ActivityMetadata(activity),
+  };
+}
+
+// ============================================================================
+// Merged Note Creation (Secondary chain in Withdraw2)
+// ============================================================================
+
+/**
+ * Create a ChangeNote for the secondary (merged) chain in a Withdraw2
+ * This note has amount=0 and status='merged', linked to the primary chain
+ * @param loserNote - The last note from the chain being merged
+ * @param activity - The Withdraw2 activity
+ * @param newChangeIndex - The new change index for the merged note
+ * @param mergedIntoDepositIndex - The depositIndex of the primary chain this was merged into
+ */
+export function createMergedNote(
+  loserNote: Note,
+  activity: Activity,
+  newChangeIndex: number,
+  mergedIntoDepositIndex: number,
+): ChangeNote {
+  const isCrossChain =
+    loserNote.isCrossChain ||
+    activity.type === 'CROSSCHAIN_WITHDRAW2' ||
+    activity.type === 'CROSSCHAIN_WITHDRAW2_PENDING';
+
+  return {
+    noteType: 'change',
+    poolAddress: loserNote.poolAddress,
+    depositIndex: loserNote.depositIndex,
+    changeIndex: newChangeIndex,
+    amount: '0', // Balance is 0 - fully merged into primary chain
+    label: loserNote.label,
+    status: 'merged',
+    blockNumber: activity.blockNumber.toString(),
+    timestamp: activity.timestamp.toString(),
+    originTransactionHash: activity.originTransactionHash,
+    destinationTransactionHash: activity.destinationTransactionHash || activity.originTransactionHash,
+    originChainId: activity.originChainId.toString(),
+    destinationChainId: (activity.destinationChainId || activity.originChainId).toString(),
+    isCrossChain,
+    orderId: activity.orderId ?? loserNote.orderId,
+    intentStatus: isCrossChain ? (activity.intentStatus ?? 'filled') : undefined,
+    aspStatus: loserNote.aspStatus,
+    mergedIntoDepositIndex,
     activityData: buildWithdraw2ActivityMetadata(activity),
   };
 }

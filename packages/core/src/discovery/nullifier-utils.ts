@@ -1,5 +1,5 @@
 /**
- * @shinobi-cash/core/discovery-v2
+ * @shinobi-cash/core/discovery
  * Nullifier derivation and hashing utilities
  */
 

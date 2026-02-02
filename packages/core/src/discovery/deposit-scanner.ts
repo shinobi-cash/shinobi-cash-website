@@ -1,5 +1,5 @@
 /**
- * @shinobi-cash/core/discovery-v2
+ * @shinobi-cash/core/discovery
  * Phase 1: Deposit Discovery
  * Scans for user's deposits by matching precommitments
  */
