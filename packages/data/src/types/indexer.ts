@@ -24,8 +24,11 @@ export type ActivityType =
   | 'CROSSCHAIN_DEPOSIT_PENDING'
   | 'CROSSCHAIN_DEPOSIT'
   | 'WITHDRAWAL'
+  | 'WITHDRAW2'
   | 'CROSSCHAIN_WITHDRAWAL_PENDING'
+  | 'CROSSCHAIN_WITHDRAW2_PENDING'
   | 'CROSSCHAIN_WITHDRAWAL'
+  | 'CROSSCHAIN_WITHDRAW2'
   | 'RAGEQUIT';
 
 /**
@@ -81,6 +84,8 @@ export interface Activity {
   precommitmentHash?: string;
   /** Spent nullifier (for withdrawals) */
   spentNullifier?: string;
+  /** Second spent nullifier (for Withdraw2 - 2:1 JoinSplit) */
+  spentNullifier1?: string;
   /** New commitment (for change notes) */
   newCommitment?: string;
   /** Refund commitment */
@@ -255,6 +260,7 @@ export interface SerializedActivity {
   label?: string | null;
   precommitmentHash?: string;
   spentNullifier?: string;
+  spentNullifier1?: string;
   newCommitment?: string;
   refundCommitment?: string;
   relayFeeAmount?: string;
@@ -384,6 +390,25 @@ export interface WithdrawalActivity extends Omit<Activity, 'type'> {
 }
 
 /**
+ * Withdraw2 Activity - 2:1 JoinSplit (combines 2 inputs into 1 change output + withdrawal)
+ */
+export interface Withdraw2Activity extends Omit<Activity, 'type'> {
+  type: 'WITHDRAW2';
+
+  // Guaranteed withdrawal fields (2 nullifiers for 2:1)
+  spentNullifier: string;
+  spentNullifier1: string;
+  recipient: string;
+
+  // Optional change note
+  newCommitment?: string;
+
+  // Deposit fields are undefined
+  precommitmentHash?: undefined;
+  label?: undefined;
+}
+
+/**
  * Cross-chain Deposit Activity
  */
 export interface CrossChainDepositActivity extends Omit<Activity, 'type'> {
@@ -408,6 +433,25 @@ export interface CrossChainWithdrawalActivity extends Omit<Activity, 'type'> {
 
   // Guaranteed fields
   spentNullifier: string;
+  orderId: string;
+  recipient: string;
+  destinationChainId: bigint;
+
+  // Optional
+  newCommitment?: string;
+  refundCommitment?: string;
+  destinationTransactionHash?: string;
+}
+
+/**
+ * Cross-chain Withdraw2 Activity - 2:1 JoinSplit cross-chain
+ */
+export interface CrossChainWithdraw2Activity extends Omit<Activity, 'type'> {
+  type: 'CROSSCHAIN_WITHDRAW2';
+
+  // Guaranteed fields (2 nullifiers for 2:1)
+  spentNullifier: string;
+  spentNullifier1: string;
   orderId: string;
   recipient: string;
   destinationChainId: bigint;
@@ -460,6 +504,29 @@ export interface CrossChainWithdrawalPendingActivity extends Omit<Activity, 'typ
 }
 
 /**
+ * Pending Cross-chain Withdraw2 Activity - 2:1 JoinSplit cross-chain (awaiting solver fill)
+ */
+export interface CrossChainWithdraw2PendingActivity extends Omit<Activity, 'type'> {
+  type: 'CROSSCHAIN_WITHDRAW2_PENDING';
+
+  // Guaranteed fields (2 nullifiers for 2:1)
+  spentNullifier: string;
+  spentNullifier1: string;
+  orderId: string;
+  recipient: string;
+  originChainId: bigint;
+  destinationChainId: bigint;
+
+  // Intent deadlines
+  fillDeadline?: bigint;
+  expires?: bigint;
+
+  // Optional
+  newCommitment?: string;
+  refundCommitment?: string;
+}
+
+/**
  * Ragequit Activity - emergency withdrawal bypassing privacy
  */
 export interface RagequitActivity extends Omit<Activity, 'type'> {
@@ -476,10 +543,13 @@ export interface RagequitActivity extends Omit<Activity, 'type'> {
 export type TypedActivity =
   | DepositActivity
   | WithdrawalActivity
+  | Withdraw2Activity
   | CrossChainDepositActivity
   | CrossChainWithdrawalActivity
+  | CrossChainWithdraw2Activity
   | CrossChainDepositPendingActivity
   | CrossChainWithdrawalPendingActivity
+  | CrossChainWithdraw2PendingActivity
   | RagequitActivity;
 
 /**
@@ -501,6 +571,21 @@ export interface SerializedDepositActivity extends Omit<DepositActivity, 'amount
 }
 
 export interface SerializedWithdrawalActivity extends Omit<WithdrawalActivity, 'amount' | 'originalAmount' | 'vettingFeeAmount' | 'relayFeeAmount' | 'solverFeeAmount' | 'paymasterFeeRefund' | 'blockNumber' | 'timestamp' | 'originChainId' | 'destinationChainId' | 'fillDeadline' | 'expires'> {
+  amount: string | null;
+  originalAmount?: string;
+  vettingFeeAmount?: string;
+  relayFeeAmount?: string;
+  solverFeeAmount?: string;
+  paymasterFeeRefund?: string;
+  blockNumber: string;
+  timestamp: string;
+  originChainId: string;
+  destinationChainId?: string;
+  fillDeadline?: string;
+  expires?: string;
+}
+
+export interface SerializedWithdraw2Activity extends Omit<Withdraw2Activity, 'amount' | 'originalAmount' | 'vettingFeeAmount' | 'relayFeeAmount' | 'solverFeeAmount' | 'paymasterFeeRefund' | 'blockNumber' | 'timestamp' | 'originChainId' | 'destinationChainId' | 'fillDeadline' | 'expires'> {
   amount: string | null;
   originalAmount?: string;
   vettingFeeAmount?: string;
@@ -545,6 +630,21 @@ export interface SerializedCrossChainWithdrawalActivity extends Omit<CrossChainW
   expires?: string;
 }
 
+export interface SerializedCrossChainWithdraw2Activity extends Omit<CrossChainWithdraw2Activity, 'amount' | 'originalAmount' | 'vettingFeeAmount' | 'relayFeeAmount' | 'solverFeeAmount' | 'paymasterFeeRefund' | 'blockNumber' | 'timestamp' | 'originChainId' | 'destinationChainId' | 'fillDeadline' | 'expires'> {
+  amount: string | null;
+  originalAmount?: string;
+  vettingFeeAmount?: string;
+  relayFeeAmount?: string;
+  solverFeeAmount?: string;
+  paymasterFeeRefund?: string;
+  blockNumber: string;
+  timestamp: string;
+  originChainId: string;
+  destinationChainId: string;
+  fillDeadline?: string;
+  expires?: string;
+}
+
 export interface SerializedCrossChainDepositPendingActivity extends Omit<CrossChainDepositPendingActivity, 'amount' | 'originalAmount' | 'vettingFeeAmount' | 'relayFeeAmount' | 'solverFeeAmount' | 'paymasterFeeRefund' | 'blockNumber' | 'timestamp' | 'originChainId' | 'destinationChainId' | 'fillDeadline' | 'expires'> {
   amount: string | null;
   originalAmount?: string;
@@ -561,6 +661,21 @@ export interface SerializedCrossChainDepositPendingActivity extends Omit<CrossCh
 }
 
 export interface SerializedCrossChainWithdrawalPendingActivity extends Omit<CrossChainWithdrawalPendingActivity, 'amount' | 'originalAmount' | 'vettingFeeAmount' | 'relayFeeAmount' | 'solverFeeAmount' | 'paymasterFeeRefund' | 'blockNumber' | 'timestamp' | 'originChainId' | 'destinationChainId' | 'fillDeadline' | 'expires'> {
+  amount: string | null;
+  originalAmount?: string;
+  vettingFeeAmount?: string;
+  relayFeeAmount?: string;
+  solverFeeAmount?: string;
+  paymasterFeeRefund?: string;
+  blockNumber: string;
+  timestamp: string;
+  originChainId: string;
+  destinationChainId: string;
+  fillDeadline?: string;
+  expires?: string;
+}
+
+export interface SerializedCrossChainWithdraw2PendingActivity extends Omit<CrossChainWithdraw2PendingActivity, 'amount' | 'originalAmount' | 'vettingFeeAmount' | 'relayFeeAmount' | 'solverFeeAmount' | 'paymasterFeeRefund' | 'blockNumber' | 'timestamp' | 'originChainId' | 'destinationChainId' | 'fillDeadline' | 'expires'> {
   amount: string | null;
   originalAmount?: string;
   vettingFeeAmount?: string;
@@ -593,10 +708,13 @@ export interface SerializedRagequitActivity extends Omit<RagequitActivity, 'amou
 export type SerializedTypedActivity =
   | SerializedDepositActivity
   | SerializedWithdrawalActivity
+  | SerializedWithdraw2Activity
   | SerializedCrossChainDepositActivity
   | SerializedCrossChainWithdrawalActivity
+  | SerializedCrossChainWithdraw2Activity
   | SerializedCrossChainDepositPendingActivity
   | SerializedCrossChainWithdrawalPendingActivity
+  | SerializedCrossChainWithdraw2PendingActivity
   | SerializedRagequitActivity;
 
 /**
@@ -613,6 +731,10 @@ export const isWithdrawalActivity = (
   activity: Activity
 ): activity is WithdrawalActivity => activity.type === 'WITHDRAWAL';
 
+export const isWithdraw2Activity = (
+  activity: Activity
+): activity is Withdraw2Activity => activity.type === 'WITHDRAW2';
+
 export const isCrossChainDepositActivity = (
   activity: Activity
 ): activity is CrossChainDepositActivity => activity.type === 'CROSSCHAIN_DEPOSIT';
@@ -620,6 +742,10 @@ export const isCrossChainDepositActivity = (
 export const isCrossChainWithdrawalActivity = (
   activity: Activity
 ): activity is CrossChainWithdrawalActivity => activity.type === 'CROSSCHAIN_WITHDRAWAL';
+
+export const isCrossChainWithdraw2Activity = (
+  activity: Activity
+): activity is CrossChainWithdraw2Activity => activity.type === 'CROSSCHAIN_WITHDRAW2';
 
 export const isCrossChainDepositPendingActivity = (
   activity: Activity
@@ -629,27 +755,38 @@ export const isCrossChainWithdrawalPendingActivity = (
   activity: Activity
 ): activity is CrossChainWithdrawalPendingActivity => activity.type === 'CROSSCHAIN_WITHDRAWAL_PENDING';
 
+export const isCrossChainWithdraw2PendingActivity = (
+  activity: Activity
+): activity is CrossChainWithdraw2PendingActivity => activity.type === 'CROSSCHAIN_WITHDRAW2_PENDING';
+
 export const isRagequitActivity = (
   activity: Activity
 ): activity is RagequitActivity => activity.type === 'RAGEQUIT';
 
+export const isAnyWithdrawalActivity = (
+  activity: Activity
+): activity is WithdrawalActivity | Withdraw2Activity =>
+  activity.type === 'WITHDRAWAL' || activity.type === 'WITHDRAW2';
+
 export const isCrossChainActivity = (
   activity: Activity
-): activity is CrossChainDepositActivity | CrossChainWithdrawalActivity =>
-  activity.type === 'CROSSCHAIN_DEPOSIT' || activity.type === 'CROSSCHAIN_WITHDRAWAL';
+): activity is CrossChainDepositActivity | CrossChainWithdrawalActivity | CrossChainWithdraw2Activity =>
+  activity.type === 'CROSSCHAIN_DEPOSIT' || activity.type === 'CROSSCHAIN_WITHDRAWAL' || activity.type === 'CROSSCHAIN_WITHDRAW2';
 
 export const isPendingCrossChainActivity = (
   activity: Activity
-): activity is CrossChainDepositPendingActivity | CrossChainWithdrawalPendingActivity =>
-  activity.type === 'CROSSCHAIN_DEPOSIT_PENDING' || activity.type === 'CROSSCHAIN_WITHDRAWAL_PENDING';
+): activity is CrossChainDepositPendingActivity | CrossChainWithdrawalPendingActivity | CrossChainWithdraw2PendingActivity =>
+  activity.type === 'CROSSCHAIN_DEPOSIT_PENDING' || activity.type === 'CROSSCHAIN_WITHDRAWAL_PENDING' || activity.type === 'CROSSCHAIN_WITHDRAW2_PENDING';
 
 export const isAnyCrossChainActivity = (
   activity: Activity
-): activity is CrossChainDepositActivity | CrossChainWithdrawalActivity | CrossChainDepositPendingActivity | CrossChainWithdrawalPendingActivity =>
+): activity is CrossChainDepositActivity | CrossChainWithdrawalActivity | CrossChainWithdraw2Activity | CrossChainDepositPendingActivity | CrossChainWithdrawalPendingActivity | CrossChainWithdraw2PendingActivity =>
   activity.type === 'CROSSCHAIN_DEPOSIT' ||
   activity.type === 'CROSSCHAIN_WITHDRAWAL' ||
+  activity.type === 'CROSSCHAIN_WITHDRAW2' ||
   activity.type === 'CROSSCHAIN_DEPOSIT_PENDING' ||
-  activity.type === 'CROSSCHAIN_WITHDRAWAL_PENDING';
+  activity.type === 'CROSSCHAIN_WITHDRAWAL_PENDING' ||
+  activity.type === 'CROSSCHAIN_WITHDRAW2_PENDING';
 
 /**
  * ========================================
@@ -740,10 +877,13 @@ export type EntityType = 'Activity' | 'Pool' | 'StateTreeLeaf' | 'ASPApprovalLis
 export interface ActivityTypeMap {
   DEPOSIT: DepositActivity;
   WITHDRAWAL: WithdrawalActivity;
+  WITHDRAW2: Withdraw2Activity;
   CROSSCHAIN_DEPOSIT: CrossChainDepositActivity;
   CROSSCHAIN_WITHDRAWAL: CrossChainWithdrawalActivity;
+  CROSSCHAIN_WITHDRAW2: CrossChainWithdraw2Activity;
   CROSSCHAIN_DEPOSIT_PENDING: CrossChainDepositPendingActivity;
   CROSSCHAIN_WITHDRAWAL_PENDING: CrossChainWithdrawalPendingActivity;
+  CROSSCHAIN_WITHDRAW2_PENDING: CrossChainWithdraw2PendingActivity;
   RAGEQUIT: RagequitActivity;
 }
 
@@ -753,10 +893,13 @@ export interface ActivityTypeMap {
 export interface SerializedActivityTypeMap {
   DEPOSIT: SerializedDepositActivity;
   WITHDRAWAL: SerializedWithdrawalActivity;
+  WITHDRAW2: SerializedWithdraw2Activity;
   CROSSCHAIN_DEPOSIT: SerializedCrossChainDepositActivity;
   CROSSCHAIN_WITHDRAWAL: SerializedCrossChainWithdrawalActivity;
+  CROSSCHAIN_WITHDRAW2: SerializedCrossChainWithdraw2Activity;
   CROSSCHAIN_DEPOSIT_PENDING: SerializedCrossChainDepositPendingActivity;
   CROSSCHAIN_WITHDRAWAL_PENDING: SerializedCrossChainWithdrawalPendingActivity;
+  CROSSCHAIN_WITHDRAW2_PENDING: SerializedCrossChainWithdraw2PendingActivity;
   RAGEQUIT: SerializedRagequitActivity;
 }
 

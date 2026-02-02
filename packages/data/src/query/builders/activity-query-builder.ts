@@ -12,12 +12,16 @@ import type {
   SerializedActivity,
   DepositActivity,
   WithdrawalActivity,
+  Withdraw2Activity,
   CrossChainDepositActivity,
   CrossChainWithdrawalActivity,
+  CrossChainWithdraw2Activity,
   SerializedDepositActivity,
   SerializedWithdrawalActivity,
+  SerializedWithdraw2Activity,
   SerializedCrossChainDepositActivity,
   SerializedCrossChainWithdrawalActivity,
+  SerializedCrossChainWithdraw2Activity,
   ActivityTypeMap,
   SerializedActivityTypeMap,
 } from '../../types/indexer.js';
@@ -190,6 +194,7 @@ export class ActivityQueryBuilder<
       label
       precommitmentHash
       spentNullifier
+      spentNullifier1
       newCommitment
       refundCommitment
       relayFeeAmount
@@ -406,6 +411,13 @@ export class ActivityQueryBuilder<
   }
 
   /**
+   * Filter only Withdraw2 activities - 2:1 JoinSplit (returns typed Withdraw2Activity[])
+   */
+  onlyWithdraw2(): ActivityQueryBuilder<Withdraw2Activity, SerializedWithdraw2Activity> {
+    return this.byTyped('WITHDRAW2');
+  }
+
+  /**
    * Filter only cross-chain deposit activities
    */
   onlyCrossChainDeposits(): ActivityQueryBuilder<
@@ -423,6 +435,16 @@ export class ActivityQueryBuilder<
     SerializedCrossChainWithdrawalActivity
   > {
     return this.byTyped('CROSSCHAIN_WITHDRAWAL');
+  }
+
+  /**
+   * Filter only cross-chain Withdraw2 activities - 2:1 JoinSplit cross-chain
+   */
+  onlyCrossChainWithdraw2(): ActivityQueryBuilder<
+    CrossChainWithdraw2Activity,
+    SerializedCrossChainWithdraw2Activity
+  > {
+    return this.byTyped('CROSSCHAIN_WITHDRAW2');
   }
 
   /**
@@ -545,6 +567,15 @@ export function createWithdrawalActivityQueryBuilder(
 }
 
 /**
+ * Create a typed Withdraw2 activity query builder (2:1 JoinSplit)
+ */
+export function createWithdraw2ActivityQueryBuilder(
+  client: IndexerClient
+): ActivityQueryBuilder<Withdraw2Activity, SerializedWithdraw2Activity> {
+  return new ActivityQueryBuilder<Withdraw2Activity, SerializedWithdraw2Activity>(client).onlyWithdraw2();
+}
+
+/**
  * Create a typed cross-chain deposit activity query builder
  */
 export function createCrossChainDepositActivityQueryBuilder(
@@ -564,4 +595,15 @@ export function createCrossChainWithdrawalActivityQueryBuilder(
   return new ActivityQueryBuilder<CrossChainWithdrawalActivity, SerializedCrossChainWithdrawalActivity>(
     client
   ).onlyCrossChainWithdrawals();
+}
+
+/**
+ * Create a typed cross-chain Withdraw2 activity query builder (2:1 JoinSplit cross-chain)
+ */
+export function createCrossChainWithdraw2ActivityQueryBuilder(
+  client: IndexerClient
+): ActivityQueryBuilder<CrossChainWithdraw2Activity, SerializedCrossChainWithdraw2Activity> {
+  return new ActivityQueryBuilder<CrossChainWithdraw2Activity, SerializedCrossChainWithdraw2Activity>(
+    client
+  ).onlyCrossChainWithdraw2();
 }
