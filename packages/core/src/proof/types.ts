@@ -93,28 +93,28 @@ export interface Withdraw2CircuitWitness {
   context: string;
 
   // Primary input (input0)
-  value0: string;
+  existingValue0: string;
   label0: string;
-  nullifier0: string;
-  secret0: string;
+  existingNullifier0: string;
+  existingSecret0: string;
   stateSiblings0: string[];
   stateIndex0: number;
   ASPSiblings0: string[];
   ASPIndex0: number;
 
   // Secondary input (input1)
-  value1: string;
+  existingValue1: string;
   label1: string;
-  nullifier1: string;
-  secret1: string;
+  existingNullifier1: string;
+  existingSecret1: string;
   stateSiblings1: string[];
   stateIndex1: number;
   ASPSiblings1: string[];
   ASPIndex1: number;
 
-  // Output (change note on primary chain)
-  newNullifier: string;
-  newSecret: string;
+  // Output (change note)
+  outputNullifier: string;
+  outputSecret: string;
 
   // Label selection: 0 = use label0, 1 = use label1
   labelSelector: number;

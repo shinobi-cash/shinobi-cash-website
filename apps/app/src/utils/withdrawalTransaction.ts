@@ -9,6 +9,8 @@ import type {
 import {
   getCrosschainWithdrawalSmartAccountClient,
   getWithdrawalSmartAccountClient,
+  getWithdraw2SmartAccountClient,
+  getCrosschainWithdraw2SmartAccountClient,
 } from "@/lib/clients";
 import {
   formatProofForContract,
@@ -57,13 +59,15 @@ export async function prepareUserOperation(
 }
 
 export async function executeUserOperation(
-  preparedUserOp: PreparedUserOperation
+  preparedUserOp: PreparedUserOperation,
+  isWithdraw2: boolean = false
 ): Promise<ExecutionResult> {
   const isCrossChain = preparedUserOp.context.kind === "cross-chain";
   const transactionHash = await executeWithdrawalUserOperation(
     preparedUserOp.smartAccountClient,
     preparedUserOp.userOperation,
-    isCrossChain
+    isCrossChain,
+    isWithdraw2
   );
   return { transactionHash, success: true };
 }
@@ -92,9 +96,10 @@ export async function prepareWithdraw2UserOperation(
         context.poolScope
       );
 
+  // Use withdraw2-specific smart account clients with the correct paymaster
   const smartAccountClient = isCrossChain
-    ? await getCrosschainWithdrawalSmartAccountClient()
-    : await getWithdrawalSmartAccountClient();
+    ? await getCrosschainWithdraw2SmartAccountClient()
+    : await getWithdraw2SmartAccountClient();
 
   const userOperation = isCrossChain
     ? await prepareCrossChainWithdrawalUserOperation(smartAccountClient, callData)

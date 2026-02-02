@@ -193,28 +193,28 @@ export function buildWithdraw2CircuitWitness(
     context: derivation.contextHash,
 
     // Primary input (input0)
-    value0: primaryNoteAmount.toString(),
+    existingValue0: primaryNoteAmount.toString(),
     label0: primaryLabel.toString(),
-    nullifier0: derivation.primary.existingNullifier.toString(),
-    secret0: derivation.primary.existingSecret.toString(),
+    existingNullifier0: derivation.primary.existingNullifier.toString(),
+    existingSecret0: derivation.primary.existingSecret.toString(),
     stateSiblings0: padArray(primaryStateProof.siblings, MAX_TREE_DEPTH).map((s) => s.toString()),
     stateIndex0: Object.is(primaryStateProof.index, Number.NaN) ? 0 : primaryStateProof.index,
     ASPSiblings0: padArray(primaryASPProof.siblings, MAX_TREE_DEPTH).map((s) => s.toString()),
     ASPIndex0: Object.is(primaryASPProof.index, Number.NaN) ? 0 : primaryASPProof.index,
 
     // Secondary input (input1)
-    value1: secondaryNoteAmount.toString(),
+    existingValue1: secondaryNoteAmount.toString(),
     label1: secondaryLabel.toString(),
-    nullifier1: derivation.secondary.existingNullifier.toString(),
-    secret1: derivation.secondary.existingSecret.toString(),
+    existingNullifier1: derivation.secondary.existingNullifier.toString(),
+    existingSecret1: derivation.secondary.existingSecret.toString(),
     stateSiblings1: padArray(secondaryStateProof.siblings, MAX_TREE_DEPTH).map((s) => s.toString()),
     stateIndex1: Object.is(secondaryStateProof.index, Number.NaN) ? 0 : secondaryStateProof.index,
     ASPSiblings1: padArray(secondaryASPProof.siblings, MAX_TREE_DEPTH).map((s) => s.toString()),
     ASPIndex1: Object.is(secondaryASPProof.index, Number.NaN) ? 0 : secondaryASPProof.index,
 
     // Output (change note)
-    newNullifier: derivation.primary.newNullifier.toString(),
-    newSecret: derivation.primary.newSecret.toString(),
+    outputNullifier: derivation.primary.newNullifier.toString(),
+    outputSecret: derivation.primary.newSecret.toString(),
 
     // Label selector
     labelSelector: derivation.labelSelector,

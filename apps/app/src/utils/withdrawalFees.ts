@@ -2,6 +2,8 @@ import type { FeeQuote, WithdrawalRequest, Withdraw2Request, WithdrawalKind } fr
 import {
   SAME_CHAIN_GAS_LIMITS,
   CROSS_CHAIN_GAS_LIMITS,
+  WITHDRAW2_SAME_CHAIN_GAS_LIMITS,
+  WITHDRAW2_CROSS_CHAIN_GAS_LIMITS,
   WITHDRAWAL_CONFIG,
 } from "@shinobi-cash/constants";
 import { validateFeeQuote } from "@/utils/withdrawalInvariants";
@@ -136,7 +138,8 @@ export async function quoteWithdraw2Fees(
     maxPriorityFeePerGas: gasPriceData.fast.maxPriorityFeePerGas,
   };
 
-  const gasLimits = kind === "cross-chain" ? CROSS_CHAIN_GAS_LIMITS : SAME_CHAIN_GAS_LIMITS;
+  // Use withdraw2-specific gas limits (higher due to 2-input proof verification)
+  const gasLimits = kind === "cross-chain" ? WITHDRAW2_CROSS_CHAIN_GAS_LIMITS : WITHDRAW2_SAME_CHAIN_GAS_LIMITS;
   const totalGas = calculateTotalGas(gasLimits);
   const estimatedGasCostWei = totalGas * gasPrice.maxFeePerGas;
   const relayFeeBPS = calculateRelayFeeBPS(

@@ -211,13 +211,23 @@ export const Errors = {
         "Failed to generate witness data",
         { cause }
       ),
-    proofFailed: (cause?: unknown) =>
-      new AppError(
-        "WITHDRAWAL",
-        ErrorCode.WITHDRAWAL.PROOF_FAILED,
-        "Proof generation failed. Please try again.",
-        { cause }
-      ),
+    proofFailed: (cause?: unknown) => {
+      // Extract meaningful message from cause if available
+      let message = "Proof generation failed. Please try again.";
+      if (cause instanceof Error) {
+        const causeMsg = cause.message.toLowerCase();
+        if (causeMsg.includes("not found in state tree")) {
+          message = "Note commitment not found. The indexer may still be syncing.";
+        } else if (causeMsg.includes("not approved by asp")) {
+          message = "Note not yet approved. Please wait for ASP approval.";
+        } else if (causeMsg.includes("failed to load")) {
+          message = "Failed to load circuit files. Please refresh and try again.";
+        } else if (causeMsg.includes("failed verification")) {
+          message = "Proof verification failed. Please try again.";
+        }
+      }
+      return new AppError("WITHDRAWAL", ErrorCode.WITHDRAWAL.PROOF_FAILED, message, { cause });
+    },
     transactionFailed: (message = "Transaction failed", cause?: unknown) =>
       new AppError("WITHDRAWAL", ErrorCode.WITHDRAWAL.TRANSACTION_FAILED, message, { cause }),
     confirmationFailed: (cause?: unknown) =>

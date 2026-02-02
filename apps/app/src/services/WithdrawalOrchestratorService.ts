@@ -46,6 +46,8 @@ import {
 import {
   SHINOBI_CASH_RELAY_WITHDRAWAL_PAYMASTER,
   SHINOBI_CASH_CROSSCHAIN_WITHDRAWAL_PAYMASTER,
+  SHINOBI_CASH_WITHDRAW2_PAYMASTER,
+  SHINOBI_CASH_CROSSCHAIN_WITHDRAW2_PAYMASTER,
 } from "@shinobi-cash/constants";
 import { POOL_CHAIN_ID } from "@/config/chains";
 
@@ -143,7 +145,9 @@ export class WithdrawalEngine {
     if (!this.state.preparedUserOp) {
       throw Errors.withdrawal.precondition("Withdrawal not prepared");
     }
-    const result = await executeUserOperation(this.state.preparedUserOp);
+    // Check if this is a withdraw2 operation by checking for primaryNote in request
+    const isWithdraw2 = !!(this.state.request && "primaryNote" in this.state.request);
+    const result = await executeUserOperation(this.state.preparedUserOp, isWithdraw2);
     this.state.executionResult = result;
     this.state.phase = "executed";
     return result;
@@ -296,18 +300,19 @@ export class WithdrawalEngine {
     const poolScopeString = await fetchPoolScope();
     const poolScope = BigInt(poolScopeString);
 
+    // Use withdraw2-specific paymasters for 2:1 merge withdrawals
     const withdrawalData =
       feeQuote.kind === "cross-chain"
         ? createCrossChainWithdrawalData(
             request.recipient,
             request.destinationChainId!,
-            SHINOBI_CASH_CROSSCHAIN_WITHDRAWAL_PAYMASTER.address,
+            SHINOBI_CASH_CROSSCHAIN_WITHDRAW2_PAYMASTER.address,
             BigInt(feeQuote.relayFeeBPS),
             BigInt(feeQuote.solverFeeBPS)
           )
         : createWithdrawalData(
             request.recipient,
-            SHINOBI_CASH_RELAY_WITHDRAWAL_PAYMASTER.address,
+            SHINOBI_CASH_WITHDRAW2_PAYMASTER.address,
             BigInt(feeQuote.relayFeeBPS)
           );
 
@@ -349,6 +354,8 @@ export class WithdrawalEngine {
   private async buildWithdraw2Witness(context: Withdraw2PipelineContext): Promise<Withdraw2Witness> {
     const poolAddress = context.request.primaryNote.poolAddress.toLowerCase();
 
+    console.log("[Withdraw2] Building witness for pool:", poolAddress);
+
     const [stateTreeLeavesRaw, aspData] = await Promise.all([
       fetchStateTreeLeaves(poolAddress),
       fetchASPData(),
@@ -356,6 +363,9 @@ export class WithdrawalEngine {
 
     const stateTreeLeaves = stateTreeLeavesRaw.map((leaf) => BigInt(leaf.leafValue));
     const aspTreeLeaves = aspData.approvalList.map((label: string) => BigInt(label));
+
+    console.log("[Withdraw2] State tree leaves count:", stateTreeLeaves.length);
+    console.log("[Withdraw2] ASP approved labels count:", aspTreeLeaves.length);
 
     const circuitInputs = {
       withdrawAmount: context.request.withdrawAmountWei,
@@ -365,31 +375,49 @@ export class WithdrawalEngine {
       secondaryLabel: BigInt(context.request.secondaryNote.label),
     };
 
+    console.log("[Withdraw2] Primary note label:", context.request.primaryNote.label);
+    console.log("[Withdraw2] Secondary note label:", context.request.secondaryNote.label);
+    console.log("[Withdraw2] Primary label in ASP:", aspTreeLeaves.includes(circuitInputs.primaryLabel));
+    console.log("[Withdraw2] Secondary label in ASP:", aspTreeLeaves.includes(circuitInputs.secondaryLabel));
+
     return { context, stateTreeLeaves, aspTreeLeaves, circuitInputs };
   }
 
   private async generateWithdraw2Proof(witness: Withdraw2Witness): Promise<Withdraw2Proof> {
     const { context, stateTreeLeaves, aspTreeLeaves, circuitInputs } = witness;
 
-    if (context.kind === "cross-chain") {
-      const circuitWitness = buildCrosschainWithdraw2CircuitWitness(
-        context.derivation as Parameters<typeof buildCrosschainWithdraw2CircuitWitness>[0],
+    console.log("[Withdraw2] Generating proof, kind:", context.kind);
+
+    try {
+      if (context.kind === "cross-chain") {
+        console.log("[Withdraw2] Building cross-chain circuit witness...");
+        const circuitWitness = buildCrosschainWithdraw2CircuitWitness(
+          context.derivation as Parameters<typeof buildCrosschainWithdraw2CircuitWitness>[0],
+          stateTreeLeaves,
+          aspTreeLeaves,
+          circuitInputs
+        );
+        console.log("[Withdraw2] Circuit witness built, generating proof...");
+        const proofData =
+          await withdrawalProofGenerator.generateCrosschainWithdraw2Proof(circuitWitness);
+        console.log("[Withdraw2] Proof generated successfully");
+        return { witness, proof: proofData.proof, publicSignals: proofData.publicSignals };
+      }
+
+      console.log("[Withdraw2] Building same-chain circuit witness...");
+      const circuitWitness = buildWithdraw2CircuitWitness(
+        context.derivation as Parameters<typeof buildWithdraw2CircuitWitness>[0],
         stateTreeLeaves,
         aspTreeLeaves,
         circuitInputs
       );
-      const proofData =
-        await withdrawalProofGenerator.generateCrosschainWithdraw2Proof(circuitWitness);
+      console.log("[Withdraw2] Circuit witness built, generating proof...");
+      const proofData = await withdrawalProofGenerator.generateWithdraw2Proof(circuitWitness);
+      console.log("[Withdraw2] Proof generated successfully");
       return { witness, proof: proofData.proof, publicSignals: proofData.publicSignals };
+    } catch (error) {
+      console.error("[Withdraw2] Proof generation failed:", error);
+      throw error;
     }
-
-    const circuitWitness = buildWithdraw2CircuitWitness(
-      context.derivation as Parameters<typeof buildWithdraw2CircuitWitness>[0],
-      stateTreeLeaves,
-      aspTreeLeaves,
-      circuitInputs
-    );
-    const proofData = await withdrawalProofGenerator.generateWithdraw2Proof(circuitWitness);
-    return { witness, proof: proofData.proof, publicSignals: proofData.publicSignals };
   }
 }

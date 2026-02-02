@@ -4,6 +4,8 @@ import {
   POOL_CHAIN,
   SHINOBI_CASH_RELAY_WITHDRAWAL_PAYMASTER,
   SHINOBI_CASH_CROSSCHAIN_WITHDRAWAL_PAYMASTER,
+  SHINOBI_CASH_WITHDRAW2_PAYMASTER,
+  SHINOBI_CASH_CROSSCHAIN_WITHDRAW2_PAYMASTER,
   SHINOBI_CASH_SUPPORTED_CHAINS,
 } from "@shinobi-cash/constants";
 import { createSmartAccountClient } from "permissionless";
@@ -54,14 +56,14 @@ async function createWithdrawalSmartAccountClient(paymasterAddress: `0x${string}
         return {
           paymaster: paymasterAddress,
           paymasterData: "0x" as `0x${string}`,
-          paymasterPostOpGasLimit: BigInt(35000),
+          paymasterPostOpGasLimit: BigInt(150000),
         };
       },
       async getPaymasterData() {
         return {
           paymaster: paymasterAddress,
           paymasterData: "0x" as `0x${string}`,
-          paymasterPostOpGasLimit: BigInt(35000),
+          paymasterPostOpGasLimit: BigInt(150000),
         };
       },
     },
@@ -75,4 +77,12 @@ export async function getWithdrawalSmartAccountClient() {
 
 export async function getCrosschainWithdrawalSmartAccountClient() {
   return createWithdrawalSmartAccountClient(SHINOBI_CASH_CROSSCHAIN_WITHDRAWAL_PAYMASTER.address);
+}
+
+export async function getWithdraw2SmartAccountClient() {
+  return createWithdrawalSmartAccountClient(SHINOBI_CASH_WITHDRAW2_PAYMASTER.address);
+}
+
+export async function getCrosschainWithdraw2SmartAccountClient() {
+  return createWithdrawalSmartAccountClient(SHINOBI_CASH_CROSSCHAIN_WITHDRAW2_PAYMASTER.address);
 }
