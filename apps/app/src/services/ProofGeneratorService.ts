@@ -61,9 +61,65 @@ const loadCrosschainCircuits: CircuitFileLoader = async () => {
 };
 
 /**
+ * Load Withdraw2 (same-chain 2:1 merge) circuits from public directory
+ */
+const loadWithdraw2Circuits: CircuitFileLoader = async () => {
+  const [wasmResponse, zkeyResponse, vkeyResponse] = await Promise.all([
+    fetch("/circuits/build/withdraw2/withdraw2.wasm"),
+    fetch("/circuits/keys/withdraw2.zkey"),
+    fetch("/circuits/keys/withdraw2.vkey"),
+  ]);
+
+  if (!wasmResponse.ok || !zkeyResponse.ok || !vkeyResponse.ok) {
+    throw new Error("Failed to load withdraw2 circuit files");
+  }
+
+  const [wasmBuffer, zkeyBuffer, vkeyData] = await Promise.all([
+    wasmResponse.arrayBuffer(),
+    zkeyResponse.arrayBuffer(),
+    vkeyResponse.json(),
+  ]);
+
+  return {
+    wasmFile: new Uint8Array(wasmBuffer),
+    zkeyFile: new Uint8Array(zkeyBuffer),
+    vkeyData,
+  };
+};
+
+/**
+ * Load CrosschainWithdraw2 (cross-chain 2:1 merge) circuits from public directory
+ */
+const loadCrosschainWithdraw2Circuits: CircuitFileLoader = async () => {
+  const [wasmResponse, zkeyResponse, vkeyResponse] = await Promise.all([
+    fetch("/circuits/build/crosschain_withdraw2/crosschain_withdraw2.wasm"),
+    fetch("/circuits/keys/crosschain_withdraw2.zkey"),
+    fetch("/circuits/keys/crosschain_withdraw2.vkey"),
+  ]);
+
+  if (!wasmResponse.ok || !zkeyResponse.ok || !vkeyResponse.ok) {
+    throw new Error("Failed to load crosschain withdraw2 circuit files");
+  }
+
+  const [wasmBuffer, zkeyBuffer, vkeyData] = await Promise.all([
+    wasmResponse.arrayBuffer(),
+    zkeyResponse.arrayBuffer(),
+    vkeyResponse.json(),
+  ]);
+
+  return {
+    wasmFile: new Uint8Array(wasmBuffer),
+    zkeyFile: new Uint8Array(zkeyBuffer),
+    vkeyData,
+  };
+};
+
+/**
  * Singleton proof generator with browser circuit loaders
  */
-export const withdrawalProofGenerator = createProofGenerator(
-  loadWithdrawalCircuits,
-  loadCrosschainCircuits
-);
+export const withdrawalProofGenerator = createProofGenerator({
+  withdrawalLoader: loadWithdrawalCircuits,
+  crosschainWithdrawalLoader: loadCrosschainCircuits,
+  withdraw2Loader: loadWithdraw2Circuits,
+  crosschainWithdraw2Loader: loadCrosschainWithdraw2Circuits,
+});
