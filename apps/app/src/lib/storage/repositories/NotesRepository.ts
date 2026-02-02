@@ -8,7 +8,7 @@ import {
 import {
   NoteDiscovery,
   type ActivityFetcher,
-  type DiscoveryState,
+  type SerializableDiscoveryState,
 } from "@shinobi-cash/core/discovery";
 import type { DiscoveryResult, DiscoveryOptions, NoteChain } from "@shinobi-cash/core/discovery";
 import {
@@ -48,7 +48,7 @@ export class NotesRepository {
         notes: cached.notes,
         lastUsedIndex: cached.lastUsedDepositIndex,
         newNotesFound: 0,
-        lastProcessedOffset: cached.lastProcessedOffset,
+        lastProcessedOffset: cached.lastProcessedOffset ?? 0,
       };
     }
 
@@ -81,7 +81,10 @@ export class NotesRepository {
     poolAddress: string,
     notes: NoteChain[],
     lastUsedDepositIndex: number,
-    lastProcessedOffset?: number
+    lastProcessedOffset?: number,
+    nullifierMap?: Array<{ hash: string; info: { depositIndex: number; changeIndex: number } }>,
+    nextDepositIndex?: number,
+    newDepositsFound?: number
   ): Promise<void> {
     const sensitiveData: CachedNoteData = {
       poolAddress,
@@ -90,6 +93,9 @@ export class NotesRepository {
       lastUsedDepositIndex,
       lastSyncTime: Date.now(),
       lastProcessedOffset,
+      nullifierMap,
+      nextDepositIndex,
+      newDepositsFound,
     };
 
     const encrypted = await this.encryptionService.encrypt(sensitiveData);
@@ -158,19 +164,42 @@ export class NotesRepository {
   ): Promise<DiscoveryResult> {
     // Create sync engine with persistence callbacks
     const engine = new NoteDiscovery(fetchActivities, {
-      loadState: async (pubKey: string, pool: string) => {
-        const cached = await this.getCachedNotes(pubKey, pool);
+      loadState: async (pubKey: string, pool: string): Promise<SerializableDiscoveryState | null> => {
+        const cached = await this.getCachedData(pubKey, pool);
         if (!cached) return null;
 
+        // Convert stored notes to chains array format
+        const chains = cached.notes.map((chain) => ({
+          depositIndex: chain[0]?.depositIndex ?? 0,
+          chain,
+        }));
+
         return {
-          notes: cached.notes,
-          lastUsedIndex: cached.lastUsedIndex,
-          offset: cached.lastProcessedOffset,
+          chains,
+          nullifierMap: cached.nullifierMap ?? [],
+          nextDepositIndex: cached.nextDepositIndex ?? (cached.lastUsedDepositIndex + 1),
+          offset: cached.lastProcessedOffset ?? 0,
+          newDepositsFound: cached.newDepositsFound ?? 0,
         };
       },
 
-      saveState: async (pubKey: string, pool: string, state: DiscoveryState) => {
-        await this.storeDiscoveredNotes(pubKey, pool, state.notes, state.offset);
+      saveState: async (pubKey: string, pool: string, state: SerializableDiscoveryState) => {
+        // Convert chains array back to NoteChain[]
+        const notes = state.chains.map((c) => c.chain);
+        const lastUsedIndex = notes.length > 0
+          ? Math.max(...notes.map((chain) => chain[0]?.depositIndex ?? 0))
+          : -1;
+
+        await this.storeData(
+          pubKey,
+          pool,
+          notes,
+          lastUsedIndex,
+          state.offset,
+          state.nullifierMap,
+          state.nextDepositIndex,
+          state.newDepositsFound
+        );
       },
     });
 
