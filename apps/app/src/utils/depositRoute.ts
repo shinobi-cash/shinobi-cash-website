@@ -8,7 +8,7 @@ import {
   EntrypointDepositAbi,
   SHINOBI_CASH_CROSSCHAIN_CONTRACTS,
   CrosschainDepositEntrypointAbi,
-  DEPOSIT_FEES,
+  FEE_CONFIG,
   POOL_CHAIN,
 } from "@shinobi-cash/constants";
 import type { Abi, Address } from "viem";
@@ -78,7 +78,7 @@ export function resolveDepositRoute(chainId: number): DepositRoute {
 export function buildDepositCallParams(
   route: DepositRoute,
   precommitment: bigint,
-  solverFeeBps: number = DEPOSIT_FEES.DEFAULT_SOLVER_FEE_BPS
+  solverFeeBps: number = FEE_CONFIG.DEFAULT_SOLVER_FEE_BPS
 ): DepositCallParams {
   if (route.isCrossChain) {
     return {
