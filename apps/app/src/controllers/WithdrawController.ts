@@ -3,7 +3,6 @@ import { parseEther, formatEther, isAddress } from "viem/utils";
 import type { Note } from "@shinobi-cash/core/discovery";
 import {
   selectNotesForWithdrawal,
-  isWithdraw2Selection,
   type WithdrawalSelection,
 } from "@shinobi-cash/core/withdrawal";
 import type { FeeQuote, WithdrawalRequest, Withdraw2Request } from "@/types/withdrawal";

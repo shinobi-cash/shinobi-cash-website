@@ -9,6 +9,7 @@ export {
   EntrypointCrosschainWithdrawalAbi,
   EntrypointDepositAbi,
   PoolScopeAbi,
+  PoolRagequitAbi,
   CrosschainDepositEntrypointAbi,
   EntrypointWithdraw2RelayAbi,
   EntrypointCrosschainWithdraw2Abi,

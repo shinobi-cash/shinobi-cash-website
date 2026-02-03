@@ -60,7 +60,7 @@ export function AddPasskeyModal({ open, onOpenChange }: AddPasskeyModalProps) {
       setError(getUserMessage(err, "Failed to verify setup"));
       setFailedStep("verifying");
     }
-  }, [onOpenChange]);
+  }, []);
 
   const isFailed = failedStep !== null;
   const isProcessing = (step === "registering" || step === "verifying") && !isFailed;

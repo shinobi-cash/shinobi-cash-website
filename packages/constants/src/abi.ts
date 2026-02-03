@@ -185,6 +185,35 @@ export const PoolScopeAbi = [
   },
 ] as const;
 
+// ============ RAGEQUIT ABIs ============
+
+/**
+ * ABI for ragequit (emergency exit)
+ * Allows original depositor to publicly withdraw without ASP approval
+ * RagequitProof has 4 public signals: [commitmentHash, nullifierHash, value, label]
+ */
+export const PoolRagequitAbi = [
+  {
+    type: 'function',
+    name: 'ragequit',
+    inputs: [
+      {
+        name: '_proof',
+        type: 'tuple',
+        internalType: 'struct ProofLib.RagequitProof',
+        components: [
+          { name: 'pA', type: 'uint256[2]', internalType: 'uint256[2]' },
+          { name: 'pB', type: 'uint256[2][2]', internalType: 'uint256[2][2]' },
+          { name: 'pC', type: 'uint256[2]', internalType: 'uint256[2]' },
+          { name: 'pubSignals', type: 'uint256[4]', internalType: 'uint256[4]' },
+        ],
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+] as const;
+
 // ============ CROSS-CHAIN DEPOSIT ABIs ============
 
 /**

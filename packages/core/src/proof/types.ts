@@ -53,6 +53,37 @@ export interface ProofGenerator {
   generateCrosschainWithdrawalProof(witness: CrosschainWithdrawalCircuitWitness): Promise<WithdrawalProofData>;
   generateWithdraw2Proof(witness: Withdraw2CircuitWitness): Promise<WithdrawalProofData>;
   generateCrosschainWithdraw2Proof(witness: CrosschainWithdraw2CircuitWitness): Promise<WithdrawalProofData>;
+  generateRagequitProof?(witness: RagequitCircuitWitness): Promise<RagequitProofData>;
+}
+
+// ============ RAGEQUIT TYPES ============
+
+/**
+ * Ragequit circuit witness (4 public signals)
+ *
+ * Public signals order (from commitment circuit):
+ * [0] commitmentHash - hash of the commitment
+ * [1] nullifierHash - hash of the nullifier
+ * [2] value - amount in the commitment
+ * [3] label - deposit label
+ *
+ * Private inputs:
+ * - nullifier - the secret nullifier
+ * - secret - the secret value
+ */
+export interface RagequitCircuitWitness {
+  value: string;
+  label: string;
+  nullifier: string;
+  secret: string;
+}
+
+/**
+ * Ragequit proof data with 4 public signals
+ */
+export interface RagequitProofData {
+  proof: snarkjs.Groth16Proof;
+  publicSignals: string[];
 }
 
 // ============ WITHDRAW2 (2:1) TYPES ============

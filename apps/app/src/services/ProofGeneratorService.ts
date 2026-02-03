@@ -115,6 +115,33 @@ const loadCrosschainWithdraw2Circuits: CircuitFileLoader = async () => {
 };
 
 /**
+ * Load ragequit (commitment) circuits from public directory
+ */
+const loadRagequitCircuits: CircuitFileLoader = async () => {
+  const [wasmResponse, zkeyResponse, vkeyResponse] = await Promise.all([
+    fetch("/circuits/build/ragequit/ragequit.wasm"),
+    fetch("/circuits/keys/ragequit.zkey"),
+    fetch("/circuits/keys/ragequit.vkey"),
+  ]);
+
+  if (!wasmResponse.ok || !zkeyResponse.ok || !vkeyResponse.ok) {
+    throw new Error("Failed to load ragequit circuit files");
+  }
+
+  const [wasmBuffer, zkeyBuffer, vkeyData] = await Promise.all([
+    wasmResponse.arrayBuffer(),
+    zkeyResponse.arrayBuffer(),
+    vkeyResponse.json(),
+  ]);
+
+  return {
+    wasmFile: new Uint8Array(wasmBuffer),
+    zkeyFile: new Uint8Array(zkeyBuffer),
+    vkeyData,
+  };
+};
+
+/**
  * Singleton proof generator with browser circuit loaders
  */
 export const withdrawalProofGenerator = createProofGenerator({
@@ -122,4 +149,5 @@ export const withdrawalProofGenerator = createProofGenerator({
   crosschainWithdrawalLoader: loadCrosschainCircuits,
   withdraw2Loader: loadWithdraw2Circuits,
   crosschainWithdraw2Loader: loadCrosschainWithdraw2Circuits,
+  ragequitLoader: loadRagequitCircuits,
 });
