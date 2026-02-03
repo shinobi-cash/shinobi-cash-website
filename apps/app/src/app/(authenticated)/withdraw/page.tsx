@@ -25,6 +25,7 @@ import { useScreenNavigation } from "@/hooks/useScreenNavigation";
 import { useWithdrawController } from "@/hooks/useWithdrawController";
 import { usePriceData } from "@/hooks/usePriceData";
 import { WithdrawController, WithdrawSelectors } from "@/controllers/WithdrawController";
+import { WithdrawSettings } from "@/components/shared/WithdrawSettings";
 
 type WithdrawScreen = "noteSelection" | "destinationSelection" | "preview" | "timeline";
 
@@ -176,7 +177,13 @@ export default function WithdrawPage() {
 
   return (
     <ScreenLayout
-      header={<ScreenHeader title="Withdraw" icon={<ArrowUpFromLine className="h-5 w-5" />} />}
+      header={
+        <ScreenHeader
+          title="Withdraw"
+          icon={<ArrowUpFromLine className="h-5 w-5" />}
+          rightContent={<WithdrawSettings />}
+        />
+      }
       contentClassName="px-4 py-4"
       footer={
         <Button

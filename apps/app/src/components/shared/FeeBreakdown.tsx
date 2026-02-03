@@ -9,6 +9,7 @@ import { formatUsdAmount } from "@/utils/formatters";
 import type { TokenSymbol } from "@/types/price";
 import { ChevronDown } from "lucide-react";
 import { LabelWithHover } from "./LabelWithHover";
+import { FEE_CONFIG } from "@shinobi-cash/constants";
 
 interface FeeBreakdownProps {
   /** Execution fee - accepts string (for estimates) or number (for exact values) */
@@ -100,7 +101,7 @@ export function FeeBreakdown({
           </div>
           {isCrossChain && solverFee !== undefined && solverFee > 0 && (
             <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Solver Fee (5%)</span>
+              <span className="text-muted-foreground">Solver Fee ({FEE_CONFIG.DEFAULT_SOLVER_FEE_BPS / 100}%)</span>
               <span className="text-orange-400">{renderFeeValue(solverFee, solverFeeUsd)}</span>
             </div>
           )}

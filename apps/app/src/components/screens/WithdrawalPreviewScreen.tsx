@@ -13,7 +13,8 @@ import { formatUsdAmount, formatHash, formatSmallEthAmount } from "@/utils/forma
 import {
   POOL_CHAIN,
   SHINOBI_CASH_SUPPORTED_CHAINS,
-  CROSSCHAIN_DEPOSIT_TIMING,
+  INTENT_TIMING,
+  FEE_CONFIG,
 } from "@shinobi-cash/constants";
 import { ShinobiCashNote, AssetChain } from "@/components/shared/AssetChain";
 
@@ -66,7 +67,8 @@ export function WithdrawalPreviewScreen({
     return `${minutes} minute${minutes > 1 ? "s" : ""}`;
   };
 
-  const fillDeadline = formatDuration(CROSSCHAIN_DEPOSIT_TIMING.FILL_DEADLINE_SECONDS);
+  const fillDeadline = formatDuration(INTENT_TIMING.FILL_DEADLINE_SECONDS);
+  const solverFeePercent = FEE_CONFIG.DEFAULT_SOLVER_FEE_BPS / 100;
 
   return (
     <ScreenLayout
@@ -178,7 +180,7 @@ export function WithdrawalPreviewScreen({
       <Section title="Fees">
         {isCrossChain && solverFee > 0 && (
           <Row
-            label="Solver Fee (5%)"
+            label={`Solver Fee (${solverFeePercent}%)`}
             value={<FeeValue amount={solverFee} usdValue={solverFeeUsd} />}
           />
         )}
