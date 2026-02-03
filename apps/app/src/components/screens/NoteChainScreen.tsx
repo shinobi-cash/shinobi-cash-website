@@ -3,15 +3,20 @@
  * Full-screen view for displaying note chain details with transaction timeline
  */
 
+import { useRouter } from "next/navigation";
 import { getTxExplorerUrl } from "@/config/chains";
 import type { NoteChain, Note, ChangeNote } from "@shinobi-cash/core/discovery";
 import { formatEthAmount, formatTimestamp, formatUsdAmount } from "@/utils/formatters";
-import { ExternalLink, ChevronDown, Merge } from "lucide-react";
+import { ExternalLink, ChevronDown, Merge, Lock, Unlock } from "lucide-react";
+import { Button } from "@workspace/ui/components/button";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";
 import { ScreenLayout } from "@/components/layout/ScreenLayout";
 import { Section, Row } from "@/components/shared/Section";
 import { CopyableText } from "@/components/shared/CopyableText";
 import { usePriceData } from "@/hooks/usePriceData";
+import { canWithdraw, canRagequit } from "@/utils/noteFiltering";
+import { WithdrawController } from "@/controllers/WithdrawController";
+import { RagequitController } from "@/controllers/RagequitController";
 
 interface NoteChainScreenProps {
   noteChain: NoteChain | null;
@@ -121,11 +126,25 @@ function buildTimelineEntries(noteChain: NoteChain): TimelineEntry[] {
 }
 
 export function NoteChainScreen({ noteChain, onBack }: NoteChainScreenProps) {
+  const router = useRouter();
   const { usdPrice } = usePriceData("ETH");
 
   if (!noteChain) return null;
 
   const lastNote = noteChain[noteChain.length - 1];
+  const canWithdrawPrivately = canWithdraw(lastNote);
+  const canWithdrawPublicly = canRagequit(lastNote);
+  const hasActions = canWithdrawPrivately || canWithdrawPublicly;
+
+  const handleWithdrawPrivately = () => {
+    WithdrawController.selectNote(lastNote);
+    router.push(`/withdraw?note=${lastNote.depositIndex}`);
+  };
+
+  const handleWithdrawPublicly = () => {
+    RagequitController.selectNote(lastNote);
+    router.push(`/ragequit?note=${lastNote.depositIndex}`);
+  };
 
   // Convert ETH amount to USD value
   const toUsdValue = (amount: string | bigint): number | null => {
@@ -146,6 +165,33 @@ export function NoteChainScreen({ noteChain, onBack }: NoteChainScreenProps) {
           subtitle="Detail of your private deposit and withdrawals"
           onBack={onBack}
         />
+      }
+      footer={
+        hasActions ? (
+          <div className="flex flex-row gap-3">
+            {canWithdrawPublicly && (
+              <Button
+                onClick={handleWithdrawPublicly}
+                variant="outline"
+                className="h-12 flex-1 rounded-xl border-white/10 text-sm font-semibold text-neutral-300 hover:bg-white/5 hover:text-white"
+                size="lg"
+              >
+                <Unlock className="mr-2 h-4 w-4" />
+                Withdraw Publicly
+              </Button>
+            )}
+            {canWithdrawPrivately && (
+              <Button
+                onClick={handleWithdrawPrivately}
+                className="h-12 flex-1 rounded-xl text-sm font-semibold sm:text-base"
+                size="lg"
+              >
+                <Lock className="mr-2 h-4 w-4" />
+                Withdraw Privately
+              </Button>
+            )}
+          </div>
+        ) : undefined
       }
     >
       <div className="space-y-4">
