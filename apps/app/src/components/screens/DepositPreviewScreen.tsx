@@ -7,11 +7,12 @@ import { ScreenLayout } from "@/components/layout/ScreenLayout";
 import { Section, Row } from "@/components/shared/Section";
 import { LabelWithHover } from "@/components/shared/LabelWithHover";
 import { usePriceData } from "@/hooks/usePriceData";
-import { formatUsdAmount, formatSmallEthAmount } from "@/utils/formatters";
+import { formatUsdAmount, formatDisplayAmount } from "@/utils/formatters";
 import {
   POOL_CHAIN,
   SHINOBI_CASH_SUPPORTED_CHAINS,
-  CROSSCHAIN_DEPOSIT_TIMING,
+  INTENT_TIMING,
+  FEE_CONFIG,
 } from "@shinobi-cash/constants";
 import { ShinobiCashNote, AssetChain } from "@/components/shared/AssetChain";
 
@@ -46,10 +47,11 @@ export function DepositPreviewScreen({
 
   // Fee calculation:
   // 1. Solver fee is deducted on origin chain (cross-chain only)
-  // 2. Vetting fee (1%) is deducted on pool chain from net amount
+  // 2. Vetting fee is deducted on pool chain from net amount
   // 3. Gas is paid separately, NOT deducted from note amount
   const netAfterSolverFee = depositAmountNum - solverFee;
   const depositNoteAmount = netAfterSolverFee - complianceFee;
+  const solverFeePercent = FEE_CONFIG.DEFAULT_SOLVER_FEE_BPS / 100;
 
   // Vetting fee is calculated on net amount after solver fee, not original deposit
   const vettingFeePercent = netAfterSolverFee > 0 ? (complianceFee / netAfterSolverFee) * 100 : 0;
@@ -75,9 +77,9 @@ export function DepositPreviewScreen({
     return `${minutes} minute${minutes > 1 ? "s" : ""}`;
   };
 
-  const fillDeadline = formatDuration(CROSSCHAIN_DEPOSIT_TIMING.FILL_DEADLINE_SECONDS);
+  const fillDeadline = formatDuration(INTENT_TIMING.FILL_DEADLINE_SECONDS);
   // TODO: Use once expiry is closer to fill deadline
-  // const refundWindow = formatDuration(CROSSCHAIN_DEPOSIT_TIMING.EXPIRY_SECONDS);
+  // const refundWindow = formatDuration(INTENT_TIMING.EXPIRY_SECONDS);
 
   return (
     <ScreenLayout
@@ -111,7 +113,7 @@ export function DepositPreviewScreen({
             <AssetChain assetSymbol="ETH" chainId={originChainId} />
             <div className="flex flex-col items-end">
               <span className="text-base font-bold sm:text-lg">
-                {formatSmallEthAmount(depositAmountNum)} ETH
+                {formatDisplayAmount(depositAmountNum)} ETH
               </span>
               {depositUsd !== null && (
                 <span className="text-xs text-neutral-500">~{formatUsdAmount(depositUsd)}</span>
@@ -144,7 +146,7 @@ export function DepositPreviewScreen({
             <ShinobiCashNote />
             <div className="flex flex-col items-end">
               <span className="text-base font-bold sm:text-lg">
-                {formatSmallEthAmount(depositNoteAmount)} ETH
+                {formatDisplayAmount(depositNoteAmount)} ETH
               </span>
               {noteUsd !== null && (
                 <span className="text-xs text-neutral-500">~{formatUsdAmount(noteUsd)}</span>
@@ -175,7 +177,7 @@ export function DepositPreviewScreen({
       <Section title="Fees">
         {isCrossChain && solverFee > 0 && (
           <Row
-            label="Solver Fee (5%)"
+            label={`Solver Fee (${solverFeePercent}%)`}
             value={<FeeValue amount={solverFee} usdValue={solverFeeUsd} />}
           />
         )}
@@ -203,7 +205,7 @@ export function DepositPreviewScreen({
 /* ---------- helpers ---------- */
 
 function FeeValue({ amount, usdValue }: { amount: number; usdValue: number | null }) {
-  const ethText = `${formatSmallEthAmount(amount)} ETH`;
+  const ethText = `${formatDisplayAmount(amount)} ETH`;
 
   if (usdValue !== null) {
     return (

@@ -5,7 +5,8 @@ import { useState, useEffect } from "react";
 import { useSwitchChain } from "wagmi";
 import { useSnapshot } from "valtio";
 import { Button } from "@workspace/ui/components/button";
-import { POOL_CHAIN, SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
+import { POOL_CHAIN, SHINOBI_CASH_ETH_POOL, MIN_AMOUNT_CONFIG, FEE_CONFIG } from "@shinobi-cash/constants";
+import { formatEther } from "viem";
 import { CardContainer } from "@/components/shared/CardContainer";
 import { AssetPill } from "@/components/shared/AssetPill";
 import { AmountInput } from "@/components/shared/AmountInput";
@@ -26,19 +27,21 @@ import { DepositTimelineScreen } from "@/components/screens/DepositTimelineScree
 import { ScreenLayout } from "@/components/layout/ScreenLayout";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";
 import { useScreenNavigation } from "@/hooks/useScreenNavigation";
-import { ETH_ASSET, DISPLAY_DECIMALS } from "@/constants/withdraw";
-import { formatUsdAmount } from "@/utils/formatters";
+import { ETH_ASSET } from "@/constants/withdraw";
+import { formatUsdAmount, formatDisplayAmount } from "@/utils/formatters";
+import { DepositSettings } from "@/components/shared/DepositSettings";
 
 type DepositScreen = "timeline" | "preview" | "assetSelector";
 
 function DepositNoteInfo() {
+  const vettingFeePercent = FEE_CONFIG.VETTING_FEE_BPS / 100;
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <CircleQuestionMarkIcon className="h-4 w-4 cursor-help text-neutral-400" />
       </TooltipTrigger>
       <TooltipContent>
-        <p>Amount after deducting the 1% compliance fee</p>
+        <p>Amount after deducting the {vettingFeePercent}% compliance fee</p>
       </TooltipContent>
     </Tooltip>
   );
@@ -108,9 +111,19 @@ export default function DepositPage() {
   // Calculate USD values
   const noteAmount = state.state.status === "ready" ? state.state.amounts.noteAmount : 0;
   const noteAmountUsd = usdPrice && noteAmount > 0 ? noteAmount * usdPrice : null;
+  const depositAmountUsd = usdPrice && parseFloat(state.amount) > 0 ? parseFloat(state.amount) * usdPrice : null;
 
   const isDisabled = state.state.status === "submitting" || !DepositSelectors.isOnSupportedChain();
-  const formattedBalance = parseFloat(state.wallet.balance).toFixed(DISPLAY_DECIMALS);
+  const formattedBalance = formatDisplayAmount(state.wallet.balance);
+
+  // Minimum amount validation
+  const isCrossChain = DepositSelectors.isCrossChain();
+  const minAmount = isCrossChain
+    ? MIN_AMOUNT_CONFIG.MIN_CROSSCHAIN_DEPOSIT
+    : MIN_AMOUNT_CONFIG.MIN_POOL_DEPOSIT;
+  const minAmountEth = parseFloat(formatEther(minAmount));
+  const depositAmountNum = parseFloat(state.amount) || 0;
+  const isBelowMinimum = state.amount.trim() !== "" && depositAmountNum > 0 && !DepositSelectors.isAboveMinimum();
 
   // Deposit Timeline Screen
   if (screens.is("timeline")) {
@@ -197,26 +210,34 @@ export default function DepositPage() {
   // Main Deposit Form
   return (
     <ScreenLayout
-      header={<ScreenHeader title="Deposit" icon={<ArrowDownToLine className="h-5 w-5" />} />}
+      header={
+        <ScreenHeader
+          title="Deposit"
+          icon={<ArrowDownToLine className="h-5 w-5" />}
+          rightContent={<DepositSettings />}
+        />
+      }
       contentClassName="px-4 py-4"
       footer={
         <Button
-          disabled={!DepositSelectors.canDeposit()}
+          disabled={!DepositSelectors.canDeposit() || isBelowMinimum}
           onClick={handleReviewDeposit}
           className="h-12 w-full rounded-xl text-base font-semibold disabled:cursor-not-allowed disabled:opacity-50 sm:h-14 sm:text-lg"
           size="lg"
         >
           {state.state.status === "preparing"
             ? "Estimating gas..."
-            : state.state.status === "ready"
+            : state.state.status === "ready" && !isBelowMinimum
               ? "Review Deposit"
               : !state.amount.trim()
                 ? "Enter Amount to Deposit"
-                : !state.wallet.isConnected
-                  ? "Connect Wallet to Continue"
-                  : !DepositSelectors.isOnSupportedChain()
-                    ? "Switch to Supported Network"
-                    : "Review Deposit"}
+                : isBelowMinimum
+                  ? `Minimum ${minAmountEth} ETH`
+                  : !state.wallet.isConnected
+                    ? "Connect Wallet to Continue"
+                    : !DepositSelectors.isOnSupportedChain()
+                      ? "Switch to Supported Network"
+                      : "Review Deposit"}
         </Button>
       }
     >
@@ -267,13 +288,17 @@ export default function DepositPage() {
               value={state.amount}
               onChange={(value) => DepositController.setAmount(value)}
               disabled={isDisabled}
+              error={isBelowMinimum}
             />
           </div>
-          <div className="flex items-center justify-end">
-            <QuickAmountButtons
-              onSelect={handleQuickAmount}
-              disabled={isDisabled || parseFloat(state.wallet.balance) <= 0}
-            />
+          <div className="flex items-center">
+            <AmountUsd amountUsd={depositAmountUsd} />
+            <div className="ml-auto">
+              <QuickAmountButtons
+                onSelect={handleQuickAmount}
+                disabled={isDisabled || parseFloat(state.wallet.balance) <= 0}
+              />
+            </div>
           </div>
         </CardContainer>
 
@@ -302,7 +327,7 @@ export default function DepositPage() {
           <div className="flex items-center justify-between gap-3">
             <AssetPill asset={asset} chainId={POOL_CHAIN.id} disabled />
             <AmountInput
-              value={noteAmount > 0 ? noteAmount.toFixed(DISPLAY_DECIMALS) : "0"}
+              value={noteAmount > 0 ? formatDisplayAmount(noteAmount) : "0"}
               disabled
             />
           </div>

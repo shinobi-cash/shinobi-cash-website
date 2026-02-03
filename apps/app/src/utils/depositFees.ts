@@ -2,6 +2,8 @@
  * Deposit fee calculations
  */
 
+import { FEE_CONFIG } from "@shinobi-cash/constants";
+
 export type DepositKind = "same-chain" | "cross-chain";
 
 export interface DepositFeeBreakdown {
@@ -16,7 +18,7 @@ export interface DepositFeeBreakdown {
  */
 export function calculateComplianceFee(
   depositAmount: number,
-  complianceFeeBPS: number = 100
+  complianceFeeBPS: number = FEE_CONFIG.VETTING_FEE_BPS
 ): number {
   return (depositAmount * complianceFeeBPS) / 10000;
 }
@@ -26,7 +28,7 @@ export function calculateComplianceFee(
  */
 export function calculateDepositNoteAmount(
   depositAmount: number,
-  complianceFeeBPS: number = 100
+  complianceFeeBPS: number = FEE_CONFIG.VETTING_FEE_BPS
 ): number {
   const fee = calculateComplianceFee(depositAmount, complianceFeeBPS);
   return depositAmount - fee;
@@ -37,7 +39,7 @@ export function calculateDepositNoteAmount(
  */
 export function calculateDepositFeeBreakdown(
   amount: string,
-  complianceFeeBPS: number = 100
+  complianceFeeBPS: number = FEE_CONFIG.VETTING_FEE_BPS
 ): DepositFeeBreakdown {
   const depositAmount = parseFloat(amount) || 0;
   const complianceFee = calculateComplianceFee(depositAmount, complianceFeeBPS);

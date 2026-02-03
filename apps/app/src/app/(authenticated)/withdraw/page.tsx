@@ -17,14 +17,15 @@ import { NoteSelectionScreen } from "@/components/screens/NoteSelectionScreen";
 import { NoteAvatarGroup } from "@/components/shared/NoteAvatarGroup";
 import { WithdrawalPreviewScreen } from "@/components/screens/WithdrawalPreviewScreen";
 import { WithdrawalTimelineScreen } from "@/components/screens/WithdrawalTimelineScreen";
-import { DISPLAY_DECIMALS, ETH_ASSET } from "@/constants/withdraw";
-import { formatEthAmount, formatUsdAmount } from "@/utils/formatters";
+import { ETH_ASSET } from "@/constants/withdraw";
+import { formatEthAmount, formatUsdAmount, formatDisplayAmount } from "@/utils/formatters";
 import { ScreenLayout } from "@/components/layout/ScreenLayout";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";
 import { useScreenNavigation } from "@/hooks/useScreenNavigation";
 import { useWithdrawController } from "@/hooks/useWithdrawController";
 import { usePriceData } from "@/hooks/usePriceData";
 import { WithdrawController, WithdrawSelectors } from "@/controllers/WithdrawController";
+import { WithdrawSettings } from "@/components/shared/WithdrawSettings";
 
 type WithdrawScreen = "noteSelection" | "destinationSelection" | "preview" | "timeline";
 
@@ -154,7 +155,7 @@ export default function WithdrawPage() {
   // Convert total note amount from wei string to ETH number (sum of all selected notes)
   const noteBalance = hasSelectedNotes
     ? state.selectedNotes.reduce(
-        (sum, note) => sum + parseFloat(formatEthAmount(note.amount)),
+        (sum, note) => sum + parseFloat(formatEthAmount(note.amount, { maxDecimals: 18 })),
         0
       )
     : 0;
@@ -162,6 +163,7 @@ export default function WithdrawPage() {
   // Calculate USD values
   const youReceiveAmount = WithdrawSelectors.getYouReceive();
   const youReceiveUsd = usdPrice && youReceiveAmount > 0 ? youReceiveAmount * usdPrice : null;
+  const withdrawAmountUsd = usdPrice && parseFloat(state.amount) > 0 ? parseFloat(state.amount) * usdPrice : null;
 
   // Quick amount handler
   const handleQuickAmount = (percentage: number) => {
@@ -176,7 +178,13 @@ export default function WithdrawPage() {
 
   return (
     <ScreenLayout
-      header={<ScreenHeader title="Withdraw" icon={<ArrowUpFromLine className="h-5 w-5" />} />}
+      header={
+        <ScreenHeader
+          title="Withdraw"
+          icon={<ArrowUpFromLine className="h-5 w-5" />}
+          rightContent={<WithdrawSettings />}
+        />
+      }
       contentClassName="px-4 py-4"
       footer={
         <Button
@@ -205,7 +213,7 @@ export default function WithdrawPage() {
             <div className="flex items-center gap-2">
               {hasSelectedNotes && (
                 <span className="text-sm text-neutral-400">
-                  {noteBalance.toFixed(DISPLAY_DECIMALS)} {asset.symbol}
+                  {formatDisplayAmount(noteBalance)} {asset.symbol}
                 </span>
               )}
               <NoteAvatarGroup
@@ -228,11 +236,14 @@ export default function WithdrawPage() {
             />
           </div>
 
-          <div className="flex items-center justify-end">
-            <QuickAmountButtons
-              onSelect={handleQuickAmount}
-              disabled={isDisabled || noteBalance <= 0}
-            />
+          <div className="flex items-center">
+            <AmountUsd amountUsd={withdrawAmountUsd} />
+            <div className="ml-auto">
+              <QuickAmountButtons
+                onSelect={handleQuickAmount}
+                disabled={isDisabled || noteBalance <= 0}
+              />
+            </div>
           </div>
         </CardContainer>
 
@@ -321,7 +332,7 @@ export default function WithdrawPage() {
             <AmountInput
               value={
                 youReceiveAmount > 0
-                  ? youReceiveAmount.toFixed(DISPLAY_DECIMALS)
+                  ? formatDisplayAmount(youReceiveAmount)
                   : state.amount || "0"
               }
               disabled

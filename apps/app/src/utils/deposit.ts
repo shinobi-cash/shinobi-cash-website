@@ -67,10 +67,11 @@ export const depositService = {
     noteData: CashNoteData,
     chainId: number,
     publicClient: PublicClient,
-    gasPrice: bigint
+    gasPrice: bigint,
+    solverFeeBPS?: number
   ): Promise<GasEstimate> {
     const route = resolveDepositRoute(chainId);
-    const callParams = buildDepositCallParams(route, noteData.precommitment);
+    const callParams = buildDepositCallParams(route, noteData.precommitment, solverFeeBPS);
     const valueWei = parseEther(amount);
 
     const gasLimit = await estimateContractGas(publicClient, {
@@ -96,11 +97,12 @@ export const depositService = {
     noteData: CashNoteData,
     chainId: number,
     walletClient: WalletClient,
-    gasPrice?: bigint
+    gasPrice?: bigint,
+    solverFeeBPS?: number
   ): Promise<`0x${string}`> {
     const amountWei = parseEther(amount);
     const route = resolveDepositRoute(chainId);
-    const callParams = buildDepositCallParams(route, noteData.precommitment);
+    const callParams = buildDepositCallParams(route, noteData.precommitment, solverFeeBPS);
 
     // Add 50% buffer to gas price to handle L2 gas fluctuations
     const gasParams = gasPrice

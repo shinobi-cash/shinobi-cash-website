@@ -12,6 +12,7 @@ interface AmountInputProps {
   disabled?: boolean;
   placeholder?: string;
   className?: string;
+  error?: boolean;
 }
 
 export function AmountInput({
@@ -20,6 +21,7 @@ export function AmountInput({
   disabled = false,
   placeholder = "0",
   className,
+  error = false,
 }: AmountInputProps) {
   const handleChange = (newValue: string) => {
     if (!onChange) return;
@@ -44,6 +46,7 @@ export function AmountInput({
         "text-white placeholder:text-white",
         "focus:outline-none",
         "disabled:cursor-not-allowed disabled:opacity-40",
+        error && "text-red-400",
         className
       )}
     />

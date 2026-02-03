@@ -14,7 +14,7 @@ import {
 } from "@/components/shared/Timeline";
 import { type AppError, getUserMessage, ErrorCode } from "@/lib/errors/errors";
 import { getTxExplorerUrl } from "@/config/chains";
-import { formatDateTime, formatEthAmount } from "@/utils/formatters";
+import { formatDateTime, formatEthAmount, formatDisplayAmount } from "@/utils/formatters";
 import { POOL_CHAIN } from "@shinobi-cash/constants";
 
 type RagequitStatus =
@@ -196,7 +196,7 @@ export function RagequitTimelineScreen({
         <div className="flex flex-col items-center space-y-2 text-center">
           <StatusIcon isComplete={isComplete} hasError={hasError} />
           <h2 className="text-2xl font-bold">{title}</h2>
-          <span className="text-5xl font-extrabold">{amountNum.toFixed(4)} ETH</span>
+          <span className="text-5xl font-extrabold">{formatDisplayAmount(amountNum)} ETH</span>
         </div>
 
         <TimelineSteps items={timeline} />

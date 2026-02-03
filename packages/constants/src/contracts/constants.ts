@@ -25,21 +25,41 @@ export const WITHDRAWAL_ACCOUNT_PRIVATE_KEY =
   "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80" as `0x${string}`;
 
 /**
- * Withdrawal configuration values
- * These values match the contract configuration
+ * Fee configuration values
+ * These values must match the contract configuration
  */
-export const WITHDRAWAL_CONFIG = {
-  /** Maximum relay fee in basis points (15%) - must match contract's maxRelayFeeBPS */
+export const FEE_CONFIG = {
+  /** Vetting/compliance fee in basis points (1%) - charged on all deposits */
+  VETTING_FEE_BPS: 100,
+
+  /** Maximum relay fee in basis points (15%) - max paymaster can charge */
   MAX_RELAY_FEE_BPS: 1500,
 
-  /** Default solver fee for cross-chain withdrawals (5%) */
+  /** Default solver fee for cross-chain operations (5%) */
   DEFAULT_SOLVER_FEE_BPS: 500,
+} as const;
 
-  /** Minimum deposit amount (0.0001 ETH) */
-  MINIMUM_DEPOSIT_AMOUNT: BigInt(100000000000000),
+/**
+ * Minimum amount configuration
+ * These values must match the contract configuration
+ */
+export const MIN_AMOUNT_CONFIG = {
+  /** Minimum deposit to pool (0.001 ETH) */
+  MIN_POOL_DEPOSIT: BigInt("1000000000000000"), // 0.001 ETH
 
-  /** Vetting fee in basis points (0.1%) */
-  VETTING_FEE_BPS: 10,
+  /** Minimum cross-chain deposit (0.01 ETH) - higher due to solver economics */
+  MIN_CROSSCHAIN_DEPOSIT: BigInt("10000000000000000"), // 0.01 ETH
+} as const;
+
+/**
+ * @deprecated Use FEE_CONFIG and MIN_AMOUNT_CONFIG instead
+ * Kept for backwards compatibility
+ */
+export const WITHDRAWAL_CONFIG = {
+  MAX_RELAY_FEE_BPS: FEE_CONFIG.MAX_RELAY_FEE_BPS,
+  DEFAULT_SOLVER_FEE_BPS: FEE_CONFIG.DEFAULT_SOLVER_FEE_BPS,
+  MINIMUM_DEPOSIT_AMOUNT: MIN_AMOUNT_CONFIG.MIN_POOL_DEPOSIT,
+  VETTING_FEE_BPS: FEE_CONFIG.VETTING_FEE_BPS,
 } as const;
 
 /**
@@ -131,22 +151,33 @@ export const WITHDRAW2_CROSS_CHAIN_GAS_LIMITS = {
 } as const;
 
 /**
- * Deposit fee configuration
+ * @deprecated Use FEE_CONFIG instead
+ * Kept for backwards compatibility
  */
 export const DEPOSIT_FEES = {
-  /** Compliance/vetting fee in basis points (1%) */
-  COMPLIANCE_FEE_BPS: 100,
-
-  /** Default solver fee for cross-chain deposits (5%) */
-  DEFAULT_SOLVER_FEE_BPS: 500,
+  COMPLIANCE_FEE_BPS: FEE_CONFIG.VETTING_FEE_BPS,
+  DEFAULT_SOLVER_FEE_BPS: FEE_CONFIG.DEFAULT_SOLVER_FEE_BPS,
 } as const;
 
 /**
- * Cross-chain deposit timing parameters (from contract defaults)
+ * Cross-chain intent timing parameters
+ * These values must match the contract configuration
+ */
+export const INTENT_TIMING = {
+  /** Solver must fill within this time (23 hours) */
+  FILL_DEADLINE_SECONDS: 82800,
+
+  /** User can claim refund after this time if not filled (24 hours) */
+  EXPIRY_SECONDS: 86400,
+} as const;
+
+/**
+ * @deprecated Use INTENT_TIMING instead
+ * Kept for backwards compatibility
  */
 export const CROSSCHAIN_DEPOSIT_TIMING = {
-  FILL_DEADLINE_SECONDS: 3600, // 1 hour - solver must fill within this time
-  EXPIRY_SECONDS: 86400, // 24 hours - user can refund after this time if not filled
+  FILL_DEADLINE_SECONDS: INTENT_TIMING.FILL_DEADLINE_SECONDS,
+  EXPIRY_SECONDS: INTENT_TIMING.EXPIRY_SECONDS,
 } as const;
 
 // ============ INDEXER CONSTANTS ============

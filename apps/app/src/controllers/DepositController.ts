@@ -2,7 +2,8 @@ import { proxy } from "valtio";
 import { depositService, type CashNoteData, type GasEstimate } from "@/utils/deposit";
 import { isDepositSupported } from "@/utils/depositRoute";
 import { createStateMachine } from "@/utils/stateMachine";
-import { DEPOSIT_FEES, POOL_CHAIN } from "@shinobi-cash/constants";
+import { FEE_CONFIG, POOL_CHAIN, MIN_AMOUNT_CONFIG } from "@shinobi-cash/constants";
+import { parseEther } from "viem";
 import { calculateDepositFeeBreakdown } from "@/utils/depositFees";
 import type { PublicClient, WalletClient } from "viem";
 import { AuthController } from "@/controllers/AuthController";
@@ -48,6 +49,8 @@ interface DepositControllerState {
   amount: string;
   lastPreparedAmounts: DepositAmounts | null;
   wallet: WalletContext;
+  /** User-configurable solver fee in basis points (default from FEE_CONFIG) */
+  solverFeeBPS: number;
 }
 
 const state = proxy<DepositControllerState>({
@@ -63,6 +66,7 @@ const state = proxy<DepositControllerState>({
     walletClient: undefined,
     gasPrice: undefined,
   },
+  solverFeeBPS: FEE_CONFIG.DEFAULT_SOLVER_FEE_BPS,
 });
 
 export const DepositSelectors = {
@@ -74,13 +78,34 @@ export const DepositSelectors = {
       state.amount.trim() !== "" &&
       state.wallet.isConnected &&
       crypto.cryptoReady &&
-      isDepositSupported(state.wallet.chainId)
+      isDepositSupported(state.wallet.chainId) &&
+      DepositSelectors.isAboveMinimum()
     );
   },
 
   isCrossChain: () => state.wallet.chainId !== POOL_CHAIN.id,
 
   isOnSupportedChain: () => isDepositSupported(state.wallet.chainId),
+
+  isAboveMinimum: () => {
+    const amount = state.amount.trim();
+    if (!amount) return false;
+
+    const amountNum = parseFloat(amount);
+    if (isNaN(amountNum) || amountNum <= 0) return false;
+
+    const isCrossChain = state.wallet.chainId !== POOL_CHAIN.id;
+    const minAmount = isCrossChain
+      ? MIN_AMOUNT_CONFIG.MIN_CROSSCHAIN_DEPOSIT
+      : MIN_AMOUNT_CONFIG.MIN_POOL_DEPOSIT;
+
+    try {
+      const amountWei = parseEther(amount);
+      return amountWei >= minAmount;
+    } catch {
+      return false;
+    }
+  },
 };
 
 let prepareId = 0;
@@ -181,7 +206,8 @@ export const DepositController = {
         noteData,
         wallet.chainId,
         wallet.publicClient,
-        wallet.gasPrice
+        wallet.gasPrice,
+        state.solverFeeBPS
       );
     } catch (error) {
       if (current !== prepareId) return;
@@ -191,10 +217,10 @@ export const DepositController = {
 
     if (current !== prepareId) return;
 
-    const amounts = calculateDepositFeeBreakdown(amount, DEPOSIT_FEES.COMPLIANCE_FEE_BPS);
+    const amounts = calculateDepositFeeBreakdown(amount, FEE_CONFIG.VETTING_FEE_BPS);
     const isCrossChain = wallet.chainId !== POOL_CHAIN.id;
     const solverFee = isCrossChain
-      ? (parseFloat(amount) * DEPOSIT_FEES.DEFAULT_SOLVER_FEE_BPS) / 10_000
+      ? (parseFloat(amount) * state.solverFeeBPS) / 10_000
       : 0;
 
     const preparedAmounts = { ...amounts, solverFee };
@@ -225,7 +251,8 @@ export const DepositController = {
         noteData,
         wallet.chainId,
         wallet.walletClient,
-        wallet.gasPrice
+        wallet.gasPrice,
+        state.solverFeeBPS
       );
       transition({ status: "confirming", txHash });
       this._trackTransaction(txHash);
@@ -239,6 +266,14 @@ export const DepositController = {
     state.amount = "";
     state.lastPreparedAmounts = null;
     transition({ status: "idle" });
+  },
+
+  setSolverFeeBPS(feeBPS: number) {
+    state.solverFeeBPS = feeBPS;
+    // Re-prepare if already in ready state to update calculations
+    if (state.state.status === "ready") {
+      this.schedulePrepare(0);
+    }
   },
 
   async retry() {
