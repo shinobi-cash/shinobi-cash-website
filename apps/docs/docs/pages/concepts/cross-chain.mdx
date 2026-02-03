@@ -126,6 +126,77 @@ Two oracles ensure secure cross-chain settlement:
 | **fillOracle** | Dest → Origin | Proves the solver filled the intent |
 | **intentOracle** | Origin → Dest | Proves the intent is legitimate (deposits only) |
 
+## Why intentOracle is Required (Shinobi Extension)
+
+:::warning[Critical Security]
+This is Shinobi's key extension to the standard OIF. Without it, privacy pools are vulnerable to money laundering attacks.
+:::
+
+### The Problem with Optimistic Settlement
+
+Standard cross-chain intent systems (like ERC-7683) use **optimistic settlement**:
+
+```
+Standard Flow (ERC-7683):
+1. User signs intent (off-chain)
+2. Solver fills on destination (fronts capital)
+3. Solver claims reimbursement on origin
+```
+
+The security assumption: **Solvers are economically rational** — they won't fill intents they can't profitably settle.
+
+### Why Optimistic Fails for Privacy Pools
+
+In privacy pools, an attacker can control **both the "user" and the solver**:
+
+```
+Attack:
+1. Attacker has illicit funds in address A
+2. Attacker controls clean address B
+3. Attacker signs intent with B as depositor (but B has no funds)
+4. Attacker (as solver) fills with A's illicit funds
+5. Deposit attributed to B (clean) → passes ASP
+6. Settlement fails (B never deposited) — attacker doesn't care
+7. Attacker withdraws "clean" funds via ZK proof
+
+Result: FREE LAUNDERING
+```
+
+The attacker doesn't lose funds — they just moved illicit funds through the pool with clean attribution.
+
+### Shinobi's Solution: Input-First with Intent Proof
+
+Shinobi requires **verified deposits** before fills are accepted:
+
+```
+Shinobi Flow:
+1. User deposits on origin → funds escrowed (user = msg.sender)
+2. Intent oracle proves deposit to destination
+3. Fill ONLY accepted with valid intent proof
+4. Depositor address cryptographically bound to fund provider
+```
+
+```solidity
+// ShinobiDepositOutputSettler.fill()
+if (!IInputOracle(intentOracle).isProven(orderId))
+    revert IntentNotProven();  // Blocks fill without real deposit
+```
+
+This ensures the **depositor address equals the fund provider** — not just someone who signed an authorization.
+
+### Why This Can't Use Standard ERC-7683
+
+ERC-7683's optimistic model is **fundamentally incompatible** with privacy pool deposits:
+
+| Aspect | ERC-7683 (Optimistic) | Shinobi (Verified) |
+|--------|----------------------|-------------------|
+| Security model | Solver economic rationality | Cryptographic proof |
+| Assumption | Solver ≠ User | Attacker may be both |
+| Fill validation | None (optimistic) | Intent oracle required |
+| Compatible with | Standard solver marketplaces | Shinobi-aware solvers |
+
+The trade-off: Shinobi cannot use generic ERC-7683 solver marketplaces for deposits, but gains critical security against money laundering.
+
 ## Refund Mechanism
 
 If a cross-chain withdrawal intent expires without being filled:
