@@ -17,8 +17,8 @@ import { NoteSelectionScreen } from "@/components/screens/NoteSelectionScreen";
 import { NoteAvatarGroup } from "@/components/shared/NoteAvatarGroup";
 import { WithdrawalPreviewScreen } from "@/components/screens/WithdrawalPreviewScreen";
 import { WithdrawalTimelineScreen } from "@/components/screens/WithdrawalTimelineScreen";
-import { DISPLAY_DECIMALS, ETH_ASSET } from "@/constants/withdraw";
-import { formatEthAmount, formatUsdAmount } from "@/utils/formatters";
+import { ETH_ASSET } from "@/constants/withdraw";
+import { formatEthAmount, formatUsdAmount, formatDisplayAmount } from "@/utils/formatters";
 import { ScreenLayout } from "@/components/layout/ScreenLayout";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";
 import { useScreenNavigation } from "@/hooks/useScreenNavigation";
@@ -155,7 +155,7 @@ export default function WithdrawPage() {
   // Convert total note amount from wei string to ETH number (sum of all selected notes)
   const noteBalance = hasSelectedNotes
     ? state.selectedNotes.reduce(
-        (sum, note) => sum + parseFloat(formatEthAmount(note.amount)),
+        (sum, note) => sum + parseFloat(formatEthAmount(note.amount, { maxDecimals: 18 })),
         0
       )
     : 0;
@@ -213,7 +213,7 @@ export default function WithdrawPage() {
             <div className="flex items-center gap-2">
               {hasSelectedNotes && (
                 <span className="text-sm text-neutral-400">
-                  {noteBalance.toFixed(DISPLAY_DECIMALS)} {asset.symbol}
+                  {formatDisplayAmount(noteBalance)} {asset.symbol}
                 </span>
               )}
               <NoteAvatarGroup
@@ -332,7 +332,7 @@ export default function WithdrawPage() {
             <AmountInput
               value={
                 youReceiveAmount > 0
-                  ? youReceiveAmount.toFixed(DISPLAY_DECIMALS)
+                  ? formatDisplayAmount(youReceiveAmount)
                   : state.amount || "0"
               }
               disabled

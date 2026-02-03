@@ -1,5 +1,6 @@
 import { formatDistance } from "date-fns";
 import { formatEther, parseEther } from "viem/utils";
+import { DISPLAY_DECIMALS } from "@/constants/withdraw";
 
 export interface EthFormattingOptions {
   decimals?: number;
@@ -152,16 +153,45 @@ export function formatSmallEthAmount(amount: string | number, significantDigits 
   const num = typeof amount === "string" ? Number.parseFloat(amount) : amount;
 
   if (num === 0 || Number.isNaN(num)) return "0";
-  if (num >= 0.01) return num.toFixed(4); // Normal formatting for larger amounts
+  if (num >= 0.01) return num.toFixed(DISPLAY_DECIMALS);
 
   // For small numbers, find first non-zero digit and show significantDigits after
   const str = num.toFixed(18);
   const match = str.match(/^0\.(0*)([1-9]\d*)/);
 
-  if (!match) return num.toFixed(6);
+  if (!match) return num.toFixed(DISPLAY_DECIMALS + 2);
 
   const leadingZeros = match[1].length;
   const decimalsNeeded = leadingZeros + significantDigits;
 
   return num.toFixed(Math.min(decimalsNeeded, 18));
+}
+
+/**
+ * Format ETH amount for display with consistent precision
+ * Shows enough decimals to represent the value accurately (min 4, up to 6 for small amounts)
+ */
+export function formatDisplayAmount(amount: string | number | bigint | null | undefined): string {
+  if (amount === null || amount === undefined) return "0";
+
+  const num = typeof amount === "bigint"
+    ? parseFloat(formatEther(amount))
+    : typeof amount === "string"
+      ? parseFloat(amount)
+      : amount;
+
+  if (isNaN(num) || num === 0) return "0";
+
+  // For very small amounts (< 0.0001), use significant digits formatting
+  if (num > 0 && num < 0.0001) {
+    return formatSmallEthAmount(num, 2);
+  }
+
+  // For small amounts (< 0.01), use 6 decimals to show fee differences
+  // For larger amounts (>= 0.01), use 4 decimals
+  const decimals = num < 0.01 ? 6 : DISPLAY_DECIMALS;
+
+  // Format and remove trailing zeros
+  const formatted = num.toFixed(decimals);
+  return formatted.replace(/\.?0+$/, "") || "0";
 }

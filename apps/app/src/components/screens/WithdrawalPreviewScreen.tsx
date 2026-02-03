@@ -9,7 +9,7 @@ import { Section, Row } from "@/components/shared/Section";
 import { LabelWithHover } from "@/components/shared/LabelWithHover";
 import { NoteAvatarStack } from "@/components/shared/NoteAvatarGroup";
 import { usePriceData } from "@/hooks/usePriceData";
-import { formatUsdAmount, formatHash, formatSmallEthAmount } from "@/utils/formatters";
+import { formatUsdAmount, formatHash, formatDisplayAmount } from "@/utils/formatters";
 import {
   POOL_CHAIN,
   SHINOBI_CASH_SUPPORTED_CHAINS,
@@ -102,7 +102,7 @@ export function WithdrawalPreviewScreen({
             <ShinobiCashNote />
             <div className="flex flex-col items-end">
               <span className="text-base font-bold sm:text-lg">
-                {formatSmallEthAmount(withdrawAmountNum)} ETH
+                {formatDisplayAmount(withdrawAmountNum)} ETH
               </span>
               {withdrawUsd !== null && (
                 <span className="text-xs text-neutral-500">~{formatUsdAmount(withdrawUsd)}</span>
@@ -135,7 +135,7 @@ export function WithdrawalPreviewScreen({
             <AssetChain assetSymbol="ETH" chainId={destinationChainId} />
             <div className="flex flex-col items-end">
               <span className="text-base font-bold sm:text-lg">
-                {formatSmallEthAmount(youReceive)} ETH
+                {formatDisplayAmount(youReceive)} ETH
               </span>
               {receiveUsd !== null && (
                 <span className="text-xs text-neutral-500">~{formatUsdAmount(receiveUsd)}</span>
@@ -207,7 +207,7 @@ export function WithdrawalPreviewScreen({
 /* ---------- helpers ---------- */
 
 function FeeValue({ amount, usdValue }: { amount: number; usdValue: number | null }) {
-  const ethText = `${formatSmallEthAmount(amount)} ETH`;
+  const ethText = `${formatDisplayAmount(amount)} ETH`;
 
   if (usdValue !== null) {
     return (

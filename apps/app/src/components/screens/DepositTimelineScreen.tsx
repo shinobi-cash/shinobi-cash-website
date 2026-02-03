@@ -14,7 +14,7 @@ import {
 } from "@/components/shared/Timeline";
 import { type AppError, getUserMessage, isUserCancellation } from "@/lib/errors/errors";
 import { getTxExplorerUrl } from "@/config/chains";
-import { formatDateTime } from "@/utils/formatters";
+import { formatDateTime, formatDisplayAmount } from "@/utils/formatters";
 
 type DepositStatus = "submitting" | "confirming" | "confirmed" | "failed" | "error";
 
@@ -204,7 +204,7 @@ export function DepositTimelineScreen({
         <div className="flex flex-col items-center space-y-2 text-center">
           <StatusIcon isComplete={isComplete} hasError={hasError} />
           <h2 className="text-2xl font-bold">{title}</h2>
-          <span className="text-5xl font-extrabold">{noteAmount.toFixed(4)} ETH</span>
+          <span className="text-5xl font-extrabold">{formatDisplayAmount(noteAmount)} ETH</span>
         </div>
 
         <TimelineSteps items={timeline} />

@@ -27,8 +27,8 @@ import { DepositTimelineScreen } from "@/components/screens/DepositTimelineScree
 import { ScreenLayout } from "@/components/layout/ScreenLayout";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";
 import { useScreenNavigation } from "@/hooks/useScreenNavigation";
-import { ETH_ASSET, DISPLAY_DECIMALS } from "@/constants/withdraw";
-import { formatUsdAmount } from "@/utils/formatters";
+import { ETH_ASSET } from "@/constants/withdraw";
+import { formatUsdAmount, formatDisplayAmount } from "@/utils/formatters";
 import { DepositSettings } from "@/components/shared/DepositSettings";
 
 type DepositScreen = "timeline" | "preview" | "assetSelector";
@@ -114,7 +114,7 @@ export default function DepositPage() {
   const depositAmountUsd = usdPrice && parseFloat(state.amount) > 0 ? parseFloat(state.amount) * usdPrice : null;
 
   const isDisabled = state.state.status === "submitting" || !DepositSelectors.isOnSupportedChain();
-  const formattedBalance = parseFloat(state.wallet.balance).toFixed(DISPLAY_DECIMALS);
+  const formattedBalance = formatDisplayAmount(state.wallet.balance);
 
   // Minimum amount validation
   const isCrossChain = DepositSelectors.isCrossChain();
@@ -327,7 +327,7 @@ export default function DepositPage() {
           <div className="flex items-center justify-between gap-3">
             <AssetPill asset={asset} chainId={POOL_CHAIN.id} disabled />
             <AmountInput
-              value={noteAmount > 0 ? noteAmount.toFixed(DISPLAY_DECIMALS) : "0"}
+              value={noteAmount > 0 ? formatDisplayAmount(noteAmount) : "0"}
               disabled
             />
           </div>

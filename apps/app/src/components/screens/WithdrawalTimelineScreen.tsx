@@ -14,7 +14,7 @@ import {
 } from "@/components/shared/Timeline";
 import { type AppError, getUserMessage, ErrorCode } from "@/lib/errors/errors";
 import { getTxExplorerUrl } from "@/config/chains";
-import { formatDateTime } from "@/utils/formatters";
+import { formatDateTime, formatDisplayAmount } from "@/utils/formatters";
 import { POOL_CHAIN } from "@shinobi-cash/constants";
 
 type WithdrawStatus =
@@ -205,7 +205,7 @@ export function WithdrawalTimelineScreen({
         <div className="flex flex-col items-center space-y-2 text-center">
           <StatusIcon isComplete={isComplete} hasError={hasError} />
           <h2 className="text-2xl font-bold">{title}</h2>
-          <span className="text-5xl font-extrabold">{amount.toFixed(4)} ETH</span>
+          <span className="text-5xl font-extrabold">{formatDisplayAmount(amount)} ETH</span>
         </div>
 
         <TimelineSteps items={timeline} />
