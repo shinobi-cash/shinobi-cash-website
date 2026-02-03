@@ -115,13 +115,14 @@ const loadCrosschainWithdraw2Circuits: CircuitFileLoader = async () => {
 };
 
 /**
- * Load ragequit (commitment) circuits from public directory
+ * Load ragequit circuits from public directory
+ * Ragequit uses the commitment circuit (same ZK proof structure)
  */
 const loadRagequitCircuits: CircuitFileLoader = async () => {
   const [wasmResponse, zkeyResponse, vkeyResponse] = await Promise.all([
-    fetch("/circuits/build/ragequit/ragequit.wasm"),
-    fetch("/circuits/keys/ragequit.zkey"),
-    fetch("/circuits/keys/ragequit.vkey"),
+    fetch("/circuits/build/commitment/commitment.wasm"),
+    fetch("/circuits/keys/commitment.zkey"),
+    fetch("/circuits/keys/commitment.vkey"),
   ]);
 
   if (!wasmResponse.ok || !zkeyResponse.ok || !vkeyResponse.ok) {
