@@ -111,6 +111,7 @@ export default function DepositPage() {
   // Calculate USD values
   const noteAmount = state.state.status === "ready" ? state.state.amounts.noteAmount : 0;
   const noteAmountUsd = usdPrice && noteAmount > 0 ? noteAmount * usdPrice : null;
+  const depositAmountUsd = usdPrice && parseFloat(state.amount) > 0 ? parseFloat(state.amount) * usdPrice : null;
 
   const isDisabled = state.state.status === "submitting" || !DepositSelectors.isOnSupportedChain();
   const formattedBalance = parseFloat(state.wallet.balance).toFixed(DISPLAY_DECIMALS);
@@ -290,11 +291,14 @@ export default function DepositPage() {
               error={isBelowMinimum}
             />
           </div>
-          <div className="flex items-center justify-end">
-            <QuickAmountButtons
-              onSelect={handleQuickAmount}
-              disabled={isDisabled || parseFloat(state.wallet.balance) <= 0}
-            />
+          <div className="flex items-center">
+            <AmountUsd amountUsd={depositAmountUsd} />
+            <div className="ml-auto">
+              <QuickAmountButtons
+                onSelect={handleQuickAmount}
+                disabled={isDisabled || parseFloat(state.wallet.balance) <= 0}
+              />
+            </div>
           </div>
         </CardContainer>
 

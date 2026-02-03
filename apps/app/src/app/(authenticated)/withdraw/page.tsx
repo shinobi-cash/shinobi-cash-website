@@ -163,6 +163,7 @@ export default function WithdrawPage() {
   // Calculate USD values
   const youReceiveAmount = WithdrawSelectors.getYouReceive();
   const youReceiveUsd = usdPrice && youReceiveAmount > 0 ? youReceiveAmount * usdPrice : null;
+  const withdrawAmountUsd = usdPrice && parseFloat(state.amount) > 0 ? parseFloat(state.amount) * usdPrice : null;
 
   // Quick amount handler
   const handleQuickAmount = (percentage: number) => {
@@ -235,11 +236,14 @@ export default function WithdrawPage() {
             />
           </div>
 
-          <div className="flex items-center justify-end">
-            <QuickAmountButtons
-              onSelect={handleQuickAmount}
-              disabled={isDisabled || noteBalance <= 0}
-            />
+          <div className="flex items-center">
+            <AmountUsd amountUsd={withdrawAmountUsd} />
+            <div className="ml-auto">
+              <QuickAmountButtons
+                onSelect={handleQuickAmount}
+                disabled={isDisabled || noteBalance <= 0}
+              />
+            </div>
           </div>
         </CardContainer>
 
