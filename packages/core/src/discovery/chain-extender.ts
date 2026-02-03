@@ -132,7 +132,7 @@ function extendSingleChain(
     const commitment = derivedNoteCommitment(accountKey, lastNote).toString();
     const ragequit = activityIndex.ragequitByCommitment.get(commitment);
     if (ragequit) {
-      processRagequit(lastNote, nullifierMap, nullifierHash);
+      processRagequit(lastNote, ragequit, nullifierMap, nullifierHash);
       break; // Ragequit is final - no more extensions possible
     }
 
@@ -347,16 +347,27 @@ function processAsSecondaryChain(currentLastNote: Note, _primaryDepositIndex: nu
 /**
  * Process a ragequit (public withdrawal)
  * - Marks the note as spent
+ * - Stores ragequit activity data on the note
  * - No change note is created (ragequit withdraws the full amount)
  * - Removes the nullifier from the map
  */
 function processRagequit(
   lastNote: Note,
+  ragequit: Activity,
   nullifierMap: Map<string, NullifierInfo>,
   nullifierHash: string,
 ): void {
   // Mark note as spent
   lastNote.status = 'spent';
+
+  // Store ragequit activity data on the note for UI display
+  lastNote.activityData = {
+    ...lastNote.activityData,
+    ragequitTxHash: ragequit.originTransactionHash,
+    ragequitTimestamp: ragequit.timestamp.toString(),
+    ragequitBlockNumber: ragequit.blockNumber.toString(),
+    ragequitUser: ragequit.user,
+  };
 
   // Remove nullifier from map (no change note for ragequit)
   nullifierMap.delete(nullifierHash);

@@ -122,6 +122,22 @@ function buildTimelineEntries(noteChain: NoteChain): TimelineEntry[] {
     }
   }
 
+  // Check if the last note was ragequit (public withdrawal)
+  const lastNote = noteChain[noteChain.length - 1];
+  if (lastNote.status === "spent" && lastNote.activityData.ragequitTxHash) {
+    entries.push({
+      key: `ragequit-${lastNote.depositIndex}-${lastNote.changeIndex}`,
+      label: "Withdrew Publicly",
+      amount: BigInt(lastNote.amount),
+      prefix: "-",
+      dotColor: "bg-orange-400",
+      txHash: lastNote.activityData.ragequitTxHash,
+      txUrl: getTxExplorerUrl(lastNote.destinationChainId, lastNote.activityData.ragequitTxHash),
+      timestamp: lastNote.activityData.ragequitTimestamp || lastNote.timestamp,
+      note: lastNote,
+    });
+  }
+
   return entries;
 }
 

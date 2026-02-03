@@ -32,6 +32,11 @@ export interface ActivityMetadata {
   spentNullifier1?: string;
   newCommitment?: string;
   isSponsored?: boolean;
+  /** Ragequit (public withdrawal) metadata */
+  ragequitTxHash?: string;
+  ragequitTimestamp?: string;
+  ragequitBlockNumber?: string;
+  ragequitUser?: string;
 }
 
 // ============================================================================
