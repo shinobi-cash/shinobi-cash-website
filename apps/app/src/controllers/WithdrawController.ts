@@ -6,7 +6,7 @@ import {
   type WithdrawalSelection,
 } from "@shinobi-cash/core/withdrawal";
 import type { FeeQuote, WithdrawalRequest, Withdraw2Request } from "@/types/withdrawal";
-import { POOL_CHAIN } from "@shinobi-cash/constants";
+import { POOL_CHAIN, FEE_CONFIG } from "@shinobi-cash/constants";
 import { AuthController } from "@/controllers/AuthController";
 import { NotesDiscoveryController } from "@/controllers/NotesDiscoveryController";
 import { EnginePhase, WithdrawalEngine } from "@/services/WithdrawalOrchestratorService";
@@ -44,6 +44,8 @@ interface WithdrawControllerState {
   previewFeeQuote: FeeQuote | null;
   lastError: AppError | null;
   notes: NotesContext;
+  /** User-configurable solver fee in basis points (default from FEE_CONFIG) */
+  solverFeeBPS: number;
 }
 
 const state = proxy<WithdrawControllerState>({
@@ -56,6 +58,7 @@ const state = proxy<WithdrawControllerState>({
   previewFeeQuote: null,
   lastError: null,
   notes: { notes: [], isLoading: false },
+  solverFeeBPS: FEE_CONFIG.DEFAULT_SOLVER_FEE_BPS,
 });
 
 export const WithdrawSelectors = {
@@ -421,8 +424,17 @@ export const WithdrawController = {
     state.selection = null;
     state.previewFeeQuote = null;
     state.lastError = null;
+    state.solverFeeBPS = FEE_CONFIG.DEFAULT_SOLVER_FEE_BPS;
     currentEngine = null;
     transition({ status: "idle" });
+  },
+
+  setSolverFeeBPS(feeBPS: number): void {
+    state.solverFeeBPS = feeBPS;
+    // Re-preview if we have valid inputs to update fee calculations
+    if (WithdrawSelectors.canAutoPreview()) {
+      this.schedulePreview(0);
+    }
   },
 
   async retry(): Promise<void> {
@@ -509,6 +521,7 @@ export const WithdrawController = {
       recipient: state.recipientAddress as `0x${string}`,
       accountKey: crypto.accountKey!,
       destinationChainId: state.destinationChainId,
+      solverFeeBPS: state.solverFeeBPS,
     };
   },
 
@@ -531,6 +544,7 @@ export const WithdrawController = {
       accountKey: crypto.accountKey!,
       destinationChainId: state.destinationChainId,
       labelSelector: selection.labelSelector,
+      solverFeeBPS: state.solverFeeBPS,
     };
   },
 
