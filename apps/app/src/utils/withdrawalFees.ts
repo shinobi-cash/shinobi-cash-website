@@ -4,7 +4,7 @@ import {
   CROSS_CHAIN_GAS_LIMITS,
   WITHDRAW2_SAME_CHAIN_GAS_LIMITS,
   WITHDRAW2_CROSS_CHAIN_GAS_LIMITS,
-  WITHDRAWAL_CONFIG,
+  FEE_CONFIG,
 } from "@shinobi-cash/constants";
 import { validateFeeQuote } from "@/utils/withdrawalInvariants";
 import { pimlicoClient } from "@/lib/clients";
@@ -76,7 +76,10 @@ function calculateRelayFeeBPS(
 /**
  * Get solver fee BPS based on withdrawal kind
  */
-function calculateSolverFeeBPS(kind: WithdrawalKind, crossChainSolverFeeBPS = 500): number {
+function calculateSolverFeeBPS(
+  kind: WithdrawalKind,
+  crossChainSolverFeeBPS: number = FEE_CONFIG.DEFAULT_SOLVER_FEE_BPS
+): number {
   return kind === "cross-chain" ? crossChainSolverFeeBPS : 0;
 }
 
@@ -98,9 +101,9 @@ export async function quoteFees(
   const relayFeeBPS = calculateRelayFeeBPS(
     request.withdrawAmountWei,
     estimatedGasCostWei,
-    WITHDRAWAL_CONFIG.MAX_RELAY_FEE_BPS
+    FEE_CONFIG.MAX_RELAY_FEE_BPS
   );
-  const solverFeeBPS = calculateSolverFeeBPS(kind);
+  const solverFeeBPS = calculateSolverFeeBPS(kind, request.solverFeeBPS);
 
   const { executionFeeWei, solverFeeWei, totalFeeWei } = calculateFeesFromBPS(
     request.withdrawAmountWei,
@@ -145,9 +148,9 @@ export async function quoteWithdraw2Fees(
   const relayFeeBPS = calculateRelayFeeBPS(
     request.withdrawAmountWei,
     estimatedGasCostWei,
-    WITHDRAWAL_CONFIG.MAX_RELAY_FEE_BPS
+    FEE_CONFIG.MAX_RELAY_FEE_BPS
   );
-  const solverFeeBPS = calculateSolverFeeBPS(kind);
+  const solverFeeBPS = calculateSolverFeeBPS(kind, request.solverFeeBPS);
 
   const { executionFeeWei, solverFeeWei, totalFeeWei } = calculateFeesFromBPS(
     request.withdrawAmountWei,

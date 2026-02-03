@@ -63,6 +63,9 @@ export interface WithdrawalRequest {
 
   /** Destination chain ID for cross-chain withdrawals */
   destinationChainId?: number;
+
+  /** User-configured solver fee in basis points (cross-chain only) */
+  solverFeeBPS?: number;
 }
 
 export interface WithdrawalPipelineContext {
@@ -148,6 +151,9 @@ export interface Withdraw2Request {
 
   /** Label selector: 0 = use primary's label, 1 = use secondary's label */
   labelSelector?: 0 | 1;
+
+  /** User-configured solver fee in basis points (cross-chain only) */
+  solverFeeBPS?: number;
 }
 
 export interface Withdraw2PipelineContext {

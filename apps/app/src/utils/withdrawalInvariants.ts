@@ -1,4 +1,4 @@
-import { WITHDRAWAL_CONFIG } from "@shinobi-cash/constants";
+import { FEE_CONFIG } from "@shinobi-cash/constants";
 import type {
   WithdrawalPipelineContext,
   Withdraw2PipelineContext,
@@ -51,10 +51,10 @@ export function validateWithdrawalRequest(request: WithdrawalRequest): void {
 }
 
 export function validateFeeQuote(feeQuote: FeeQuote): void {
-  if (feeQuote.relayFeeBPS > WITHDRAWAL_CONFIG.MAX_RELAY_FEE_BPS) {
+  if (feeQuote.relayFeeBPS > FEE_CONFIG.MAX_RELAY_FEE_BPS) {
     throw new WithdrawalValidationError("Relay fee exceeds maximum allowed", "FEE_TOO_HIGH", {
       relayFeeBPS: feeQuote.relayFeeBPS,
-      maxBPS: WITHDRAWAL_CONFIG.MAX_RELAY_FEE_BPS,
+      maxBPS: FEE_CONFIG.MAX_RELAY_FEE_BPS,
     });
   }
 
