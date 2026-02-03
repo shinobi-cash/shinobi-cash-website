@@ -59,11 +59,14 @@ export default function RagequitPage() {
   const handleConfirm = async () => {
     if (!walletClient) return;
 
+    // Navigate to timeline first to show progress
+    screens.navigate("timeline");
+
     // Start the flow (prepare + submit)
     await RagequitController.prepare();
 
-    if (state.state.status === "ready") {
-      screens.navigate("timeline");
+    // Check controller state directly (not stale snapshot)
+    if (RagequitController.state.state.status === "ready") {
       await RagequitController.submit(
         walletClient as WalletClient<Transport, Chain, Account>,
       );
