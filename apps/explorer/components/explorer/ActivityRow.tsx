@@ -6,11 +6,26 @@ interface Props {
   activity: Activity;
 }
 
-export function ActivityRow({ activity }: Props) {
-  const isDeposit = activity.type === "DEPOSIT" || activity.type === "CROSSCHAIN_DEPOSIT";
+const ACTIVITY_TYPE_LABELS: Record<string, string> = {
+  DEPOSIT: "deposit",
+  WITHDRAWAL: "withdrawal",
+  WITHDRAW2: "withdrawal (merge)",
+  CROSSCHAIN_DEPOSIT: "cross-chain deposit",
+  CROSSCHAIN_WITHDRAWAL: "cross-chain withdrawal",
+  CROSSCHAIN_WITHDRAW2: "cross-chain withdrawal (merge)",
+  CROSSCHAIN_DEPOSIT_PENDING: "cross-chain deposit (pending)",
+  CROSSCHAIN_WITHDRAWAL_PENDING: "cross-chain withdrawal (pending)",
+  CROSSCHAIN_WITHDRAW2_PENDING: "cross-chain withdrawal (merge, pending)",
+  RAGEQUIT: "ragequit",
+};
 
-  const label =
-    activity.type === "CROSSCHAIN_DEPOSIT" ? "Cross-chain deposit" : activity.type.toLowerCase();
+export function ActivityRow({ activity }: Props) {
+  const isDeposit =
+    activity.type === "DEPOSIT" ||
+    activity.type === "CROSSCHAIN_DEPOSIT" ||
+    activity.type === "CROSSCHAIN_DEPOSIT_PENDING";
+
+  const label = ACTIVITY_TYPE_LABELS[activity.type] ?? activity.type.toLowerCase();
 
   return (
     <div className="flex items-center justify-between gap-4 px-5 py-4">

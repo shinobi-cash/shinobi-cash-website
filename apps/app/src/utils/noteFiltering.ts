@@ -51,8 +51,9 @@ export function isInPool(note: Note): boolean {
  * This determines which tab the note appears in
  */
 export function getNoteCategory(note: Note): NoteCategory {
-  // Spent: Already used or refunded
+  // Spent: Already used, merged, or refunded
   if (note.status === "spent") return "spent";
+  if (note.status === "merged") return "spent";
   if (note.intentStatus === "refunded") return "spent";
 
   // Zero balance is effectively spent
@@ -114,8 +115,8 @@ export function canClaimRefund(note: Note): boolean {
  * Get Tailwind background color class for note status dot
  */
 export function getStatusDotColor(note: Note): string {
-  // Spent notes
-  if (note.status === "spent") {
+  // Spent or merged notes
+  if (note.status === "spent" || note.status === "merged") {
     return "bg-neutral-500";
   }
 

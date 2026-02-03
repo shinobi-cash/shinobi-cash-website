@@ -600,6 +600,7 @@ export class IndexerClient {
             label
             precommitmentHash
             spentNullifier
+            spentNullifier1
             newCommitment
             refundCommitment
             relayFeeAmount
@@ -644,6 +645,7 @@ export class IndexerClient {
       label?: string | null;
       precommitmentHash?: string;
       spentNullifier?: string;
+      spentNullifier1?: string;
       newCommitment?: string;
       refundCommitment?: string;
       relayFeeAmount?: string;

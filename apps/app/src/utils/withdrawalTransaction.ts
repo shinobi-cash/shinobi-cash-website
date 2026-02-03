@@ -1,18 +1,26 @@
 import type {
   WithdrawalPipelineContext,
+  Withdraw2PipelineContext,
   WithdrawalProof,
+  Withdraw2Proof,
   PreparedUserOperation,
   ExecutionResult,
 } from "@/types/withdrawal";
 import {
   getCrosschainWithdrawalSmartAccountClient,
   getWithdrawalSmartAccountClient,
+  getWithdraw2SmartAccountClient,
+  getCrosschainWithdraw2SmartAccountClient,
 } from "@/lib/clients";
 import {
   formatProofForContract,
   formatCrossChainProofForContract,
+  formatWithdraw2SameChainProofForContract,
+  formatWithdraw2CrossChainProofForContract,
   encodeRelayCallData,
   encodeCrossChainWithdrawalCallData,
+  encodeWithdraw2RelayCallData,
+  encodeCrossChainWithdraw2CallData,
   prepareWithdrawalUserOperation,
   prepareCrossChainWithdrawalUserOperation,
   executeWithdrawalUserOperation,
@@ -51,13 +59,51 @@ export async function prepareUserOperation(
 }
 
 export async function executeUserOperation(
-  preparedUserOp: PreparedUserOperation
+  preparedUserOp: PreparedUserOperation,
+  isWithdraw2: boolean = false
 ): Promise<ExecutionResult> {
   const isCrossChain = preparedUserOp.context.kind === "cross-chain";
   const transactionHash = await executeWithdrawalUserOperation(
     preparedUserOp.smartAccountClient,
     preparedUserOp.userOperation,
-    isCrossChain
+    isCrossChain,
+    isWithdraw2
   );
   return { transactionHash, success: true };
+}
+
+// ============ WITHDRAW2 (2:1) ============
+
+export async function prepareWithdraw2UserOperation(
+  context: Withdraw2PipelineContext,
+  proof: Withdraw2Proof
+): Promise<PreparedUserOperation> {
+  const [processooor, data] = context.withdrawalData;
+  const withdrawalData = { processooor, data };
+
+  const isCrossChain = context.kind === "cross-chain";
+
+  // Format proof based on withdrawal type (9 signals for same-chain, 10 for cross-chain)
+  const callData = isCrossChain
+    ? encodeCrossChainWithdraw2CallData(
+        withdrawalData,
+        formatWithdraw2CrossChainProofForContract(proof.proof, proof.publicSignals),
+        context.poolScope
+      )
+    : encodeWithdraw2RelayCallData(
+        withdrawalData,
+        formatWithdraw2SameChainProofForContract(proof.proof, proof.publicSignals),
+        context.poolScope
+      );
+
+  // Use withdraw2-specific smart account clients with the correct paymaster
+  const smartAccountClient = isCrossChain
+    ? await getCrosschainWithdraw2SmartAccountClient()
+    : await getWithdraw2SmartAccountClient();
+
+  const userOperation = isCrossChain
+    ? await prepareCrossChainWithdrawalUserOperation(smartAccountClient, callData)
+    : await prepareWithdrawalUserOperation(smartAccountClient, callData);
+
+  return { context, proof, userOperation, smartAccountClient };
 }

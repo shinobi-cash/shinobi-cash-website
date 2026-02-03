@@ -2,10 +2,13 @@ import type { Activity } from "@shinobi-cash/data";
 import {
   isDepositActivity,
   isWithdrawalActivity,
+  isWithdraw2Activity,
   isCrossChainDepositActivity,
   isCrossChainWithdrawalActivity,
+  isCrossChainWithdraw2Activity,
   isCrossChainDepositPendingActivity,
   isCrossChainWithdrawalPendingActivity,
+  isCrossChainWithdraw2PendingActivity,
   isRagequitActivity,
   isAnyCrossChainActivity,
 } from "@shinobi-cash/data";
@@ -24,10 +27,13 @@ interface Props {
 const ACTIVITY_TYPE_LABELS: Record<string, string> = {
   DEPOSIT: "Deposit",
   WITHDRAWAL: "Withdrawal",
+  WITHDRAW2: "Withdrawal (2:1 Merge)",
   CROSSCHAIN_DEPOSIT: "Cross-chain Deposit",
   CROSSCHAIN_WITHDRAWAL: "Cross-chain Withdrawal",
+  CROSSCHAIN_WITHDRAW2: "Cross-chain Withdrawal (2:1 Merge)",
   CROSSCHAIN_DEPOSIT_PENDING: "Cross-chain Deposit (Pending)",
   CROSSCHAIN_WITHDRAWAL_PENDING: "Cross-chain Withdrawal (Pending)",
+  CROSSCHAIN_WITHDRAW2_PENDING: "Cross-chain Withdrawal (2:1 Merge, Pending)",
   RAGEQUIT: "Ragequit",
 };
 
@@ -44,8 +50,11 @@ export function ActivityDetailsContent({ activity }: Props) {
     isCrossChainDepositPendingActivity(activity);
   const isWithdrawal =
     isWithdrawalActivity(activity) ||
+    isWithdraw2Activity(activity) ||
     isCrossChainWithdrawalActivity(activity) ||
-    isCrossChainWithdrawalPendingActivity(activity);
+    isCrossChainWithdraw2Activity(activity) ||
+    isCrossChainWithdrawalPendingActivity(activity) ||
+    isCrossChainWithdraw2PendingActivity(activity);
   const isCrossChain = isAnyCrossChainActivity(activity);
   const isRagequit = isRagequitActivity(activity);
   const isPending =
@@ -323,11 +332,17 @@ export function ActivityDetailsContent({ activity }: Props) {
           </div>
         )}
 
-        {/* Withdrawals: Nullifier, Change Note, Refund Commitment */}
+        {/* Withdrawals: Nullifier(s), Change Note, Refund Commitment */}
         {isWithdrawal && (
           <div className="flex flex-wrap gap-x-6 gap-y-3">
             {activity.spentNullifier && (
-              <HashField label="Spent Nullifier" value={activity.spentNullifier} />
+              <HashField
+                label={activity.spentNullifier1 ? "Spent Nullifier 1" : "Spent Nullifier"}
+                value={activity.spentNullifier}
+              />
+            )}
+            {activity.spentNullifier1 && (
+              <HashField label="Spent Nullifier 2" value={activity.spentNullifier1} />
             )}
             {activity.newCommitment && (
               <HashField label="Change Note" value={activity.newCommitment} />

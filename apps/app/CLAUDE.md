@@ -171,6 +171,8 @@ error → discovering (retry)
 
 **Concurrency**: Uses `discoveryId` counter and `abortController` to prevent race conditions.
 
+**Withdraw2 Support**: Discovery handles `WITHDRAW2` activities with dual nullifiers (`spentNullifier` + `spentNullifier1`), marking both source notes as spent.
+
 ---
 
 ### 3. DepositController
@@ -233,7 +235,7 @@ confirmed-onchain → indexed (indexer synced)
 
 **File**: `src/controllers/WithdrawController.ts`
 
-**Purpose**: Withdrawal with ZK proofs.
+**Purpose**: Withdrawal with ZK proofs. Supports both 1:1 withdrawals and 2:1 Withdraw2 merges.
 
 **State Shape**:
 ```typescript
@@ -243,6 +245,7 @@ interface WithdrawControllerState {
   recipientAddress: string;
   destinationChainId: number;
   selectedNote: Note | null;
+  selectedNotes: Note[];             // For Withdraw2 (2 notes)
   previewFeeQuote: FeeQuote | null;
   lastError: AppError | null;
   notes: NotesContext;
@@ -283,6 +286,13 @@ quoted → context-built → witness-built → proof-generated → prepared
 | `canWithdraw()` | Valid inputs + crypto ready |
 | `isCrossChain()` | destination !== pool chain |
 | `getNetAmount()` | Amount after fees |
+| `isWithdraw2()` | selectedNotes.length === 2 |
+| `getSelectedNotesTotal()` | Sum of selected notes balances |
+
+**Withdraw2 Support**:
+- **Multi-note selection**: `selectNote()` handles toggling notes in `selectedNotes[]`
+- **Automatic routing**: Controller routes to Withdraw2Engine when 2 notes selected
+- **Combined balance**: `getSelectedNotesTotal()` returns sum for max calculation
 
 ---
 
@@ -335,11 +345,13 @@ trackTransaction(txHash) → pending → waiting (receipt confirmed) → synced 
 
 Services are stateless singletons for external operations.
 
-### 1. WithdrawalOrchestratorService (WithdrawalEngine)
+### 1. WithdrawalOrchestratorService (WithdrawalEngine & Withdraw2Engine)
 
 **File**: `src/services/WithdrawalOrchestratorService.ts`
 
-**Purpose**: Orchestrate the complete withdrawal pipeline.
+**Purpose**: Orchestrate the complete withdrawal pipeline. Two engine variants:
+- **WithdrawalEngine**: 1:1 withdrawal (single note)
+- **Withdraw2Engine**: 2:1 JoinSplit merge (two notes → one output + change)
 
 **Engine Phases**:
 ```
@@ -374,13 +386,25 @@ const result = await engine.execute();
 
 **Circuit Files** (loaded from `/public/circuits/`):
 ```
+# 1:1 Withdrawal (8 signals)
 /circuits/build/withdraw/withdraw.wasm
 /circuits/keys/withdraw.zkey
 /circuits/keys/withdraw.vkey
 
+# 1:1 Cross-chain Withdrawal (9 signals)
 /circuits/build/crosschain_withdraw/crosschain_withdrawal.wasm
 /circuits/keys/crosschain_withdrawal.zkey
 /circuits/keys/crosschain_withdrawal.vkey
+
+# 2:1 Withdraw2 Merge (9 signals)
+/circuits/build/withdraw2/withdraw2.wasm
+/circuits/keys/withdraw2.zkey
+/circuits/keys/withdraw2.vkey
+
+# 2:1 Cross-chain Withdraw2 Merge (10 signals)
+/circuits/build/crosschain_withdraw2/crosschain_withdraw2.wasm
+/circuits/keys/crosschain_withdraw2.zkey
+/circuits/keys/crosschain_withdraw2.vkey
 ```
 
 **Singleton**: `withdrawalProofGenerator`
@@ -699,12 +723,87 @@ Background Sync (Web Worker)
 
 ### Gas Limits
 
+**1:1 Withdrawal (Standard)**:
 | Component | Same-Chain | Cross-Chain |
 |-----------|------------|-------------|
 | Call Gas Limit | 550,000 | 687,500 |
 | Verification Gas | 200,000 | 200,000 |
 | Paymaster Verification | 400,000 | 500,000 |
 | **Total** | ~1,350,000 | ~1,637,500 |
+
+**2:1 Withdraw2 (Merge)**:
+| Component | Same-Chain | Cross-Chain |
+|-----------|------------|-------------|
+| Call Gas Limit | 660,000 | 825,000 |
+| Verification Gas | 200,000 | 200,000 |
+| Paymaster Verification | 500,000 | 600,000 |
+| **Total** | ~1,560,000 | ~1,875,000 |
+
+---
+
+## Withdraw2 (2:1 Merge Withdrawals)
+
+### Overview
+
+Withdraw2 enables merging two notes into a single withdrawal + change output. This is useful for:
+- **Note Consolidation**: Combine fragmented small notes
+- **Privacy Enhancement**: Single output instead of multiple withdrawals
+- **Gas Efficiency**: One transaction instead of two
+
+### Multi-Note Selection UI
+
+**File**: `src/app/(authenticated)/withdraw/page.tsx`
+
+The withdrawal page supports selecting up to 2 notes:
+```typescript
+// Toggle note selection
+const toggleNote = (note: Note) => {
+  WithdrawController.selectNote(note);  // Adds/removes from selectedNotes[]
+};
+
+// Display mode changes based on selection count
+const isWithdraw2 = selectedNotes.length === 2;
+```
+
+### Engine Routing
+
+The WithdrawController automatically routes to the correct engine:
+```typescript
+// In prepare()
+const engine = selectedNotes.length === 2
+  ? new Withdraw2Engine()  // 2:1 merge
+  : new WithdrawalEngine(); // 1:1 standard
+```
+
+### Proof Structures
+
+| Circuit | Signals | Description |
+|---------|---------|-------------|
+| withdraw2 | 9 | Same-chain 2:1 merge |
+| crosschain_withdraw2 | 10 | Cross-chain 2:1 merge (includes refundCommitment) |
+
+**Signal Layout (Withdraw2 - 9 signals)**:
+```
+[0] newCommitmentHash   - Change note commitment
+[1] nullifierHash0      - First note nullifier
+[2] nullifierHash1      - Second note nullifier
+[3] withdrawnValue      - Amount withdrawn
+[4] stateTreeRoot       - Merkle state root
+[5] stateTreeDepth      - Tree depth
+[6] aspRoot             - ASP approval root
+[7] aspTreeDepth        - ASP tree depth
+[8] context             - Withdrawal context hash
+```
+
+**Signal Layout (CrosschainWithdraw2 - 10 signals)**:
+```
+[0-8] Same as Withdraw2
+[9] refundCommitment    - For failed cross-chain refund
+```
+
+### Chain Inheritance Rule
+
+When merging notes from different deposit chains, the larger `depositIndex` determines which chain continues. This ensures consistent note lineage tracking.
 
 ---
 
@@ -1001,7 +1100,7 @@ NEXT_PUBLIC_RP_ID=            # WebAuthn relying party (optional)
 | `src/controllers/DepositController.ts` | Deposit state machine |
 | `src/controllers/WithdrawController.ts` | Withdrawal state machine |
 | `src/controllers/NotesDiscoveryController.ts` | Notes discovery |
-| `src/services/WithdrawalOrchestratorService.ts` | Withdrawal pipeline |
+| `src/services/WithdrawalOrchestratorService.ts` | Withdrawal + Withdraw2 pipelines |
 | `src/services/ProofGeneratorService.ts` | ZK proof generation |
 | `src/services/AccountService.ts` | Account lifecycle |
 | `src/services/KeyDerivationService.ts` | Key derivation |

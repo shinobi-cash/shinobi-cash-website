@@ -1,6 +1,7 @@
 "use client";
 
-import { ChevronDown, ArrowUpFromLine, Banknote, Wallet, Check, X } from "lucide-react";
+import type { Note } from "@shinobi-cash/core/discovery";
+import { ChevronDown, ArrowUpFromLine, Wallet, Check, X } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import { Button } from "@workspace/ui/components/button";
 import { POOL_CHAIN } from "@shinobi-cash/constants";
@@ -13,6 +14,7 @@ import { AmountUsd } from "@/components/shared/AmountUsd";
 import { SectionDivider } from "@/components/shared/SectionDivider";
 import { AssetChainSelectorScreen } from "@/components/screens/AssetChainSelectorScreen";
 import { NoteSelectionScreen } from "@/components/screens/NoteSelectionScreen";
+import { NoteAvatarGroup } from "@/components/shared/NoteAvatarGroup";
 import { WithdrawalPreviewScreen } from "@/components/screens/WithdrawalPreviewScreen";
 import { WithdrawalTimelineScreen } from "@/components/screens/WithdrawalTimelineScreen";
 import { DISPLAY_DECIMALS, ETH_ASSET } from "@/constants/withdraw";
@@ -42,7 +44,7 @@ export default function WithdrawPage() {
     if (WithdrawSelectors.canAutoPreview()) {
       WithdrawController.schedulePreview();
     }
-  }, [state.amount, state.recipientAddress, state.selectedNote, state.destinationChainId]);
+  }, [state.amount, state.recipientAddress, state.selectedNotes, state.destinationChainId]);
 
   // Review = navigate to preview screen
   const handleReviewWithdrawal = () => {
@@ -95,19 +97,33 @@ export default function WithdrawPage() {
         destinationChainId={state.destinationChainId}
         isCrossChain={WithdrawSelectors.isCrossChain()}
         isProcessing={state.state.status === "submitting"}
+        selectedNotes={state.selectedNotes}
       />
     );
   }
 
-  // Show note selection screen
+  // Show note selection screen (multi-select for Withdraw2)
   if (screens.is("noteSelection")) {
+    const handleToggleNote = (note: Note) => {
+      const isSelected = state.selectedNotes.some(
+        (n) => n.depositIndex === note.depositIndex && n.changeIndex === note.changeIndex
+      );
+      if (isSelected) {
+        WithdrawController.removeNote(note);
+      } else {
+        WithdrawController.addNote(note);
+      }
+    };
+
     return (
       <NoteSelectionScreen
         availableNotes={[...state.notes.notes]}
-        selectedNote={state.selectedNote}
-        onSelectNote={(note) => WithdrawController.selectNote(note)}
+        selectedNotes={[...state.selectedNotes]}
+        onToggleNote={handleToggleNote}
+        onClearSelection={() => WithdrawController.clearNotes()}
         onBack={screens.close}
         isLoading={state.notes.isLoading}
+        maxNotes={2}
       />
     );
   }
@@ -132,11 +148,15 @@ export default function WithdrawPage() {
 
   // Main Withdrawal Form
   const isProcessing = state.state.status === "preparing" || state.state.status === "submitting";
-  const isDisabled = !state.selectedNote || isProcessing;
+  const hasSelectedNotes = state.selectedNotes.length > 0;
+  const isDisabled = !hasSelectedNotes || isProcessing;
 
-  // Convert note amount from wei string to ETH number
-  const noteBalance = state.selectedNote
-    ? parseFloat(formatEthAmount(state.selectedNote.amount))
+  // Convert total note amount from wei string to ETH number (sum of all selected notes)
+  const noteBalance = hasSelectedNotes
+    ? state.selectedNotes.reduce(
+        (sum, note) => sum + parseFloat(formatEthAmount(note.amount)),
+        0
+      )
     : 0;
 
   // Calculate USD values
@@ -167,7 +187,7 @@ export default function WithdrawPage() {
         >
           {state.state.status === "previewing"
             ? "Estimating gas..."
-            : !state.selectedNote
+            : !hasSelectedNotes
               ? "Select a Note"
               : !state.amount.trim()
                 ? "Enter Amount"
@@ -183,22 +203,19 @@ export default function WithdrawPage() {
           <div className="mb-3 flex items-center justify-between">
             <span className="text-sm text-neutral-400">You Pay</span>
             <div className="flex items-center gap-2">
-              {state.selectedNote && (
+              {hasSelectedNotes && (
                 <span className="text-sm text-neutral-400">
                   {noteBalance.toFixed(DISPLAY_DECIMALS)} {asset.symbol}
                 </span>
               )}
-              <button
+              <NoteAvatarGroup
+                notes={[...state.selectedNotes]}
+                maxNotes={2}
                 onClick={() => screens.navigate("noteSelection")}
-                className="flex cursor-pointer items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 text-sm text-neutral-400 transition-colors hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
                 disabled={isProcessing}
-              >
-                <Banknote className="h-3 w-3" />
-                {state.selectedNote
-                  ? `Note #${state.selectedNote.depositIndex + 1}`
-                  : "Select Note"}
-                <ChevronDown className="h-3 w-3" />
-              </button>
+                showAddButton={state.selectedNotes.length < 2}
+                size="sm"
+              />
             </div>
           </div>
 

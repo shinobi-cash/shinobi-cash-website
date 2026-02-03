@@ -12,6 +12,8 @@ import {
   SHINOBI_CASH_ENTRYPOINT,
   SAME_CHAIN_GAS_LIMITS,
   CROSS_CHAIN_GAS_LIMITS,
+  WITHDRAW2_SAME_CHAIN_GAS_LIMITS,
+  WITHDRAW2_CROSS_CHAIN_GAS_LIMITS,
 } from "@shinobi-cash/constants";
 import { pimlicoClient } from "@/lib/clients";
 import type { SmartAccountClient } from "permissionless";
@@ -25,6 +27,8 @@ export type {
   CrossChainWithdrawalData,
   ContractProof,
   ContractCrossChainProof,
+  ContractWithdraw2SameChainProof,
+  ContractCrosschainWithdraw2Proof,
   SnarkJsProof,
 } from "@shinobi-cash/core/withdrawal";
 
@@ -33,8 +37,12 @@ export {
   createCrossChainWithdrawalData,
   formatProofForContract,
   formatCrossChainProofForContract,
+  formatWithdraw2SameChainProofForContract,
+  formatWithdraw2CrossChainProofForContract,
   encodeRelayCallData,
   encodeCrossChainWithdrawalCallData,
+  encodeWithdraw2RelayCallData,
+  encodeCrossChainWithdraw2CallData,
 } from "@shinobi-cash/core/withdrawal";
 
 export interface SmartAccountConfig {
@@ -95,11 +103,17 @@ export async function prepareWithdrawalUserOperation(
 export async function executeWithdrawalUserOperation(
   smartAccountClient: SmartAccountClient,
   userOperation: UserOperation,
-  isCrossChain: boolean = false
+  isCrossChain: boolean = false,
+  isWithdraw2: boolean = false
 ): Promise<string> {
   try {
     // Use appropriate gas limits based on withdrawal type
-    const gasLimits = isCrossChain ? CROSS_CHAIN_GAS_LIMITS : SAME_CHAIN_GAS_LIMITS;
+    let gasLimits;
+    if (isWithdraw2) {
+      gasLimits = isCrossChain ? WITHDRAW2_CROSS_CHAIN_GAS_LIMITS : WITHDRAW2_SAME_CHAIN_GAS_LIMITS;
+    } else {
+      gasLimits = isCrossChain ? CROSS_CHAIN_GAS_LIMITS : SAME_CHAIN_GAS_LIMITS;
+    }
 
     userOperation.callGasLimit = gasLimits.CALL_GAS_LIMIT;
     userOperation.paymasterVerificationGasLimit = gasLimits.PAYMASTER_VERIFICATION_GAS_LIMIT;

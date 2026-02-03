@@ -51,4 +51,79 @@ export type CircuitFileLoader = () => Promise<CircuitFiles>;
 export interface ProofGenerator {
   generateWithdrawalProof(witness: WithdrawalCircuitWitness): Promise<WithdrawalProofData>;
   generateCrosschainWithdrawalProof(witness: CrosschainWithdrawalCircuitWitness): Promise<WithdrawalProofData>;
+  generateWithdraw2Proof(witness: Withdraw2CircuitWitness): Promise<WithdrawalProofData>;
+  generateCrosschainWithdraw2Proof(witness: CrosschainWithdraw2CircuitWitness): Promise<WithdrawalProofData>;
+}
+
+// ============ WITHDRAW2 (2:1) TYPES ============
+
+/**
+ * Intent for Withdraw2 (2:1 merge) withdrawal
+ */
+export interface Withdraw2Intent {
+  withdrawAmount: bigint;
+  primaryNoteAmount: bigint;
+  primaryLabel: bigint;
+  secondaryNoteAmount: bigint;
+  secondaryLabel: bigint;
+}
+
+/**
+ * Withdraw2 circuit witness (10 public signals, multiple private inputs)
+ *
+ * Public signals order:
+ * [0] newCommitmentHash - computed by circuit
+ * [1] nullifierHash0 - primary nullifier hash, computed by circuit
+ * [2] nullifierHash1 - secondary nullifier hash, computed by circuit
+ * [3] refundCommitmentHash - computed by circuit (0 for same-chain)
+ * [4] withdrawnValue - amount withdrawn
+ * [5] stateRoot - state merkle root
+ * [6] stateTreeDepth - state tree depth
+ * [7] ASPRoot - ASP merkle root
+ * [8] ASPTreeDepth - ASP tree depth
+ * [9] context - binding context hash
+ */
+export interface Withdraw2CircuitWitness {
+  // Public inputs
+  withdrawnValue: string;
+  stateRoot: string;
+  stateTreeDepth: string;
+  ASPRoot: string;
+  ASPTreeDepth: string;
+  context: string;
+
+  // Primary input (input0)
+  existingValue0: string;
+  label0: string;
+  existingNullifier0: string;
+  existingSecret0: string;
+  stateSiblings0: string[];
+  stateIndex0: number;
+  ASPSiblings0: string[];
+  ASPIndex0: number;
+
+  // Secondary input (input1)
+  existingValue1: string;
+  label1: string;
+  existingNullifier1: string;
+  existingSecret1: string;
+  stateSiblings1: string[];
+  stateIndex1: number;
+  ASPSiblings1: string[];
+  ASPIndex1: number;
+
+  // Output (change note)
+  outputNullifier: string;
+  outputSecret: string;
+
+  // Label selection: 0 = use label0, 1 = use label1
+  labelSelector: number;
+}
+
+/**
+ * Cross-chain Withdraw2 witness (includes refund commitment inputs)
+ */
+export interface CrosschainWithdraw2CircuitWitness extends Withdraw2CircuitWitness {
+  refundNullifier: string;
+  refundSecret: string;
 }

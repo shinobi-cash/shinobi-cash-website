@@ -11,6 +11,8 @@ import { deriveDepositNullifier, deriveDepositSecret } from '../deposit/index.js
 import {
   EntrypointRelayAbi,
   EntrypointCrosschainWithdrawalAbi,
+  EntrypointWithdraw2RelayAbi,
+  EntrypointCrosschainWithdraw2Abi,
   SHINOBI_CASH_ENTRYPOINT,
 } from '@shinobi-cash/constants';
 import type {
@@ -18,10 +20,17 @@ import type {
   CrossChainWithdrawalData,
   ContractProof,
   ContractCrossChainProof,
+  ContractWithdraw2Proof,
+  ContractWithdraw2SameChainProof,
+  ContractCrosschainWithdraw2Proof,
   SnarkJsProof,
   ContextHash,
   WithdrawalDerivation,
   CrosschainWithdrawalDerivation,
+  Withdraw2Derivation,
+  Withdraw2PrimaryDerivation,
+  Withdraw2SecondaryDerivation,
+  CrosschainWithdraw2Derivation,
 } from './types.js';
 
 // Re-export types
@@ -30,11 +39,37 @@ export type {
   CrossChainWithdrawalData,
   ContractProof,
   ContractCrossChainProof,
+  ContractWithdraw2Proof,
+  ContractWithdraw2SameChainProof,
+  ContractCrosschainWithdraw2Proof,
   SnarkJsProof,
   ContextHash,
   WithdrawalDerivation,
   CrosschainWithdrawalDerivation,
+  Withdraw2Derivation,
+  Withdraw2PrimaryDerivation,
+  Withdraw2SecondaryDerivation,
+  CrosschainWithdraw2Derivation,
 } from './types.js';
+
+// Re-export note selection
+export {
+  selectSingleNote,
+  selectTwoNotes,
+  selectNotesForWithdrawal,
+  isWithdraw2Selection,
+  getTotalInputAmount,
+  getChangeNoteLabel,
+} from './note-selection.js';
+export type {
+  WithdrawalType,
+  SelectedNote,
+  StandardWithdrawalSelection,
+  Withdraw2Selection,
+  WithdrawalSelection,
+  SelectionError,
+  SelectionResult,
+} from './note-selection.js';
 
 // ============ CONTRACT ENCODING ============
 
@@ -163,6 +198,128 @@ export function encodeCrossChainWithdrawalCallData(
   });
 }
 
+// ============ WITHDRAW2 (2:1) CONTRACT ENCODING ============
+
+/**
+ * Format snarkjs proof for same-chain Withdraw2 Solidity verifier (9 signals)
+ *
+ * Public signals order:
+ * [0] newCommitmentHash - Change output commitment
+ * [1] nullifierHash0 - Primary input nullifier (spent)
+ * [2] nullifierHash1 - Secondary input nullifier (spent)
+ * [3] withdrawnValue - Amount withdrawn
+ * [4] stateRoot - State merkle root
+ * [5] stateTreeDepth - State tree depth
+ * [6] ASPRoot - ASP merkle root
+ * [7] ASPTreeDepth - ASP tree depth
+ * [8] context - Binding context hash
+ */
+export function formatWithdraw2SameChainProofForContract(
+  proof: SnarkJsProof,
+  publicSignals: string[],
+): ContractWithdraw2SameChainProof {
+  return {
+    pA: [BigInt(proof.pi_a[0]), BigInt(proof.pi_a[1])],
+    pB: [
+      [BigInt(proof.pi_b[0][1]), BigInt(proof.pi_b[0][0])],
+      [BigInt(proof.pi_b[1][1]), BigInt(proof.pi_b[1][0])],
+    ],
+    pC: [BigInt(proof.pi_c[0]), BigInt(proof.pi_c[1])],
+    pubSignals: [
+      BigInt(publicSignals[0]), // newCommitmentHash
+      BigInt(publicSignals[1]), // nullifierHash0
+      BigInt(publicSignals[2]), // nullifierHash1
+      BigInt(publicSignals[3]), // withdrawnValue
+      BigInt(publicSignals[4]), // stateRoot
+      BigInt(publicSignals[5]), // stateTreeDepth
+      BigInt(publicSignals[6]), // ASPRoot
+      BigInt(publicSignals[7]), // ASPTreeDepth
+      BigInt(publicSignals[8]), // context
+    ],
+  };
+}
+
+/**
+ * Format snarkjs proof for cross-chain Withdraw2 Solidity verifier (10 signals)
+ *
+ * Public signals order:
+ * [0] newCommitmentHash - Change output commitment
+ * [1] nullifierHash0 - Primary input nullifier (spent)
+ * [2] nullifierHash1 - Secondary input nullifier (spent)
+ * [3] refundCommitmentHash - Cross-chain refund commitment
+ * [4] withdrawnValue - Amount withdrawn
+ * [5] stateRoot - State merkle root
+ * [6] stateTreeDepth - State tree depth
+ * [7] ASPRoot - ASP merkle root
+ * [8] ASPTreeDepth - ASP tree depth
+ * [9] context - Binding context hash
+ */
+export function formatWithdraw2CrossChainProofForContract(
+  proof: SnarkJsProof,
+  publicSignals: string[],
+): ContractCrosschainWithdraw2Proof {
+  return {
+    pA: [BigInt(proof.pi_a[0]), BigInt(proof.pi_a[1])],
+    pB: [
+      [BigInt(proof.pi_b[0][1]), BigInt(proof.pi_b[0][0])],
+      [BigInt(proof.pi_b[1][1]), BigInt(proof.pi_b[1][0])],
+    ],
+    pC: [BigInt(proof.pi_c[0]), BigInt(proof.pi_c[1])],
+    pubSignals: [
+      BigInt(publicSignals[0]), // newCommitmentHash
+      BigInt(publicSignals[1]), // nullifierHash0
+      BigInt(publicSignals[2]), // nullifierHash1
+      BigInt(publicSignals[3]), // refundCommitmentHash
+      BigInt(publicSignals[4]), // withdrawnValue
+      BigInt(publicSignals[5]), // stateRoot
+      BigInt(publicSignals[6]), // stateTreeDepth
+      BigInt(publicSignals[7]), // ASPRoot
+      BigInt(publicSignals[8]), // ASPTreeDepth
+      BigInt(publicSignals[9]), // context
+    ],
+  };
+}
+
+/** @deprecated Use formatWithdraw2SameChainProofForContract or formatWithdraw2CrossChainProofForContract */
+export function formatWithdraw2ProofForContract(
+  proof: SnarkJsProof,
+  publicSignals: string[],
+): ContractWithdraw2Proof {
+  return formatWithdraw2CrossChainProofForContract(proof, publicSignals);
+}
+
+export function encodeWithdraw2RelayCallData(
+  withdrawalData: WithdrawalData,
+  proof: ContractWithdraw2SameChainProof,
+  scope: bigint,
+): `0x${string}` {
+  return encodeFunctionData({
+    abi: EntrypointWithdraw2RelayAbi,
+    functionName: 'relay2',
+    args: [
+      { processooor: withdrawalData.processooor, data: withdrawalData.data },
+      { pA: proof.pA, pB: proof.pB, pC: proof.pC, pubSignals: proof.pubSignals },
+      scope,
+    ],
+  });
+}
+
+export function encodeCrossChainWithdraw2CallData(
+  withdrawalData: CrossChainWithdrawalData,
+  proof: ContractCrosschainWithdraw2Proof,
+  scope: bigint,
+): `0x${string}` {
+  return encodeFunctionData({
+    abi: EntrypointCrosschainWithdraw2Abi,
+    functionName: 'crosschainWithdrawal2',
+    args: [
+      { processooor: withdrawalData.processooor, data: withdrawalData.data },
+      { pA: proof.pA, pB: proof.pB, pC: proof.pC, pubSignals: proof.pubSignals },
+      scope,
+    ],
+  });
+}
+
 // ============ DERIVATION FUNCTIONS ============
 
 export const deriveChangeNullifier = createDeriveFn('shinobi.cash:ChangeNullifierV1');
@@ -278,5 +435,154 @@ export function deriveCrosschainWithdrawalInputs(
     refundNullifier,
     refundSecret,
     refundCommitment: deriveRefundCommitment(BigInt(note.amount), BigInt(note.label), refundNullifier, refundSecret),
+  };
+}
+
+// ============ WITHDRAW2 (2:1) DERIVATION FUNCTIONS ============
+
+/**
+ * Derive primary input values for Withdraw2 (the chain that continues)
+ * Primary chain gets the change note output
+ */
+function derivePrimaryInput(
+  note: Note,
+  accountKey: bigint,
+  poolAddress: string,
+): Withdraw2PrimaryDerivation {
+  const isDeposit = note.noteType === 'deposit';
+  const nextChangeIndex = isDeposit ? 1 : note.changeIndex + 1;
+
+  return {
+    existingNullifier: isDeposit
+      ? deriveDepositNullifier(accountKey, poolAddress, note.depositIndex)
+      : deriveChangeNullifier(accountKey, poolAddress, note.depositIndex, note.changeIndex),
+    existingSecret: isDeposit
+      ? deriveDepositSecret(accountKey, poolAddress, note.depositIndex)
+      : deriveChangeSecret(accountKey, poolAddress, note.depositIndex, note.changeIndex),
+    existingCommitment: derivedNoteCommitment(accountKey, note).toString(),
+    newNullifier: deriveChangeNullifier(accountKey, poolAddress, note.depositIndex, nextChangeIndex),
+    newSecret: deriveChangeSecret(accountKey, poolAddress, note.depositIndex, nextChangeIndex),
+  };
+}
+
+/**
+ * Derive secondary input values for Withdraw2 (the chain that merges/terminates)
+ * Secondary chain does NOT get a new nullifier/secret - it terminates
+ */
+function deriveSecondaryInput(
+  note: Note,
+  accountKey: bigint,
+  poolAddress: string,
+): Withdraw2SecondaryDerivation {
+  const isDeposit = note.noteType === 'deposit';
+
+  return {
+    existingNullifier: isDeposit
+      ? deriveDepositNullifier(accountKey, poolAddress, note.depositIndex)
+      : deriveChangeNullifier(accountKey, poolAddress, note.depositIndex, note.changeIndex),
+    existingSecret: isDeposit
+      ? deriveDepositSecret(accountKey, poolAddress, note.depositIndex)
+      : deriveChangeSecret(accountKey, poolAddress, note.depositIndex, note.changeIndex),
+    existingCommitment: derivedNoteCommitment(accountKey, note).toString(),
+  };
+}
+
+/**
+ * Derive all inputs for a Withdraw2 (2:1 JoinSplit) withdrawal
+ *
+ * The primary note (larger depositIndex) continues with the change output.
+ * The secondary note (smaller depositIndex) merges and terminates.
+ *
+ * @param primaryNote - The note with larger depositIndex (chain continues)
+ * @param secondaryNote - The note with smaller depositIndex (chain terminates)
+ * @param accountKey - User's account key for derivation
+ * @param poolAddress - Pool contract address
+ * @param poolScope - Pool scope value
+ * @param withdrawalData - Encoded withdrawal data [processooor, data]
+ * @param labelSelector - 0 to use primary's label, 1 to use secondary's label
+ */
+export function deriveWithdraw2Inputs(
+  primaryNote: Note,
+  secondaryNote: Note,
+  accountKey: bigint,
+  poolAddress: string,
+  poolScope: bigint,
+  withdrawalData: readonly [string, string],
+  labelSelector: 0 | 1 = 0,
+): Withdraw2Derivation {
+  // Validate that primary has larger depositIndex
+  if (primaryNote.depositIndex <= secondaryNote.depositIndex) {
+    throw new Error('Primary note must have larger depositIndex than secondary note');
+  }
+
+  return {
+    contextHash: calculateContextHash(poolScope, withdrawalData),
+    primary: derivePrimaryInput(primaryNote, accountKey, poolAddress),
+    secondary: deriveSecondaryInput(secondaryNote, accountKey, poolAddress),
+    labelSelector,
+  };
+}
+
+/**
+ * Derive all inputs for a cross-chain Withdraw2 withdrawal
+ *
+ * Includes refund commitment for cross-chain failure recovery.
+ * The refund commitment uses the selected label (based on labelSelector).
+ *
+ * @param primaryNote - The note with larger depositIndex (chain continues)
+ * @param secondaryNote - The note with smaller depositIndex (chain terminates)
+ * @param accountKey - User's account key for derivation
+ * @param poolAddress - Pool contract address
+ * @param poolScope - Pool scope value
+ * @param withdrawalData - Encoded withdrawal data [processooor, data]
+ * @param labelSelector - 0 to use primary's label, 1 to use secondary's label
+ */
+export function deriveCrosschainWithdraw2Inputs(
+  primaryNote: Note,
+  secondaryNote: Note,
+  accountKey: bigint,
+  poolAddress: string,
+  poolScope: bigint,
+  withdrawalData: readonly [string, string],
+  labelSelector: 0 | 1 = 0,
+): CrosschainWithdraw2Derivation {
+  const base = deriveWithdraw2Inputs(
+    primaryNote,
+    secondaryNote,
+    accountKey,
+    poolAddress,
+    poolScope,
+    withdrawalData,
+    labelSelector,
+  );
+
+  // Refund uses primary's chain position (since primary continues)
+  const nextChangeIndex = primaryNote.noteType === 'deposit' ? 1 : primaryNote.changeIndex + 1;
+
+  const refundNullifier = deriveRefundNullifier(
+    accountKey,
+    poolAddress,
+    primaryNote.depositIndex,
+    nextChangeIndex,
+  );
+  const refundSecret = deriveRefundSecret(
+    accountKey,
+    poolAddress,
+    primaryNote.depositIndex,
+    nextChangeIndex,
+  );
+
+  // Refund commitment uses the selected label
+  const selectedLabel =
+    labelSelector === 0 ? BigInt(primaryNote.label) : BigInt(secondaryNote.label);
+
+  // Refund amount is combined amount (both inputs)
+  const refundAmount = BigInt(primaryNote.amount) + BigInt(secondaryNote.amount);
+
+  return {
+    ...base,
+    refundNullifier,
+    refundSecret,
+    refundCommitment: deriveRefundCommitment(refundAmount, selectedLabel, refundNullifier, refundSecret),
   };
 }
