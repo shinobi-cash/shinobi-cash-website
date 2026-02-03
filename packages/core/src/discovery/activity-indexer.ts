@@ -16,6 +16,8 @@ export interface ActivityIndex {
   withdraw2ByNullifier: Map<string, Activity>;
   /** Deposits indexed by precommitmentHash */
   depositsByPrecommitment: Map<string, Activity>;
+  /** Ragequit indexed by commitment hash */
+  ragequitByCommitment: Map<string, Activity>;
 }
 
 // ============================================================================
@@ -46,6 +48,10 @@ export function isWithdraw2Activity(activity: Activity): boolean {
   );
 }
 
+export function isRagequitActivity(activity: Activity): boolean {
+  return activity.type === 'RAGEQUIT';
+}
+
 // ============================================================================
 // Index Builder
 // ============================================================================
@@ -59,6 +65,7 @@ export function buildActivityIndex(activities: Activity[]): ActivityIndex {
     withdrawalsByNullifier: new Map(),
     withdraw2ByNullifier: new Map(),
     depositsByPrecommitment: new Map(),
+    ragequitByCommitment: new Map(),
   };
 
   for (const activity of activities) {
@@ -78,6 +85,11 @@ export function buildActivityIndex(activities: Activity[]): ActivityIndex {
       if (activity.spentNullifier1) {
         index.withdraw2ByNullifier.set(activity.spentNullifier1, activity);
       }
+    }
+
+    // Index ragequit by commitment hash
+    if (isRagequitActivity(activity) && activity.commitment) {
+      index.ragequitByCommitment.set(activity.commitment, activity);
     }
   }
 

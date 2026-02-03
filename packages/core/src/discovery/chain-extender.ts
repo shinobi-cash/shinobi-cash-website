@@ -9,6 +9,7 @@ import type { NoteChain, NullifierInfo, Note } from './types.js';
 import type { ActivityIndex } from './activity-indexer.js';
 import { deriveAndHashNullifier } from './nullifier-utils.js';
 import { createChangeNote, createWithdraw2ChangeNote, createMergedNote } from './note-factory.js';
+import { derivedNoteCommitment } from '../withdrawal/index.js';
 
 // ============================================================================
 // Extension Result Type
@@ -125,6 +126,14 @@ function extendSingleChain(
         break;
       }
       continue;
+    }
+
+    // Check for ragequit (public withdrawal)
+    const commitment = derivedNoteCommitment(accountKey, lastNote).toString();
+    const ragequit = activityIndex.ragequitByCommitment.get(commitment);
+    if (ragequit) {
+      processRagequit(lastNote, nullifierMap, nullifierHash);
+      break; // Ragequit is final - no more extensions possible
     }
 
     // No more withdrawals found
@@ -329,4 +338,26 @@ function processAsSecondaryChain(currentLastNote: Note, _primaryDepositIndex: nu
   // Mark as spent so the while loop exits (note is no longer 'unspent')
   // The primary chain will create the proper merged note and update this chain
   currentLastNote.status = 'spent';
+}
+
+// ============================================================================
+// Ragequit Processing
+// ============================================================================
+
+/**
+ * Process a ragequit (public withdrawal)
+ * - Marks the note as spent
+ * - No change note is created (ragequit withdraws the full amount)
+ * - Removes the nullifier from the map
+ */
+function processRagequit(
+  lastNote: Note,
+  nullifierMap: Map<string, NullifierInfo>,
+  nullifierHash: string,
+): void {
+  // Mark note as spent
+  lastNote.status = 'spent';
+
+  // Remove nullifier from map (no change note for ragequit)
+  nullifierMap.delete(nullifierHash);
 }
