@@ -13,7 +13,9 @@ import {
   EntrypointCrosschainWithdrawalAbi,
   EntrypointWithdraw2RelayAbi,
   EntrypointCrosschainWithdraw2Abi,
+  PoolRagequitAbi,
   SHINOBI_CASH_ENTRYPOINT,
+  SHINOBI_CASH_ETH_POOL,
 } from '@shinobi-cash/constants';
 import type {
   WithdrawalData,
@@ -23,6 +25,7 @@ import type {
   ContractWithdraw2Proof,
   ContractWithdraw2SameChainProof,
   ContractCrosschainWithdraw2Proof,
+  ContractRagequitProof,
   SnarkJsProof,
   ContextHash,
   WithdrawalDerivation,
@@ -31,6 +34,7 @@ import type {
   Withdraw2PrimaryDerivation,
   Withdraw2SecondaryDerivation,
   CrosschainWithdraw2Derivation,
+  RagequitDerivation,
 } from './types.js';
 
 // Re-export types
@@ -42,6 +46,7 @@ export type {
   ContractWithdraw2Proof,
   ContractWithdraw2SameChainProof,
   ContractCrosschainWithdraw2Proof,
+  ContractRagequitProof,
   SnarkJsProof,
   ContextHash,
   WithdrawalDerivation,
@@ -50,6 +55,7 @@ export type {
   Withdraw2PrimaryDerivation,
   Withdraw2SecondaryDerivation,
   CrosschainWithdraw2Derivation,
+  RagequitDerivation,
 } from './types.js';
 
 // Re-export note selection
@@ -584,5 +590,75 @@ export function deriveCrosschainWithdraw2Inputs(
     refundNullifier,
     refundSecret,
     refundCommitment: deriveRefundCommitment(refundAmount, selectedLabel, refundNullifier, refundSecret),
+  };
+}
+
+// ============ RAGEQUIT FUNCTIONS ============
+
+/**
+ * Format snarkjs proof for ragequit contract verifier (4 signals)
+ *
+ * Public signals order (from commitment circuit):
+ * [0] commitmentHash - Hash of the commitment being ragequit
+ * [1] nullifierHash - Hash of the nullifier
+ * [2] value - Value of the commitment
+ * [3] label - Deposit label
+ */
+export function formatRagequitProofForContract(
+  proof: SnarkJsProof,
+  publicSignals: string[],
+): ContractRagequitProof {
+  return {
+    pA: [BigInt(proof.pi_a[0]), BigInt(proof.pi_a[1])],
+    pB: [
+      [BigInt(proof.pi_b[0][1]), BigInt(proof.pi_b[0][0])],
+      [BigInt(proof.pi_b[1][1]), BigInt(proof.pi_b[1][0])],
+    ],
+    pC: [BigInt(proof.pi_c[0]), BigInt(proof.pi_c[1])],
+    pubSignals: [
+      BigInt(publicSignals[0]), // commitmentHash
+      BigInt(publicSignals[1]), // nullifierHash
+      BigInt(publicSignals[2]), // value
+      BigInt(publicSignals[3]), // label
+    ],
+  };
+}
+
+/**
+ * Encode ragequit call data for the pool contract
+ */
+export function encodeRagequitCallData(proof: ContractRagequitProof): `0x${string}` {
+  return encodeFunctionData({
+    abi: PoolRagequitAbi,
+    functionName: 'ragequit',
+    args: [{ pA: proof.pA, pB: proof.pB, pC: proof.pC, pubSignals: proof.pubSignals }],
+  });
+}
+
+/**
+ * Derive ragequit inputs for a note
+ * Simpler than withdrawal - no new commitment needed
+ */
+export function deriveRagequitInputs(
+  note: Note,
+  accountKey: bigint,
+  poolAddress: string,
+): RagequitDerivation {
+  const isDeposit = note.noteType === 'deposit';
+
+  const existingNullifier = isDeposit
+    ? deriveDepositNullifier(accountKey, poolAddress, note.depositIndex)
+    : deriveChangeNullifier(accountKey, poolAddress, note.depositIndex, note.changeIndex);
+
+  const existingSecret = isDeposit
+    ? deriveDepositSecret(accountKey, poolAddress, note.depositIndex)
+    : deriveChangeSecret(accountKey, poolAddress, note.depositIndex, note.changeIndex);
+
+  return {
+    existingNullifier,
+    existingSecret,
+    existingCommitment: derivedNoteCommitment(accountKey, note).toString(),
+    value: BigInt(note.amount),
+    label: BigInt(note.label),
   };
 }

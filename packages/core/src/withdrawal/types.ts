@@ -140,3 +140,32 @@ export interface CrosschainWithdraw2Derivation extends Withdraw2Derivation {
   refundSecret: bigint;
   refundCommitment: string;
 }
+
+// ============ RAGEQUIT TYPES ============
+
+/**
+ * Ragequit contract-ready proof (4 signals)
+ *
+ * Public signals order:
+ * [0] commitmentHash - Hash of the commitment being ragequit
+ * [1] nullifierHash - Nullifier hash of commitment being ragequit
+ * [2] value - Value of the commitment being ragequit
+ * [3] label - Label of commitment
+ */
+export interface ContractRagequitProof {
+  pA: [bigint, bigint];
+  pB: [[bigint, bigint], [bigint, bigint]];
+  pC: [bigint, bigint];
+  pubSignals: [bigint, bigint, bigint, bigint];
+}
+
+/**
+ * Ragequit derivation - simpler than withdrawal (no new commitment, no context)
+ */
+export interface RagequitDerivation {
+  existingNullifier: bigint;
+  existingSecret: bigint;
+  existingCommitment: string;
+  value: bigint;
+  label: bigint;
+}

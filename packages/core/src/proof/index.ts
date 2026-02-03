@@ -23,6 +23,8 @@ import type {
   Withdraw2Intent,
   Withdraw2CircuitWitness,
   CrosschainWithdraw2CircuitWitness,
+  RagequitCircuitWitness,
+  RagequitProofData,
 } from './types.js';
 
 // Re-export types
@@ -37,6 +39,8 @@ export type {
   Withdraw2Intent,
   Withdraw2CircuitWitness,
   CrosschainWithdraw2CircuitWitness,
+  RagequitCircuitWitness,
+  RagequitProofData,
 } from './types.js';
 
 const MAX_TREE_DEPTH = 32;
@@ -251,6 +255,8 @@ export interface ProofGeneratorConfig {
   withdraw2Loader?: CircuitFileLoader;
   /** Cross-chain Withdraw2 circuit */
   crosschainWithdraw2Loader?: CircuitFileLoader;
+  /** Ragequit (commitment) circuit */
+  ragequitLoader?: CircuitFileLoader;
 }
 
 /**
@@ -261,6 +267,7 @@ export function createProofGenerator(config: ProofGeneratorConfig): ProofGenerat
   let crosschainFiles: CircuitFiles | null = null;
   let withdraw2Files: CircuitFiles | null = null;
   let crosschainWithdraw2Files: CircuitFiles | null = null;
+  let ragequitFiles: CircuitFiles | null = null;
 
   async function ensureWithdrawalFiles(): Promise<CircuitFiles> {
     if (!withdrawalFiles) {
@@ -294,6 +301,16 @@ export function createProofGenerator(config: ProofGeneratorConfig): ProofGenerat
       crosschainWithdraw2Files = await config.crosschainWithdraw2Loader();
     }
     return crosschainWithdraw2Files;
+  }
+
+  async function ensureRagequitFiles(): Promise<CircuitFiles> {
+    if (!config.ragequitLoader) {
+      throw new Error('Ragequit circuit loader not configured');
+    }
+    if (!ragequitFiles) {
+      ragequitFiles = await config.ragequitLoader();
+    }
+    return ragequitFiles;
   }
 
   return {
@@ -364,6 +381,23 @@ export function createProofGenerator(config: ProofGeneratorConfig): ProofGenerat
       const isValid = await snarkjs.groth16.verify(files.vkeyData, publicSignals, proof);
       if (!isValid) {
         throw new Error('Generated proof failed verification');
+      }
+
+      return { proof, publicSignals };
+    },
+
+    async generateRagequitProof(witness: RagequitCircuitWitness): Promise<RagequitProofData> {
+      const files = await ensureRagequitFiles();
+
+      const { proof, publicSignals } = await snarkjs.groth16.fullProve(
+        witness,
+        files.wasmFile,
+        files.zkeyFile,
+      );
+
+      const isValid = await snarkjs.groth16.verify(files.vkeyData, publicSignals, proof);
+      if (!isValid) {
+        throw new Error('Generated ragequit proof failed verification');
       }
 
       return { proof, publicSignals };
