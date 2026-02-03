@@ -115,6 +115,51 @@ This document describes the adversaries Shinobi Cash considers, the attacks they
 
 **Outcome:** Context binding (hash of withdrawal data + scope) makes proofs non-replayable. Same proof cannot be used for different withdrawal.
 
+### Scenario 5: User-Solver Money Laundering (Cross-Chain Deposits)
+
+**Attack:** Attacker controls both a "clean" address and illicit funds, and operates as a solver:
+
+```
+1. Attacker has illicit ETH in address A (would fail ASP)
+2. Attacker controls clean address B (no history)
+3. Attacker signs a deposit intent with B as depositor
+4. Attacker (as solver) fills the intent using A's illicit funds
+5. Deposit attributed to B → passes ASP compliance
+6. Attacker withdraws "clean" funds later via ZK proof
+```
+
+**Why this matters:** This is **free laundering** — the attacker doesn't lose funds, they just move illicit funds through the pool with clean attribution.
+
+**Why standard cross-chain solutions fail:**
+
+Standard intent systems (like ERC-7683) use **optimistic settlement**:
+- Solver fills first, gets reimbursed later
+- Security relies on solver economic rationality
+- Solvers won't fill orders they can't profitably settle
+
+But when **attacker = user = solver**:
+- Attacker doesn't care about settlement profit
+- Attacker's goal is laundering, not profit
+- "Failed settlement" is irrelevant — deposit already happened
+
+**Mitigation (Shinobi's intentOracle Extension):**
+
+Shinobi Cash extends the standard OIF with **mandatory intent proof validation** for deposits:
+
+```solidity
+// ShinobiDepositOutputSettler.fill()
+if (!IInputOracle(intentOracle).isProven(orderId))
+    revert IntentNotProven();
+```
+
+This ensures:
+1. User must **actually deposit** funds on origin chain (not just sign)
+2. Intent oracle proves the deposit happened with user's funds
+3. Fill is **blocked** until proof exists
+4. Attacker cannot fill with illicit funds without real deposit from clean address
+
+**Result:** Attack blocked. Depositor address is cryptographically bound to the fund provider.
+
 ## What Shinobi Cash Does NOT Protect Against
 
 - **Compromised wallet** — If your private key is stolen, attacker can sign withdrawals

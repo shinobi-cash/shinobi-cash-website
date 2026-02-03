@@ -152,8 +152,40 @@ function fill(ShinobiIntent calldata intent) external payable nonReentrant {
 }
 ```
 
-**Why intentOracle is required:**
-Without this, an attacker could create fake intents claiming any depositor address. The oracle proves the intent originated from a legitimate user on the origin chain.
+### Why intentOracle is Required
+
+:::warning[Critical Security]
+This is Shinobi's key extension to standard OIF. Without it, privacy pools are vulnerable to money laundering.
+:::
+
+**The attack without intentOracle:**
+
+Standard cross-chain systems use **optimistic settlement** — solvers fill first, get reimbursed later. Security relies on solvers being economically rational.
+
+But when **attacker = user = solver**:
+```
+1. Attacker signs intent with clean address B (no deposit)
+2. Attacker (as solver) fills with illicit funds from address A
+3. Deposit attributed to B → passes ASP compliance
+4. Settlement fails (B never deposited) — attacker doesn't care
+5. Attacker withdraws "clean" funds via ZK proof
+Result: FREE LAUNDERING
+```
+
+**Why optimistic fails for privacy pools:**
+- Normal swaps: Solver wants profit, won't fill unprofitable orders
+- Privacy pools: Attacker wants laundering, profit is irrelevant
+- The economic disincentive doesn't apply
+
+**Shinobi's solution:**
+
+The intentOracle proves the intent was created with **actual escrowed funds** on the origin chain:
+- User must deposit (not just sign)
+- `intent.user = msg.sender` at deposit time
+- Oracle proves this to destination
+- Fill blocked without proof
+
+This ensures: **depositor address = fund provider** (cryptographically enforced)
 
 ## ShinobiWithdrawalOutputSettler
 
