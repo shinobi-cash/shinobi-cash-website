@@ -108,47 +108,49 @@ export class NoteDiscovery {
       currentPageActivityCount: 0,
       depositsChecked: 0,
       depositsMatched: state.newDepositsFound,
-      lastOffset: state.offset,
       complete: false,
     };
     onProgress?.(progress);
 
     let hasNext = true;
     let pagesProcessed = 0;
+    let currentOffset = state.minOffset;
 
-    // Process pages
+    // Process pages starting from minOffset
     while (hasNext && (!maxPages || pagesProcessed < maxPages)) {
       // Check for abort
       if (signal?.aborted) {
         throw new DOMException('Aborted', 'AbortError');
       }
 
-      // Fetch activities
-      const page = await this.fetcher(poolAddress, pageSize, state.offset, 'asc');
-      const nextOffset = state.offset + page.items.length;
+      // Fetch activities from current offset
+      const page = await this.fetcher(poolAddress, pageSize, currentOffset, 'asc');
 
-      // Process the page
-      state = this.processPage(state, page.items, accountKey, poolAddress, policy);
-      state.offset = nextOffset;
+      // Process the page (pass currentOffset for tracking discovery position)
+      state = this.processPage(state, page.items, accountKey, poolAddress, policy, currentOffset);
 
+      // Move to next page
+      currentOffset += page.items.length;
       pagesProcessed++;
 
       // Update progress
       progress.pagesProcessed = pagesProcessed;
       progress.currentPageActivityCount = page.items.length;
       progress.depositsMatched = state.newDepositsFound;
-      progress.lastOffset = state.offset;
       onProgress?.(progress);
 
       // Persist periodically
       if (pagesProcessed % policy.persistEveryPages === 0) {
+        // Calculate minOffset before saving
+        state.minOffset = calculateMinOffset(state.chains);
         await this.saveState(publicKey, poolAddress, state);
       }
 
       hasNext = page.pageInfo.hasNextPage;
     }
 
-    // Final persist
+    // Calculate final minOffset and persist
+    state.minOffset = calculateMinOffset(state.chains);
     await this.saveState(publicKey, poolAddress, state);
 
     // Mark complete
@@ -168,6 +170,7 @@ export class NoteDiscovery {
     accountKey: bigint,
     poolAddress: string,
     policy: DiscoveryPolicy,
+    currentOffset: number,
   ): DiscoveryState {
     // Build activity index for fast lookups
     const activityIndex = buildActivityIndex(activities);
@@ -180,6 +183,7 @@ export class NoteDiscovery {
       poolAddress,
       state.nextDepositIndex,
       policy.maxDepositScan,
+      currentOffset,
     );
 
     // Merge new chains into state
@@ -222,7 +226,7 @@ export class NoteDiscovery {
       chains: new Map(),
       nullifierMap: new Map(),
       nextDepositIndex: 0,
-      offset: 0,
+      minOffset: 0,
       newDepositsFound: 0,
     };
   }
@@ -238,7 +242,7 @@ export class NoteDiscovery {
       notes,
       lastUsedIndex: state.nextDepositIndex - 1,
       newNotesFound: state.newDepositsFound,
-      lastProcessedOffset: state.offset,
+      minOffset: state.minOffset,
     };
   }
 }
@@ -258,7 +262,7 @@ function serializeState(state: DiscoveryState): SerializableDiscoveryState {
       info,
     })),
     nextDepositIndex: state.nextDepositIndex,
-    offset: state.offset,
+    minOffset: state.minOffset,
     newDepositsFound: state.newDepositsFound,
   };
 }
@@ -268,7 +272,31 @@ function deserializeState(serialized: SerializableDiscoveryState): DiscoveryStat
     chains: new Map(serialized.chains.map((c) => [c.depositIndex, c.chain])),
     nullifierMap: new Map(serialized.nullifierMap.map((n) => [n.hash, n.info])),
     nextDepositIndex: serialized.nextDepositIndex,
-    offset: serialized.offset,
+    minOffset: serialized.minOffset,
     newDepositsFound: serialized.newDepositsFound,
   };
+}
+
+/**
+ * Calculate the minimum offset from which we need to re-fetch activities.
+ * This is the lowest discoveredAtOffset among all unspent notes.
+ */
+function calculateMinOffset(chains: Map<number, import('./types.js').NoteChain>): number {
+  let minOffset = Number.MAX_SAFE_INTEGER;
+  let hasUnspentNotes = false;
+
+  for (const [, chain] of chains) {
+    const lastNote = chain[chain.length - 1];
+    if (lastNote && lastNote.status === 'unspent') {
+      hasUnspentNotes = true;
+      // Get the deposit note's discoveredAtOffset
+      const depositNote = chain[0];
+      if (depositNote?.discoveredAtOffset !== undefined) {
+        minOffset = Math.min(minOffset, depositNote.discoveredAtOffset);
+      }
+    }
+  }
+
+  // If no unspent notes, we can start from 0 (or keep current behavior)
+  return hasUnspentNotes ? minOffset : 0;
 }

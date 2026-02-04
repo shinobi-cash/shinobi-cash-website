@@ -17,6 +17,7 @@ export function createDepositNote(
   activity: Activity,
   depositIndex: number,
   poolAddress: string,
+  discoveredAtOffset?: number,
 ): DepositNote {
   if (!activity.precommitmentHash) {
     throw new Error(`Activity must have precommitmentHash to create DepositNote (depositIndex: ${depositIndex})`);
@@ -51,6 +52,7 @@ export function createDepositNote(
     aspStatus: activity.aspStatus,
     precommitmentHash: activity.precommitmentHash,
     activityData: buildActivityMetadata(activity),
+    discoveredAtOffset,
   };
 }
 

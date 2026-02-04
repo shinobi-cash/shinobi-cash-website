@@ -31,7 +31,7 @@ export interface CachedNoteData {
   notes: NoteChain[];
   lastUsedDepositIndex: number;
   lastSyncTime: number;
-  lastProcessedOffset?: number;
+  minOffset?: number;
   // Full discovery state for proper resumption
   nullifierMap?: Array<{ hash: string; info: NullifierInfo }>;
   nextDepositIndex?: number;

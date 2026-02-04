@@ -48,7 +48,7 @@ export class NotesRepository {
         notes: cached.notes,
         lastUsedIndex: cached.lastUsedDepositIndex,
         newNotesFound: 0,
-        lastProcessedOffset: cached.lastProcessedOffset ?? 0,
+        minOffset: cached.minOffset ?? 0,
       };
     }
 
@@ -62,7 +62,7 @@ export class NotesRepository {
     publicKey: string,
     poolAddress: string,
     notes: NoteChain[],
-    lastProcessedOffset?: number
+    minOffset?: number
   ): Promise<void> {
     if (!this.encryptionService.isKeyAvailable()) {
       throw new Error("Session not initialized");
@@ -70,7 +70,7 @@ export class NotesRepository {
 
     const lastUsedIndex =
       notes.length > 0 ? Math.max(...notes.map((chain) => chain[0].depositIndex)) : -1;
-    await this.storeData(publicKey, poolAddress, notes, lastUsedIndex, lastProcessedOffset);
+    await this.storeData(publicKey, poolAddress, notes, lastUsedIndex, minOffset);
   }
 
   /**
@@ -81,7 +81,7 @@ export class NotesRepository {
     poolAddress: string,
     notes: NoteChain[],
     lastUsedDepositIndex: number,
-    lastProcessedOffset?: number,
+    minOffset?: number,
     nullifierMap?: Array<{ hash: string; info: { depositIndex: number; changeIndex: number } }>,
     nextDepositIndex?: number,
     newDepositsFound?: number
@@ -92,7 +92,7 @@ export class NotesRepository {
       notes,
       lastUsedDepositIndex,
       lastSyncTime: Date.now(),
-      lastProcessedOffset,
+      minOffset,
       nullifierMap,
       nextDepositIndex,
       newDepositsFound,
@@ -178,7 +178,7 @@ export class NotesRepository {
           chains,
           nullifierMap: cached.nullifierMap ?? [],
           nextDepositIndex: cached.nextDepositIndex ?? (cached.lastUsedDepositIndex + 1),
-          offset: cached.lastProcessedOffset ?? 0,
+          minOffset: cached.minOffset ?? 0,
           newDepositsFound: cached.newDepositsFound ?? 0,
         };
       },
@@ -195,7 +195,7 @@ export class NotesRepository {
           pool,
           notes,
           lastUsedIndex,
-          state.offset,
+          state.minOffset,
           state.nullifierMap,
           state.nextDepositIndex,
           state.newDepositsFound

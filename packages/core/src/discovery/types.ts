@@ -69,6 +69,8 @@ interface BaseNote {
   mergedIntoDepositIndex?: number;
   // Activity data
   activityData: ActivityMetadata;
+  // Discovery tracking - offset at which deposit was discovered
+  discoveredAtOffset?: number;
 }
 
 /** Deposit note - the first note in a chain (changeIndex = 0) */
@@ -119,8 +121,8 @@ export interface DiscoveryState {
   nullifierMap: Map<string, NullifierInfo>;
   /** Next deposit index to scan */
   nextDepositIndex: number;
-  /** Pagination offset for activity fetching */
-  offset: number;
+  /** Minimum offset to fetch from (earliest unspent note's discovery offset) */
+  minOffset: number;
   /** Count of new deposits found in this sync */
   newDepositsFound: number;
 }
@@ -130,7 +132,7 @@ export interface SerializableDiscoveryState {
   chains: Array<{ depositIndex: number; chain: NoteChain }>;
   nullifierMap: Array<{ hash: string; info: NullifierInfo }>;
   nextDepositIndex: number;
-  offset: number;
+  minOffset: number;
   newDepositsFound: number;
 }
 
@@ -142,7 +144,7 @@ export interface DiscoveryResult {
   notes: NoteChain[];
   lastUsedIndex: number;
   newNotesFound: number;
-  lastProcessedOffset: number;
+  minOffset: number;
 }
 
 export interface DiscoveryProgress {
@@ -150,7 +152,6 @@ export interface DiscoveryProgress {
   currentPageActivityCount: number;
   depositsChecked: number;
   depositsMatched: number;
-  lastOffset: number;
   complete: boolean;
 }
 

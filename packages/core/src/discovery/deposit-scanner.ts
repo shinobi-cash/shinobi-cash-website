@@ -41,6 +41,7 @@ export interface ScanResult {
  * @param poolAddress - Pool contract address
  * @param startIndex - First deposit index to scan
  * @param maxScan - Maximum indices to scan
+ * @param currentOffset - Current page offset (for tracking discovery position)
  */
 export function scanForDeposits(
   activityIndex: ActivityIndex,
@@ -48,6 +49,7 @@ export function scanForDeposits(
   poolAddress: string,
   startIndex: number,
   maxScan: number,
+  currentOffset?: number,
 ): ScanResult {
   const result: ScanResult = {
     newChains: [],
@@ -77,7 +79,7 @@ export function scanForDeposits(
     }
 
     // Create deposit note and chain
-    const depositNote = createDepositNote(activity, idx, poolAddress);
+    const depositNote = createDepositNote(activity, idx, poolAddress, currentOffset);
     const chain: NoteChain = [depositNote];
 
     // Add nullifier mapping for this deposit
