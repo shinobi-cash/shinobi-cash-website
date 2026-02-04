@@ -332,7 +332,7 @@ export function ActivityDetailsContent({ activity }: Props) {
           </div>
         )}
 
-        {/* Withdrawals: Nullifier(s), Change Note, Refund Commitment */}
+        {/* Withdrawals: Nullifier(s), Change Commitment, Refund Commitment */}
         {isWithdrawal && (
           <div className="flex flex-wrap gap-x-6 gap-y-3">
             {activity.spentNullifier && (
@@ -345,7 +345,7 @@ export function ActivityDetailsContent({ activity }: Props) {
               <HashField label="Spent Nullifier 2" value={activity.spentNullifier1} />
             )}
             {activity.newCommitment && (
-              <HashField label="Change Note" value={activity.newCommitment} />
+              <HashField label="Change Commitment" value={activity.newCommitment} />
             )}
             {activity.refundCommitment && (
               <HashField label="Refund Commitment" value={activity.refundCommitment} />
