@@ -132,6 +132,7 @@ export { ActivityQueryBuilder } from './query/builders/activity-query-builder.js
 export { PoolQueryBuilder } from './query/builders/pool-query-builder.js';
 export { StateTreeQueryBuilder } from './query/builders/state-tree-query-builder.js';
 export { ASPQueryBuilder } from './query/builders/asp-query-builder.js';
+export { IntentQueryBuilder } from './query/builders/intent-query-builder.js';
 export { BaseQueryBuilder } from './query/builders/base-query-builder.js';
 
 // Typed query builder factories
@@ -150,21 +151,25 @@ export type {
   StateTreeFields,
   ASPApprovalListFields,
   CrossChainIntentFields,
+  IntentFields,
   ActivityOrderBy,
   PoolOrderBy,
   StateTreeOrderBy,
   ASPApprovalListOrderBy,
   CrossChainIntentOrderBy,
+  IntentOrderBy,
   ActivityWhereInput,
   PoolWhereInput,
   StateTreeLeafWhereInput,
   ASPApprovalListWhereInput,
   CrossChainIntentWhereInput,
+  IntentWhereInput,
   ActivityQuery,
   PoolQuery,
   StateTreeQuery,
   ASPApprovalListQuery,
   CrossChainIntentQuery,
+  IntentQuery,
 } from './query/types.js';
 
 /**
@@ -183,6 +188,8 @@ export {
   serializeStateTreeLeaf,
   serializeASPApprovalList,
   serializeCrossChainIntent,
+  serializeIntent,
+  serializeIntentTimelineEvent,
   serializeActivities,
 } from './transformers/index.js';
 
@@ -193,6 +200,8 @@ export {
   deserializeStateTreeLeaf,
   deserializeASPApprovalList,
   deserializeCrossChainIntent,
+  deserializeIntent,
+  deserializeIntentTimelineEvent,
   deserializeActivities,
 } from './transformers/index.js';
 

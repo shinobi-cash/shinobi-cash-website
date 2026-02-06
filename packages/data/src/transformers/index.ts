@@ -19,6 +19,10 @@ import type {
   SerializedASPApprovalList,
   CrossChainIntent,
   SerializedCrossChainIntent,
+  Intent,
+  SerializedIntent,
+  IntentTimelineEvent,
+  SerializedIntentTimelineEvent,
 } from '../types/indexer.js';
 
 /**
@@ -49,6 +53,8 @@ export type SerializedEntityMap = {
   StateTreeLeaf: SerializedStateTreeLeaf;
   ASPApprovalList: SerializedASPApprovalList;
   CrossChainIntent: SerializedCrossChainIntent;
+  Intent: SerializedIntent;
+  IntentTimelineEvent: SerializedIntentTimelineEvent;
 };
 
 /**
@@ -191,6 +197,30 @@ const BIGINT_FIELDS = {
   stateTreeLeaf: ['leafIndex', 'treeSize'],
   aspApprovalList: ['timestamp'],
   crossChainIntent: ['originChainId', 'destinationChainId', 'amount', 'createdAt', 'fillDeadline', 'expires'],
+  intent: [
+    'originChainId',
+    'destinationChainId',
+    'amount',
+    'fillDeadline',
+    'expires',
+    'nonce',
+    'inputAmount',
+    'outputAmount',
+    'blockNumber',
+    'timestamp',
+  ],
+  intentTimelineEvent: [
+    'amount',
+    'originChainId',
+    'destinationChainId',
+    'fillDeadline',
+    'expires',
+    'nonce',
+    'inputAmount',
+    'outputAmount',
+    'blockNumber',
+    'timestamp',
+  ],
 };
 
 /**
@@ -216,6 +246,14 @@ export function serializeASPApprovalList(entity: ASPApprovalList): SerializedASP
 }
 
 export function serializeCrossChainIntent(entity: CrossChainIntent): SerializedCrossChainIntent {
+  return convertBigIntsToStrings(entity);
+}
+
+export function serializeIntent(entity: Intent): SerializedIntent {
+  return convertBigIntsToStrings(entity);
+}
+
+export function serializeIntentTimelineEvent(entity: IntentTimelineEvent): SerializedIntentTimelineEvent {
   return convertBigIntsToStrings(entity);
 }
 
@@ -245,6 +283,14 @@ export function deserializeCrossChainIntent(entity: SerializedCrossChainIntent):
   return convertStringsToBigInts(entity, BIGINT_FIELDS.crossChainIntent);
 }
 
+export function deserializeIntent(entity: SerializedIntent): Intent {
+  return convertStringsToBigInts(entity, BIGINT_FIELDS.intent);
+}
+
+export function deserializeIntentTimelineEvent(entity: SerializedIntentTimelineEvent): IntentTimelineEvent {
+  return convertStringsToBigInts(entity, BIGINT_FIELDS.intentTimelineEvent);
+}
+
 /**
  * ========================================
  * CONVENIENCE EXPORTS
@@ -260,6 +306,8 @@ export const serializers = {
   stateTreeLeaf: serializeStateTreeLeaf,
   aspApprovalList: serializeASPApprovalList,
   crossChainIntent: serializeCrossChainIntent,
+  intent: serializeIntent,
+  intentTimelineEvent: serializeIntentTimelineEvent,
 };
 
 /**
@@ -271,6 +319,8 @@ export const deserializers = {
   stateTreeLeaf: deserializeStateTreeLeaf,
   aspApprovalList: deserializeASPApprovalList,
   crossChainIntent: deserializeCrossChainIntent,
+  intent: deserializeIntent,
+  intentTimelineEvent: deserializeIntentTimelineEvent,
 };
 
 /**

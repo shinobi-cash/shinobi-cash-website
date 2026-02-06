@@ -537,6 +537,7 @@ export class IndexerClient {
    * Get intents with pagination and filtering support
    *
    * Returns cross-chain intents from the IntentStatusView (latest phase per orderId).
+   * This is a convenience method that wraps the IntentQueryBuilder.
    *
    * @param options - Query options
    * @param options.limit - Number of intents to fetch (default: 100)
@@ -555,6 +556,14 @@ export class IndexerClient {
    *   intentType: 'WITHDRAWAL',
    *   phase: 'ESCROWED'
    * });
+   *
+   * // Or use the query builder directly for more control:
+   * const intents = await client.query()
+   *   .intents()
+   *   .onlyWithdrawals()
+   *   .byPhase('ESCROWED')
+   *   .limit(50)
+   *   .executePaginated();
    * ```
    */
   async getIntents(options: {
@@ -570,110 +579,24 @@ export class IndexerClient {
     const { limit = 100, orderDirection = 'desc', offset, intentType, phase, orderId, originChainId, destinationChainId } =
       options;
 
-    // Build where clause dynamically
-    const whereConditions: string[] = [];
-    if (intentType) whereConditions.push(`intentType: "${intentType}"`);
-    if (phase) whereConditions.push(`phase: "${phase}"`);
-    if (orderId) whereConditions.push(`orderId_contains: "${orderId}"`);
-    if (originChainId) whereConditions.push(`originChainId: "${originChainId.toString()}"`);
-    if (destinationChainId) whereConditions.push(`destinationChainId: "${destinationChainId.toString()}"`);
+    // Use the query builder
+    let builder = this.query().intents().limit(limit).orderByTimestamp(orderDirection);
 
-    const whereClause = whereConditions.length > 0 ? `where: { ${whereConditions.join(', ')} }` : '';
+    if (offset !== undefined) builder = builder.skip(offset);
+    if (intentType) builder = builder.byType(intentType);
+    if (phase) builder = builder.byPhase(phase);
+    if (orderId) builder = builder.searchOrderId(orderId);
+    if (originChainId) builder = builder.fromChain(originChainId);
+    if (destinationChainId) builder = builder.toChain(destinationChainId);
 
-    const query = `
-      query GetIntents($limit: Int!, $orderDirection: String!, $offset: Int) {
-        intentStatusViews(
-          ${whereClause}
-          orderBy: "timestamp"
-          orderDirection: $orderDirection
-          limit: $limit
-          offset: $offset
-        ) {
-          items {
-            orderId
-            intentType
-            phase
-            user
-            solver
-            originChainId
-            destinationChainId
-            amount
-            fillDeadline
-            expires
-            nonce
-            fillOracle
-            intentOracle
-            inputAmount
-            outputAmount
-            outputRecipient
-            txHash
-            blockNumber
-            timestamp
-          }
-          pageInfo {
-            hasNextPage
-            hasPreviousPage
-          }
-        }
-      }
-    `;
-
-    interface RawIntent {
-      orderId: string;
-      intentType: string;
-      phase: string;
-      user?: string;
-      solver?: string;
-      originChainId?: string;
-      destinationChainId?: string;
-      amount?: string;
-      fillDeadline?: string;
-      expires?: string;
-      nonce?: string;
-      fillOracle?: string;
-      intentOracle?: string;
-      inputAmount?: string;
-      outputAmount?: string;
-      outputRecipient?: string;
-      txHash: string;
-      blockNumber: string;
-      timestamp: string;
-    }
-
-    const result = await this.executePaginatedQuery<RawIntent>(query, { limit, orderDirection, offset });
-
-    const items = result.items.map((item) => ({
-      orderId: item.orderId,
-      intentType: item.intentType as import('../types/indexer.js').IntentType,
-      phase: item.phase as import('../types/indexer.js').IntentPhase,
-      user: item.user,
-      solver: item.solver,
-      originChainId: item.originChainId ? BigInt(item.originChainId) : undefined,
-      destinationChainId: item.destinationChainId ? BigInt(item.destinationChainId) : undefined,
-      amount: item.amount ? BigInt(item.amount) : undefined,
-      fillDeadline: item.fillDeadline ? BigInt(item.fillDeadline) : undefined,
-      expires: item.expires ? BigInt(item.expires) : undefined,
-      nonce: item.nonce ? BigInt(item.nonce) : undefined,
-      fillOracle: item.fillOracle,
-      intentOracle: item.intentOracle,
-      inputAmount: item.inputAmount ? BigInt(item.inputAmount) : undefined,
-      outputAmount: item.outputAmount ? BigInt(item.outputAmount) : undefined,
-      outputRecipient: item.outputRecipient,
-      txHash: item.txHash,
-      blockNumber: BigInt(item.blockNumber),
-      timestamp: BigInt(item.timestamp),
-    })) as import('../types/indexer.js').Intent[];
-
-    return {
-      items,
-      pageInfo: result.pageInfo,
-    };
+    return builder.executePaginated();
   }
 
   /**
    * Get intent details including full timeline
    *
    * Returns a single intent's current status and all lifecycle events.
+   * This is a convenience method that wraps the IntentQueryBuilder.
    *
    * @param orderId - The order ID of the intent
    * @returns Promise resolving to intent details with timeline, or null if not found
@@ -685,167 +608,18 @@ export class IndexerClient {
    *   console.log(`Current phase: ${details.intent.phase}`);
    *   console.log(`Timeline events: ${details.timeline.length}`);
    * }
+   *
+   * // Or use the query builder directly:
+   * const details = await client.query()
+   *   .intents()
+   *   .getWithTimeline('0x123...');
    * ```
    */
   async getIntentDetails(orderId: string): Promise<{
     intent: import('../types/indexer.js').Intent;
     timeline: import('../types/indexer.js').IntentTimelineEvent[];
   } | null> {
-    const query = `
-      query GetIntentDetails($orderId: String!) {
-        intentStatusViews(where: { orderId: $orderId }, limit: 1) {
-          items {
-            orderId
-            intentType
-            phase
-            user
-            solver
-            originChainId
-            destinationChainId
-            amount
-            fillDeadline
-            expires
-            nonce
-            fillOracle
-            intentOracle
-            inputAmount
-            outputAmount
-            outputRecipient
-            txHash
-            blockNumber
-            timestamp
-          }
-        }
-        intentTimelineViews(where: { orderId: $orderId }, orderBy: "timestamp", orderDirection: "asc") {
-          items {
-            id
-            orderId
-            phase
-            intentType
-            user
-            solver
-            amount
-            originChainId
-            destinationChainId
-            fillDeadline
-            expires
-            nonce
-            fillOracle
-            intentOracle
-            inputAmount
-            outputAmount
-            outputRecipient
-            txHash
-            blockNumber
-            timestamp
-          }
-        }
-      }
-    `;
-
-    interface RawIntent {
-      orderId: string;
-      intentType: string;
-      phase: string;
-      user?: string;
-      solver?: string;
-      originChainId?: string;
-      destinationChainId?: string;
-      amount?: string;
-      fillDeadline?: string;
-      expires?: string;
-      nonce?: string;
-      fillOracle?: string;
-      intentOracle?: string;
-      inputAmount?: string;
-      outputAmount?: string;
-      outputRecipient?: string;
-      txHash: string;
-      blockNumber: string;
-      timestamp: string;
-    }
-
-    interface RawTimelineEvent {
-      id: string;
-      orderId: string;
-      phase: string;
-      intentType: string;
-      user?: string;
-      solver?: string;
-      amount?: string;
-      originChainId?: string;
-      destinationChainId?: string;
-      fillDeadline?: string;
-      expires?: string;
-      nonce?: string;
-      fillOracle?: string;
-      intentOracle?: string;
-      inputAmount?: string;
-      outputAmount?: string;
-      outputRecipient?: string;
-      txHash: string;
-      blockNumber: string;
-      timestamp: string;
-    }
-
-    const result = await this.executeQuery<{
-      intentStatusViews: { items: RawIntent[] };
-      intentTimelineViews: { items: RawTimelineEvent[] };
-    }>(query, { orderId });
-
-    const rawIntent = result.intentStatusViews?.items?.[0];
-    if (!rawIntent) {
-      return null;
-    }
-
-    const intent: import('../types/indexer.js').Intent = {
-      orderId: rawIntent.orderId,
-      intentType: rawIntent.intentType as import('../types/indexer.js').IntentType,
-      phase: rawIntent.phase as import('../types/indexer.js').IntentPhase,
-      user: rawIntent.user,
-      solver: rawIntent.solver,
-      originChainId: rawIntent.originChainId ? BigInt(rawIntent.originChainId) : undefined,
-      destinationChainId: rawIntent.destinationChainId ? BigInt(rawIntent.destinationChainId) : undefined,
-      amount: rawIntent.amount ? BigInt(rawIntent.amount) : undefined,
-      fillDeadline: rawIntent.fillDeadline ? BigInt(rawIntent.fillDeadline) : undefined,
-      expires: rawIntent.expires ? BigInt(rawIntent.expires) : undefined,
-      nonce: rawIntent.nonce ? BigInt(rawIntent.nonce) : undefined,
-      fillOracle: rawIntent.fillOracle,
-      intentOracle: rawIntent.intentOracle,
-      inputAmount: rawIntent.inputAmount ? BigInt(rawIntent.inputAmount) : undefined,
-      outputAmount: rawIntent.outputAmount ? BigInt(rawIntent.outputAmount) : undefined,
-      outputRecipient: rawIntent.outputRecipient,
-      txHash: rawIntent.txHash,
-      blockNumber: BigInt(rawIntent.blockNumber),
-      timestamp: BigInt(rawIntent.timestamp),
-    };
-
-    const timeline: import('../types/indexer.js').IntentTimelineEvent[] = (
-      result.intentTimelineViews?.items || []
-    ).map((item) => ({
-      id: item.id,
-      orderId: item.orderId,
-      phase: item.phase as import('../types/indexer.js').IntentPhase,
-      intentType: item.intentType as import('../types/indexer.js').IntentType,
-      user: item.user,
-      solver: item.solver,
-      amount: item.amount ? BigInt(item.amount) : undefined,
-      originChainId: item.originChainId ? BigInt(item.originChainId) : undefined,
-      destinationChainId: item.destinationChainId ? BigInt(item.destinationChainId) : undefined,
-      fillDeadline: item.fillDeadline ? BigInt(item.fillDeadline) : undefined,
-      expires: item.expires ? BigInt(item.expires) : undefined,
-      nonce: item.nonce ? BigInt(item.nonce) : undefined,
-      fillOracle: item.fillOracle,
-      intentOracle: item.intentOracle,
-      inputAmount: item.inputAmount ? BigInt(item.inputAmount) : undefined,
-      outputAmount: item.outputAmount ? BigInt(item.outputAmount) : undefined,
-      outputRecipient: item.outputRecipient,
-      txHash: item.txHash,
-      blockNumber: BigInt(item.blockNumber),
-      timestamp: BigInt(item.timestamp),
-    }));
-
-    return { intent, timeline };
+    return this.query().intents().getWithTimeline(orderId);
   }
 
   /**
