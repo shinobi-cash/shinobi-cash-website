@@ -19,6 +19,8 @@ import { ChainLink } from "@/components/explorer/ChainLink";
 import { HashField } from "@/components/explorer/HashField";
 import { DetailField } from "@/components/explorer/DetailField";
 import { CopyableText } from "@/components/explorer/CopyableText";
+import { ExternalLink } from "lucide-react";
+import Link from "next/link";
 
 interface Props {
   activity: Activity;
@@ -136,11 +138,20 @@ export function ActivityDetailsContent({ activity }: Props) {
         <DetailField label="Time">{formatTimestamp(activity.timestamp)}</DetailField>
         {isCrossChain && activity.orderId && (
           <DetailField label="Order ID">
-            <CopyableText
-              value={activity.orderId}
-              displayValue={formatHash(activity.orderId)}
-              className="font-mono"
-            />
+            <span className="flex items-center gap-2">
+              <CopyableText
+                value={activity.orderId}
+                displayValue={formatHash(activity.orderId)}
+                className="font-mono"
+              />
+              <Link
+                href={`/intents?orderId=${activity.orderId}`}
+                className="rounded p-1 text-neutral-400 transition hover:bg-white/10 hover:text-orange-400"
+                title="View Intent Details"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+              </Link>
+            </span>
           </DetailField>
         )}
         </div>
