@@ -4,6 +4,7 @@ import { useSnapshot } from "valtio";
 import { ActivityExplorerController, ActivityExplorerSelectors } from "@/controllers/ActivityExplorerController";
 import { ActivityRow } from "./ActivityRow";
 import { ActivityRowSkeleton } from "./ActivityRowSkeleton";
+import { ActivityFilters } from "./ActivityFilters";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 export function ActivityFeed() {
@@ -16,6 +17,10 @@ export function ActivityFeed() {
     <section className="bg-white/2 flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-white/10">
       <div className="shrink-0 flex items-center justify-between gap-4 border-b border-white/10 px-5 py-4">
         <h2 className="text-sm font-medium text-white">Pool Activity</h2>
+        <ActivityFilters
+          poolId={state.poolId}
+          onPoolChange={(poolId) => ActivityExplorerController.setPoolId(poolId)}
+        />
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
