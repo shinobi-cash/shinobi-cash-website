@@ -3,7 +3,7 @@
 import { useSnapshot } from "valtio";
 import { X } from "lucide-react";
 import { ActivityExplorerController } from "@/controllers/ActivityExplorerController";
-import { ActivityDetailsContent } from "../explorer/ActivityDetailsContent";
+import { ActivityDetailsContent } from "./ActivityDetailsContent";
 
 export function ActivityDetailsPanel() {
   const state = useSnapshot(ActivityExplorerController.state);

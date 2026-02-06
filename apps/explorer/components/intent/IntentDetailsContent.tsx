@@ -3,10 +3,10 @@
 import type { Intent, IntentTimelineEvent } from "@shinobi-cash/data";
 import { formatEthAmount, formatHash, bytes32ToAddress } from "@/utils/formatters";
 import { getChainName } from "@/config/chains";
-import { CopyableText } from "../explorer/CopyableText";
-import { AddressField } from "../explorer/AddressField";
+import { CopyableText } from "@/components/shared/CopyableText";
+import { AddressField } from "@/components/shared/AddressField";
 import { IntentTimeline } from "./IntentTimeline";
-import { PHASE_COLORS, PHASE_LABELS } from "./phaseColors";
+import { PHASE_COLORS, PHASE_LABELS } from "@/config/phaseColors";
 import { ArrowRight, Loader2, Clock } from "lucide-react";
 
 function formatDeadline(timestamp: bigint): string {

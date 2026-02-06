@@ -2,8 +2,8 @@
 
 import { useSnapshot } from "valtio";
 import { ActivityExplorerController, ActivityExplorerSelectors } from "@/controllers/ActivityExplorerController";
-import { ActivityRow } from "../explorer/ActivityRow";
-import { ActivityRowSkeleton } from "../explorer/ActivityRowSkeleton";
+import { ActivityRow } from "./ActivityRow";
+import { ActivityRowSkeleton } from "./ActivityRowSkeleton";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 export function ActivityFeed() {

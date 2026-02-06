@@ -1,5 +1,5 @@
 import type { IntentPhase } from "@shinobi-cash/data";
-import { PHASE_COLORS } from "./phaseColors";
+import { PHASE_COLORS } from "@/config/phaseColors";
 
 interface Props {
   phase: IntentPhase;

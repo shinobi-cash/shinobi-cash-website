@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { IntentExplorer } from "@/components/intent";
+import { IntentExplorer } from "@/components/intent/IntentExplorer";
 import { Loader2 } from "lucide-react";
 
 export const metadata = {

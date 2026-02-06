@@ -1,4 +1,4 @@
-import { StatsPage } from "@/components/stats";
+import { StatsPage } from "@/components/stats/StatsPage";
 
 export const metadata = {
   title: "Pool Stats | Shinobi Cash",

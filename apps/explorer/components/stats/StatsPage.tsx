@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { StatsOverview } from "../explorer/StatsOverview";
+import { StatsOverview } from "./StatsOverview";
 
 export function StatsPage() {
   return (

@@ -2,7 +2,7 @@ import type { Intent } from "@shinobi-cash/data";
 import { formatTimestamp, formatHash } from "@/utils/formatters";
 import { getChainName } from "@/config/chains";
 import { IntentStatusDot } from "./IntentStatusDot";
-import { PHASE_COLORS, PHASE_LABELS } from "./phaseColors";
+import { PHASE_COLORS, PHASE_LABELS } from "@/config/phaseColors";
 
 interface Props {
   intent: Intent;

@@ -13,12 +13,12 @@ import {
   isAnyCrossChainActivity,
 } from "@shinobi-cash/data";
 import { formatEthAmount, formatHash, formatTimestamp } from "@/utils/formatters";
-import { ActivityStatusBadge } from "@/components/explorer/ActivityStatusBadge";
-import { FlowRow } from "@/components/explorer/FlowRow";
-import { ChainLink } from "@/components/explorer/ChainLink";
-import { HashField } from "@/components/explorer/HashField";
-import { DetailField } from "@/components/explorer/DetailField";
-import { CopyableText } from "@/components/explorer/CopyableText";
+import { ActivityStatusBadge } from "./ActivityStatusBadge";
+import { FlowRow } from "@/components/shared/FlowRow";
+import { ChainLink } from "@/components/shared/ChainLink";
+import { HashField } from "@/components/shared/HashField";
+import { DetailField } from "@/components/shared/DetailField";
+import { CopyableText } from "@/components/shared/CopyableText";
 import { ExternalLink } from "lucide-react";
 import Link from "next/link";
 

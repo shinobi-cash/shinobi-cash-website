@@ -1,4 +1,4 @@
-import { ActivityExplorer } from "@/components/activity";
+import { ActivityExplorer } from "@/components/activity/ActivityExplorer";
 
 export const metadata = {
   title: "Pool Activity | Shinobi Cash",
