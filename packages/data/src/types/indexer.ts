@@ -270,6 +270,18 @@ export interface Intent {
   fillDeadline?: bigint;
   /** Expiry timestamp (unix timestamp) */
   expires?: bigint;
+  /** Nonce for unique order ID */
+  nonce?: bigint;
+  /** Fill oracle address */
+  fillOracle?: string;
+  /** Intent oracle address */
+  intentOracle?: string;
+  /** Input amount (what user deposits) */
+  inputAmount?: bigint;
+  /** Output amount (what solver delivers) */
+  outputAmount?: bigint;
+  /** Output recipient (bytes32 as hex) */
+  outputRecipient?: string;
   /** Transaction hash of the latest event */
   txHash: string;
   /** Block number of the latest event */
@@ -305,6 +317,18 @@ export interface IntentTimelineEvent {
   fillDeadline?: bigint;
   /** Expiry timestamp (unix timestamp) */
   expires?: bigint;
+  /** Nonce for unique order ID */
+  nonce?: bigint;
+  /** Fill oracle address */
+  fillOracle?: string;
+  /** Intent oracle address */
+  intentOracle?: string;
+  /** Input amount (what user deposits) */
+  inputAmount?: bigint;
+  /** Output amount (what solver delivers) */
+  outputAmount?: bigint;
+  /** Output recipient (bytes32 as hex) */
+  outputRecipient?: string;
   /** Transaction hash */
   txHash: string;
   /** Block number */
@@ -438,6 +462,12 @@ export interface SerializedIntent {
   amount?: string;
   fillDeadline?: string;
   expires?: string;
+  nonce?: string;
+  fillOracle?: string;
+  intentOracle?: string;
+  inputAmount?: string;
+  outputAmount?: string;
+  outputRecipient?: string;
   txHash: string;
   blockNumber: string;
   timestamp: string;
@@ -458,6 +488,12 @@ export interface SerializedIntentTimelineEvent {
   destinationChainId?: string;
   fillDeadline?: string;
   expires?: string;
+  nonce?: string;
+  fillOracle?: string;
+  intentOracle?: string;
+  inputAmount?: string;
+  outputAmount?: string;
+  outputRecipient?: string;
   txHash: string;
   blockNumber: string;
   timestamp: string;

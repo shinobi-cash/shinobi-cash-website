@@ -563,16 +563,18 @@ export class IndexerClient {
     offset?: number;
     intentType?: import('../types/indexer.js').IntentType;
     phase?: import('../types/indexer.js').IntentPhase;
+    orderId?: string;
     originChainId?: bigint;
     destinationChainId?: bigint;
   } = {}): Promise<import('../types/indexer.js').PaginatedResponse<import('../types/indexer.js').Intent>> {
-    const { limit = 100, orderDirection = 'desc', offset, intentType, phase, originChainId, destinationChainId } =
+    const { limit = 100, orderDirection = 'desc', offset, intentType, phase, orderId, originChainId, destinationChainId } =
       options;
 
     // Build where clause dynamically
     const whereConditions: string[] = [];
     if (intentType) whereConditions.push(`intentType: "${intentType}"`);
     if (phase) whereConditions.push(`phase: "${phase}"`);
+    if (orderId) whereConditions.push(`orderId_contains: "${orderId}"`);
     if (originChainId) whereConditions.push(`originChainId: "${originChainId.toString()}"`);
     if (destinationChainId) whereConditions.push(`destinationChainId: "${destinationChainId.toString()}"`);
 
@@ -596,6 +598,14 @@ export class IndexerClient {
             originChainId
             destinationChainId
             amount
+            fillDeadline
+            expires
+            nonce
+            fillOracle
+            intentOracle
+            inputAmount
+            outputAmount
+            outputRecipient
             txHash
             blockNumber
             timestamp
@@ -617,6 +627,14 @@ export class IndexerClient {
       originChainId?: string;
       destinationChainId?: string;
       amount?: string;
+      fillDeadline?: string;
+      expires?: string;
+      nonce?: string;
+      fillOracle?: string;
+      intentOracle?: string;
+      inputAmount?: string;
+      outputAmount?: string;
+      outputRecipient?: string;
       txHash: string;
       blockNumber: string;
       timestamp: string;
@@ -633,6 +651,14 @@ export class IndexerClient {
       originChainId: item.originChainId ? BigInt(item.originChainId) : undefined,
       destinationChainId: item.destinationChainId ? BigInt(item.destinationChainId) : undefined,
       amount: item.amount ? BigInt(item.amount) : undefined,
+      fillDeadline: item.fillDeadline ? BigInt(item.fillDeadline) : undefined,
+      expires: item.expires ? BigInt(item.expires) : undefined,
+      nonce: item.nonce ? BigInt(item.nonce) : undefined,
+      fillOracle: item.fillOracle,
+      intentOracle: item.intentOracle,
+      inputAmount: item.inputAmount ? BigInt(item.inputAmount) : undefined,
+      outputAmount: item.outputAmount ? BigInt(item.outputAmount) : undefined,
+      outputRecipient: item.outputRecipient,
       txHash: item.txHash,
       blockNumber: BigInt(item.blockNumber),
       timestamp: BigInt(item.timestamp),
@@ -677,6 +703,14 @@ export class IndexerClient {
             originChainId
             destinationChainId
             amount
+            fillDeadline
+            expires
+            nonce
+            fillOracle
+            intentOracle
+            inputAmount
+            outputAmount
+            outputRecipient
             txHash
             blockNumber
             timestamp
@@ -695,6 +729,12 @@ export class IndexerClient {
             destinationChainId
             fillDeadline
             expires
+            nonce
+            fillOracle
+            intentOracle
+            inputAmount
+            outputAmount
+            outputRecipient
             txHash
             blockNumber
             timestamp
@@ -712,6 +752,14 @@ export class IndexerClient {
       originChainId?: string;
       destinationChainId?: string;
       amount?: string;
+      fillDeadline?: string;
+      expires?: string;
+      nonce?: string;
+      fillOracle?: string;
+      intentOracle?: string;
+      inputAmount?: string;
+      outputAmount?: string;
+      outputRecipient?: string;
       txHash: string;
       blockNumber: string;
       timestamp: string;
@@ -729,6 +777,12 @@ export class IndexerClient {
       destinationChainId?: string;
       fillDeadline?: string;
       expires?: string;
+      nonce?: string;
+      fillOracle?: string;
+      intentOracle?: string;
+      inputAmount?: string;
+      outputAmount?: string;
+      outputRecipient?: string;
       txHash: string;
       blockNumber: string;
       timestamp: string;
@@ -753,6 +807,14 @@ export class IndexerClient {
       originChainId: rawIntent.originChainId ? BigInt(rawIntent.originChainId) : undefined,
       destinationChainId: rawIntent.destinationChainId ? BigInt(rawIntent.destinationChainId) : undefined,
       amount: rawIntent.amount ? BigInt(rawIntent.amount) : undefined,
+      fillDeadline: rawIntent.fillDeadline ? BigInt(rawIntent.fillDeadline) : undefined,
+      expires: rawIntent.expires ? BigInt(rawIntent.expires) : undefined,
+      nonce: rawIntent.nonce ? BigInt(rawIntent.nonce) : undefined,
+      fillOracle: rawIntent.fillOracle,
+      intentOracle: rawIntent.intentOracle,
+      inputAmount: rawIntent.inputAmount ? BigInt(rawIntent.inputAmount) : undefined,
+      outputAmount: rawIntent.outputAmount ? BigInt(rawIntent.outputAmount) : undefined,
+      outputRecipient: rawIntent.outputRecipient,
       txHash: rawIntent.txHash,
       blockNumber: BigInt(rawIntent.blockNumber),
       timestamp: BigInt(rawIntent.timestamp),
@@ -772,6 +834,12 @@ export class IndexerClient {
       destinationChainId: item.destinationChainId ? BigInt(item.destinationChainId) : undefined,
       fillDeadline: item.fillDeadline ? BigInt(item.fillDeadline) : undefined,
       expires: item.expires ? BigInt(item.expires) : undefined,
+      nonce: item.nonce ? BigInt(item.nonce) : undefined,
+      fillOracle: item.fillOracle,
+      intentOracle: item.intentOracle,
+      inputAmount: item.inputAmount ? BigInt(item.inputAmount) : undefined,
+      outputAmount: item.outputAmount ? BigInt(item.outputAmount) : undefined,
+      outputRecipient: item.outputRecipient,
       txHash: item.txHash,
       blockNumber: BigInt(item.blockNumber),
       timestamp: BigInt(item.timestamp),
