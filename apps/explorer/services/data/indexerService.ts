@@ -386,3 +386,111 @@ export async function fetchLatestIndexedBlock(): Promise<{
 export async function checkIndexerResponsive(): Promise<boolean> {
   return checkIndexerHealth();
 }
+
+// ============ INTENT QUERIES ============
+
+/**
+ * Intent type filter
+ */
+export type IntentTypeFilter = "DEPOSIT" | "WITHDRAWAL";
+
+/**
+ * Intent phase filter
+ */
+export type IntentPhaseFilter = "CREATED" | "ESCROWED" | "FILLED" | "FINALIZED" | "REFUNDED";
+
+/**
+ * Intent filters for querying
+ */
+export interface IntentFilters {
+  intentType?: IntentTypeFilter;
+  phase?: IntentPhaseFilter;
+  originChainId?: string;
+  destinationChainId?: string;
+}
+
+/**
+ * Fetch intents with pagination and filtering support
+ * Proxied through Next.js API to hide credentials
+ */
+export async function fetchIntents(
+  limit = 100,
+  offset?: number,
+  orderDirection: "asc" | "desc" = "desc",
+  filters: IntentFilters = {}
+) {
+  try {
+    const response = await fetch("/api/indexer", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        endpoint: "intents",
+        params: {
+          limit,
+          offset,
+          orderDirection,
+          ...filters,
+        },
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!result.success) {
+      throw new Error(result.error || "Failed to fetch intents");
+    }
+
+    return result.data;
+  } catch (error) {
+    logError(error, { action: "fetchIntents", filters });
+
+    throw new IndexerError(INDEXER_ERROR_CODES.FETCH_FAILED, "Failed to fetch intents from indexer", {
+      cause: error,
+      context: { limit, offset, orderDirection, filters },
+    });
+  }
+}
+
+/**
+ * Fetch intent details including full timeline
+ * Proxied through Next.js API to hide credentials
+ */
+export async function fetchIntentDetails(orderId: string) {
+  try {
+    const response = await fetch("/api/indexer", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        endpoint: "intentDetails",
+        params: { orderId },
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!result.success) {
+      if (response.status === 404) {
+        return null;
+      }
+      throw new Error(result.error || "Failed to fetch intent details");
+    }
+
+    return result.data;
+  } catch (error) {
+    // If already an IndexerError, re-throw
+    if (error instanceof IndexerError) {
+      throw error;
+    }
+
+    logError(error, { action: "fetchIntentDetails", orderId });
+
+    throw new IndexerError(
+      INDEXER_ERROR_CODES.FETCH_FAILED,
+      "Failed to fetch intent details from indexer",
+      {
+        cause: error,
+        context: { orderId },
+      }
+    );
+  }
+}
