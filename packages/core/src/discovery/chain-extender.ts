@@ -129,11 +129,14 @@ function extendSingleChain(
     }
 
     // Check for ragequit (public withdrawal)
-    const commitment = derivedNoteCommitment(accountKey, lastNote).toString();
-    const ragequit = activityIndex.ragequitByCommitment.get(commitment);
-    if (ragequit) {
-      processRagequit(lastNote, ragequit, nullifierMap, nullifierHash);
-      break; // Ragequit is final - no more extensions possible
+    // Skip if label is undefined (pending deposits can't be ragequit)
+    if (lastNote.label !== undefined) {
+      const commitment = derivedNoteCommitment(accountKey, lastNote).toString();
+      const ragequit = activityIndex.ragequitByCommitment.get(commitment);
+      if (ragequit) {
+        processRagequit(lastNote, ragequit, nullifierMap, nullifierHash);
+        break; // Ragequit is final - no more extensions possible
+      }
     }
 
     // No more withdrawals found

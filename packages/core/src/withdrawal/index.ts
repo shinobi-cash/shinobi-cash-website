@@ -351,6 +351,10 @@ export function calculateContextHash(
 }
 
 export function derivedNoteCommitment(accountKey: bigint, note: Note): bigint {
+  if (note.label === undefined) {
+    throw new Error(`Cannot derive commitment for note without label (depositIndex: ${note.depositIndex})`);
+  }
+
   let nullifier: bigint;
   let secret: bigint;
 
@@ -430,6 +434,10 @@ export function deriveCrosschainWithdrawalInputs(
   poolScope: bigint,
   withdrawalData: readonly [string, string],
 ): CrosschainWithdrawalDerivation {
+  if (note.label === undefined) {
+    throw new Error(`Cannot derive cross-chain withdrawal for note without label (depositIndex: ${note.depositIndex})`);
+  }
+
   const base = deriveWithdrawalInputs(note, accountKey, poolAddress, poolScope, withdrawalData);
   const nextChangeIndex = note.noteType === 'deposit' ? 1 : note.changeIndex + 1;
 
@@ -644,6 +652,10 @@ export function deriveRagequitInputs(
   accountKey: bigint,
   poolAddress: string,
 ): RagequitDerivation {
+  if (note.label === undefined) {
+    throw new Error(`Cannot derive ragequit for note without label (depositIndex: ${note.depositIndex})`);
+  }
+
   const isDeposit = note.noteType === 'deposit';
 
   const existingNullifier = isDeposit

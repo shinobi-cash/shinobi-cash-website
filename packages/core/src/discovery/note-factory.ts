@@ -36,7 +36,7 @@ export function createDepositNote(
     depositIndex,
     changeIndex: 0,
     amount: activity.amount?.toString() || '0',
-    label: activity.label || `Pending Deposit #${depositIndex}`,
+    label: activity.label?.toString(), // undefined for unfilled cross-chain deposit intents
     status: 'unspent',
     blockNumber: activity.blockNumber.toString(),
     timestamp: activity.timestamp.toString(),

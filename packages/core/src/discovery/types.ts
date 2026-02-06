@@ -48,7 +48,7 @@ interface BaseNote {
   depositIndex: number;
   changeIndex: number;
   amount: string;
-  label: string;
+  label?: string; // undefined for unfilled cross-chain deposit intents
   status: NoteStatus;
   // Blockchain metadata
   blockNumber: string;
