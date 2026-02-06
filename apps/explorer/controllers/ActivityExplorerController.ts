@@ -8,11 +8,10 @@ const PAGE_SIZE = 15;
 interface ActivityExplorerState {
   // List state
   activities: Activity[];
+  page: number;
   hasNextPage: boolean;
-  isLoadingInitial: boolean;
-  isLoadingMore: boolean;
+  isLoadingList: boolean;
   listError: string | null;
-  offset: number;
 
   // Selection state
   selectedActivity: Activity | null;
@@ -23,11 +22,10 @@ interface ActivityExplorerState {
 
 const initialState: ActivityExplorerState = {
   activities: [],
+  page: 0,
   hasNextPage: false,
-  isLoadingInitial: false,
-  isLoadingMore: false,
+  isLoadingList: false,
   listError: null,
-  offset: 0,
 
   selectedActivity: null,
 
@@ -36,59 +34,62 @@ const initialState: ActivityExplorerState = {
 
 const state = proxy<ActivityExplorerState>({ ...initialState });
 
+// Selectors
+export const ActivityExplorerSelectors = {
+  canGoPrevious(): boolean {
+    return state.page > 0 && !state.isLoadingList;
+  },
+
+  canGoNext(): boolean {
+    return state.hasNextPage && !state.isLoadingList;
+  },
+};
+
 // Controller
 export const ActivityExplorerController = {
   state,
 
-  // Initialize and fetch first page
+  // Initialize
   initialize(): void {
-    this.fetchInitial();
+    this.fetchActivities();
   },
 
-  // Fetch initial activities
-  async fetchInitial(): Promise<void> {
-    state.isLoadingInitial = true;
+  // List operations
+  async fetchActivities(): Promise<void> {
+    state.isLoadingList = true;
     state.listError = null;
-    state.activities = [];
-    state.offset = 0;
 
     try {
+      const offset = state.page * PAGE_SIZE;
       const result: PaginatedResponse<Activity> = await fetchActivities(
         state.poolId,
         PAGE_SIZE,
-        undefined,
+        offset,
         "desc"
       );
       state.activities = result.items;
       state.hasNextPage = result.pageInfo?.hasNextPage ?? false;
-      state.offset = result.items.length;
     } catch (error) {
       state.listError = error instanceof Error ? error.message : "Failed to fetch activities";
     } finally {
-      state.isLoadingInitial = false;
+      state.isLoadingList = false;
     }
   },
 
-  // Fetch next page (infinite scroll)
-  async fetchMore(): Promise<void> {
-    if (state.isLoadingMore || !state.hasNextPage) return;
+  setPage(page: number): void {
+    state.page = page;
+    this.fetchActivities();
+  },
 
-    state.isLoadingMore = true;
+  nextPage(): void {
+    if (ActivityExplorerSelectors.canGoNext()) {
+      this.setPage(state.page + 1);
+    }
+  },
 
-    try {
-      const result: PaginatedResponse<Activity> = await fetchActivities(
-        state.poolId,
-        PAGE_SIZE,
-        state.offset,
-        "desc"
-      );
-      state.activities = [...state.activities, ...result.items];
-      state.hasNextPage = result.pageInfo?.hasNextPage ?? false;
-      state.offset += result.items.length;
-    } catch (error) {
-      state.listError = error instanceof Error ? error.message : "Failed to fetch more activities";
-    } finally {
-      state.isLoadingMore = false;
+  previousPage(): void {
+    if (ActivityExplorerSelectors.canGoPrevious()) {
+      this.setPage(state.page - 1);
     }
   },
 
@@ -104,26 +105,12 @@ export const ActivityExplorerController = {
   // Pool selection
   setPoolId(poolId: string): void {
     state.poolId = poolId;
-    this.fetchInitial();
+    state.page = 0;
+    this.fetchActivities();
   },
 
   // Reset
   reset(): void {
-    Object.assign(state, { ...initialState, poolId: state.poolId });
-  },
-};
-
-// Selectors
-export const ActivityExplorerSelectors = {
-  isLoading(): boolean {
-    return state.isLoadingInitial;
-  },
-
-  isFetchingMore(): boolean {
-    return state.isLoadingMore;
-  },
-
-  canFetchMore(): boolean {
-    return state.hasNextPage && !state.isLoadingMore;
+    Object.assign(state, { ...initialState });
   },
 };
