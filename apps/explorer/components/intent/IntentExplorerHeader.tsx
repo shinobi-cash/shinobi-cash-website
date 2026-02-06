@@ -25,7 +25,13 @@ export function IntentExplorerHeader() {
             href="/"
             className="text-xs text-neutral-400 transition hover:text-white sm:text-sm"
           >
-            Pool Activity
+            Stats
+          </Link>
+          <Link
+            href="/activity"
+            className="text-xs text-neutral-400 transition hover:text-white sm:text-sm"
+          >
+            Activity
           </Link>
           <Link
             href="/intents"
