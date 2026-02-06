@@ -24,8 +24,12 @@ export type {
   StateTreeLeaf,
   ASPApprovalList,
   CrossChainIntent,
+  Intent,
+  IntentTimelineEvent,
   ActivityType,
   IntentStatus,
+  IntentPhase,
+  IntentType,
   ASPStatus,
   EntityType,
 } from './types/indexer.js';
@@ -37,6 +41,8 @@ export type {
   SerializedStateTreeLeaf,
   SerializedASPApprovalList,
   SerializedCrossChainIntent,
+  SerializedIntent,
+  SerializedIntentTimelineEvent,
 } from './types/indexer.js';
 
 // Typed activity variants
@@ -88,6 +94,7 @@ export type {
   ActivityFilters,
   PoolFilters,
   StateTreeFilters,
+  IntentFilters,
   PageInfo,
   PaginatedResponse,
   HealthStatus,

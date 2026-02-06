@@ -37,6 +37,16 @@ export type ActivityType =
 export type IntentStatus = 'pending' | 'filled' | 'refunded';
 
 /**
+ * Intent phase in the cross-chain lifecycle
+ */
+export type IntentPhase = 'CREATED' | 'ESCROWED' | 'FILLED' | 'FINALIZED' | 'REFUNDED';
+
+/**
+ * Intent type (deposit or withdrawal)
+ */
+export type IntentType = 'DEPOSIT' | 'WITHDRAWAL';
+
+/**
  * ASP (Approved Set of Participants) status
  */
 export type ASPStatus = 'pending' | 'approved' | 'rejected';
@@ -236,6 +246,74 @@ export interface CrossChainIntent {
 }
 
 /**
+ * Intent entity for IntentStatusView
+ * Returns the latest phase for each orderId
+ */
+export interface Intent {
+  /** Order ID (unique identifier for the intent) */
+  orderId: string;
+  /** Intent type */
+  intentType: IntentType;
+  /** Current phase in the lifecycle */
+  phase: IntentPhase;
+  /** User who created the intent */
+  user?: string;
+  /** Solver who filled the intent */
+  solver?: string;
+  /** Origin chain ID */
+  originChainId?: bigint;
+  /** Destination chain ID */
+  destinationChainId?: bigint;
+  /** Amount */
+  amount?: bigint;
+  /** Fill deadline (unix timestamp) */
+  fillDeadline?: bigint;
+  /** Expiry timestamp (unix timestamp) */
+  expires?: bigint;
+  /** Transaction hash of the latest event */
+  txHash: string;
+  /** Block number of the latest event */
+  blockNumber: bigint;
+  /** Timestamp of the latest event */
+  timestamp: bigint;
+}
+
+/**
+ * Intent timeline event for IntentTimelineView
+ * All events for a specific orderId ordered by timestamp
+ */
+export interface IntentTimelineEvent {
+  /** Event ID */
+  id: string;
+  /** Order ID */
+  orderId: string;
+  /** Phase of this event */
+  phase: IntentPhase;
+  /** Intent type */
+  intentType: IntentType;
+  /** User who created the intent */
+  user?: string;
+  /** Solver who filled (for FILLED phase) */
+  solver?: string;
+  /** Amount */
+  amount?: bigint;
+  /** Origin chain ID */
+  originChainId?: bigint;
+  /** Destination chain ID */
+  destinationChainId?: bigint;
+  /** Fill deadline (unix timestamp) */
+  fillDeadline?: bigint;
+  /** Expiry timestamp (unix timestamp) */
+  expires?: bigint;
+  /** Transaction hash */
+  txHash: string;
+  /** Block number */
+  blockNumber: bigint;
+  /** Timestamp */
+  timestamp: bigint;
+}
+
+/**
  * ========================================
  * SERIALIZED TYPES (for API responses)
  * ========================================
@@ -344,6 +422,45 @@ export interface SerializedCrossChainIntent {
   originTxHash: string;
   destinationTxHash?: string;
   activityId?: string;
+}
+
+/**
+ * Serialized Intent (BigInt -> string)
+ */
+export interface SerializedIntent {
+  orderId: string;
+  intentType: IntentType;
+  phase: IntentPhase;
+  user?: string;
+  solver?: string;
+  originChainId?: string;
+  destinationChainId?: string;
+  amount?: string;
+  fillDeadline?: string;
+  expires?: string;
+  txHash: string;
+  blockNumber: string;
+  timestamp: string;
+}
+
+/**
+ * Serialized IntentTimelineEvent (BigInt -> string)
+ */
+export interface SerializedIntentTimelineEvent {
+  id: string;
+  orderId: string;
+  phase: IntentPhase;
+  intentType: IntentType;
+  user?: string;
+  solver?: string;
+  amount?: string;
+  originChainId?: string;
+  destinationChainId?: string;
+  fillDeadline?: string;
+  expires?: string;
+  txHash: string;
+  blockNumber: string;
+  timestamp: string;
 }
 
 /**
@@ -845,6 +962,28 @@ export interface StateTreeFilters {
 }
 
 /**
+ * Common filter combinations for Intent queries
+ */
+export interface IntentFilters {
+  /** Filter by intent type */
+  intentType?: IntentType;
+  /** Filter by current phase */
+  phase?: IntentPhase;
+  /** Filter by user address */
+  user?: string;
+  /** Filter by solver address */
+  solver?: string;
+  /** Filter by origin chain ID */
+  originChainId?: bigint;
+  /** Filter by destination chain ID */
+  destinationChainId?: bigint;
+  /** Intents after timestamp */
+  after?: bigint;
+  /** Intents before timestamp */
+  before?: bigint;
+}
+
+/**
  * ========================================
  * PAGINATION TYPES
  * ========================================
@@ -869,7 +1008,7 @@ export interface PaginatedResponse<T> {
 /**
  * Entity types for type guards
  */
-export type EntityType = 'Activity' | 'Pool' | 'StateTreeLeaf' | 'ASPApprovalList' | 'CrossChainIntent';
+export type EntityType = 'Activity' | 'Pool' | 'StateTreeLeaf' | 'ASPApprovalList' | 'CrossChainIntent' | 'Intent' | 'IntentTimelineEvent';
 
 /**
  * Type mapping for activity types to their interfaces
