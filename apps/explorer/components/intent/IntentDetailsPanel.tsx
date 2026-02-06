@@ -1,16 +1,15 @@
 "use client";
 
-import type { Intent } from "@shinobi-cash/data";
+import { useSnapshot } from "valtio";
 import { X } from "lucide-react";
+import { IntentExplorerController, IntentExplorerSelectors } from "@/controllers/IntentExplorerController";
 import { IntentDetailsContent } from "./IntentDetailsContent";
 
-interface Props {
-  intent: Intent | null;
-  onClose: () => void;
-}
+export function IntentDetailsPanel() {
+  const state = useSnapshot(IntentExplorerController.state);
+  const timeline = IntentExplorerSelectors.getSelectedTimeline();
 
-export function IntentDetailsPanel({ intent, onClose }: Props) {
-  if (!intent) {
+  if (!state.selectedIntent) {
     return (
       <aside className="bg-white/2 hidden h-full rounded-2xl border border-white/10 p-6 lg:block">
         <p className="text-sm text-neutral-400">Select an intent to view details</p>
@@ -23,7 +22,7 @@ export function IntentDetailsPanel({ intent, onClose }: Props) {
       {/* Mobile overlay */}
       <div
         className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
-        onClick={onClose}
+        onClick={() => IntentExplorerController.clearSelection()}
       />
 
       {/* Panel */}
@@ -31,13 +30,21 @@ export function IntentDetailsPanel({ intent, onClose }: Props) {
         {/* Mobile header */}
         <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-5 py-4 lg:hidden">
           <span className="text-sm font-medium text-white">Intent Details</span>
-          <button onClick={onClose} className="rounded-md p-1 text-neutral-400 hover:text-white">
+          <button
+            onClick={() => IntentExplorerController.clearSelection()}
+            className="rounded-md p-1 text-neutral-400 hover:text-white"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto">
-          <IntentDetailsContent intent={intent} />
+          <IntentDetailsContent
+            intent={state.selectedIntent}
+            timeline={timeline}
+            isLoadingTimeline={state.isLoadingTimeline}
+            timelineError={state.timelineError}
+          />
         </div>
       </aside>
     </>

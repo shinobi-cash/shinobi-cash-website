@@ -1,14 +1,26 @@
 import type { IntentTimelineEvent, IntentPhase } from "@shinobi-cash/data";
 import { formatTimestamp, formatHash } from "@/utils/formatters";
 import { getChainName, getTxExplorerUrl } from "@/config/chains";
-import { ExternalLink, Check, Clock, AlertCircle } from "lucide-react";
+import { Check, Clock, AlertCircle } from "lucide-react";
+
+/**
+ * Get the chain ID where a timeline event happened
+ * FILLED phase happens on destination chain, all others on origin chain
+ */
+function getEventChainId(event: IntentTimelineEvent): bigint | undefined {
+  if (event.phase === "FILLED") {
+    return event.destinationChainId;
+  }
+  return event.originChainId;
+}
 
 interface Props {
   events: IntentTimelineEvent[];
   currentPhase: IntentPhase;
 }
 
-const PHASE_ORDER: IntentPhase[] = ["CREATED", "ESCROWED", "FILLED", "FINALIZED"];
+// CREATED and ESCROWED happen in same tx, so we only show ESCROWED
+const PHASE_ORDER: IntentPhase[] = ["ESCROWED", "FILLED", "FINALIZED"];
 const REFUND_PHASE: IntentPhase = "REFUNDED";
 
 function PhaseIcon({ phase, isActive, isCompleted }: { phase: IntentPhase; isActive: boolean; isCompleted: boolean }) {
@@ -43,13 +55,20 @@ function PhaseIcon({ phase, isActive, isCompleted }: { phase: IntentPhase; isAct
   );
 }
 
-const PHASE_DESCRIPTIONS: Record<IntentPhase, string> = {
-  CREATED: "Intent created on origin chain",
-  ESCROWED: "Funds escrowed by settler",
-  FILLED: "Solver filled the intent",
-  FINALIZED: "Intent finalized and settled",
-  REFUNDED: "Intent refunded to user",
-};
+function getPhaseDescription(phase: IntentPhase, event?: IntentTimelineEvent): string {
+  if (phase === "FILLED" && event?.solver) {
+    return `Solver (${formatHash(event.solver)}) filled the intent`;
+  }
+
+  const descriptions: Record<IntentPhase, string> = {
+    CREATED: "Intent created and funds escrowed",
+    ESCROWED: "Intent created and funds escrowed",
+    FILLED: "Solver filled the intent",
+    FINALIZED: "Intent finalized and settled",
+    REFUNDED: "Intent refunded to user",
+  };
+  return descriptions[phase];
+}
 
 export function IntentTimeline({ events, currentPhase }: Props) {
   const eventMap = new Map(events.map((e) => [e.phase, e]));
@@ -64,10 +83,14 @@ export function IntentTimeline({ events, currentPhase }: Props) {
     <div className="space-y-0">
       {displayPhases.map((phase, index) => {
         const event = eventMap.get(phase);
+        // A phase is completed if we have event data for it (it has happened)
+        const hasEvent = !!event;
+        // Phases up to and including current phase are completed (if they have events)
         const isCompleted = isRefunded
-          ? phase !== REFUND_PHASE && PHASE_ORDER.indexOf(phase) < currentIndex
-          : PHASE_ORDER.indexOf(phase) < currentIndex;
-        const isActive = phase === currentPhase;
+          ? phase !== REFUND_PHASE && hasEvent
+          : hasEvent;
+        // A phase is "pending" if it's after the current phase and has no event
+        const isPending = !hasEvent && PHASE_ORDER.indexOf(phase) > currentIndex;
         const isLast = index === displayPhases.length - 1;
 
         return (
@@ -83,7 +106,7 @@ export function IntentTimeline({ events, currentPhase }: Props) {
 
             {/* Icon */}
             <div className="relative z-10">
-              <PhaseIcon phase={phase} isActive={isActive} isCompleted={isCompleted} />
+              <PhaseIcon phase={phase} isActive={false} isCompleted={isCompleted} />
             </div>
 
             {/* Content */}
@@ -91,59 +114,39 @@ export function IntentTimeline({ events, currentPhase }: Props) {
               <div className="flex items-center gap-2">
                 <span
                   className={`text-sm font-medium capitalize ${
-                    isActive || isCompleted ? "text-white" : "text-neutral-500"
+                    isCompleted ? "text-white" : "text-neutral-500"
                   }`}
                 >
                   {phase.toLowerCase()}
                 </span>
-                {isActive && !isRefunded && phase !== "FINALIZED" && (
-                  <span className="text-xs text-blue-400">(in progress)</span>
+                {isPending && (
+                  <span className="text-xs text-neutral-500">(pending)</span>
                 )}
               </div>
 
               <p className="mt-0.5 text-xs text-neutral-500">
-                {PHASE_DESCRIPTIONS[phase]}
+                {getPhaseDescription(phase, event)}
               </p>
 
-              {event && (
-                <div className="mt-2 space-y-1 rounded-lg bg-white/5 p-3">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-neutral-500">Time</span>
-                    <span className="text-neutral-300">{formatTimestamp(event.timestamp)}</span>
+              {event && (() => {
+                const eventChainId = getEventChainId(event);
+                return (
+                  <div className="mt-2 flex items-center justify-between text-xs">
+                    {eventChainId && (
+                      <a
+                        href={getTxExplorerUrl(Number(eventChainId), event.txHash)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-neutral-300 transition-colors hover:text-orange-400"
+                      >
+                        {getChainName(Number(eventChainId))}
+                        <span className="text-neutral-500">↗</span>
+                      </a>
+                    )}
+                    <span className="text-neutral-400">{formatTimestamp(event.timestamp)}</span>
                   </div>
-
-                  {event.originChainId && (
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-neutral-500">Chain</span>
-                      <span className="text-neutral-300">
-                        {getChainName(Number(event.originChainId))}
-                      </span>
-                    </div>
-                  )}
-
-                  {event.solver && (
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-neutral-500">Solver</span>
-                      <span className="font-mono text-neutral-300">
-                        {formatHash(event.solver)}
-                      </span>
-                    </div>
-                  )}
-
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-neutral-500">Tx</span>
-                    <a
-                      href={getTxExplorerUrl(event.originChainId ?? 421614, event.txHash)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1 font-mono text-blue-400 hover:text-blue-300"
-                    >
-                      {formatHash(event.txHash)}
-                      <ExternalLink className="h-3 w-3" />
-                    </a>
-                  </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
           </div>
         );
