@@ -407,6 +407,7 @@ export interface IntentFilters {
   phase?: IntentPhaseFilter;
   originChainId?: string;
   destinationChainId?: string;
+  orderId?: string;
 }
 
 /**

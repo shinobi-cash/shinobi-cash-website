@@ -207,6 +207,7 @@ export async function POST(request: Request) {
           offset: params.offset,
           intentType: params.intentType,
           phase: params.phase,
+          orderId: params.orderId,
           originChainId: params.originChainId ? BigInt(params.originChainId) : undefined,
           destinationChainId: params.destinationChainId
             ? BigInt(params.destinationChainId)
