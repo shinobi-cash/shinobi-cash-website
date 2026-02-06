@@ -7,7 +7,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { convertBigIntsToStrings, IndexerClient } from "@shinobi-cash/data";
+import { IndexerClient, serializeStateTreeLeaf } from "@shinobi-cash/data";
 import { SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
 
 // Server-side indexer configuration (credentials never exposed to client)
@@ -90,12 +90,16 @@ export async function POST(request: Request) {
     switch (endpoint) {
       case "activities": {
         const poolId = (params.poolAddress || SHINOBI_CASH_ETH_POOL.address).toLowerCase();
-        data = await client.getActivities({
-          poolId,
-          limit: params.limit || 100,
-          orderDirection: params.orderDirection || "desc",
-          offset: params.offset,
-        });
+        let activityBuilder = client
+          .query()
+          .activities()
+          .byPool(poolId)
+          .limit(params.limit || 100)
+          .orderByTimestamp(params.orderDirection || "desc");
+        if (params.offset !== undefined) {
+          activityBuilder = activityBuilder.skip(params.offset);
+        }
+        data = await activityBuilder.executePaginatedSerialized();
         cacheTTL = CACHE_CONFIG.activities;
         break;
       }
@@ -104,7 +108,8 @@ export async function POST(request: Request) {
         if (!params.poolId) {
           return NextResponse.json({ error: "poolId is required" }, { status: 400 });
         }
-        data = await client.getAllStateTreeLeaves(params.poolId);
+        const leaves = await client.getAllStateTreeLeaves(params.poolId);
+        data = leaves.map(serializeStateTreeLeaf);
         cacheTTL = CACHE_CONFIG.stateTree;
         break;
       }
@@ -201,18 +206,18 @@ export async function POST(request: Request) {
       }
 
       case "intents": {
-        data = await client.getIntents({
-          limit: params.limit || 100,
-          orderDirection: params.orderDirection || "desc",
-          offset: params.offset,
-          intentType: params.intentType,
-          phase: params.phase,
-          orderId: params.orderId,
-          originChainId: params.originChainId ? BigInt(params.originChainId) : undefined,
-          destinationChainId: params.destinationChainId
-            ? BigInt(params.destinationChainId)
-            : undefined,
-        });
+        let intentBuilder = client
+          .query()
+          .intents()
+          .limit(params.limit || 100)
+          .orderByTimestamp(params.orderDirection || "desc");
+        if (params.offset !== undefined) intentBuilder = intentBuilder.skip(params.offset);
+        if (params.intentType) intentBuilder = intentBuilder.byType(params.intentType);
+        if (params.phase) intentBuilder = intentBuilder.byPhase(params.phase);
+        if (params.orderId) intentBuilder = intentBuilder.searchOrderId(params.orderId);
+        if (params.originChainId) intentBuilder = intentBuilder.fromChain(BigInt(params.originChainId));
+        if (params.destinationChainId) intentBuilder = intentBuilder.toChain(BigInt(params.destinationChainId));
+        data = await intentBuilder.executePaginatedSerialized();
         cacheTTL = CACHE_CONFIG.intents;
         break;
       }
@@ -221,11 +226,11 @@ export async function POST(request: Request) {
         if (!params.orderId) {
           return NextResponse.json({ error: "orderId is required" }, { status: 400 });
         }
-        const result = await client.getIntentDetails(params.orderId);
-        if (!result) {
+        const intentDetails = await client.query().intents().getWithTimelineSerialized(params.orderId);
+        if (!intentDetails) {
           return NextResponse.json({ error: "Intent not found" }, { status: 404 });
         }
-        data = result;
+        data = intentDetails;
         cacheTTL = CACHE_CONFIG.intentDetails;
         break;
       }
@@ -233,11 +238,10 @@ export async function POST(request: Request) {
       default:
         return NextResponse.json({ error: "Unknown endpoint" }, { status: 404 });
     }
-    // Serialize BigInts before returning
-    const serializedData = convertBigIntsToStrings(data);
-    // Return with caching headers
+
+    // Return with caching headers (data is already serialized by query builders)
     return NextResponse.json(
-      { success: true, data: serializedData },
+      { success: true, data },
       {
         headers: {
           "Cache-Control": `s-maxage=${cacheTTL}, stale-while-revalidate`,

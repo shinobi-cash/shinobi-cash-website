@@ -7,7 +7,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { IndexerClient, convertBigIntsToStrings } from "@shinobi-cash/data";
+import { IndexerClient, serializeStateTreeLeaf, serializeASPApprovalList } from "@shinobi-cash/data";
 import { SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
 import {
   INDEXER_REQUEST_TIMEOUT_MS,
@@ -74,12 +74,16 @@ export async function POST(request: Request) {
     switch (endpoint) {
       case "activities": {
         const poolId = (params.poolAddress || SHINOBI_CASH_ETH_POOL.address).toLowerCase();
-        data = await serverClient.getActivities({
-          poolId,
-          limit: params.limit || 100,
-          orderDirection: params.orderDirection || "desc",
-          offset: params.offset,
-        });
+        let activityBuilder = serverClient
+          .query()
+          .activities()
+          .byPool(poolId)
+          .limit(params.limit || 100)
+          .orderByTimestamp(params.orderDirection || "desc");
+        if (params.offset !== undefined) {
+          activityBuilder = activityBuilder.skip(params.offset);
+        }
+        data = await activityBuilder.executePaginatedSerialized();
         cacheTTL = CACHE_CONFIG.activities;
         break;
       }
@@ -88,16 +92,18 @@ export async function POST(request: Request) {
         if (!params.poolId) {
           return NextResponse.json({ error: "poolId is required" }, { status: 400 });
         }
-        data = await serverClient.getAllStateTreeLeaves(params.poolId);
+        const leaves = await serverClient.getAllStateTreeLeaves(params.poolId);
+        data = leaves.map(serializeStateTreeLeaf);
         cacheTTL = CACHE_CONFIG.stateTree;
         break;
       }
 
       case "aspRoot": {
-        data = await serverClient.getLatestASPRoot();
-        if (!data || !(data as { root?: string }).root) {
+        const aspRoot = await serverClient.query().aspApprovals().latest();
+        if (!aspRoot?.root) {
           return NextResponse.json({ error: "No ASP root found" }, { status: 404 });
         }
+        data = serializeASPApprovalList(aspRoot);
         cacheTTL = CACHE_CONFIG.aspRoot;
         break;
       }
@@ -119,12 +125,9 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Unknown endpoint" }, { status: 404 });
     }
 
-    // Serialize BigInts before returning
-    const serializedData = convertBigIntsToStrings(data);
-
-    // Return with caching headers
+    // Return with caching headers (data is already serialized by query builders)
     return NextResponse.json(
-      { success: true, data: serializedData },
+      { success: true, data },
       {
         headers: {
           "Cache-Control": `s-maxage=${cacheTTL}, stale-while-revalidate`,
