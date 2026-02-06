@@ -80,7 +80,7 @@ export function IntentTimeline({ events, currentPhase }: Props) {
     : PHASE_ORDER;
 
   return (
-    <div className="space-y-0">
+    <div className="relative space-y-6">
       {displayPhases.map((phase, index) => {
         const event = eventMap.get(phase);
         // A phase is completed if we have event data for it (it has happened)
@@ -95,10 +95,10 @@ export function IntentTimeline({ events, currentPhase }: Props) {
 
         return (
           <div key={phase} className="relative flex gap-4">
-            {/* Vertical line */}
+            {/* Vertical line - extends through the space-y-6 gap to top of next circle */}
             {!isLast && (
               <div
-                className={`absolute left-4 top-8 h-full w-px -translate-x-1/2 ${
+                className={`absolute left-4 top-8 h-[calc(100%-0.5rem)] w-px -translate-x-1/2 ${
                   isCompleted ? "bg-emerald-500/50" : "bg-white/10"
                 }`}
               />
@@ -110,7 +110,7 @@ export function IntentTimeline({ events, currentPhase }: Props) {
             </div>
 
             {/* Content */}
-            <div className={`flex-1 pb-6 ${isLast ? "pb-0" : ""}`}>
+            <div className="flex-1">
               <div className="flex items-center gap-2">
                 <span
                   className={`text-sm font-medium capitalize ${
