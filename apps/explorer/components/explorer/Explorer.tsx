@@ -1,15 +1,18 @@
 "use client";
 
-import { useState } from "react";
-import type { Activity } from "@shinobi-cash/data";
+import { useEffect } from "react";
 import { ExplorerHeader } from "./ExplorerHeader";
 import { StatsOverview } from "./StatsOverview";
 import { ActivityFeed } from "./ActivityFeed";
 import { ActivityDetailsPanel } from "./ActivityDetailsPanel";
 import { AssetSelector } from "./AssetSelector";
+import { ActivityExplorerController } from "@/controllers/ActivityExplorerController";
 
 export function Explorer() {
-  const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
+  useEffect(() => {
+    ActivityExplorerController.initialize();
+    return () => ActivityExplorerController.reset();
+  }, []);
 
   return (
     <div className="bg-linear-to-br flex h-screen flex-col from-neutral-950 via-neutral-900 to-black">
@@ -24,15 +27,12 @@ export function Explorer() {
               <AssetSelector />
             </div>
             <div className="min-h-0 flex-1">
-              <ActivityFeed onSelect={setSelectedActivity} />
+              <ActivityFeed />
             </div>
           </div>
 
           {/* Right column */}
-          <ActivityDetailsPanel
-            activity={selectedActivity}
-            onClose={() => setSelectedActivity(null)}
-          />
+          <ActivityDetailsPanel />
         </div>
       </main>
     </div>

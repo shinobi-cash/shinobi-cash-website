@@ -1,33 +1,26 @@
 "use client";
 
 import { useRef, useEffect } from "react";
-import type { Activity } from "@shinobi-cash/data";
-import { useActivities } from "@/hooks/data/useActivities";
-import { SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
+import { useSnapshot } from "valtio";
+import { ActivityExplorerController, ActivityExplorerSelectors } from "@/controllers/ActivityExplorerController";
 import { ActivityRow } from "./ActivityRow";
 import { ActivityRowSkeleton } from "./ActivityRowSkeleton";
 
-interface Props {
-  onSelect: (activity: Activity) => void;
-}
-
-export function ActivityFeed({ onSelect }: Props) {
+export function ActivityFeed() {
+  const state = useSnapshot(ActivityExplorerController.state);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
-  const { data, error, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useActivities(
-    SHINOBI_CASH_ETH_POOL.address,
-    15
-  );
-
-  const activities = data?.pages.flatMap((p) => p.items) ?? [];
+  const isLoading = ActivityExplorerSelectors.isLoading();
+  const isFetchingMore = ActivityExplorerSelectors.isFetchingMore();
+  const canFetchMore = ActivityExplorerSelectors.canFetchMore();
 
   useEffect(() => {
-    if (!sentinelRef.current || !hasNextPage) return;
+    if (!sentinelRef.current || !canFetchMore) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && !isFetchingNextPage) {
-          fetchNextPage();
+        if (entries[0].isIntersecting && canFetchMore) {
+          ActivityExplorerController.fetchMore();
         }
       },
       { rootMargin: "120px" }
@@ -35,7 +28,7 @@ export function ActivityFeed({ onSelect }: Props) {
 
     observer.observe(sentinelRef.current);
     return () => observer.disconnect();
-  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+  }, [canFetchMore]);
 
   return (
     <section className="bg-white/2 flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-white/10">
@@ -53,33 +46,40 @@ export function ActivityFeed({ onSelect }: Props) {
             </>
           )}
 
-          {!isLoading && error && (
+          {!isLoading && state.listError && (
             <div className="p-6 text-center">
               <p className="text-sm text-red-400">Failed to load activity</p>
-              <p className="mt-1 text-xs text-neutral-500">Please check your connection</p>
+              <p className="mt-1 text-xs text-neutral-500">{state.listError}</p>
             </div>
           )}
 
-          {!isLoading && !error && activities.length === 0 && (
+          {!isLoading && !state.listError && state.activities.length === 0 && (
             <div className="p-6 text-center">
               <p className="text-sm text-neutral-400">No activity yet</p>
               <p className="mt-1 text-xs text-neutral-500">Pool is ready for deposits</p>
             </div>
           )}
 
-          {activities.map((activity) => (
-            <button
-              key={activity.id}
-              onClick={() => onSelect(activity)}
-              className="hover:bg-white/4 w-full text-left transition"
-            >
-              <ActivityRow activity={activity} />
-            </button>
-          ))}
+          {state.activities.map((activity) => {
+            const isSelected = activity.id === state.selectedActivity?.id;
+            return (
+              <button
+                key={activity.id}
+                onClick={() => ActivityExplorerController.selectActivity(activity)}
+                className={`w-full text-left transition ${
+                  isSelected
+                    ? "bg-white/8 border-l-2 border-l-orange-500"
+                    : "hover:bg-white/4 border-l-2 border-l-transparent"
+                }`}
+              >
+                <ActivityRow activity={activity} />
+              </button>
+            );
+          })}
 
-          {hasNextPage && (
+          {state.hasNextPage && (
             <div ref={sentinelRef} className="h-12">
-              {isFetchingNextPage && (
+              {isFetchingMore && (
                 <div className="p-4">
                   <ActivityRowSkeleton />
                 </div>
