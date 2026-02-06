@@ -59,6 +59,9 @@ function isSpendable(note: Note): boolean {
 }
 
 function toSelectedNote(note: Note): SelectedNote {
+  if (note.label === undefined) {
+    throw new Error(`Cannot select note without label for withdrawal (depositIndex: ${note.depositIndex})`);
+  }
   return {
     note,
     depositIndex: note.depositIndex,

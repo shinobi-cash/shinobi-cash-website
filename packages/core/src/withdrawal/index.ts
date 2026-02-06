@@ -560,6 +560,13 @@ export function deriveCrosschainWithdraw2Inputs(
   withdrawalData: readonly [string, string],
   labelSelector: 0 | 1 = 0,
 ): CrosschainWithdraw2Derivation {
+  if (primaryNote.label === undefined) {
+    throw new Error(`Cannot derive cross-chain withdraw2 for note without label (depositIndex: ${primaryNote.depositIndex})`);
+  }
+  if (secondaryNote.label === undefined) {
+    throw new Error(`Cannot derive cross-chain withdraw2 for note without label (depositIndex: ${secondaryNote.depositIndex})`);
+  }
+
   const base = deriveWithdraw2Inputs(
     primaryNote,
     secondaryNote,
