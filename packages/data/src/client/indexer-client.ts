@@ -429,8 +429,7 @@ export class IndexerClient {
   /**
    * Get the latest ASP approval root
    *
-   * This method properly handles Ponder's paginated response format and converts
-   * GraphQL string values to BigInt types.
+   * This is a convenience method that wraps the ASPQueryBuilder.
    *
    * @returns Promise resolving to the latest ASP approval list or null if none exist
    *
@@ -441,52 +440,13 @@ export class IndexerClient {
    *   console.log(`Latest ASP root: ${aspRoot.root}`);
    *   console.log(`IPFS CID: ${aspRoot.ipfsCID}`);
    * }
+   *
+   * // Or use the query builder directly:
+   * const aspRoot = await client.query().aspApprovals().latest();
    * ```
    */
   async getLatestASPRoot(): Promise<import('../types/indexer.js').ASPApprovalList | null> {
-    const query = `
-      query GetLatestASPRoot {
-        associationSetUpdates(
-          orderBy: "timestamp"
-          orderDirection: "desc"
-          limit: 1
-        ) {
-          items {
-            id
-            root
-            ipfsCID
-            timestamp
-          }
-          pageInfo {
-            hasNextPage
-            hasPreviousPage
-          }
-        }
-      }
-    `;
-
-    // Raw response from GraphQL (numeric fields are strings)
-    interface RawASPApprovalList {
-      id: string;
-      root: string;
-      ipfsCID: string;
-      timestamp: string;
-    }
-
-    const result = await this.executePaginatedQuery<RawASPApprovalList>(query, {});
-
-    const item = result.items[0];
-    if (!item) {
-      return null;
-    }
-
-    // Convert string timestamp to bigint
-    return {
-      id: item.id,
-      root: item.root,
-      ipfsCID: item.ipfsCID,
-      timestamp: BigInt(item.timestamp),
-    };
+    return this.query().aspApprovals().latest();
   }
 
   /**
@@ -625,8 +585,7 @@ export class IndexerClient {
   /**
    * Get activities for a pool with pagination support
    *
-   * This method properly handles Ponder's paginated response format and converts
-   * GraphQL string values to BigInt types.
+   * This is a convenience method that wraps the ActivityQueryBuilder.
    *
    * @param options - Query options
    * @param options.poolId - The pool ID to get activities for
@@ -645,14 +604,13 @@ export class IndexerClient {
    * console.log(firstPage.items); // Array of activities
    * console.log(firstPage.pageInfo.hasNextPage); // true/false
    *
-   * // Get next page using offset
-   * if (firstPage.pageInfo.hasNextPage) {
-   *   const nextPage = await client.getActivities({
-   *     poolId: '0x5543b250b8a44513BA91C0346BeE40890FfD7D18',
-   *     limit: 100,
-   *     offset: 100
-   *   });
-   * }
+   * // Or use the query builder directly for more control:
+   * const activities = await client.query()
+   *   .activities()
+   *   .byPool(poolId)
+   *   .orderByTimestamp('desc')
+   *   .limit(100)
+   *   .executePaginated();
    * ```
    */
   async getActivities(options: {
@@ -663,116 +621,13 @@ export class IndexerClient {
   }): Promise<import('../types/indexer.js').PaginatedResponse<import('../types/indexer.js').Activity>> {
     const { poolId, limit = 100, orderDirection = 'desc', offset } = options;
 
-    const query = `
-      query GetActivities($poolId: String!, $limit: Int!, $orderDirection: String!, $offset: Int) {
-        activitys(
-          where: { poolId: $poolId }
-          orderBy: "timestamp"
-          orderDirection: $orderDirection
-          limit: $limit
-          offset: $offset
-        ) {
-          items {
-            id
-            type
-            intentStatus
-            aspStatus
-            poolId
-            user
-            processor
-            recipient
-            amount
-            originalAmount
-            vettingFeeAmount
-            vettingFeeRecipient
-            commitment
-            label
-            precommitmentHash
-            spentNullifier
-            spentNullifier1
-            newCommitment
-            refundCommitment
-            relayFeeAmount
-            solverFeeAmount
-            paymasterFeeRefund
-            relayer
-            solver
-            isSponsored
-            orderId
-            blockNumber
-            timestamp
-            originTransactionHash
-            destinationTransactionHash
-            originChainId
-            destinationChainId
-          }
-          pageInfo {
-            hasNextPage
-            hasPreviousPage
-          }
-        }
-      }
-    `;
+    let builder = this.query().activities().byPool(poolId).limit(limit).orderByTimestamp(orderDirection);
 
-    const variables = { poolId, limit, orderDirection, offset };
-
-    // Raw response from GraphQL (all numeric fields are strings)
-    interface RawActivity {
-      id: string;
-      type: string;
-      intentStatus?: string;
-      aspStatus: string;
-      poolId: string;
-      user?: string;
-      processor?: string;
-      recipient?: string;
-      amount: string | null;
-      originalAmount?: string;
-      vettingFeeAmount?: string;
-      vettingFeeRecipient?: string;
-      commitment: string;
-      label?: string | null;
-      precommitmentHash?: string;
-      spentNullifier?: string;
-      spentNullifier1?: string;
-      newCommitment?: string;
-      refundCommitment?: string;
-      relayFeeAmount?: string;
-      solverFeeAmount?: string;
-      paymasterFeeRefund?: string;
-      relayer?: string;
-      solver?: string;
-      isSponsored?: boolean;
-      orderId?: string;
-      blockNumber: string;
-      timestamp: string;
-      originTransactionHash: string;
-      destinationTransactionHash?: string;
-      originChainId: string | null;
-      destinationChainId: string | null;
+    if (offset !== undefined) {
+      builder = builder.skip(offset);
     }
 
-    const result = await this.executePaginatedQuery<RawActivity>(query, variables);
-
-    // Convert string fields to bigint for Activity type
-    const items = result.items.map((item) => ({
-      ...item,
-      amount: item.amount ? BigInt(item.amount) : null,
-      originalAmount: item.originalAmount ? BigInt(item.originalAmount) : undefined,
-      vettingFeeAmount: item.vettingFeeAmount ? BigInt(item.vettingFeeAmount) : undefined,
-      relayFeeAmount: item.relayFeeAmount ? BigInt(item.relayFeeAmount) : undefined,
-      solverFeeAmount: item.solverFeeAmount ? BigInt(item.solverFeeAmount) : undefined,
-      paymasterFeeRefund: item.paymasterFeeRefund ? BigInt(item.paymasterFeeRefund) : undefined,
-      blockNumber: BigInt(item.blockNumber),
-      timestamp: BigInt(item.timestamp),
-      originChainId: item.originChainId ? BigInt(item.originChainId) : null,
-      destinationChainId: item.destinationChainId ? BigInt(item.destinationChainId) : null,
-    })) as import('../types/indexer.js').Activity[];
-
-    return {
-      items,
-      pageInfo: result.pageInfo,
-    };
+    return builder.executePaginated();
   }
 }
 
