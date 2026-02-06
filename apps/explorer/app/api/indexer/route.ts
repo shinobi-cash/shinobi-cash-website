@@ -40,6 +40,8 @@ const CACHE_CONFIG = {
   aspRoot: 60, // 1 minute (updates periodically)
   poolStats: 30, // 30 seconds
   health: 5, // 5 seconds
+  intents: 10, // 10 seconds (real-time data)
+  intentDetails: 10, // 10 seconds
 } as const;
 
 // Request body types
@@ -51,13 +53,21 @@ interface IndexerRequest {
     | "poolStats"
     | "poolConfig"
     | "health"
-    | "latestBlock";
+    | "latestBlock"
+    | "intents"
+    | "intentDetails";
   params?: {
     poolAddress?: string;
     poolId?: string;
     limit?: number;
     offset?: number;
     orderDirection?: "asc" | "desc";
+    // Intent-specific params
+    orderId?: string;
+    intentType?: "DEPOSIT" | "WITHDRAWAL";
+    phase?: "CREATED" | "ESCROWED" | "FILLED" | "FINALIZED" | "REFUNDED";
+    originChainId?: string;
+    destinationChainId?: string;
   };
 }
 
@@ -187,6 +197,35 @@ export async function POST(request: Request) {
       case "latestBlock": {
         data = await client.getLatestIndexedBlock();
         cacheTTL = CACHE_CONFIG.health;
+        break;
+      }
+
+      case "intents": {
+        data = await client.getIntents({
+          limit: params.limit || 100,
+          orderDirection: params.orderDirection || "desc",
+          offset: params.offset,
+          intentType: params.intentType,
+          phase: params.phase,
+          originChainId: params.originChainId ? BigInt(params.originChainId) : undefined,
+          destinationChainId: params.destinationChainId
+            ? BigInt(params.destinationChainId)
+            : undefined,
+        });
+        cacheTTL = CACHE_CONFIG.intents;
+        break;
+      }
+
+      case "intentDetails": {
+        if (!params.orderId) {
+          return NextResponse.json({ error: "orderId is required" }, { status: 400 });
+        }
+        const result = await client.getIntentDetails(params.orderId);
+        if (!result) {
+          return NextResponse.json({ error: "Intent not found" }, { status: 404 });
+        }
+        data = result;
+        cacheTTL = CACHE_CONFIG.intentDetails;
         break;
       }
 
