@@ -206,7 +206,12 @@ export class WithdrawalEngine {
   }
 
   private async buildWitness(context: WithdrawalPipelineContext): Promise<WithdrawalWitness> {
-    const poolAddress = context.request.note.poolAddress.toLowerCase();
+    const { note } = context.request;
+    if (note.label === undefined) {
+      throw new Error(`Cannot build witness for note without label (depositIndex: ${note.depositIndex})`);
+    }
+
+    const poolAddress = note.poolAddress.toLowerCase();
 
     const [stateTreeLeavesRaw, aspData] = await Promise.all([
       fetchStateTreeLeaves(poolAddress),
@@ -218,8 +223,8 @@ export class WithdrawalEngine {
 
     const circuitInputs = {
       withdrawAmount: context.request.withdrawAmountWei,
-      noteAmount: BigInt(context.request.note.amount),
-      label: BigInt(context.request.note.label),
+      noteAmount: BigInt(note.amount),
+      label: BigInt(note.label),
     };
 
     return { context, stateTreeLeaves, aspTreeLeaves, circuitInputs };
@@ -352,7 +357,15 @@ export class WithdrawalEngine {
   }
 
   private async buildWithdraw2Witness(context: Withdraw2PipelineContext): Promise<Withdraw2Witness> {
-    const poolAddress = context.request.primaryNote.poolAddress.toLowerCase();
+    const { primaryNote, secondaryNote } = context.request;
+    if (primaryNote.label === undefined) {
+      throw new Error(`Cannot build witness for primary note without label (depositIndex: ${primaryNote.depositIndex})`);
+    }
+    if (secondaryNote.label === undefined) {
+      throw new Error(`Cannot build witness for secondary note without label (depositIndex: ${secondaryNote.depositIndex})`);
+    }
+
+    const poolAddress = primaryNote.poolAddress.toLowerCase();
 
     console.log("[Withdraw2] Building witness for pool:", poolAddress);
 
@@ -369,14 +382,14 @@ export class WithdrawalEngine {
 
     const circuitInputs = {
       withdrawAmount: context.request.withdrawAmountWei,
-      primaryNoteAmount: BigInt(context.request.primaryNote.amount),
-      primaryLabel: BigInt(context.request.primaryNote.label),
-      secondaryNoteAmount: BigInt(context.request.secondaryNote.amount),
-      secondaryLabel: BigInt(context.request.secondaryNote.label),
+      primaryNoteAmount: BigInt(primaryNote.amount),
+      primaryLabel: BigInt(primaryNote.label),
+      secondaryNoteAmount: BigInt(secondaryNote.amount),
+      secondaryLabel: BigInt(secondaryNote.label),
     };
 
-    console.log("[Withdraw2] Primary note label:", context.request.primaryNote.label);
-    console.log("[Withdraw2] Secondary note label:", context.request.secondaryNote.label);
+    console.log("[Withdraw2] Primary note label:", primaryNote.label);
+    console.log("[Withdraw2] Secondary note label:", secondaryNote.label);
     console.log("[Withdraw2] Primary label in ASP:", aspTreeLeaves.includes(circuitInputs.primaryLabel));
     console.log("[Withdraw2] Secondary label in ASP:", aspTreeLeaves.includes(circuitInputs.secondaryLabel));
 
