@@ -119,9 +119,21 @@ function reconcilePendingIntents(
         pendingNote.intentStatus = 'refunded';
         pendingNote.status = 'spent'; // PendingIntentNote is consumed
 
-        // Create RefundNote - the refundCommitment is now in the pool's merkle tree
-        const refundNote = createRefundNote(pendingNote);
-        refundNotesToAdd.push(refundNote);
+        // Idempotency guard: check if RefundNote already exists for this intent
+        // This prevents duplicate RefundNotes on background sync retries
+        const existingRefund = chain.find(
+          (n) =>
+            n.noteType === 'refund' &&
+            n.depositIndex === pendingNote.depositIndex &&
+            n.changeIndex === pendingNote.parentChangeIndex &&
+            n.orderId === pendingNote.orderId,
+        );
+
+        if (!existingRefund) {
+          // Create RefundNote - the refundCommitment is now in the pool's merkle tree
+          const refundNote = createRefundNote(pendingNote);
+          refundNotesToAdd.push(refundNote);
+        }
       }
     }
 

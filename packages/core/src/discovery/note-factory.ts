@@ -262,6 +262,8 @@ export function createRefundNote(
     originChainId: pendingIntent.originChainId,
     destinationChainId: pendingIntent.originChainId, // Back to pool chain
     isCrossChain: false, // Refund is on pool chain
+    // Preserve orderId for idempotency checks
+    orderId: pendingIntent.orderId,
     aspStatus: pendingIntent.aspStatus,
     activityData: pendingIntent.activityData,
   };
