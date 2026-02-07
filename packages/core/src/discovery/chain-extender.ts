@@ -1,15 +1,36 @@
 /**
  * @shinobi-cash/core/discovery
  * Phase 2: Chain Extension
+ *
  * Extends note chains with withdrawals (both 1:1 and 2:1 Withdraw2)
+ *
+ * Architecture: Plan / Apply Split
+ * - Planning: Pure, read-only computation of what extensions to apply
+ * - Applying: Mechanical mutation based on the plan
+ *
+ * This separation ensures:
+ * - Deterministic behavior (same inputs = same outputs)
+ * - Replay safety (plans can be recomputed)
+ * - Easier testing (plan and apply can be tested independently)
  */
 
 import type { Activity } from '@shinobi-cash/data';
 import type { NoteChain, NullifierInfo, Note } from './types.js';
 import type { ActivityIndex } from './activity-indexer.js';
 import { deriveAndHashNullifier } from './nullifier-utils.js';
-import { createChangeNote, createWithdraw2ChangeNote, createMergedNote, createPendingIntentNote } from './note-factory.js';
-import { derivedNoteCommitment } from '../withdrawal/index.js';
+import {
+  createChangeNote,
+  createWithdraw2ChangeNote,
+  createMergedNote,
+  createPendingIntentNote,
+} from './note-factory.js';
+import {
+  planChainExtensions,
+  type PlannedExtension,
+  type Planned1x1Extension,
+  type PlannedWithdraw2Extension,
+  type PlannedRagequitExtension,
+} from './chain-extension-planner.js';
 
 // ============================================================================
 // Extension Result Type
@@ -23,17 +44,15 @@ export interface ExtensionResult {
 }
 
 // ============================================================================
-// Chain Extender
+// Chain Extender (Orchestrator)
 // ============================================================================
 
 /**
  * Extend all chains with withdrawals from the current activity page
  *
- * For each chain with an unspent tip:
- * 1. Derive nullifier for current tip
- * 2. Check for 1:1 withdrawal -> create change note
- * 3. Check for 2:1 Withdraw2 -> merge chains
- * 4. Repeat until no more matches
+ * Uses Plan/Apply pattern:
+ * 1. Plan all extensions (pure, read-only)
+ * 2. Apply all extensions (mechanical mutation)
  */
 export function extendAllChains(
   chains: Map<number, NoteChain>,
@@ -45,9 +64,14 @@ export function extendAllChains(
   const updatedChains = new Map(chains);
   const updatedNullifierMap = new Map(nullifierMap);
 
-  // Process each chain
+  // Track processed Withdraw2s to avoid double-processing
+  const processedWithdraw2s = new Set<string>();
+
+  // Collect all plans first (PLANNING PHASE - read-only)
+  const allPlans: Array<{ depositIndex: number; plans: PlannedExtension[] }> = [];
+
   for (const [depositIndex, chain] of updatedChains) {
-    extendSingleChain(
+    const plans = planChainExtensions(
       chain,
       depositIndex,
       updatedChains,
@@ -56,353 +80,194 @@ export function extendAllChains(
       accountKey,
       poolAddress,
     );
+    if (plans.length > 0) {
+      allPlans.push({ depositIndex, plans });
+    }
+  }
+
+  // Apply all plans (APPLICATION PHASE - mutation)
+  for (const { depositIndex, plans } of allPlans) {
+    const chain = updatedChains.get(depositIndex);
+    if (!chain) continue;
+
+    for (const plan of plans) {
+      applyExtension(
+        plan,
+        updatedChains,
+        updatedNullifierMap,
+        processedWithdraw2s,
+        accountKey,
+        poolAddress,
+      );
+    }
   }
 
   return { updatedChains, updatedNullifierMap };
 }
 
 // ============================================================================
-// Single Chain Extension
+// Extension Application (Mutation)
 // ============================================================================
 
-function extendSingleChain(
-  chain: NoteChain,
-  depositIndex: number,
-  allChains: Map<number, NoteChain>,
+/**
+ * Apply a single planned extension
+ * This function ONLY mutates - all decisions were made in planning
+ */
+function applyExtension(
+  plan: PlannedExtension,
+  chains: Map<number, NoteChain>,
   nullifierMap: Map<string, NullifierInfo>,
-  activityIndex: ActivityIndex,
+  processedWithdraw2s: Set<string>,
   accountKey: bigint,
   poolAddress: string,
 ): void {
-  while (true) {
-    const lastNote = chain[chain.length - 1];
-    if (!lastNote) break;
-
-    // Stop if note is not extendable
-    // PendingIntentNote is not extendable - it represents escrowed funds, not pool balance
-    if (
-      lastNote.noteType === 'pendingIntent' ||
-      lastNote.status !== 'unspent' ||
-      BigInt(lastNote.amount) <= 0n
-    ) {
+  switch (plan.kind) {
+    case 'withdraw1x1':
+      apply1x1Withdrawal(plan, chains, nullifierMap);
       break;
-    }
-
-    // Derive nullifier hash for current tip
-    const nullifierHash = deriveAndHashNullifier(
-      accountKey,
-      poolAddress,
-      depositIndex,
-      lastNote.changeIndex,
-    );
-
-    // Check for 1:1 withdrawal first
-    const withdrawal = activityIndex.withdrawalsByNullifier.get(nullifierHash);
-    if (withdrawal) {
-      process1x1Withdrawal(
-        chain,
-        depositIndex,
-        lastNote,
-        withdrawal,
-        nullifierMap,
-        nullifierHash,
-        accountKey,
-        poolAddress,
-      );
-      continue;
-    }
-
-    // Check for 2:1 Withdraw2
-    const withdraw2 = activityIndex.withdraw2ByNullifier.get(nullifierHash);
-    if (withdraw2) {
-      const resolved = processWithdraw2(
-        chain,
-        depositIndex,
-        lastNote,
-        withdraw2,
-        nullifierHash,
-        allChains,
-        nullifierMap,
-        accountKey,
-        poolAddress,
-      );
-      if (!resolved) {
-        // Other chain not ready - stop extending this chain
-        break;
-      }
-      continue;
-    }
-
-    // Check for ragequit (public withdrawal)
-    // Skip if label is undefined (pending deposits can't be ragequit)
-    if (lastNote.label !== undefined) {
-      const commitment = derivedNoteCommitment(accountKey, lastNote).toString();
-      const ragequit = activityIndex.ragequitByCommitment.get(commitment);
-      if (ragequit) {
-        processRagequit(lastNote, ragequit, nullifierMap, nullifierHash);
-        break; // Ragequit is final - no more extensions possible
-      }
-    }
-
-    // No more withdrawals found
-    break;
+    case 'withdraw2':
+      applyWithdraw2(plan, chains, nullifierMap, processedWithdraw2s);
+      break;
+    case 'ragequit':
+      applyRagequit(plan, chains, nullifierMap);
+      break;
   }
 }
 
-// ============================================================================
-// 1:1 Withdrawal Processing
-// ============================================================================
-
-function process1x1Withdrawal(
-  chain: NoteChain,
-  depositIndex: number,
-  lastNote: Note,
-  withdrawal: Activity,
+/**
+ * Apply a 1:1 withdrawal extension
+ */
+function apply1x1Withdrawal(
+  plan: Planned1x1Extension,
+  chains: Map<number, NoteChain>,
   nullifierMap: Map<string, NullifierInfo>,
-  oldNullifierHash: string,
-  accountKey: bigint,
-  poolAddress: string,
 ): void {
-  // Calculate remaining amount
-  const withdrawn = BigInt(withdrawal.amount || 0);
-  const remaining = BigInt(lastNote.amount) - withdrawn;
+  const chain = chains.get(plan.depositIndex);
+  if (!chain) return;
 
-  // Remember parent's changeIndex before modification (for PendingIntentNote derivation)
-  const parentChangeIndex = lastNote.changeIndex;
+  const lastNote = chain[chain.length - 1];
+  if (!lastNote) return;
 
   // Mark current note as spent
   lastNote.status = 'spent';
 
   // Create change note
-  const newChangeIndex = lastNote.changeIndex + 1;
-  const changeNote = createChangeNote(lastNote, withdrawal, newChangeIndex, remaining);
+  const changeNote = createChangeNote(lastNote, plan.activity, plan.newChangeIndex, plan.remaining);
   chain.push(changeNote);
 
-  // Create PendingIntentNote for cross-chain withdrawals that are pending
-  const isCrossChainPending =
-    (withdrawal.type === 'CROSSCHAIN_WITHDRAWAL_PENDING' ||
-      withdrawal.type === 'CROSSCHAIN_WITHDRAW2_PENDING') &&
-    withdrawal.intentStatus === 'pending';
-
-  if (isCrossChainPending && withdrawn > 0n) {
-    const pendingIntent = createPendingIntentNote(lastNote, withdrawal, parentChangeIndex);
+  // Create PendingIntentNote if needed
+  if (plan.createPendingIntent) {
+    const pendingIntent = createPendingIntentNote(lastNote, plan.activity, plan.parentChangeIndex);
     chain.push(pendingIntent);
   }
 
   // Update nullifier map
-  nullifierMap.delete(oldNullifierHash);
-  if (remaining > 0n) {
-    const newNullifierHash = deriveAndHashNullifier(accountKey, poolAddress, depositIndex, newChangeIndex);
-    nullifierMap.set(newNullifierHash, { depositIndex, changeIndex: newChangeIndex });
+  nullifierMap.delete(plan.oldNullifierHash);
+  if (plan.newNullifierHash) {
+    nullifierMap.set(plan.newNullifierHash, {
+      depositIndex: plan.depositIndex,
+      changeIndex: plan.newChangeIndex,
+    });
   }
 }
 
-// ============================================================================
-// 2:1 Withdraw2 Processing
-// ============================================================================
-
 /**
- * Process a Withdraw2 (2:1 JoinSplit) activity
- *
- * Chain inheritance rule: The most recent deposit (latest depositIndex) continues
- * - Primary chain (latest/larger depositIndex): Continues with combined change note
- * - Secondary chain (older/smaller depositIndex): Terminates, marked as 'merged'
- *
- * @returns true if resolved, false if other chain not ready
+ * Apply a Withdraw2 extension
  */
-function processWithdraw2(
-  currentChain: NoteChain,
-  currentDepositIndex: number,
-  currentLastNote: Note,
-  activity: Activity,
-  currentNullifierHash: string,
-  allChains: Map<number, NoteChain>,
+function applyWithdraw2(
+  plan: PlannedWithdraw2Extension,
+  chains: Map<number, NoteChain>,
   nullifierMap: Map<string, NullifierInfo>,
-  accountKey: bigint,
-  poolAddress: string,
-): boolean {
-  // Determine which nullifier is ours
-  const isNullifier0 = activity.spentNullifier === currentNullifierHash;
-  const otherNullifierHash = isNullifier0 ? activity.spentNullifier1! : activity.spentNullifier!;
-
-  // Find the other chain
-  const otherInfo = nullifierMap.get(otherNullifierHash);
-  if (!otherInfo) {
-    // Other chain not discovered yet - shouldn't happen with correct discovery order
-    return false;
-  }
-
-  const otherChain = allChains.get(otherInfo.depositIndex);
-  if (!otherChain) {
-    return false;
-  }
-
-  const otherLastNote = otherChain[otherChain.length - 1];
-  if (!otherLastNote) {
-    return false;
-  }
-
-  // Determine which chain is primary (latest/most recent deposit continues)
-  const isPrimaryChain = currentDepositIndex > otherInfo.depositIndex;
-
-  // Check if other chain already processed this Withdraw2
-  if (otherLastNote.status !== 'unspent') {
-    if ((otherLastNote.status === 'spent' || otherLastNote.status === 'merged') && isPrimaryChain) {
-      // Secondary chain processed first and marked itself spent
-      // Primary chain still needs to handle both chains
-      // Fall through to processAsPrimaryChain
-    } else {
-      // Either: primary already processed (both are done), or
-      // current is secondary and other chain is in unexpected state
-      return true;
-    }
-  }
-
-  if (isPrimaryChain) {
-    // This chain continues with the combined change note
-    processAsPrimaryChain(
-      currentChain,
-      currentDepositIndex,
-      currentLastNote,
-      otherChain,
-      otherLastNote,
-      otherInfo.depositIndex,
-      activity,
-      nullifierMap,
-      currentNullifierHash,
-      otherNullifierHash,
-      accountKey,
-      poolAddress,
-    );
-  } else {
-    // This chain terminates - gets merged into the primary chain
-    // Primary chain will handle nullifier cleanup
-    processAsSecondaryChain(currentLastNote, otherInfo.depositIndex);
-  }
-
-  return true;
-}
-
-/**
- * Process current chain as the primary (continuing) chain in a Withdraw2
- * - Creates combined change note with value from both chains
- * - Marks secondary chain's note as merged
- * - Cleans up nullifiers for both chains
- */
-function processAsPrimaryChain(
-  primaryChain: NoteChain,
-  primaryDepositIndex: number,
-  primaryLastNote: Note,
-  secondaryChain: NoteChain,
-  secondaryLastNote: Note,
-  secondaryDepositIndex: number,
-  activity: Activity,
-  nullifierMap: Map<string, NullifierInfo>,
-  primaryNullifierHash: string,
-  secondaryNullifierHash: string,
-  accountKey: bigint,
-  poolAddress: string,
+  processedWithdraw2s: Set<string>,
 ): void {
-  // Calculate combined remaining value
-  const combined = BigInt(primaryLastNote.amount) + BigInt(secondaryLastNote.amount);
-  const withdrawn = BigInt(activity.amount || 0);
-  const remaining = combined - withdrawn;
+  // Generate a unique key for this Withdraw2 to avoid double-processing
+  const withdraw2Key = `${plan.activity.originTransactionHash}-${plan.primaryDepositIndex}-${plan.secondaryDepositIndex}`;
+  if (processedWithdraw2s.has(withdraw2Key)) {
+    return;
+  }
+  processedWithdraw2s.add(withdraw2Key);
 
-  // Remember parent's changeIndex before modification (for PendingIntentNote derivation)
-  const parentChangeIndex = primaryLastNote.changeIndex;
+  const primaryChain = chains.get(plan.primaryDepositIndex);
+  const secondaryChain = chains.get(plan.secondaryDepositIndex);
 
-  // Mark primary note as spent
+  if (!primaryChain || !secondaryChain) return;
+
+  const primaryLastNote = primaryChain[primaryChain.length - 1];
+  const secondaryLastNote = secondaryChain[secondaryChain.length - 1];
+
+  if (!primaryLastNote || !secondaryLastNote) return;
+
+  // Mark both notes as spent
   primaryLastNote.status = 'spent';
-
-  // Mark secondary note as spent (it contributed to the merge)
   secondaryLastNote.status = 'spent';
 
-  // Create change note on primary chain (receives combined balance minus withdrawal)
-  const primaryNewChangeIndex = primaryLastNote.changeIndex + 1;
+  // Create change note on primary chain
   const changeNote = createWithdraw2ChangeNote(
     primaryLastNote,
-    activity,
-    primaryNewChangeIndex,
-    remaining,
-    secondaryDepositIndex,
+    plan.activity,
+    plan.primaryNewChangeIndex,
+    plan.remaining,
+    plan.secondaryDepositIndex,
   );
   primaryChain.push(changeNote);
 
-  // Create PendingIntentNote for cross-chain Withdraw2 that is pending
-  const isCrossChainPending =
-    activity.type === 'CROSSCHAIN_WITHDRAW2_PENDING' && activity.intentStatus === 'pending';
-
-  if (isCrossChainPending && withdrawn > 0n) {
-    const pendingIntent = createPendingIntentNote(primaryLastNote, activity, parentChangeIndex);
+  // Create PendingIntentNote if needed
+  if (plan.createPendingIntent) {
+    const pendingIntent = createPendingIntentNote(
+      primaryLastNote,
+      plan.activity,
+      plan.primaryParentChangeIndex,
+    );
     primaryChain.push(pendingIntent);
   }
 
-  // Create merged note on secondary chain (balance = 0, linked to primary)
-  const secondaryNewChangeIndex = secondaryLastNote.changeIndex + 1;
+  // Create merged note on secondary chain
   const mergedNote = createMergedNote(
     secondaryLastNote,
-    activity,
-    secondaryNewChangeIndex,
-    primaryDepositIndex,
+    plan.activity,
+    plan.secondaryNewChangeIndex,
+    plan.primaryDepositIndex,
   );
   secondaryChain.push(mergedNote);
 
-  // Update nullifier map - remove both old nullifiers
-  nullifierMap.delete(primaryNullifierHash);
-  nullifierMap.delete(secondaryNullifierHash);
+  // Update nullifier map
+  nullifierMap.delete(plan.primaryOldNullifierHash);
+  nullifierMap.delete(plan.secondaryOldNullifierHash);
 
-  // Add new nullifier if there's remaining balance
-  if (remaining > 0n) {
-    const newNullifierHash = deriveAndHashNullifier(
-      accountKey,
-      poolAddress,
-      primaryDepositIndex,
-      primaryNewChangeIndex,
-    );
-    nullifierMap.set(newNullifierHash, { depositIndex: primaryDepositIndex, changeIndex: primaryNewChangeIndex });
+  if (plan.primaryNewNullifierHash) {
+    nullifierMap.set(plan.primaryNewNullifierHash, {
+      depositIndex: plan.primaryDepositIndex,
+      changeIndex: plan.primaryNewChangeIndex,
+    });
   }
 }
 
 /**
- * Process current chain as the secondary (terminating) chain in a Withdraw2
- * - Marks note as spent so the while loop exits
- * - The primary chain will handle creating the merged note when processed
+ * Apply a ragequit extension
  */
-function processAsSecondaryChain(currentLastNote: Note, _primaryDepositIndex: number): void {
-  // Mark as spent so the while loop exits (note is no longer 'unspent')
-  // The primary chain will create the proper merged note and update this chain
-  currentLastNote.status = 'spent';
-}
-
-// ============================================================================
-// Ragequit Processing
-// ============================================================================
-
-/**
- * Process a ragequit (public withdrawal)
- * - Marks the note as spent
- * - Stores ragequit activity data on the note
- * - No change note is created (ragequit withdraws the full amount)
- * - Removes the nullifier from the map
- */
-function processRagequit(
-  lastNote: Note,
-  ragequit: Activity,
+function applyRagequit(
+  plan: PlannedRagequitExtension,
+  chains: Map<number, NoteChain>,
   nullifierMap: Map<string, NullifierInfo>,
-  nullifierHash: string,
 ): void {
+  const chain = chains.get(plan.depositIndex);
+  if (!chain) return;
+
+  const lastNote = chain[chain.length - 1];
+  if (!lastNote) return;
+
   // Mark note as spent
   lastNote.status = 'spent';
 
-  // Store ragequit activity data on the note for UI display
+  // Store ragequit activity data
   lastNote.activityData = {
     ...lastNote.activityData,
-    ragequitTxHash: ragequit.originTransactionHash,
-    ragequitTimestamp: ragequit.timestamp.toString(),
-    ragequitBlockNumber: ragequit.blockNumber.toString(),
-    ragequitUser: ragequit.user,
+    ragequitTxHash: plan.activity.originTransactionHash,
+    ragequitTimestamp: plan.activity.timestamp.toString(),
+    ragequitBlockNumber: plan.activity.blockNumber.toString(),
+    ragequitUser: plan.activity.user,
   };
 
-  // Remove nullifier from map (no change note for ragequit)
-  nullifierMap.delete(nullifierHash);
+  // Remove nullifier
+  nullifierMap.delete(plan.nullifierHash);
 }
