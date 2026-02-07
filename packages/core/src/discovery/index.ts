@@ -37,6 +37,7 @@ export type {
   DepositNote,
   ChangeNote,
   RefundNote,
+  PendingIntentNote,
   NoteStatus,
   NullifierInfo,
   DiscoveryState,
@@ -58,7 +59,7 @@ export { scanForDeposits } from './deposit-scanner.js';
 export { extendAllChains } from './chain-extender.js';
 export { reconcileChains } from './reconciler.js';
 export { deriveNullifier, hashNullifier, deriveAndHashNullifier, deriveDepositPrecommitment } from './nullifier-utils.js';
-export { createDepositNote, createChangeNote, createWithdraw2ChangeNote, createMergedNote } from './note-factory.js';
+export { createDepositNote, createChangeNote, createWithdraw2ChangeNote, createMergedNote, createPendingIntentNote, createRefundNote } from './note-factory.js';
 
 // ============================================================================
 // NoteDiscovery Class
@@ -207,8 +208,8 @@ export class NoteDiscovery {
     state.chains = extensionResult.updatedChains;
     state.nullifierMap = extensionResult.updatedNullifierMap;
 
-    // PHASE 3: Reconcile (update ASP status, labels, etc.)
-    reconcileChains(state.chains, activities);
+    // PHASE 3: Reconcile (update ASP status, labels, intent status)
+    reconcileChains(state.chains, activities, activityIndex);
 
     return state;
   }

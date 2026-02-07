@@ -18,6 +18,8 @@ export interface ActivityIndex {
   depositsByPrecommitment: Map<string, Activity>;
   /** Ragequit indexed by commitment hash */
   ragequitByCommitment: Map<string, Activity>;
+  /** Cross-chain withdrawals indexed by orderId (for PendingIntentNote resolution) */
+  withdrawalsByOrderId: Map<string, Activity>;
 }
 
 // ============================================================================
@@ -66,6 +68,7 @@ export function buildActivityIndex(activities: Activity[]): ActivityIndex {
     withdraw2ByNullifier: new Map(),
     depositsByPrecommitment: new Map(),
     ragequitByCommitment: new Map(),
+    withdrawalsByOrderId: new Map(),
   };
 
   for (const activity of activities) {
@@ -90,6 +93,14 @@ export function buildActivityIndex(activities: Activity[]): ActivityIndex {
     // Index ragequit by commitment hash
     if (isRagequitActivity(activity) && activity.commitment) {
       index.ragequitByCommitment.set(activity.commitment, activity);
+    }
+
+    // Index cross-chain withdrawals by orderId (for PendingIntentNote resolution)
+    if (
+      (is1x1WithdrawalActivity(activity) || isWithdraw2Activity(activity)) &&
+      activity.orderId
+    ) {
+      index.withdrawalsByOrderId.set(activity.orderId, activity);
     }
   }
 

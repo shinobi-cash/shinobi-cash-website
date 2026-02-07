@@ -4,7 +4,7 @@
  */
 
 import type { Activity } from '@shinobi-cash/data';
-import type { DepositNote, ChangeNote, Note, ActivityMetadata } from './types.js';
+import type { DepositNote, ChangeNote, PendingIntentNote, RefundNote, Note, ActivityMetadata } from './types.js';
 
 // ============================================================================
 // Deposit Note Creation
@@ -183,6 +183,87 @@ export function createMergedNote(
     aspStatus: loserNote.aspStatus,
     mergedIntoDepositIndex,
     activityData: buildWithdraw2ActivityMetadata(activity),
+  };
+}
+
+// ============================================================================
+// Pending Intent Note Creation
+// ============================================================================
+
+/**
+ * Create a PendingIntentNote for escrowed funds in a cross-chain withdrawal.
+ * This note is a sibling of the ChangeNote, both branching from the spent note.
+ *
+ * @param parentNote - The note being spent (for depositIndex, label, poolAddress)
+ * @param activity - The withdrawal Activity (for amount, orderId, refundCommitment, deadlines)
+ * @param parentChangeIndex - The changeIndex of the spent note (for derivation path)
+ */
+export function createPendingIntentNote(
+  parentNote: Note,
+  activity: Activity,
+  parentChangeIndex: number,
+): PendingIntentNote {
+  return {
+    noteType: 'pendingIntent',
+    poolAddress: parentNote.poolAddress,
+    depositIndex: parentNote.depositIndex,
+    changeIndex: parentChangeIndex, // Same as parentChangeIndex for Note union compatibility
+    parentChangeIndex,
+    amount: (activity.amount || 0n).toString(),
+    label: parentNote.label,
+    status: 'unspent',
+    blockNumber: activity.blockNumber.toString(),
+    timestamp: activity.timestamp.toString(),
+    originTransactionHash: activity.originTransactionHash,
+    destinationTransactionHash: activity.destinationTransactionHash || activity.originTransactionHash,
+    originChainId: activity.originChainId.toString(),
+    destinationChainId: (activity.destinationChainId || activity.originChainId).toString(),
+    isCrossChain: true,
+    orderId: activity.orderId ?? '',
+    intentStatus: activity.intentStatus ?? 'pending',
+    fillDeadline: activity.fillDeadline?.toString(),
+    expires: activity.expires?.toString(),
+    aspStatus: parentNote.aspStatus,
+    refundCommitment: activity.refundCommitment?.toString() ?? '',
+    activityData: buildActivityMetadata(activity),
+  };
+}
+
+// ============================================================================
+// Refund Note Creation
+// ============================================================================
+
+/**
+ * Create a RefundNote from a PendingIntentNote when the refund has been executed.
+ * The refundCommitment is now in the pool's merkle tree and can be spent.
+ *
+ * @param pendingIntent - The PendingIntentNote that is being refunded
+ * @param refundIndex - Index for this refund (0 for first refund from this position)
+ */
+export function createRefundNote(
+  pendingIntent: PendingIntentNote,
+  refundIndex: number = 0,
+): RefundNote {
+  return {
+    noteType: 'refund',
+    poolAddress: pendingIntent.poolAddress,
+    depositIndex: pendingIntent.depositIndex,
+    changeIndex: pendingIntent.parentChangeIndex, // Same derivation path as PendingIntentNote
+    refundIndex,
+    amount: pendingIntent.amount, // Refunded amount
+    label: pendingIntent.label,
+    status: 'unspent', // Can be spent!
+    refundCommitment: pendingIntent.refundCommitment,
+    // Use same blockchain metadata as the pending intent
+    blockNumber: pendingIntent.blockNumber,
+    timestamp: pendingIntent.timestamp,
+    originTransactionHash: pendingIntent.originTransactionHash,
+    destinationTransactionHash: pendingIntent.originTransactionHash, // Refund is on pool chain
+    originChainId: pendingIntent.originChainId,
+    destinationChainId: pendingIntent.originChainId, // Back to pool chain
+    isCrossChain: false, // Refund is on pool chain
+    aspStatus: pendingIntent.aspStatus,
+    activityData: pendingIntent.activityData,
   };
 }
 

@@ -8,7 +8,7 @@ import type { Activity } from '@shinobi-cash/data';
 import type { NoteChain, NullifierInfo, Note } from './types.js';
 import type { ActivityIndex } from './activity-indexer.js';
 import { deriveAndHashNullifier } from './nullifier-utils.js';
-import { createChangeNote, createWithdraw2ChangeNote, createMergedNote } from './note-factory.js';
+import { createChangeNote, createWithdraw2ChangeNote, createMergedNote, createPendingIntentNote } from './note-factory.js';
 import { derivedNoteCommitment } from '../withdrawal/index.js';
 
 // ============================================================================
@@ -79,7 +79,12 @@ function extendSingleChain(
     if (!lastNote) break;
 
     // Stop if note is not extendable
-    if (lastNote.status !== 'unspent' || BigInt(lastNote.amount) <= 0n) {
+    // PendingIntentNote is not extendable - it represents escrowed funds, not pool balance
+    if (
+      lastNote.noteType === 'pendingIntent' ||
+      lastNote.status !== 'unspent' ||
+      BigInt(lastNote.amount) <= 0n
+    ) {
       break;
     }
 
@@ -162,6 +167,9 @@ function process1x1Withdrawal(
   const withdrawn = BigInt(withdrawal.amount || 0);
   const remaining = BigInt(lastNote.amount) - withdrawn;
 
+  // Remember parent's changeIndex before modification (for PendingIntentNote derivation)
+  const parentChangeIndex = lastNote.changeIndex;
+
   // Mark current note as spent
   lastNote.status = 'spent';
 
@@ -169,6 +177,17 @@ function process1x1Withdrawal(
   const newChangeIndex = lastNote.changeIndex + 1;
   const changeNote = createChangeNote(lastNote, withdrawal, newChangeIndex, remaining);
   chain.push(changeNote);
+
+  // Create PendingIntentNote for cross-chain withdrawals that are pending
+  const isCrossChainPending =
+    (withdrawal.type === 'CROSSCHAIN_WITHDRAWAL_PENDING' ||
+      withdrawal.type === 'CROSSCHAIN_WITHDRAW2_PENDING') &&
+    withdrawal.intentStatus === 'pending';
+
+  if (isCrossChainPending && withdrawn > 0n) {
+    const pendingIntent = createPendingIntentNote(lastNote, withdrawal, parentChangeIndex);
+    chain.push(pendingIntent);
+  }
 
   // Update nullifier map
   nullifierMap.delete(oldNullifierHash);
@@ -289,6 +308,9 @@ function processAsPrimaryChain(
   const withdrawn = BigInt(activity.amount || 0);
   const remaining = combined - withdrawn;
 
+  // Remember parent's changeIndex before modification (for PendingIntentNote derivation)
+  const parentChangeIndex = primaryLastNote.changeIndex;
+
   // Mark primary note as spent
   primaryLastNote.status = 'spent';
 
@@ -305,6 +327,15 @@ function processAsPrimaryChain(
     secondaryDepositIndex,
   );
   primaryChain.push(changeNote);
+
+  // Create PendingIntentNote for cross-chain Withdraw2 that is pending
+  const isCrossChainPending =
+    activity.type === 'CROSSCHAIN_WITHDRAW2_PENDING' && activity.intentStatus === 'pending';
+
+  if (isCrossChainPending && withdrawn > 0n) {
+    const pendingIntent = createPendingIntentNote(primaryLastNote, activity, parentChangeIndex);
+    primaryChain.push(pendingIntent);
+  }
 
   // Create merged note on secondary chain (balance = 0, linked to primary)
   const secondaryNewChangeIndex = secondaryLastNote.changeIndex + 1;

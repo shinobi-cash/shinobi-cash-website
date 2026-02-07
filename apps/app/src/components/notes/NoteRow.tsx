@@ -6,9 +6,17 @@
 
 import { useRouter } from "next/navigation";
 import type { Note } from "@shinobi-cash/core/discovery";
-import { MoreVertical, Eye, Lock, Unlock } from "lucide-react";
+import { MoreVertical, Eye, Lock, Unlock, RefreshCw, Clock, AlertCircle } from "lucide-react";
 import { formatTimestamp } from "@/utils/formatters";
-import { getStatusDotColor, canWithdraw, canRagequit } from "@/utils/noteFiltering";
+import {
+  getStatusDotColor,
+  canWithdraw,
+  canRagequit,
+  canClaimRefund,
+  isPendingIntentNote,
+  isRefundNote,
+  getPendingIntentStatusText,
+} from "@/utils/noteFiltering";
 import { AmountDisplay } from "@/components/shared/AmountDisplay";
 import { WithdrawController } from "@/controllers/WithdrawController";
 import { RagequitController } from "@/controllers/RagequitController";
@@ -26,11 +34,17 @@ interface NoteRowProps {
 
 export function NoteRow({ note, onClick }: NoteRowProps) {
   const router = useRouter();
+
+  // Note label is always "Note #N" - status is shown separately
   const noteLabel = `Note #${note.depositIndex + 1}`;
   const dotColor = getStatusDotColor(note);
 
   const canWithdrawPrivately = canWithdraw(note);
   const canWithdrawPublicly = canRagequit(note);
+  const canClaimRefundNow = canClaimRefund(note);
+
+  // Get status text for pending intent notes
+  const pendingIntentStatus = isPendingIntentNote(note) ? getPendingIntentStatusText(note) : null;
 
   const handleViewDetails = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -49,6 +63,13 @@ export function NoteRow({ note, onClick }: NoteRowProps) {
     router.push(`/ragequit?note=${note.depositIndex}`);
   };
 
+  const handleClaimRefund = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    // TODO: Implement refund claim flow
+    // For now, show details which will explain the refund process
+    onClick?.();
+  };
+
   return (
     <div className="flex w-full items-center px-4 py-3 transition-colors hover:bg-white/[0.04]">
       {/* Main clickable area */}
@@ -59,14 +80,20 @@ export function NoteRow({ note, onClick }: NoteRowProps) {
         onClick={onClick}
       >
         <div className="flex items-center justify-between gap-4">
-          {/* Left: Status dot + Label + Timestamp */}
+          {/* Left: Status dot + Label + Status/Timestamp */}
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <span className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ${dotColor}`} />
               <span className="truncate text-sm font-medium text-white">{noteLabel}</span>
             </div>
             <div className="mt-0.5 pl-[18px] text-xs text-neutral-400">
-              {formatTimestamp(note.timestamp)}
+              {pendingIntentStatus ? (
+                <span className={canClaimRefundNow ? "text-orange-400" : ""}>
+                  {pendingIntentStatus}
+                </span>
+              ) : (
+                formatTimestamp(note.timestamp)
+              )}
             </div>
           </div>
 
@@ -120,6 +147,26 @@ export function NoteRow({ note, onClick }: NoteRowProps) {
             >
               <Unlock className="h-4 w-4" />
               Withdraw Publicly
+            </DropdownMenuItem>
+          )}
+
+          {canClaimRefundNow && (
+            <DropdownMenuItem
+              onClick={handleClaimRefund}
+              className="cursor-pointer text-orange-400 hover:bg-orange-500/10 hover:text-orange-300 focus:bg-orange-500/10 focus:text-orange-300"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Claim Refund
+            </DropdownMenuItem>
+          )}
+
+          {isPendingIntentNote(note) && !canClaimRefundNow && (
+            <DropdownMenuItem
+              disabled
+              className="cursor-not-allowed text-neutral-500"
+            >
+              <Clock className="h-4 w-4" />
+              Awaiting Delivery
             </DropdownMenuItem>
           )}
         </DropdownMenuContent>

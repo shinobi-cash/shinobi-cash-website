@@ -14,7 +14,7 @@ import { ScreenLayout } from "@/components/layout/ScreenLayout";
 import { Section, Row } from "@/components/shared/Section";
 import { CopyableText } from "@/components/shared/CopyableText";
 import { usePriceData } from "@/hooks/usePriceData";
-import { canWithdraw, canRagequit } from "@/utils/noteFiltering";
+import { canWithdraw, canRagequit, isPendingIntentNote, isRefundNote } from "@/utils/noteFiltering";
 import { WithdrawController } from "@/controllers/WithdrawController";
 import { RagequitController } from "@/controllers/RagequitController";
 
@@ -62,10 +62,43 @@ function buildTimelineEntries(noteChain: NoteChain): TimelineEntry[] {
     note: firstNote,
   });
 
-  // Subsequent entries: Each represents a withdrawal or merge
+  // Subsequent entries: Each represents a withdrawal, merge, pending intent, or refund
   for (let i = 1; i < noteChain.length; i++) {
     const prevNote = noteChain[i - 1];
     const note = noteChain[i];
+
+    // Handle PendingIntentNote - escrowed funds awaiting solver or refund
+    if (isPendingIntentNote(note)) {
+      entries.push({
+        key: `pending-intent-${note.depositIndex}-${note.changeIndex}`,
+        label: "Escrowed (Cross-chain)",
+        amount: BigInt(note.amount),
+        prefix: "-",
+        dotColor: note.intentStatus === "pending" ? "bg-amber-400" : "bg-neutral-500",
+        txHash: note.originTransactionHash,
+        txUrl: getTxExplorerUrl(note.originChainId, note.originTransactionHash),
+        timestamp: note.timestamp,
+        note: note,
+      });
+      continue;
+    }
+
+    // Handle RefundNote - refunded cross-chain funds
+    if (isRefundNote(note)) {
+      entries.push({
+        key: `refund-${note.depositIndex}-${note.changeIndex}-${note.refundIndex}`,
+        label: "Refunded",
+        amount: BigInt(note.amount),
+        prefix: "+",
+        dotColor: "bg-orange-400",
+        txHash: note.originTransactionHash,
+        txUrl: getTxExplorerUrl(note.originChainId, note.originTransactionHash),
+        timestamp: note.timestamp,
+        note: note,
+      });
+      continue;
+    }
+
     const changeNote = note as ChangeNote;
 
     // Check if this note was created from a Withdraw2 merge (primary chain)
@@ -73,16 +106,17 @@ function buildTimelineEntries(noteChain: NoteChain): TimelineEntry[] {
 
     // Check if this note is a merged note (secondary chain in Withdraw2)
     // The merged note has status 'merged' and mergedIntoDepositIndex set
-    const isMergedNote = note.status === "merged" && note.mergedIntoDepositIndex !== undefined;
+    const isMergedNote = note.status === "merged" && 'mergedIntoDepositIndex' in note && note.mergedIntoDepositIndex !== undefined;
 
     if (isMergedNote) {
       // Secondary chain: This chain's balance was merged into another chain via Withdraw2
       // Show as "Withdrew + Merged" with the contributed balance (from prevNote)
       const contributedAmount = BigInt(prevNote.amount);
+      const mergedLabel = note.isCrossChain ? "Merged + Crosschain Withdrew" : "Merged + Withdrew";
 
       entries.push({
         key: `merged-${note.depositIndex}-${note.changeIndex}`,
-        label: "Withdrew + Merged",
+        label: mergedLabel,
         amount: contributedAmount,
         prefix: "-",
         dotColor: "bg-violet-400",
@@ -91,7 +125,7 @@ function buildTimelineEntries(noteChain: NoteChain): TimelineEntry[] {
         timestamp: note.timestamp,
         note: note,
         isMerged: true,
-        mergedIntoNoteIndex: note.mergedIntoDepositIndex,
+        mergedIntoNoteIndex: changeNote.mergedIntoDepositIndex,
         fees: {
           relayFee: note.activityData.relayFeeAmount,
           solverFee: note.activityData.solverFeeAmount,
@@ -102,9 +136,18 @@ function buildTimelineEntries(noteChain: NoteChain): TimelineEntry[] {
       // Regular withdrawal or Withdraw2 on primary chain
       const withdrawnAmount = BigInt(prevNote.amount) - BigInt(note.amount);
 
+      // Determine label based on cross-chain and merge status
+      const getWithdrawalLabel = (): string => {
+        const withdrawType = note.isCrossChain ? "Crosschain Withdrew" : "Withdrew";
+        if (mergedFromNoteIndex !== undefined) {
+          return `Merged + ${withdrawType}`;
+        }
+        return withdrawType;
+      };
+
       entries.push({
         key: `withdraw-${note.depositIndex}-${note.changeIndex}`,
-        label: mergedFromNoteIndex !== undefined ? "Withdrew + Merged" : "Withdrew",
+        label: getWithdrawalLabel(),
         amount: withdrawnAmount,
         prefix: "-",
         dotColor: mergedFromNoteIndex !== undefined ? "bg-violet-400" : "bg-rose-400",

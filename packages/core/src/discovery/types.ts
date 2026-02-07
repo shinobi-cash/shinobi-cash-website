@@ -97,7 +97,51 @@ export interface RefundNote extends BaseNote {
   refundCommitment: string;
 }
 
-export type Note = DepositNote | ChangeNote | RefundNote;
+/**
+ * Pending intent note - represents escrowed funds awaiting solver fill or refund.
+ * Created when a cross-chain withdrawal is initiated, sibling of the ChangeNote.
+ *
+ * Has both `changeIndex` and `parentChangeIndex` which are equal - the changeIndex
+ * of the spent note. This is for compatibility with code that accesses changeIndex
+ * on the Note union type, while parentChangeIndex makes the derivation path explicit.
+ */
+export interface PendingIntentNote {
+  noteType: 'pendingIntent';
+  // Identity
+  poolAddress: string;
+  depositIndex: number;
+  /** For compatibility with Note union - equals parentChangeIndex */
+  changeIndex: number;
+  /** The changeIndex of the spent note (for derivation path) - same as changeIndex */
+  parentChangeIndex: number;
+  // Value
+  amount: string;
+  label?: string;
+  status: NoteStatus;
+  // Blockchain metadata
+  blockNumber: string;
+  timestamp: string;
+  originTransactionHash: string;
+  destinationTransactionHash: string;
+  originChainId: string;
+  destinationChainId: string;
+  // Cross-chain (always true for PendingIntentNote)
+  isCrossChain: true;
+  orderId: string;
+  intentStatus: IntentStatus;
+  fillDeadline?: string;
+  expires?: string;
+  // PendingIntent-specific
+  refundCommitment: string;
+  // ASP
+  aspStatus: ASPStatus;
+  // Activity data
+  activityData: ActivityMetadata;
+  // Discovery tracking
+  discoveredAtOffset?: number;
+}
+
+export type Note = DepositNote | ChangeNote | RefundNote | PendingIntentNote;
 export type NoteChain = Note[];
 
 // ============================================================================
