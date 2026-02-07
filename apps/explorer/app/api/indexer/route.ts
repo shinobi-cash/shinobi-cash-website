@@ -7,7 +7,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { convertBigIntsToStrings, IndexerClient } from "@shinobi-cash/data";
+import { IndexerClient, serializeStateTreeLeaf } from "@shinobi-cash/data";
 import { SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
 
 // Server-side indexer configuration (credentials never exposed to client)
@@ -40,6 +40,8 @@ const CACHE_CONFIG = {
   aspRoot: 60, // 1 minute (updates periodically)
   poolStats: 30, // 30 seconds
   health: 5, // 5 seconds
+  intents: 10, // 10 seconds (real-time data)
+  intentDetails: 10, // 10 seconds
 } as const;
 
 // Request body types
@@ -51,13 +53,21 @@ interface IndexerRequest {
     | "poolStats"
     | "poolConfig"
     | "health"
-    | "latestBlock";
+    | "latestBlock"
+    | "intents"
+    | "intentDetails";
   params?: {
     poolAddress?: string;
     poolId?: string;
     limit?: number;
     offset?: number;
     orderDirection?: "asc" | "desc";
+    // Intent-specific params
+    orderId?: string;
+    intentType?: "DEPOSIT" | "WITHDRAWAL";
+    phase?: "CREATED" | "ESCROWED" | "FILLED" | "FINALIZED" | "REFUNDED";
+    originChainId?: string;
+    destinationChainId?: string;
   };
 }
 
@@ -80,12 +90,16 @@ export async function POST(request: Request) {
     switch (endpoint) {
       case "activities": {
         const poolId = (params.poolAddress || SHINOBI_CASH_ETH_POOL.address).toLowerCase();
-        data = await client.getActivities({
-          poolId,
-          limit: params.limit || 100,
-          orderDirection: params.orderDirection || "desc",
-          offset: params.offset,
-        });
+        let activityBuilder = client
+          .query()
+          .activities()
+          .byPool(poolId)
+          .limit(params.limit || 100)
+          .orderByTimestamp(params.orderDirection || "desc");
+        if (params.offset !== undefined) {
+          activityBuilder = activityBuilder.skip(params.offset);
+        }
+        data = await activityBuilder.executePaginatedSerialized();
         cacheTTL = CACHE_CONFIG.activities;
         break;
       }
@@ -94,13 +108,14 @@ export async function POST(request: Request) {
         if (!params.poolId) {
           return NextResponse.json({ error: "poolId is required" }, { status: 400 });
         }
-        data = await client.getAllStateTreeLeaves(params.poolId);
+        const leaves = await client.query().stateTree().byPool(params.poolId).orderByLeafIndex("asc").paginate().toArray();
+        data = leaves.map(serializeStateTreeLeaf);
         cacheTTL = CACHE_CONFIG.stateTree;
         break;
       }
 
       case "aspRoot": {
-        const latestUpdate = await client.getLatestASPRoot();
+        const latestUpdate = await client.query().aspApprovals().orderByTimestamp("desc").limit(1).first();
         if (!latestUpdate?.root || !latestUpdate?.ipfsCID) {
           return NextResponse.json({ error: "No ASP root found" }, { status: 404 });
         }
@@ -115,7 +130,7 @@ export async function POST(request: Request) {
 
       case "poolStats": {
         const poolId = (params.poolAddress || SHINOBI_CASH_ETH_POOL.address).toLowerCase();
-        const pool = await client.getPoolStats(poolId);
+        const pool = await client.query().pool().byId(poolId).first();
         if (!pool) {
           data = null;
         } else {
@@ -161,7 +176,7 @@ export async function POST(request: Request) {
         if (!params.poolId) {
           return NextResponse.json({ error: "poolId is required" }, { status: 400 });
         }
-        const result = await client.getPoolStats(params.poolId);
+        const result = await client.query().pool().byId(params.poolId).first();
         if (!result) {
           data = null;
         } else {
@@ -190,14 +205,43 @@ export async function POST(request: Request) {
         break;
       }
 
+      case "intents": {
+        let intentBuilder = client
+          .query()
+          .intents()
+          .limit(params.limit || 100)
+          .orderByTimestamp(params.orderDirection || "desc");
+        if (params.offset !== undefined) intentBuilder = intentBuilder.skip(params.offset);
+        if (params.intentType) intentBuilder = intentBuilder.byType(params.intentType);
+        if (params.phase) intentBuilder = intentBuilder.byPhase(params.phase);
+        if (params.orderId) intentBuilder = intentBuilder.searchOrderId(params.orderId);
+        if (params.originChainId) intentBuilder = intentBuilder.fromChain(BigInt(params.originChainId));
+        if (params.destinationChainId) intentBuilder = intentBuilder.toChain(BigInt(params.destinationChainId));
+        data = await intentBuilder.executePaginatedSerialized();
+        cacheTTL = CACHE_CONFIG.intents;
+        break;
+      }
+
+      case "intentDetails": {
+        if (!params.orderId) {
+          return NextResponse.json({ error: "orderId is required" }, { status: 400 });
+        }
+        const intentDetails = await client.query().intents().getWithTimelineSerialized(params.orderId);
+        if (!intentDetails) {
+          return NextResponse.json({ error: "Intent not found" }, { status: 404 });
+        }
+        data = intentDetails;
+        cacheTTL = CACHE_CONFIG.intentDetails;
+        break;
+      }
+
       default:
         return NextResponse.json({ error: "Unknown endpoint" }, { status: 404 });
     }
-    // Serialize BigInts before returning
-    const serializedData = convertBigIntsToStrings(data);
-    // Return with caching headers
+
+    // Return with caching headers (data is already serialized by query builders)
     return NextResponse.json(
-      { success: true, data: serializedData },
+      { success: true, data },
       {
         headers: {
           "Cache-Control": `s-maxage=${cacheTTL}, stale-while-revalidate`,

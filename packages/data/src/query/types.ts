@@ -26,9 +26,12 @@ import type {
   StateTreeLeaf,
   ASPApprovalList,
   CrossChainIntent,
+  Intent,
   ActivityType,
   ASPStatus,
   IntentStatus,
+  IntentPhase,
+  IntentType,
 } from '../types/indexer.js';
 
 /**
@@ -95,6 +98,15 @@ export type CrossChainIntentFields =
   | 'id type status user originChainId destinationChainId amount';
 
 /**
+ * Available fields for Intent entity queries (IntentStatusView)
+ */
+export type IntentFields =
+  | keyof Intent
+  | 'orderId intentType phase user solver originChainId destinationChainId'
+  | 'amount fillDeadline expires nonce inputAmount outputAmount'
+  | 'txHash blockNumber timestamp';
+
+/**
  * ========================================
  * ORDER BY TYPES
  * ========================================
@@ -141,6 +153,18 @@ export type CrossChainIntentOrderBy =
   | 'type'
   | 'status'
   | 'createdAt'
+  | 'amount'
+  | 'user';
+
+/**
+ * Available order by fields for Intent (IntentStatusView)
+ */
+export type IntentOrderBy =
+  | 'orderId'
+  | 'intentType'
+  | 'phase'
+  | 'timestamp'
+  | 'blockNumber'
   | 'amount'
   | 'user';
 
@@ -273,6 +297,30 @@ export interface CrossChainIntentWhereInput {
 }
 
 /**
+ * Typed where conditions for Intent entity (IntentStatusView)
+ */
+export interface IntentWhereInput {
+  orderId?: string;
+  orderId_contains?: string;
+  intentType?: IntentType;
+  phase?: IntentPhase;
+  user?: string;
+  solver?: string;
+
+  originChainId?: string;
+  destinationChainId?: string;
+
+  amount_gte?: string;
+  amount_lte?: string;
+
+  timestamp_gte?: string;
+  timestamp_lte?: string;
+
+  blockNumber_gte?: string;
+  blockNumber_lte?: string;
+}
+
+/**
  * ========================================
  * QUERY CONFIGURATION TYPES
  * ========================================
@@ -302,6 +350,11 @@ export type ASPApprovalListQuery = QueryConfig<ASPApprovalListWhereInput, ASPApp
  * CrossChainIntent query configuration
  */
 export type CrossChainIntentQuery = QueryConfig<CrossChainIntentWhereInput, CrossChainIntentOrderBy>;
+
+/**
+ * Intent query configuration (IntentStatusView)
+ */
+export type IntentQuery = QueryConfig<IntentWhereInput, IntentOrderBy>;
 
 /**
  * ========================================
@@ -368,7 +421,7 @@ export interface StateTreeFilters {
 /**
  * Entity types for dynamic query building
  */
-export type EntityType = 'activity' | 'pool' | 'stateTreeLeaf' | 'aspApprovalList' | 'crossChainIntent';
+export type EntityType = 'activity' | 'pool' | 'stateTreeLeaf' | 'aspApprovalList' | 'crossChainIntent' | 'intent';
 
 /**
  * All where input types
@@ -378,7 +431,8 @@ export type AllWhereInputs =
   | PoolWhereInput
   | StateTreeLeafWhereInput
   | ASPApprovalListWhereInput
-  | CrossChainIntentWhereInput;
+  | CrossChainIntentWhereInput
+  | IntentWhereInput;
 
 /**
  * All order by types
@@ -388,7 +442,8 @@ export type AllOrderByTypes =
   | PoolOrderBy
   | StateTreeOrderBy
   | ASPApprovalListOrderBy
-  | CrossChainIntentOrderBy;
+  | CrossChainIntentOrderBy
+  | IntentOrderBy;
 
 /**
  * All field types
@@ -398,4 +453,5 @@ export type AllFieldTypes =
   | PoolFields
   | StateTreeFields
   | ASPApprovalListFields
-  | CrossChainIntentFields;
+  | CrossChainIntentFields
+  | IntentFields;

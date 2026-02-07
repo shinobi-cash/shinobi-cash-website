@@ -1,7 +1,10 @@
-"use client";
+import { StatsPage } from "@/components/stats/StatsPage";
 
-import { Explorer } from "@/components/explorer/Explorer";
+export const metadata = {
+  title: "Pool Stats | Shinobi Cash",
+  description: "View statistics for Shinobi Cash privacy pools",
+};
 
-export default function ExplorerPage() {
-  return <Explorer />;
+export default function HomePage() {
+  return <StatsPage />;
 }

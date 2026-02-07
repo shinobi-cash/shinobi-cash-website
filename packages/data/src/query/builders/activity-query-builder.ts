@@ -24,6 +24,7 @@ import type {
   SerializedCrossChainWithdraw2Activity,
   ActivityTypeMap,
   SerializedActivityTypeMap,
+  PaginatedResponse,
 } from '../../types/indexer.js';
 import { BaseQueryBuilder } from './base-query-builder.js';
 import { ActivityFields, ActivityWhereInput, ActivityOrderBy, GraphQLVariables } from '../types.js';
@@ -38,7 +39,7 @@ export class ActivityQueryBuilder<
   S extends SerializedActivity = SerializedActivity,
 > extends BaseQueryBuilder<T, S, ActivityFields, ActivityWhereInput, ActivityOrderBy> {
   constructor(private indexerClient: IndexerClient) {
-    super(indexerClient, 'activities', 'timestamp', 'desc');
+    super(indexerClient, 'activitys', 'timestamp', 'desc');
   }
 
   protected buildDynamicQuery(): string {
@@ -540,6 +541,115 @@ export class ActivityQueryBuilder<
     this.orderBy('aspStatus', direction);
     return this;
   }
+
+  // ========================================
+  // RAW ITEM CONVERSION
+  // ========================================
+
+  /**
+   * Convert raw GraphQL items to typed Activity entities
+   * Handles BigInt string to BigInt conversion
+   */
+  protected convertRawItems(rawItems: unknown[]): T[] {
+    return (rawItems as RawActivity[]).map(convertRawActivity) as T[];
+  }
+
+  // ========================================
+  // PAGINATED EXECUTION
+  // ========================================
+
+  /**
+   * Execute and return paginated response
+   * Properly handles Ponder's pagination format and BigInt conversions
+   */
+  async executePaginated(): Promise<PaginatedResponse<T>> {
+    if (!this.config.first) {
+      this.config.first = 100;
+    }
+
+    const query = this.buildDynamicQuery();
+    const variables = this.buildVariables();
+
+    const result = await this.indexerClient.executeQuery<{
+      activitys: { items: RawActivity[]; pageInfo: { hasNextPage: boolean; hasPreviousPage: boolean } };
+    }>(query, variables);
+
+    const items = (result.activitys?.items || []).map(convertRawActivity) as T[];
+
+    return {
+      items,
+      pageInfo: result.activitys?.pageInfo || { hasNextPage: false, hasPreviousPage: false },
+    };
+  }
+
+  /**
+   * Execute and return paginated serialized response
+   */
+  async executePaginatedSerialized(): Promise<PaginatedResponse<S>> {
+    const result = await this.executePaginated();
+    const serializer = this.getSerializer();
+    return {
+      items: result.items.map(serializer),
+      pageInfo: result.pageInfo,
+    };
+  }
+}
+
+// ========================================
+// RAW TYPES AND CONVERTERS
+// ========================================
+
+interface RawActivity {
+  id: string;
+  type: string;
+  intentStatus?: string;
+  aspStatus: string;
+  poolId: string;
+  user?: string;
+  processor?: string;
+  recipient?: string;
+  amount: string | null;
+  originalAmount?: string;
+  vettingFeeAmount?: string;
+  vettingFeeRecipient?: string;
+  commitment: string;
+  label?: string | null;
+  precommitmentHash?: string;
+  spentNullifier?: string;
+  spentNullifier1?: string;
+  newCommitment?: string;
+  refundCommitment?: string;
+  relayFeeAmount?: string;
+  solverFeeAmount?: string;
+  paymasterFeeRefund?: string;
+  relayer?: string;
+  solver?: string;
+  isSponsored?: boolean;
+  orderId?: string;
+  blockNumber: string;
+  timestamp: string;
+  originTransactionHash: string;
+  destinationTransactionHash?: string;
+  originChainId: string | null;
+  destinationChainId: string | null;
+}
+
+function convertRawActivity(raw: RawActivity): Activity {
+  return {
+    ...raw,
+    type: raw.type as ActivityType,
+    aspStatus: raw.aspStatus as ASPStatus,
+    amount: raw.amount ? BigInt(raw.amount) : null,
+    originalAmount: raw.originalAmount ? BigInt(raw.originalAmount) : undefined,
+    vettingFeeAmount: raw.vettingFeeAmount ? BigInt(raw.vettingFeeAmount) : undefined,
+    relayFeeAmount: raw.relayFeeAmount ? BigInt(raw.relayFeeAmount) : undefined,
+    solverFeeAmount: raw.solverFeeAmount ? BigInt(raw.solverFeeAmount) : undefined,
+    paymasterFeeRefund: raw.paymasterFeeRefund ? BigInt(raw.paymasterFeeRefund) : undefined,
+    blockNumber: BigInt(raw.blockNumber),
+    timestamp: BigInt(raw.timestamp),
+    originChainId: raw.originChainId ? BigInt(raw.originChainId) : null,
+    destinationChainId: raw.destinationChainId ? BigInt(raw.destinationChainId) : null,
+  } as Activity;
 }
 
 /**

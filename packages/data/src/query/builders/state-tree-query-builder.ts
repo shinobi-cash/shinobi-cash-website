@@ -247,46 +247,4 @@ export class StateTreeQueryBuilder extends BaseQueryBuilder<
     return this;
   }
 
-  /**
-   * ========================================
-   * CONVENIENCE METHODS
-   * ========================================
-   */
-
-  /**
-   * Get all leaves for merkle tree construction
-   * Automatically handles pagination to fetch all leaves
-   */
-  async getAllLeavesForTree(poolId: string): Promise<StateTreeLeaf[]> {
-    this.byPool(poolId);
-    this.orderByLeafIndex('asc');
-    this.limit(1000);
-
-    const allLeaves: StateTreeLeaf[] = [];
-    let hasMore = true;
-    let offset = 0;
-
-    while (hasMore) {
-      if (offset > 0) {
-        this.skip(offset);
-      }
-
-      const query = this.buildDynamicQuery();
-      const variables = this.buildVariables();
-      const result = await this.client.executeQuery<{
-        merkleTreeLeafs: {
-          items: StateTreeLeaf[];
-          pageInfo: { hasNextPage: boolean; hasPreviousPage: boolean };
-        };
-      }>(query, variables);
-
-      const { items, pageInfo } = result.merkleTreeLeafs;
-      allLeaves.push(...items);
-
-      hasMore = pageInfo.hasNextPage;
-      offset += items.length;
-    }
-
-    return allLeaves;
-  }
 }

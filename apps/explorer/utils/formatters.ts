@@ -3,7 +3,7 @@
  */
 
 import { formatDistance } from "date-fns";
-import { formatEther, parseEther } from "viem/utils";
+import { formatEther, parseEther, getAddress } from "viem/utils";
 
 export interface EthFormattingOptions {
   /** Number of decimal places to show. If undefined, removes trailing zeros */
@@ -149,4 +149,35 @@ export function formatUsdAmount(amount: number, decimals = 2): string {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   })}`;
+}
+
+/**
+ * Extract an Ethereum address from a bytes32 hex string
+ * In Solidity, addresses are left-padded with zeros when stored as bytes32
+ * e.g., 0x000000000000000000000000f89273ba4... -> 0xf89273ba4...
+ *
+ * @param bytes32 - The bytes32 hex string (with or without 0x prefix)
+ * @returns The checksummed address, or null if invalid
+ */
+export function bytes32ToAddress(bytes32: string | undefined | null): string | null {
+  if (!bytes32) return null;
+
+  try {
+    // Remove 0x prefix if present
+    const hex = bytes32.startsWith("0x") ? bytes32.slice(2) : bytes32;
+
+    // bytes32 should be 64 hex characters
+    if (hex.length !== 64) return null;
+
+    // Extract last 40 characters (20 bytes = address)
+    const addressHex = hex.slice(-40);
+
+    // Check if it's all zeros (null address)
+    if (addressHex === "0".repeat(40)) return null;
+
+    // Return checksummed address
+    return getAddress(`0x${addressHex}`);
+  } catch {
+    return null;
+  }
 }

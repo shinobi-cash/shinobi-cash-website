@@ -8,6 +8,7 @@ import { ActivityQueryBuilder } from './builders/activity-query-builder.js';
 import { PoolQueryBuilder } from './builders/pool-query-builder.js';
 import { StateTreeQueryBuilder } from './builders/state-tree-query-builder.js';
 import { ASPQueryBuilder } from './builders/asp-query-builder.js';
+import { IntentQueryBuilder } from './builders/intent-query-builder.js';
 
 /**
  * Main query builder providing access to all entity query builders
@@ -44,7 +45,9 @@ import { ASPQueryBuilder } from './builders/asp-query-builder.js';
  * // Query ASP approvals
  * const latestASP = await queryBuilder
  *   .aspApprovals()
- *   .latest();
+ *   .orderByTimestamp('desc')
+ *   .limit(1)
+ *   .first();
  * ```
  */
 export class QueryBuilder {
@@ -150,7 +153,15 @@ export class QueryBuilder {
    * // Auto-paginated tree construction
    * const allLeaves = await queryBuilder
    *   .stateTree()
-   *   .getAllLeavesForTree(poolId);
+   *   .byPool(poolId)
+   *   .orderByLeafIndex('asc')
+   *   .paginate()
+   *   .toArray();
+   *
+   * // Stream batches for memory efficiency
+   * for await (const batch of queryBuilder.stateTree().byPool(poolId).paginate()) {
+   *   processBatch(batch);
+   * }
    * ```
    */
   stateTree(): StateTreeQueryBuilder {
@@ -172,10 +183,12 @@ export class QueryBuilder {
    * // Get latest ASP root
    * const latestASP = await queryBuilder
    *   .aspApprovals()
-   *   .latest();
+   *   .orderByTimestamp('desc')
+   *   .limit(1)
+   *   .first();
    *
-   * console.log(latestASP.root);
-   * console.log(latestASP.ipfsCID);
+   * console.log(latestASP?.root);
+   * console.log(latestASP?.ipfsCID);
    *
    * // Get ASP updates in time range
    * const recentUpdates = await queryBuilder
@@ -187,5 +200,41 @@ export class QueryBuilder {
    */
   aspApprovals(): ASPQueryBuilder {
     return new ASPQueryBuilder(this.client);
+  }
+
+  /**
+   * Create an Intent query builder
+   *
+   * Query cross-chain intents from IntentStatusView:
+   * - Current phase (CREATED, ESCROWED, FILLED, FINALIZED, REFUNDED)
+   * - Intent type (DEPOSIT, WITHDRAWAL)
+   * - Timeline of all events
+   *
+   * @returns IntentQueryBuilder instance
+   *
+   * @example
+   * ```typescript
+   * // Get recent intents
+   * const intents = await queryBuilder
+   *   .intents()
+   *   .orderByTimestamp('desc')
+   *   .limit(50)
+   *   .executePaginated();
+   *
+   * // Get filled withdrawal intents
+   * const filledWithdrawals = await queryBuilder
+   *   .intents()
+   *   .onlyWithdrawals()
+   *   .byPhase('FILLED')
+   *   .execute();
+   *
+   * // Get intent with full timeline
+   * const details = await queryBuilder
+   *   .intents()
+   *   .getWithTimeline('0x...');
+   * ```
+   */
+  intents(): IntentQueryBuilder {
+    return new IntentQueryBuilder(this.client);
   }
 }
