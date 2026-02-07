@@ -194,10 +194,19 @@ export abstract class BaseQueryBuilder<
 
     const query = this.buildDynamicQuery();
     const variables = this.buildVariables();
-    const result = await this.client.executeQuery<{ [key: string]: TEntity[] }>(query, variables);
+    const result = await this.client.executeQuery<{
+      [key: string]: { items: unknown[]; pageInfo: { hasNextPage: boolean } } | unknown[];
+    }>(query, variables);
 
-    const data = result[this.entityName] || [];
-    return data;
+    const data = result[this.entityName];
+
+    // Handle Ponder's paginated response format: { items: [...], pageInfo: {...} }
+    if (data && typeof data === 'object' && 'items' in data) {
+      return this.convertRawItems(data.items);
+    }
+
+    // Fallback for direct array response
+    return this.convertRawItems((data as unknown[]) || []);
   }
 
   /**
@@ -259,6 +268,27 @@ export abstract class BaseQueryBuilder<
   }
 
   /**
+   * Create an async iterator that yields batches of results across all pages
+   *
+   * @param batchSize - Number of items per batch (default: 1000)
+   * @returns AsyncGenerator yielding arrays of TEntity
+   *
+   * @example
+   * ```typescript
+   * // Process in batches (memory efficient)
+   * for await (const batch of queryBuilder.stateTree().byPool(poolId).paginate()) {
+   *   processBatch(batch);
+   * }
+   *
+   * // Collect all items
+   * const allItems = await queryBuilder.stateTree().byPool(poolId).paginate().toArray();
+   * ```
+   */
+  paginate(batchSize: number = 1000): PaginatedIterator<TEntity, TSerializedEntity> {
+    return new PaginatedIterator(this, batchSize);
+  }
+
+  /**
    * Clone the current query builder instance
    * @returns A new instance of the query builder with the same configuration
    */
@@ -303,5 +333,122 @@ export abstract class BaseQueryBuilder<
       orderDirection: this.config.orderDirection, // Keep default direction
     };
     return this;
+  }
+
+  /**
+   * Convert raw items from GraphQL response to typed entities.
+   * Override in subclasses that need to convert BigInt strings, etc.
+   * @param rawItems - Raw items from GraphQL response
+   * @returns Converted typed entities
+   */
+  protected convertRawItems(rawItems: unknown[]): TEntity[] {
+    return rawItems as TEntity[];
+  }
+
+  /**
+   * Internal method for paginated iteration.
+   * Returns items and hasNextPage flag.
+   */
+  async _executePage(offset: number, limit: number): Promise<{ items: TEntity[]; hasNextPage: boolean }> {
+    // Store original config
+    const originalFirst = this.config.first;
+    const originalSkip = this.config.skip;
+
+    try {
+      this.config.first = limit;
+      this.config.skip = offset;
+
+      const query = this.buildDynamicQuery();
+      const variables = this.buildVariables();
+      const result = await this.client.executeQuery<{
+        [key: string]: { items: unknown[]; pageInfo: { hasNextPage: boolean } };
+      }>(query, variables);
+
+      const data = result[this.entityName];
+      const rawItems = data?.items || [];
+
+      return {
+        items: this.convertRawItems(rawItems),
+        hasNextPage: data?.pageInfo?.hasNextPage ?? false,
+      };
+    } finally {
+      // Restore original config
+      this.config.first = originalFirst;
+      this.config.skip = originalSkip;
+    }
+  }
+}
+
+/**
+ * Paginated iterator for fetching all results across pages
+ *
+ * Implements AsyncIterable for use with `for await...of` loops.
+ * Also provides convenience methods for collecting all results.
+ */
+export class PaginatedIterator<TEntity, TSerializedEntity> implements AsyncIterable<TEntity[]> {
+  constructor(
+    private builder: BaseQueryBuilder<TEntity, TSerializedEntity, any, any, any>,
+    private batchSize: number
+  ) {}
+
+  /**
+   * Async iterator implementation - yields batches of entities
+   */
+  async *[Symbol.asyncIterator](): AsyncGenerator<TEntity[], void, unknown> {
+    let offset = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { items, hasNextPage } = await this.builder._executePage(offset, this.batchSize);
+
+      if (items.length > 0) {
+        yield items;
+      }
+
+      hasMore = hasNextPage && items.length > 0;
+      offset += items.length;
+    }
+  }
+
+  /**
+   * Collect all items into a single array
+   *
+   * @returns Promise resolving to array of all entities
+   *
+   * @example
+   * ```typescript
+   * const allLeaves = await client.query()
+   *   .stateTree()
+   *   .byPool(poolId)
+   *   .paginate()
+   *   .toArray();
+   * ```
+   */
+  async toArray(): Promise<TEntity[]> {
+    const allItems: TEntity[] = [];
+    for await (const batch of this) {
+      allItems.push(...batch);
+    }
+    return allItems;
+  }
+
+  /**
+   * Collect all items into a single array with serialization
+   *
+   * @returns Promise resolving to array of all serialized entities
+   *
+   * @example
+   * ```typescript
+   * const allLeaves = await client.query()
+   *   .stateTree()
+   *   .byPool(poolId)
+   *   .paginate()
+   *   .toArraySerialized();
+   * ```
+   */
+  async toArraySerialized(): Promise<TSerializedEntity[]> {
+    const allItems = await this.toArray();
+    const serializer = (this.builder as any).getSerializer();
+    return allItems.map((item) => serializer(item));
   }
 }

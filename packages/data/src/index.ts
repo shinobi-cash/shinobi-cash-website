@@ -133,7 +133,7 @@ export { PoolQueryBuilder } from './query/builders/pool-query-builder.js';
 export { StateTreeQueryBuilder } from './query/builders/state-tree-query-builder.js';
 export { ASPQueryBuilder } from './query/builders/asp-query-builder.js';
 export { IntentQueryBuilder } from './query/builders/intent-query-builder.js';
-export { BaseQueryBuilder } from './query/builders/base-query-builder.js';
+export { BaseQueryBuilder, PaginatedIterator } from './query/builders/base-query-builder.js';
 
 // Typed query builder factories
 export {

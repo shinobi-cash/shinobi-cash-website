@@ -45,7 +45,9 @@ import { IntentQueryBuilder } from './builders/intent-query-builder.js';
  * // Query ASP approvals
  * const latestASP = await queryBuilder
  *   .aspApprovals()
- *   .latest();
+ *   .orderByTimestamp('desc')
+ *   .limit(1)
+ *   .first();
  * ```
  */
 export class QueryBuilder {
@@ -151,7 +153,15 @@ export class QueryBuilder {
    * // Auto-paginated tree construction
    * const allLeaves = await queryBuilder
    *   .stateTree()
-   *   .getAllLeavesForTree(poolId);
+   *   .byPool(poolId)
+   *   .orderByLeafIndex('asc')
+   *   .paginate()
+   *   .toArray();
+   *
+   * // Stream batches for memory efficiency
+   * for await (const batch of queryBuilder.stateTree().byPool(poolId).paginate()) {
+   *   processBatch(batch);
+   * }
    * ```
    */
   stateTree(): StateTreeQueryBuilder {
@@ -173,10 +183,12 @@ export class QueryBuilder {
    * // Get latest ASP root
    * const latestASP = await queryBuilder
    *   .aspApprovals()
-   *   .latest();
+   *   .orderByTimestamp('desc')
+   *   .limit(1)
+   *   .first();
    *
-   * console.log(latestASP.root);
-   * console.log(latestASP.ipfsCID);
+   * console.log(latestASP?.root);
+   * console.log(latestASP?.ipfsCID);
    *
    * // Get ASP updates in time range
    * const recentUpdates = await queryBuilder

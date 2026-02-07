@@ -248,6 +248,17 @@ export class IntentQueryBuilder extends BaseQueryBuilder<
   }
 
   // ========================================
+  // RAW ITEM CONVERSION
+  // ========================================
+
+  /**
+   * Convert raw GraphQL items to typed Intent entities
+   */
+  protected convertRawItems(rawItems: unknown[]): Intent[] {
+    return (rawItems as RawIntent[]).map(convertRawIntent);
+  }
+
+  // ========================================
   // EXECUTION - Override for paginated response
   // ========================================
 

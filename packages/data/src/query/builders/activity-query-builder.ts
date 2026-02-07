@@ -39,7 +39,7 @@ export class ActivityQueryBuilder<
   S extends SerializedActivity = SerializedActivity,
 > extends BaseQueryBuilder<T, S, ActivityFields, ActivityWhereInput, ActivityOrderBy> {
   constructor(private indexerClient: IndexerClient) {
-    super(indexerClient, 'activities', 'timestamp', 'desc');
+    super(indexerClient, 'activitys', 'timestamp', 'desc');
   }
 
   protected buildDynamicQuery(): string {
@@ -540,6 +540,18 @@ export class ActivityQueryBuilder<
   orderByASPStatus(direction: 'asc' | 'desc' = 'asc'): this {
     this.orderBy('aspStatus', direction);
     return this;
+  }
+
+  // ========================================
+  // RAW ITEM CONVERSION
+  // ========================================
+
+  /**
+   * Convert raw GraphQL items to typed Activity entities
+   * Handles BigInt string to BigInt conversion
+   */
+  protected convertRawItems(rawItems: unknown[]): T[] {
+    return (rawItems as RawActivity[]).map(convertRawActivity) as T[];
   }
 
   // ========================================

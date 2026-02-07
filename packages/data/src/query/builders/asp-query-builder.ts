@@ -220,30 +220,4 @@ export class ASPQueryBuilder extends BaseQueryBuilder<
     return this;
   }
 
-  /**
-   * ========================================
-   * CONVENIENCE METHODS
-   * ========================================
-   */
-
-  /**
-   * Get the latest ASP approval list
-   * Returns the most recent approval root and IPFS CID
-   */
-  async latest(): Promise<ASPApprovalList | null> {
-    this.orderByTimestamp('desc');
-    this.limit(1);
-
-    return this.first();
-  }
-
-  /**
-   * Get the latest ASP approval list (serialized)
-   */
-  async latestSerialized(): Promise<SerializedASPApprovalList | null> {
-    this.orderByTimestamp('desc');
-    this.limit(1);
-
-    return this.firstSerialized();
-  }
 }
