@@ -108,14 +108,14 @@ export async function POST(request: Request) {
         if (!params.poolId) {
           return NextResponse.json({ error: "poolId is required" }, { status: 400 });
         }
-        const leaves = await client.getAllStateTreeLeaves(params.poolId);
+        const leaves = await client.query().stateTree().byPool(params.poolId).orderByLeafIndex("asc").paginate().toArray();
         data = leaves.map(serializeStateTreeLeaf);
         cacheTTL = CACHE_CONFIG.stateTree;
         break;
       }
 
       case "aspRoot": {
-        const latestUpdate = await client.getLatestASPRoot();
+        const latestUpdate = await client.query().aspApprovals().orderByTimestamp("desc").limit(1).first();
         if (!latestUpdate?.root || !latestUpdate?.ipfsCID) {
           return NextResponse.json({ error: "No ASP root found" }, { status: 404 });
         }
@@ -130,7 +130,7 @@ export async function POST(request: Request) {
 
       case "poolStats": {
         const poolId = (params.poolAddress || SHINOBI_CASH_ETH_POOL.address).toLowerCase();
-        const pool = await client.getPoolStats(poolId);
+        const pool = await client.query().pool().byId(poolId).first();
         if (!pool) {
           data = null;
         } else {
@@ -176,7 +176,7 @@ export async function POST(request: Request) {
         if (!params.poolId) {
           return NextResponse.json({ error: "poolId is required" }, { status: 400 });
         }
-        const result = await client.getPoolStats(params.poolId);
+        const result = await client.query().pool().byId(params.poolId).first();
         if (!result) {
           data = null;
         } else {

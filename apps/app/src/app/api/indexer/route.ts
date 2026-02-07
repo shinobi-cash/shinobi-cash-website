@@ -92,14 +92,14 @@ export async function POST(request: Request) {
         if (!params.poolId) {
           return NextResponse.json({ error: "poolId is required" }, { status: 400 });
         }
-        const leaves = await serverClient.getAllStateTreeLeaves(params.poolId);
+        const leaves = await serverClient.query().stateTree().byPool(params.poolId).orderByLeafIndex("asc").paginate().toArray();
         data = leaves.map(serializeStateTreeLeaf);
         cacheTTL = CACHE_CONFIG.stateTree;
         break;
       }
 
       case "aspRoot": {
-        const aspRoot = await serverClient.query().aspApprovals().latest();
+        const aspRoot = await serverClient.query().aspApprovals().orderByTimestamp("desc").limit(1).first();
         if (!aspRoot?.root) {
           return NextResponse.json({ error: "No ASP root found" }, { status: 404 });
         }
