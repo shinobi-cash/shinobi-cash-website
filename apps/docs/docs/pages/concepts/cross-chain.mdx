@@ -126,6 +126,16 @@ Two oracles ensure secure cross-chain settlement:
 | **fillOracle** | Dest → Origin | Proves the solver filled the intent |
 | **intentOracle** | Origin → Dest | Proves the intent is legitimate (deposits only) |
 
+### Hyperlane Integration
+
+Shinobi Cash uses **Hyperlane** for cross-chain oracle messaging. The `HyperlaneOracle` contract implements both oracle roles:
+
+- Receives messages via Hyperlane Mailbox
+- Marks payloads as proven when messages arrive
+- Submits proofs to destination chains
+
+This provides a decentralized, permissionless bridge for intent proofs without relying on a centralized relay service.
+
 ## Why intentOracle is Required (Shinobi Extension)
 
 :::warning[Critical Security]

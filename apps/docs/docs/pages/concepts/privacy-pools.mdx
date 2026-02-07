@@ -106,6 +106,18 @@ Adds one additional signal:
 
 This enables recovery if the cross-chain settlement fails.
 
+### Withdraw2 (9 signals)
+Spend 2 notes in one transaction:
+```
+[1] nullifierHash0         // First note's nullifier
+[2] nullifierHash1         // Second note's nullifier
+```
+
+Useful for consolidating multiple small notes.
+
+### CrossChainWithdraw2 (10 signals)
+Combines both: spend 2 notes for cross-chain withdrawal with refund protection.
+
 ## Privacy Guarantees
 
 | What's Hidden | What's Revealed |

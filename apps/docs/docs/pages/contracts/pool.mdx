@@ -11,6 +11,8 @@ Extended Privacy Pool with cross-chain withdrawal support and refund handling.
 `ShinobiCashPool` is an abstract contract that extends the base `PrivacyPool` from privacy-pools-core. It adds:
 
 - Cross-chain withdrawal with 9-signal proofs
+- Withdraw2 (spend 2 notes in one transaction) with 9-signal proofs
+- CrossChainWithdraw2 (spend 2 notes for cross-chain) with 10-signal proofs
 - Refund commitment handling for failed intents
 
 ## Inheritance
@@ -24,8 +26,10 @@ PrivacyPool (privacy-pools-core)
 ## State Variables
 
 ```solidity
-// Cross-chain proof verifier
+// Proof verifiers for different withdrawal types
 ICrossChainWithdrawalProofVerifier public immutable CROSS_CHAIN_WITHDRAWAL_VERIFIER;
+IWithdraw2Verifier public immutable WITHDRAW2_VERIFIER;
+ICrossChainWithdraw2Verifier public immutable CROSSCHAIN_WITHDRAW2_VERIFIER;
 ```
 
 The pool also inherits state from `PrivacyPool`:
@@ -62,6 +66,45 @@ function crosschainWithdraw(
 8. Insert new commitment (change note)
 9. Transfer withdrawn value to processooor
 10. Emit `CrosschainWithdrawn` event
+
+### withdraw2
+
+Spend 2 notes in a single transaction (same-chain).
+
+```solidity
+function withdraw2(
+    Withdrawal memory _withdrawal,
+    Withdraw2ProofLib.Withdraw2Proof memory _proof
+) external
+```
+
+**Use case**: When you have multiple small notes and want to consolidate them or withdraw from both at once.
+
+**Flow**:
+1. Validate both nullifiers haven't been spent
+2. Verify 9-signal proof (with 2 nullifiers)
+3. Spend both nullifiers atomically
+4. Transfer withdrawn amount to recipient
+5. Insert change commitment back to pool
+
+### crossChainWithdraw2
+
+Spend 2 notes for a cross-chain withdrawal.
+
+```solidity
+function crossChainWithdraw2(
+    Withdrawal memory _withdrawal,
+    CrossChainWithdraw2ProofLib.CrossChainWithdraw2Proof memory _proof
+) external
+```
+
+**Use case**: Same as withdraw2, but funds arrive on a different chain.
+
+**Flow**:
+1. Same validation as withdraw2 (2 nullifiers)
+2. Verify 10-signal proof (2 nullifiers + refund commitment)
+3. Creates cross-chain intent for solver to fill
+4. If intent expires, refund commitment allows recovery
 
 ### handleRefund
 
@@ -111,14 +154,14 @@ struct CrossChainWithdrawProof {
 
 The 9th signal (`refundCommitmentHash`) is the key addition for cross-chain — it enables fund recovery if the intent expires without being filled.
 
-## Standard vs Cross-Chain Proofs
+## Proof Types Comparison
 
-| Feature | Standard (8 signals) | Cross-Chain (9 signals) |
-|---------|---------------------|------------------------|
-| Change note | ✅ | ✅ |
-| Nullifier | ✅ | ✅ |
-| Refund commitment | ❌ | ✅ |
-| Used for | Same-chain withdrawals | Cross-chain withdrawals |
+| Feature | Standard (8) | CrossChain (9) | Withdraw2 (9) | CrossChainWithdraw2 (10) |
+|---------|--------------|----------------|---------------|--------------------------|
+| Change note | ✅ | ✅ | ✅ | ✅ |
+| Nullifiers | 1 | 1 | 2 | 2 |
+| Refund commitment | ❌ | ✅ | ❌ | ✅ |
+| Used for | Same-chain | Cross-chain | Same-chain (2 notes) | Cross-chain (2 notes) |
 
 ## ShinobiCashPoolSimple
 

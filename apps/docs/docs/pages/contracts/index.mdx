@@ -22,8 +22,10 @@ Overview of Shinobi Cash smart contract architecture.
 │                                                             │
 │  ┌─────────────────────────────────────────────────┐        │
 │  │            Paymasters (ERC-4337)                │        │
-│  │  SimpleShinobiCashPoolPaymaster                 │        │
-│  │  CrossChainWithdrawalPaymaster                  │        │
+│  │  SimpleShinobiCashPoolPaymaster (same-chain)   │        │
+│  │  CrossChainWithdrawalPaymaster  (cross-chain)  │        │
+│  │  Withdraw2Paymaster             (2-note)       │        │
+│  │  CrossChainWithdraw2Paymaster   (2-note x-chain)│       │
 │  └─────────────────────────────────────────────────┘        │
 └─────────────────────────────────────────────────────────────┘
 
@@ -58,7 +60,8 @@ The central orchestrator on the pool chain. Handles:
 Extended Privacy Pool with cross-chain support. Handles:
 - Commitment insertion (deposits)
 - Nullifier spending (withdrawals)
-- ZK proof verification (9-signal cross-chain proofs)
+- ZK proof verification (supports 8, 9, and 10-signal proofs)
+- Spending multiple notes in a single transaction (Withdraw2)
 
 [Learn more →](/contracts/pool)
 
@@ -84,13 +87,14 @@ Handles withdrawal fills on destination chains:
 
 ## Paymasters
 
-ERC-4337 paymasters that enable withdrawals without wallet gas:
+ERC-4337 paymasters that enable withdrawals without wallet gas. Uses standard AA infrastructure (bundlers like Pimlico, Alchemy) instead of custom relayers.
 
-### SimpleShinobiCashPoolPaymaster
-Sponsors gas for same-chain withdrawals. Embeds ZK proof validation.
-
-### CrossChainWithdrawalPaymaster
-Sponsors gas for cross-chain withdrawals. Validates 9-signal proofs.
+| Paymaster | Use Case |
+|-----------|----------|
+| `SimpleShinobiCashPoolPaymaster` | Same-chain, single note |
+| `CrossChainWithdrawalPaymaster` | Cross-chain, single note |
+| `Withdraw2Paymaster` | Same-chain, 2 notes |
+| `CrossChainWithdraw2Paymaster` | Cross-chain, 2 notes |
 
 [Learn more →](/contracts/paymasters)
 

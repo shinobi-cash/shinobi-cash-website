@@ -63,15 +63,6 @@ No. Compliance is enforced at the protocol level via ASPs. You prove membership 
 
 ## Technical
 
-### How long do transactions take?
-
-- **Same-chain deposit**: ~1-2 minutes
-- **Cross-chain deposit**: ~2-5 minutes (solver fill)
-- **Same-chain withdrawal**: ~1-2 minutes (+ proof generation)
-- **Cross-chain withdrawal**: ~2-5 minutes (+ proof generation)
-
-Proof generation takes 5-15 seconds in your browser.
-
 ### Why is proof generation slow?
 
 Groth16 SNARK proofs are computationally intensive. The 5-15 second generation time is normal. Keep your browser tab active during generation.
@@ -79,6 +70,10 @@ Groth16 SNARK proofs are computationally intensive. The 5-15 second generation t
 ### Do I need ETH in my wallet for gas?
 
 No. Withdrawals are relayed via standard ERC-4337 bundlers. A paymaster sponsors the gas upfront, and the cost is deducted from your withdrawal amount (relay fee). No custom relayer infrastructure required.
+
+### Can I spend multiple notes at once?
+
+Yes. Withdraw2 lets you spend 2 notes in a single transaction. This is useful for consolidating small notes or making larger withdrawals from multiple deposits.
 
 ### What happens if a cross-chain transaction fails?
 

@@ -20,6 +20,8 @@ Shinobi Cash paymasters:
 |----------|---------|
 | `SimpleShinobiCashPoolPaymaster` | Same-chain withdrawals (8-signal proofs) |
 | `CrossChainWithdrawalPaymaster` | Cross-chain withdrawals (9-signal proofs) |
+| `Withdraw2Paymaster` | Same-chain 2-note withdrawals (9-signal proofs) |
+| `CrossChainWithdraw2Paymaster` | Cross-chain 2-note withdrawals (10-signal proofs) |
 
 ## SimpleShinobiCashPoolPaymaster
 
@@ -146,6 +148,35 @@ uint256 public constant MIN_PAYMASTER_VERIFICATION_GAS = 500_000;
 2. Validates 9-signal proofs (includes refundCommitmentHash)
 3. Higher gas limits for intent creation
 
+## Withdraw2Paymaster
+
+Sponsors gas for spending 2 notes in a single same-chain withdrawal.
+
+### When to Use
+
+- You have multiple small notes and want to withdraw from both
+- You want to consolidate notes while withdrawing
+
+### Key Differences from Standard
+
+1. Validates 9-signal proofs with **2 nullifiers** (not 1)
+2. Both nullifiers checked for double-spend
+3. Higher gas limits for 2-nullifier operations
+
+## CrossChainWithdraw2Paymaster
+
+Sponsors gas for spending 2 notes in a cross-chain withdrawal.
+
+### When to Use
+
+- Same as Withdraw2, but funds arrive on a different chain
+
+### Key Differences
+
+1. Validates 10-signal proofs (2 nullifiers + refund commitment)
+2. Highest gas limits of all paymasters
+3. Includes refund mechanism for failed cross-chain transfers
+
 ## Fee Structure
 
 ### RelayData
@@ -216,6 +247,8 @@ The paymaster embeds ZK proof validation rather than trusting the pool contract 
 
 - [SimpleShinobiCashPoolPaymaster](https://github.com/shinobi-cash/shinobi.cash-contracts/blob/main/src/paymaster/SimpleShinobiCashPoolPaymaster.sol)
 - [CrossChainWithdrawalPaymaster](https://github.com/shinobi-cash/shinobi.cash-contracts/blob/main/src/paymaster/CrossChainWithdrawalPaymaster.sol)
+- [Withdraw2Paymaster](https://github.com/shinobi-cash/shinobi.cash-contracts/blob/main/src/paymaster/Withdraw2Paymaster.sol)
+- [CrossChainWithdraw2Paymaster](https://github.com/shinobi-cash/shinobi.cash-contracts/blob/main/src/paymaster/CrossChainWithdraw2Paymaster.sol)
 
 ## Related
 
