@@ -10,7 +10,7 @@ import type { Note } from "@shinobi-cash/core/discovery";
 /**
  * Display type derived from note type
  */
-export type ActivityType = "deposit" | "withdrawal" | "refund";
+export type ActivityType = "deposit" | "withdrawal" | "refund" | "ragequit";
 
 /**
  * Activity filter options
@@ -32,11 +32,21 @@ export interface ActivityEntry {
    * - For deposits: the deposited amount (note.amount)
    * - For withdrawals: the withdrawn amount (prevNote.amount - note.amount)
    * - For refunds: the refunded amount
+   * - For ragequit: the ragequit amount (note.amount)
    */
   displayAmount: string;
 
   /** Whether this is a cross-chain operation */
   isCrossChain: boolean;
+
+  /** Parent note amount (for debugging/calculation) */
+  parentAmount?: string;
+
+  /**
+   * Override timestamp for display/sorting.
+   * Used for ragequit entries to show ragequit timestamp instead of note timestamp.
+   */
+  displayTimestamp?: string;
 }
 
 /**
@@ -66,15 +76,20 @@ export const ACTIVITY_TYPE_LABELS: Record<ActivityType, string> = {
   deposit: "Deposit",
   withdrawal: "Withdrawal",
   refund: "Refund",
+  ragequit: "Ragequit",
 };
 
 /**
  * Get unique ID for an activity entry
- * Includes noteType to differentiate between notes with same depositIndex/changeIndex
+ * Includes originChainId since depositIndex is per-chain (not globally unique)
  */
 export function getActivityId(entry: ActivityEntry): string {
-  const { note } = entry;
-  const baseId = `${note.noteType}-${note.depositIndex}-${note.changeIndex}`;
+  const { note, type } = entry;
+  // Ragequit entries use special prefix since they share same note as deposit/change
+  if (type === "ragequit") {
+    return `ragequit-${note.originChainId}-${note.depositIndex}-${note.changeIndex}`;
+  }
+  const baseId = `${note.noteType}-${note.originChainId}-${note.depositIndex}-${note.changeIndex}`;
   // RefundNotes have additional refundIndex
   if (note.noteType === "refund") {
     return `${baseId}-${note.refundIndex}`;
