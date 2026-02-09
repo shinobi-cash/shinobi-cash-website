@@ -97,24 +97,16 @@ export interface RefundNote extends BaseNote {
   refundCommitment: string;
 }
 
+// ============================================================================
+// Intent Note Types (Split from PendingIntentNote)
+// ============================================================================
+
 /**
- * Pending intent note - represents escrowed funds awaiting solver fill or refund.
- * Created when a cross-chain withdrawal is initiated, sibling of the ChangeNote.
- *
- * Has both `changeIndex` and `parentChangeIndex` which are equal - the changeIndex
- * of the spent note. This is for compatibility with code that accesses changeIndex
- * on the Note union type, while parentChangeIndex makes the derivation path explicit.
+ * Base interface for intent notes (shared fields between deposit and withdrawal intents)
  */
-export interface PendingIntentNote {
-  noteType: 'pendingIntent';
-  // Identity
+interface BaseIntentNote {
   poolAddress: string;
   depositIndex: number;
-  /** For compatibility with Note union - equals parentChangeIndex */
-  changeIndex: number;
-  /** The changeIndex of the spent note (for derivation path) - same as changeIndex */
-  parentChangeIndex: number;
-  // Value
   amount: string;
   label?: string;
   status: NoteStatus;
@@ -125,14 +117,12 @@ export interface PendingIntentNote {
   destinationTransactionHash: string;
   originChainId: string;
   destinationChainId: string;
-  // Cross-chain (always true for PendingIntentNote)
+  // Cross-chain (always true for intent notes)
   isCrossChain: true;
   orderId: string;
   intentStatus: IntentStatus;
   fillDeadline?: string;
   expires?: string;
-  // PendingIntent-specific
-  refundCommitment: string;
   // ASP
   aspStatus: ASPStatus;
   // Activity data
@@ -141,8 +131,58 @@ export interface PendingIntentNote {
   discoveredAtOffset?: number;
 }
 
-export type Note = DepositNote | ChangeNote | RefundNote | PendingIntentNote;
+/**
+ * Deposit intent note - pending cross-chain deposit awaiting solver fill.
+ * First note in a chain, represents funds escrowed on ORIGIN chain.
+ *
+ * Lifecycle:
+ * - Created when CROSSCHAIN_DEPOSIT_PENDING activity is discovered
+ * - Filled: Reconciler creates DepositNote, this note marked spent
+ * - Refunded: Funds return to user's wallet on origin chain (no RefundNote needed)
+ */
+export interface DepositIntentNote extends BaseIntentNote {
+  noteType: 'depositIntent';
+  /** Always 0 - first note in chain */
+  changeIndex: 0;
+  /** Refund commitment for deposit intents (optional - may not be set) */
+  refundCommitment?: string;
+}
+
+/**
+ * Withdrawal intent note - pending cross-chain withdrawal awaiting solver delivery.
+ * Sibling of ChangeNote, represents funds escrowed on POOL chain.
+ *
+ * Lifecycle:
+ * - Created when cross-chain withdrawal is initiated
+ * - Filled: Solver delivers funds to recipient, this note marked spent
+ * - Refunded: RefundNote created (spendable in pool)
+ */
+export interface WithdrawalIntentNote extends BaseIntentNote {
+  noteType: 'withdrawalIntent';
+  /** For compatibility with Note union - equals parentChangeIndex */
+  changeIndex: number;
+  /** The changeIndex of the spent note (for derivation path) */
+  parentChangeIndex: number;
+  /** Refund commitment for claiming refund if intent expires (required) */
+  refundCommitment: string;
+}
+
+export type Note = DepositNote | ChangeNote | RefundNote | DepositIntentNote | WithdrawalIntentNote;
 export type NoteChain = Note[];
+
+// ============================================================================
+// Type Guards
+// ============================================================================
+
+/** Check if a note is a DepositIntentNote */
+export function isDepositIntentNote(note: Note): note is DepositIntentNote {
+  return note.noteType === 'depositIntent';
+}
+
+/** Check if a note is a WithdrawalIntentNote */
+export function isWithdrawalIntentNote(note: Note): note is WithdrawalIntentNote {
+  return note.noteType === 'withdrawalIntent';
+}
 
 // ============================================================================
 // Nullifier Tracking
@@ -150,6 +190,7 @@ export type NoteChain = Note[];
 
 /** Maps a nullifier hash to its note location */
 export interface NullifierInfo {
+  originChainId: string;
   depositIndex: number;
   changeIndex: number;
 }
@@ -158,25 +199,51 @@ export interface NullifierInfo {
 // Discovery State
 // ============================================================================
 
+/**
+ * Composite key for chain lookup: `${originChainId}:${depositIndex}`
+ * Required because depositIndex is now per-origin-chain, not globally unique.
+ */
+export type ChainKey = string;
+
+/** Create a chain key from originChainId and depositIndex */
+export function makeChainKey(originChainId: string | number | bigint, depositIndex: number): ChainKey {
+  return `${originChainId}:${depositIndex}`;
+}
+
+/** Parse a chain key back to its components */
+export function parseChainKey(key: ChainKey): { originChainId: string; depositIndex: number } {
+  const [originChainId, depositIndexStr] = key.split(':');
+  return { originChainId, depositIndex: parseInt(depositIndexStr, 10) };
+}
+
 export interface DiscoveryState {
-  /** All discovered note chains, keyed by depositIndex */
-  chains: Map<number, NoteChain>;
+  /** All discovered note chains, keyed by ChainKey (originChainId:depositIndex) */
+  chains: Map<ChainKey, NoteChain>;
   /** Nullifier hash -> note location for quick lookups */
   nullifierMap: Map<string, NullifierInfo>;
-  /** Next deposit index to scan */
-  nextDepositIndex: number;
+  /** Next deposit index to scan per chain (keyed by chainId string) */
+  nextDepositIndex: Map<string, number>;
   /** Minimum offset to fetch from (earliest unspent note's discovery offset) */
   minOffset: number;
-  /** Count of new deposits found in this sync */
+  /** Count of new filled deposits found in this sync (spendable) */
+  newFilledDepositsFound: number;
+  /** Count of new pending deposits found in this sync (awaiting fill) */
+  newPendingDepositsFound: number;
+  /** @deprecated Use newFilledDepositsFound. Total new deposits for backwards compat. */
   newDepositsFound: number;
 }
 
 /** Serializable version of DiscoveryState for persistence */
 export interface SerializableDiscoveryState {
-  chains: Array<{ depositIndex: number; chain: NoteChain }>;
+  /** Chains keyed by ChainKey (originChainId:depositIndex) */
+  chains: Array<{ chainKey: ChainKey; chain: NoteChain }>;
   nullifierMap: Array<{ hash: string; info: NullifierInfo }>;
-  nextDepositIndex: number;
+  /** Next deposit index per chain (keyed by chainId string) */
+  nextDepositIndex: Array<{ chainId: string; index: number }>;
   minOffset: number;
+  newFilledDepositsFound: number;
+  newPendingDepositsFound: number;
+  /** @deprecated Use newFilledDepositsFound. */
   newDepositsFound: number;
 }
 
@@ -186,7 +253,8 @@ export interface SerializableDiscoveryState {
 
 export interface DiscoveryResult {
   notes: NoteChain[];
-  lastUsedIndex: number;
+  /** Last used deposit index per chain (keyed by chainId string) */
+  lastUsedIndexByChain: Map<string, number>;
   newNotesFound: number;
   minOffset: number;
 }
