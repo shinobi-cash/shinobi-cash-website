@@ -1,5 +1,6 @@
-import type { Note, NoteChain, DepositIntentNote, WithdrawalIntentNote, RefundNote } from "@shinobi-cash/core/discovery";
-import type { NoteFilter, NoteCategory, ReadonlyNoteChain } from "@/types/notes";
+import type { Note, DepositIntentNote, WithdrawalIntentNote, RefundNote, NoteTree } from "@shinobi-cash/core/discovery";
+import { getSpendableLeaves, getLeafNodes } from "@shinobi-cash/core/discovery";
+import type { NoteFilter, NoteCategory } from "@/types/notes";
 
 /**
  * Note Filtering Utilities - 3-Category Model
@@ -53,13 +54,6 @@ export function isRefundNote(note: Note): note is RefundNote {
   return note.noteType === "refund";
 }
 
-export function getLastNote(noteChain: ReadonlyNoteChain): Note {
-  if (noteChain.length === 0) {
-    throw new Error("Invariant violation: empty NoteChain");
-  }
-  return noteChain[noteChain.length - 1];
-}
-
 /**
  * Check if note is in the pool (can be used for withdrawals/ragequit)
  * - Same-chain: always in pool
@@ -87,9 +81,10 @@ export function isInPool(note: Note): boolean {
  * This determines which tab the note appears in
  */
 export function getNoteCategory(note: Note): NoteCategory {
-  // Spent: Already used, merged
+  // Spent: Already used, merged, or ragequit
   if (note.status === "spent") return "spent";
   if (note.status === "merged") return "spent";
+  if (note.status === "ragequit") return "spent";
 
   // Zero balance is effectively spent (except intent notes which may be refundable)
   if (!isIntentNote(note) && BigInt(note.amount) <= BigInt(0)) return "spent";
@@ -186,8 +181,8 @@ export function canClaimRefund(note: Note): boolean {
  * Get Tailwind background color class for note status dot
  */
 export function getStatusDotColor(note: Note): string {
-  // Spent or merged notes
-  if (note.status === "spent" || note.status === "merged") {
+  // Spent, merged, or ragequit notes
+  if (note.status === "spent" || note.status === "merged" || note.status === "ragequit") {
     return "bg-neutral-500";
   }
 
@@ -256,42 +251,57 @@ export function isWaitingForSolver(note: Note): boolean {
 }
 
 // ============================================
-// FILTER FUNCTIONS
+// TREE-BASED FILTER FUNCTIONS
 // ============================================
 
 /**
- * Filter note chains by category
+ * Get tree category based on all leaf nodes.
+ * A tree is:
+ * - "spendable" if any leaf is spendable
+ * - "pending" if any leaf is pending (and none are spendable)
+ * - "spent" if all leaves are spent
  */
-export function filterNoteChains(
-  noteChains: readonly ReadonlyNoteChain[],
-  filter: NoteFilter
-): ReadonlyNoteChain[] {
-  return noteChains.filter((noteChain) => {
-    const lastNote = getLastNote(noteChain);
-    const category = getNoteCategory(lastNote);
+export function getTreeCategory(tree: NoteTree): NoteCategory {
+  const leaves = getLeafNodes(tree);
 
-    switch (filter) {
-      case "spendable":
-        return category === "spendable";
-      case "pending":
-        return category === "pending";
-      case "spent":
-        return category === "spent";
-      default:
-        return false;
-    }
+  let hasSpendable = false;
+  let hasPending = false;
+
+  for (const leaf of leaves) {
+    const category = getNoteCategory(leaf.note);
+    if (category === "spendable") hasSpendable = true;
+    if (category === "pending") hasPending = true;
+  }
+
+  if (hasSpendable) return "spendable";
+  if (hasPending) return "pending";
+  return "spent";
+}
+
+/**
+ * Filter note trees by category
+ */
+export function filterNoteTrees(
+  trees: NoteTree[],
+  filter: NoteFilter
+): NoteTree[] {
+  return trees.filter((tree) => {
+    const category = getTreeCategory(tree);
+    return category === filter;
   });
 }
 
-export function getNoteChainCounts(noteChains: NoteChain[]): {
+/**
+ * Get counts for each category
+ */
+export function getNoteTreeCounts(trees: NoteTree[]): {
   spendable: number;
   pending: number;
   spent: number;
 } {
-  return noteChains.reduce(
-    (counts, noteChain) => {
-      const lastNote = getLastNote(noteChain);
-      const category = getNoteCategory(lastNote);
+  return trees.reduce(
+    (counts, tree) => {
+      const category = getTreeCategory(tree);
 
       if (category === "spendable") {
         counts.spendable++;
@@ -307,28 +317,97 @@ export function getNoteChainCounts(noteChains: NoteChain[]): {
   );
 }
 
-export function sortNoteChainsByTimestamp(noteChains: ReadonlyNoteChain[]): ReadonlyNoteChain[] {
-  return [...noteChains].sort((a, b) => {
-    const lastNoteA = getLastNote(a);
-    const lastNoteB = getLastNote(b);
-    return Number(lastNoteB.timestamp) - Number(lastNoteA.timestamp);
+/**
+ * Get the most recent timestamp from a tree.
+ * For spent trees, returns the leaf timestamp (when spent).
+ * For other trees, returns the root timestamp (when deposited).
+ */
+function getMostRecentTimestamp(tree: NoteTree): number {
+  const category = getTreeCategory(tree);
+
+  if (category === "spent") {
+    // For spent trees, find the most recent leaf timestamp
+    const leaves = getLeafNodes(tree);
+    let maxTimestamp = Number(tree.root.note.timestamp);
+
+    for (const leaf of leaves) {
+      const note = leaf.note;
+      // Check ragequit timestamp first (if available)
+      const ragequitTs = note.activityData.ragequitTimestamp;
+      if (ragequitTs) {
+        maxTimestamp = Math.max(maxTimestamp, Number(ragequitTs));
+      }
+      // Also check the note's own timestamp
+      maxTimestamp = Math.max(maxTimestamp, Number(note.timestamp));
+    }
+
+    return maxTimestamp;
+  }
+
+  // For spendable/pending, use deposit timestamp
+  return Number(tree.root.note.timestamp);
+}
+
+/**
+ * Sort trees by timestamp (most recent first)
+ * - Spendable/Pending: sorted by deposit time
+ * - Spent: sorted by when they were spent (most recent activity)
+ */
+export function sortTreesByTimestamp(trees: NoteTree[]): NoteTree[] {
+  return [...trees].sort((a, b) => {
+    return getMostRecentTimestamp(b) - getMostRecentTimestamp(a);
   });
 }
 
-export function getSpendableNoteChains(noteChains: ReadonlyNoteChain[]): ReadonlyNoteChain[] {
-  return filterNoteChains(noteChains, "spendable");
+/**
+ * Get all spendable notes from a tree.
+ * This handles cases where both ChangeNote AND RefundNote are spendable.
+ */
+export function getSpendableNotesFromTree(tree: NoteTree): Note[] {
+  const spendableLeaves = getSpendableLeaves(tree);
+  return spendableLeaves
+    .map((node) => node.note)
+    .filter((note) => getNoteCategory(note) === "spendable");
 }
 
-export function getSpendableNotes(noteChains: NoteChain[]): Note[] {
-  return getSpendableNoteChains(noteChains).map(getLastNote);
+/**
+ * Get all spendable notes from all trees
+ */
+export function getSpendableNotes(trees: NoteTree[]): Note[] {
+  return trees.flatMap(getSpendableNotesFromTree);
+}
+
+/**
+ * Get total spendable balance from a tree.
+ * Sums balance of ALL spendable notes in the tree.
+ */
+export function getTotalSpendableBalance(tree: NoteTree): bigint {
+  const spendableNotes = getSpendableNotesFromTree(tree);
+  return spendableNotes.reduce((sum, note) => sum + BigInt(note.amount), BigInt(0));
+}
+
+/**
+ * Check if a tree has multiple spendable notes.
+ * This is useful for UI to show note selection when both ChangeNote
+ * and RefundNote are spendable.
+ */
+export function hasMultipleSpendableNotes(tree: NoteTree): boolean {
+  return getSpendableNotesFromTree(tree).length > 1;
 }
 
 /**
  * Get notes that can be withdrawn privately (ASP approved only)
  * This is a subset of spendable notes - excludes ASP rejected
  */
-export function getWithdrawableNotes(noteChains: NoteChain[]): Note[] {
-  return getSpendableNotes(noteChains).filter(canWithdraw);
+export function getWithdrawableNotes(trees: NoteTree[]): Note[] {
+  return getSpendableNotes(trees).filter(canWithdraw);
+}
+
+/**
+ * Get spendable trees (trees that have at least one spendable note)
+ */
+export function getSpendableTrees(trees: NoteTree[]): NoteTree[] {
+  return filterNoteTrees(trees, "spendable");
 }
 
 // ============================================
