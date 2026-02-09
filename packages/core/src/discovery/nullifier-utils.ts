@@ -15,12 +15,13 @@ import { deriveChangeNullifier } from '../withdrawal/index.js';
 export function deriveNullifier(
   accountKey: bigint,
   poolAddress: string,
+  chainId: number | bigint | string,
   depositIndex: number,
   changeIndex: number,
 ): bigint {
   return changeIndex === 0
-    ? deriveDepositNullifier(accountKey, poolAddress, depositIndex)
-    : deriveChangeNullifier(accountKey, poolAddress, depositIndex, changeIndex);
+    ? deriveDepositNullifier(accountKey, poolAddress, chainId, depositIndex)
+    : deriveChangeNullifier(accountKey, poolAddress, chainId, depositIndex, changeIndex);
 }
 
 /**
@@ -38,10 +39,11 @@ export function hashNullifier(nullifier: bigint): string {
 export function deriveAndHashNullifier(
   accountKey: bigint,
   poolAddress: string,
+  chainId: number | bigint | string,
   depositIndex: number,
   changeIndex: number,
 ): string {
-  const nullifier = deriveNullifier(accountKey, poolAddress, depositIndex, changeIndex);
+  const nullifier = deriveNullifier(accountKey, poolAddress, chainId, depositIndex, changeIndex);
   return hashNullifier(nullifier);
 }
 
@@ -52,9 +54,10 @@ export function deriveAndHashNullifier(
 export function deriveDepositPrecommitment(
   accountKey: bigint,
   poolAddress: string,
+  chainId: number | bigint | string,
   depositIndex: number,
 ): string {
-  const nullifier = deriveDepositNullifier(accountKey, poolAddress, depositIndex);
-  const secret = deriveDepositSecret(accountKey, poolAddress, depositIndex);
+  const nullifier = deriveDepositNullifier(accountKey, poolAddress, chainId, depositIndex);
+  const secret = deriveDepositSecret(accountKey, poolAddress, chainId, depositIndex);
   return derivePrecommitment(nullifier, secret).toString();
 }

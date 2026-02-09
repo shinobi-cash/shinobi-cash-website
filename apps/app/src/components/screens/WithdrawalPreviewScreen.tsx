@@ -17,6 +17,7 @@ import {
   FEE_CONFIG,
 } from "@shinobi-cash/constants";
 import { ShinobiCashNote, AssetChain } from "@/components/shared/AssetChain";
+import { getNoteLabel } from "@/utils/chainIcons";
 
 interface WithdrawalPreviewScreenProps {
   onBack: () => void;
@@ -154,8 +155,8 @@ export function WithdrawalPreviewScreen({
               <NoteAvatarStack notes={selectedNotes} size="sm" />
               <span className="text-neutral-300">
                 {selectedNotes.length === 1
-                  ? `#${selectedNotes[0].depositIndex + 1}`
-                  : `#${selectedNotes[0].depositIndex + 1} + #${selectedNotes[1].depositIndex + 1}`}
+                  ? getNoteLabel(selectedNotes[0].originChainId, selectedNotes[0].depositIndex)
+                  : `${getNoteLabel(selectedNotes[0].originChainId, selectedNotes[0].depositIndex)} + ${getNoteLabel(selectedNotes[1].originChainId, selectedNotes[1].depositIndex)}`}
               </span>
             </span>
           }

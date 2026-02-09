@@ -7,10 +7,11 @@ import {
 } from "../encryption";
 import {
   NoteDiscovery,
+  makeChainKey,
   type ActivityFetcher,
   type SerializableDiscoveryState,
 } from "@shinobi-cash/core/discovery";
-import type { DiscoveryResult, DiscoveryOptions, NoteChain } from "@shinobi-cash/core/discovery";
+import type { DiscoveryResult, DiscoveryOptions, NoteChain, NullifierInfo } from "@shinobi-cash/core/discovery";
 import {
   type IndexedDBStore,
   notesStorageAdapter,
@@ -44,9 +45,22 @@ export class NotesRepository {
     const cached = await this.getCachedData(publicKey, poolAddress);
 
     if (cached) {
+      // Build per-chain last used indices from notes
+      const lastUsedIndexByChain = new Map<string, number>();
+      for (const chain of cached.notes) {
+        const depositNote = chain[0];
+        if (depositNote) {
+          const chainId = depositNote.originChainId;
+          const current = lastUsedIndexByChain.get(chainId) ?? -1;
+          if (depositNote.depositIndex > current) {
+            lastUsedIndexByChain.set(chainId, depositNote.depositIndex);
+          }
+        }
+      }
+
       return {
         notes: cached.notes,
-        lastUsedIndex: cached.lastUsedDepositIndex,
+        lastUsedIndexByChain,
         newNotesFound: 0,
         minOffset: cached.minOffset ?? 0,
       };
@@ -68,9 +82,7 @@ export class NotesRepository {
       throw new Error("Session not initialized");
     }
 
-    const lastUsedIndex =
-      notes.length > 0 ? Math.max(...notes.map((chain) => chain[0].depositIndex)) : -1;
-    await this.storeData(publicKey, poolAddress, notes, lastUsedIndex, minOffset);
+    await this.storeData(publicKey, poolAddress, notes, minOffset);
   }
 
   /**
@@ -80,17 +92,15 @@ export class NotesRepository {
     publicKey: string,
     poolAddress: string,
     notes: NoteChain[],
-    lastUsedDepositIndex: number,
     minOffset?: number,
-    nullifierMap?: Array<{ hash: string; info: { depositIndex: number; changeIndex: number } }>,
-    nextDepositIndex?: number,
+    nullifierMap?: Array<{ hash: string; info: NullifierInfo }>,
+    nextDepositIndex?: Array<{ chainId: string; index: number }>,
     newDepositsFound?: number
   ): Promise<void> {
     const sensitiveData: CachedNoteData = {
       poolAddress,
       publicKey,
       notes,
-      lastUsedDepositIndex,
       lastSyncTime: Date.now(),
       minOffset,
       nullifierMap,
@@ -168,17 +178,22 @@ export class NotesRepository {
         const cached = await this.getCachedData(pubKey, pool);
         if (!cached) return null;
 
-        // Convert stored notes to chains array format
-        const chains = cached.notes.map((chain) => ({
-          depositIndex: chain[0]?.depositIndex ?? 0,
-          chain,
-        }));
+        // Convert stored notes to chains array format using ChainKey
+        const chains = cached.notes.map((chain) => {
+          const depositNote = chain[0];
+          const chainKey = depositNote
+            ? makeChainKey(depositNote.originChainId, depositNote.depositIndex)
+            : "0:0";
+          return { chainKey, chain };
+        });
 
         return {
           chains,
           nullifierMap: cached.nullifierMap ?? [],
-          nextDepositIndex: cached.nextDepositIndex ?? (cached.lastUsedDepositIndex + 1),
+          nextDepositIndex: cached.nextDepositIndex ?? [],
           minOffset: cached.minOffset ?? 0,
+          newFilledDepositsFound: 0, // Not persisted in old format, start fresh
+          newPendingDepositsFound: 0,
           newDepositsFound: cached.newDepositsFound ?? 0,
         };
       },
@@ -186,15 +201,11 @@ export class NotesRepository {
       saveState: async (pubKey: string, pool: string, state: SerializableDiscoveryState) => {
         // Convert chains array back to NoteChain[]
         const notes = state.chains.map((c) => c.chain);
-        const lastUsedIndex = notes.length > 0
-          ? Math.max(...notes.map((chain) => chain[0]?.depositIndex ?? 0))
-          : -1;
 
         await this.storeData(
           pubKey,
           pool,
           notes,
-          lastUsedIndex,
           state.minOffset,
           state.nullifierMap,
           state.nextDepositIndex,

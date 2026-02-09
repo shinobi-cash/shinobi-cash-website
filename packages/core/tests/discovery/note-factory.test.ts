@@ -8,18 +8,20 @@ import {
   createChangeNote,
   createWithdraw2ChangeNote,
   createMergedNote,
-  createPendingIntentNote,
+  createWithdrawalIntentNote,
+  createDepositIntentNote,
   createRefundNote,
 } from '../../src/discovery/note-factory.js';
 import {
   createMockDepositActivity,
   createMockCrossChainDepositActivity,
+  createMockPendingCrossChainDepositActivity,
   createMock1x1WithdrawalActivity,
   createMockCrossChainWithdrawalActivity,
   createMockWithdraw2Activity,
   createMockDepositNote,
   createMockChangeNote,
-  createMockPendingIntentNote,
+  createMockWithdrawalIntentNote,
   resetActivityCounter,
   TEST_POOL_ADDRESS,
   toEther,
@@ -299,13 +301,13 @@ describe('note-factory', () => {
     });
   });
 
-  describe('createPendingIntentNote', () => {
-    it('should create a pending intent note', () => {
+  describe('createWithdrawalIntentNote', () => {
+    it('should create a withdrawal intent note', () => {
       const parentNote = createMockDepositNote(0, toEther(1));
       const activity = createMockCrossChainWithdrawalActivity(0, 0, toEther(0.5));
-      const note = createPendingIntentNote(parentNote, activity, 0);
+      const note = createWithdrawalIntentNote(parentNote, activity, 0);
 
-      expect(note.noteType).toBe('pendingIntent');
+      expect(note.noteType).toBe('withdrawalIntent');
       expect(note.depositIndex).toBe(0);
       expect(note.changeIndex).toBe(0);
       expect(note.parentChangeIndex).toBe(0);
@@ -323,7 +325,7 @@ describe('note-factory', () => {
         expires: BigInt(1234567999),
         refundCommitment: '0xrefund123',
       });
-      const note = createPendingIntentNote(parentNote, activity, 0);
+      const note = createWithdrawalIntentNote(parentNote, activity, 0);
 
       expect(note.orderId).toBe('order-xyz');
       expect(note.intentStatus).toBe('pending');
@@ -338,7 +340,7 @@ describe('note-factory', () => {
         aspStatus: 'pending',
       });
       const activity = createMockCrossChainWithdrawalActivity(0, 0, toEther(0.5));
-      const note = createPendingIntentNote(parentNote, activity, 0);
+      const note = createWithdrawalIntentNote(parentNote, activity, 0);
 
       expect(note.label).toBe('parent-label');
       expect(note.aspStatus).toBe('pending');
@@ -349,7 +351,7 @@ describe('note-factory', () => {
       const activity = createMockCrossChainWithdrawalActivity(0, 0, toEther(0.5), {
         orderId: undefined,
       });
-      const note = createPendingIntentNote(parentNote, activity, 0);
+      const note = createWithdrawalIntentNote(parentNote, activity, 0);
 
       // Factory uses empty string as fallback for missing orderId
       expect(note.orderId).toBe('');
@@ -360,7 +362,7 @@ describe('note-factory', () => {
       const activity = createMockCrossChainWithdrawalActivity(0, 0, toEther(0.5), {
         intentStatus: undefined,
       });
-      const note = createPendingIntentNote(parentNote, activity, 0);
+      const note = createWithdrawalIntentNote(parentNote, activity, 0);
 
       expect(note.intentStatus).toBe('pending');
     });
@@ -368,7 +370,7 @@ describe('note-factory', () => {
 
   describe('createRefundNote', () => {
     it('should create a refund note from pending intent', () => {
-      const pendingIntent = createMockPendingIntentNote(0, 0, toEther(0.5));
+      const pendingIntent = createMockWithdrawalIntentNote(0, 0, toEther(0.5));
       const note = createRefundNote(pendingIntent);
 
       expect(note.noteType).toBe('refund');
@@ -380,7 +382,7 @@ describe('note-factory', () => {
     });
 
     it('should copy refundCommitment from pending intent', () => {
-      const pendingIntent = createMockPendingIntentNote(0, 0, toEther(0.5), {
+      const pendingIntent = createMockWithdrawalIntentNote(0, 0, toEther(0.5), {
         refundCommitment: '0xrefund-abc',
       });
       const note = createRefundNote(pendingIntent);
@@ -389,7 +391,7 @@ describe('note-factory', () => {
     });
 
     it('should inherit label and aspStatus', () => {
-      const pendingIntent = createMockPendingIntentNote(0, 0, toEther(0.5), {
+      const pendingIntent = createMockWithdrawalIntentNote(0, 0, toEther(0.5), {
         label: 'intent-label',
         aspStatus: 'pending',
       });
@@ -400,14 +402,14 @@ describe('note-factory', () => {
     });
 
     it('should set isCrossChain to false (refund is on pool chain)', () => {
-      const pendingIntent = createMockPendingIntentNote(0, 0, toEther(0.5));
+      const pendingIntent = createMockWithdrawalIntentNote(0, 0, toEther(0.5));
       const note = createRefundNote(pendingIntent);
 
       expect(note.isCrossChain).toBe(false);
     });
 
     it('should set destinationChainId to originChainId', () => {
-      const pendingIntent = createMockPendingIntentNote(0, 0, toEther(0.5), {
+      const pendingIntent = createMockWithdrawalIntentNote(0, 0, toEther(0.5), {
         originChainId: '421614',
         destinationChainId: '84532',
       });
@@ -418,14 +420,14 @@ describe('note-factory', () => {
     });
 
     it('should accept custom refundIndex', () => {
-      const pendingIntent = createMockPendingIntentNote(0, 0, toEther(0.5));
+      const pendingIntent = createMockWithdrawalIntentNote(0, 0, toEther(0.5));
       const note = createRefundNote(pendingIntent, 3);
 
       expect(note.refundIndex).toBe(3);
     });
 
     it('should copy orderId for idempotency', () => {
-      const pendingIntent = createMockPendingIntentNote(0, 0, toEther(0.5), {
+      const pendingIntent = createMockWithdrawalIntentNote(0, 0, toEther(0.5), {
         orderId: 'order-for-idempotency',
       });
       const note = createRefundNote(pendingIntent);
@@ -434,7 +436,7 @@ describe('note-factory', () => {
     });
 
     it('should copy activityData from pending intent', () => {
-      const pendingIntent = createMockPendingIntentNote(0, 0, toEther(0.5), {
+      const pendingIntent = createMockWithdrawalIntentNote(0, 0, toEther(0.5), {
         activityData: { recipient: '0xrecipient123' },
       });
       const note = createRefundNote(pendingIntent);
@@ -443,7 +445,7 @@ describe('note-factory', () => {
     });
 
     it('should use originTransactionHash for both transaction fields', () => {
-      const pendingIntent = createMockPendingIntentNote(0, 0, toEther(0.5), {
+      const pendingIntent = createMockWithdrawalIntentNote(0, 0, toEther(0.5), {
         originTransactionHash: '0xorigin',
         destinationTransactionHash: '0xdest',
       });
@@ -451,6 +453,112 @@ describe('note-factory', () => {
 
       expect(note.originTransactionHash).toBe('0xorigin');
       expect(note.destinationTransactionHash).toBe('0xorigin'); // Refund is on pool chain
+    });
+  });
+
+  describe('createDepositIntentNote', () => {
+    it('should create a pending intent note for cross-chain deposit', () => {
+      const activity = createMockPendingCrossChainDepositActivity(0, toEther(1));
+      const note = createDepositIntentNote(activity, 0, TEST_POOL_ADDRESS);
+
+      expect(note.noteType).toBe('depositIntent');
+      expect(note.poolAddress).toBe(TEST_POOL_ADDRESS);
+      expect(note.depositIndex).toBe(0);
+      expect(note.changeIndex).toBe(0);
+      expect(note.amount).toBe(toEther(1).toString());
+      expect(note.status).toBe('unspent');
+      expect(note.isCrossChain).toBe(true);
+    });
+
+    it('should set intentStatus from activity', () => {
+      const activity = createMockPendingCrossChainDepositActivity(0, toEther(1), {
+        intentStatus: 'pending',
+      });
+      const note = createDepositIntentNote(activity, 0, TEST_POOL_ADDRESS);
+
+      expect(note.intentStatus).toBe('pending');
+    });
+
+    it('should default intentStatus to pending when undefined', () => {
+      const activity = createMockPendingCrossChainDepositActivity(0, toEther(1), {
+        intentStatus: undefined,
+      });
+      const note = createDepositIntentNote(activity, 0, TEST_POOL_ADDRESS);
+
+      expect(note.intentStatus).toBe('pending');
+    });
+
+    it('should set orderId from activity', () => {
+      const activity = createMockPendingCrossChainDepositActivity(0, toEther(1), {
+        orderId: 'test-order-123',
+      });
+      const note = createDepositIntentNote(activity, 0, TEST_POOL_ADDRESS);
+
+      expect(note.orderId).toBe('test-order-123');
+    });
+
+    it('should default orderId to empty string when undefined', () => {
+      const activity = createMockPendingCrossChainDepositActivity(0, toEther(1), {
+        orderId: undefined,
+      });
+      const note = createDepositIntentNote(activity, 0, TEST_POOL_ADDRESS);
+
+      expect(note.orderId).toBe('');
+    });
+
+    it('should set chainIds correctly', () => {
+      const activity = createMockPendingCrossChainDepositActivity(0, toEther(1));
+      const note = createDepositIntentNote(activity, 0, TEST_POOL_ADDRESS);
+
+      expect(note.originChainId).toBe('421614'); // Arbitrum Sepolia
+      expect(note.destinationChainId).toBe('84532'); // Base Sepolia
+    });
+
+    it('should set fillDeadline and expires from activity', () => {
+      const fillDeadline = BigInt(Date.now() + 3600000);
+      const expires = BigInt(Date.now() + 7200000);
+      const activity = createMockPendingCrossChainDepositActivity(0, toEther(1), {
+        fillDeadline,
+        expires,
+      });
+      const note = createDepositIntentNote(activity, 0, TEST_POOL_ADDRESS);
+
+      expect(note.fillDeadline).toBe(fillDeadline.toString());
+      expect(note.expires).toBe(expires.toString());
+    });
+
+    it('should set discoveredAtOffset when provided', () => {
+      const activity = createMockPendingCrossChainDepositActivity(0, toEther(1));
+      const note = createDepositIntentNote(activity, 0, TEST_POOL_ADDRESS, 42);
+
+      expect(note.discoveredAtOffset).toBe(42);
+    });
+
+    it('should set aspStatus from activity', () => {
+      const activity = createMockPendingCrossChainDepositActivity(0, toEther(1), {
+        aspStatus: 'pending',
+      });
+      const note = createDepositIntentNote(activity, 0, TEST_POOL_ADDRESS);
+
+      expect(note.aspStatus).toBe('pending');
+    });
+
+    it('should set label as string when provided', () => {
+      const activity = createMockPendingCrossChainDepositActivity(0, toEther(1), {
+        label: BigInt(12345),
+      });
+      const note = createDepositIntentNote(activity, 0, TEST_POOL_ADDRESS);
+
+      expect(note.label).toBe('12345');
+    });
+
+    it('should handle undefined label', () => {
+      const activity = createMockPendingCrossChainDepositActivity(0, toEther(1), {
+        label: undefined,
+      });
+      const note = createDepositIntentNote(activity, 0, TEST_POOL_ADDRESS);
+
+      expect(note.label).toBeUndefined();
     });
   });
 });

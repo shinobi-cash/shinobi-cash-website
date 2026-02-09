@@ -23,18 +23,19 @@ export interface AccountData extends AccountMetadata {
 }
 
 /**
- * Cached note data stored locally with discovery metadata
+ * Cached note data stored locally with discovery metadata.
+ * NullifierInfo includes originChainId for proper chain identification.
  */
 export interface CachedNoteData {
   poolAddress: string;
   publicKey: string;
   notes: NoteChain[];
-  lastUsedDepositIndex: number;
   lastSyncTime: number;
   minOffset?: number;
-  // Full discovery state for proper resumption
+  /** Full discovery state for proper resumption. NullifierInfo includes originChainId. */
   nullifierMap?: Array<{ hash: string; info: NullifierInfo }>;
-  nextDepositIndex?: number;
+  /** Next deposit index per chain (keyed by chainId string) */
+  nextDepositIndex?: Array<{ chainId: string; index: number }>;
   newDepositsFound?: number;
 }
 

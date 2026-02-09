@@ -8,6 +8,7 @@
 import { Banknote, Plus } from "lucide-react";
 import type { Note } from "@shinobi-cash/core/discovery";
 import { cn } from "@workspace/ui/lib/utils";
+import { getNoteLabel } from "@/utils/chainIcons";
 
 interface NoteAvatarGroupProps {
   notes: Note[];
@@ -98,7 +99,7 @@ export function NoteAvatarGroup({
       <div className="flex flex-col items-start">
         <span className="text-sm font-medium text-white">
           {notes.length === 1
-            ? `Note #${notes[0].depositIndex + 1}`
+            ? getNoteLabel(notes[0].originChainId, notes[0].depositIndex)
             : `${notes.length} Notes`
           }
         </span>

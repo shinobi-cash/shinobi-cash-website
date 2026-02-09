@@ -39,6 +39,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/",
     "test": "vitest",
+    "test:coverage": "vitest run --coverage",
     "clean": "rm -rf dist rollup-dist",
     "analyze": "rollup -c rollup.analyze.mjs && open rollup-dist/bundle-analysis.html"
   },

@@ -6,7 +6,8 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { extendAllChains } from '../../src/discovery/chain-extender.js';
 import { buildActivityIndex } from '../../src/discovery/activity-indexer.js';
 import { deriveAndHashNullifier } from '../../src/discovery/nullifier-utils.js';
-import type { NoteChain, NullifierInfo, DepositNote, ChangeNote, PendingIntentNote } from '../../src/discovery/types.js';
+import type { NoteChain, NullifierInfo, DepositNote, ChangeNote, WithdrawalIntentNote, ChainKey } from '../../src/discovery/types.js';
+import { makeChainKey } from '../../src/discovery/types.js';
 import {
   createMockDepositNote,
   createMockChangeNote,
@@ -17,6 +18,7 @@ import {
   resetActivityCounter,
   TEST_POOL_ADDRESS,
   TEST_ACCOUNT_KEY,
+  TEST_CHAIN_ID,
   toEther,
 } from './fixtures.js';
 import { derivedNoteCommitment } from '../../src/withdrawal/index.js';
@@ -31,7 +33,8 @@ describe('chain-extender', () => {
       it('should return unchanged chains for empty activity index', () => {
         const depositNote = createMockDepositNote(0, toEther(1));
         const chain: NoteChain = [depositNote];
-        const chains = new Map([[0, chain]]);
+        const chainKey = makeChainKey(TEST_CHAIN_ID, 0);
+        const chains = new Map<ChainKey, NoteChain>([[chainKey, chain]]);
         const nullifierMap = new Map<string, NullifierInfo>();
         const activityIndex = buildActivityIndex([]);
 
@@ -44,12 +47,12 @@ describe('chain-extender', () => {
         );
 
         expect(result.updatedChains.size).toBe(1);
-        expect(result.updatedChains.get(0)).toHaveLength(1);
+        expect(result.updatedChains.get(chainKey)).toHaveLength(1);
         expect(result.updatedNullifierMap.size).toBe(0);
       });
 
       it('should handle empty chains map', () => {
-        const chains = new Map<number, NoteChain>();
+        const chains = new Map<ChainKey, NoteChain>();
         const nullifierMap = new Map<string, NullifierInfo>();
         const activityIndex = buildActivityIndex([]);
 
@@ -69,7 +72,8 @@ describe('chain-extender', () => {
       it('should extend chain with 1:1 withdrawal', () => {
         const depositNote = createMockDepositNote(0, toEther(1));
         const chain: NoteChain = [depositNote];
-        const chains = new Map([[0, chain]]);
+        const chainKey = makeChainKey(TEST_CHAIN_ID, 0);
+        const chains = new Map<ChainKey, NoteChain>([[chainKey, chain]]);
         const nullifierMap = new Map<string, NullifierInfo>();
         const activity = createMock1x1WithdrawalActivity(0, 0, toEther(0.3));
         const activityIndex = buildActivityIndex([activity]);
@@ -82,7 +86,7 @@ describe('chain-extender', () => {
           TEST_POOL_ADDRESS,
         );
 
-        const updatedChain = result.updatedChains.get(0)!;
+        const updatedChain = result.updatedChains.get(chainKey)!;
         expect(updatedChain).toHaveLength(2);
 
         // Original note should be spent
@@ -99,11 +103,12 @@ describe('chain-extender', () => {
       it('should update nullifier map after extension', () => {
         const depositNote = createMockDepositNote(0, toEther(1));
         const chain: NoteChain = [depositNote];
-        const chains = new Map([[0, chain]]);
+        const chainKey = makeChainKey(TEST_CHAIN_ID, 0);
+        const chains = new Map<ChainKey, NoteChain>([[chainKey, chain]]);
 
-        const oldNullifier = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, 0, 0);
+        const oldNullifier = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 0);
         const nullifierMap = new Map<string, NullifierInfo>([
-          [oldNullifier, { depositIndex: 0, changeIndex: 0 }],
+          [oldNullifier, { originChainId: TEST_CHAIN_ID.toString(), depositIndex: 0, changeIndex: 0 }],
         ]);
 
         const activity = createMock1x1WithdrawalActivity(0, 0, toEther(0.3));
@@ -121,18 +126,20 @@ describe('chain-extender', () => {
         expect(result.updatedNullifierMap.has(oldNullifier)).toBe(false);
 
         // New nullifier should be added
-        const newNullifier = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, 0, 1);
+        const newNullifier = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 1);
         expect(result.updatedNullifierMap.has(newNullifier)).toBe(true);
         expect(result.updatedNullifierMap.get(newNullifier)).toEqual({
+          originChainId: TEST_CHAIN_ID.toString(),
           depositIndex: 0,
           changeIndex: 1,
         });
       });
 
-      it('should create PendingIntentNote for cross-chain withdrawal', () => {
+      it('should create WithdrawalIntentNote for cross-chain withdrawal', () => {
         const depositNote = createMockDepositNote(0, toEther(1));
         const chain: NoteChain = [depositNote];
-        const chains = new Map([[0, chain]]);
+        const chainKey = makeChainKey(TEST_CHAIN_ID, 0);
+        const chains = new Map<ChainKey, NoteChain>([[chainKey, chain]]);
         const nullifierMap = new Map<string, NullifierInfo>();
         const activity = createMockCrossChainWithdrawalActivity(0, 0, toEther(0.5));
         const activityIndex = buildActivityIndex([activity]);
@@ -145,19 +152,20 @@ describe('chain-extender', () => {
           TEST_POOL_ADDRESS,
         );
 
-        const updatedChain = result.updatedChains.get(0)!;
-        expect(updatedChain).toHaveLength(3); // Deposit, Change, PendingIntent
+        const updatedChain = result.updatedChains.get(chainKey)!;
+        expect(updatedChain).toHaveLength(3); // Deposit, Change, WithdrawalIntent
 
-        const pendingNote = updatedChain[2] as PendingIntentNote;
-        expect(pendingNote.noteType).toBe('pendingIntent');
-        expect(pendingNote.amount).toBe(toEther(0.5).toString());
-        expect(pendingNote.intentStatus).toBe('pending');
+        const intentNote = updatedChain[2] as WithdrawalIntentNote;
+        expect(intentNote.noteType).toBe('withdrawalIntent');
+        expect(intentNote.amount).toBe(toEther(0.5).toString());
+        expect(intentNote.intentStatus).toBe('pending');
       });
 
       it('should apply sequential withdrawals', () => {
         const depositNote = createMockDepositNote(0, toEther(1));
         const chain: NoteChain = [depositNote];
-        const chains = new Map([[0, chain]]);
+        const chainKey = makeChainKey(TEST_CHAIN_ID, 0);
+        const chains = new Map<ChainKey, NoteChain>([[chainKey, chain]]);
         const nullifierMap = new Map<string, NullifierInfo>();
 
         const activity1 = createMock1x1WithdrawalActivity(0, 0, toEther(0.3));
@@ -172,7 +180,7 @@ describe('chain-extender', () => {
           TEST_POOL_ADDRESS,
         );
 
-        const updatedChain = result.updatedChains.get(0)!;
+        const updatedChain = result.updatedChains.get(chainKey)!;
         expect(updatedChain).toHaveLength(3); // Deposit + 2 change notes
 
         // All intermediate notes should be spent
@@ -187,7 +195,8 @@ describe('chain-extender', () => {
       it('should handle full withdrawal (remaining = 0)', () => {
         const depositNote = createMockDepositNote(0, toEther(1));
         const chain: NoteChain = [depositNote];
-        const chains = new Map([[0, chain]]);
+        const chainKey = makeChainKey(TEST_CHAIN_ID, 0);
+        const chains = new Map<ChainKey, NoteChain>([[chainKey, chain]]);
         const nullifierMap = new Map<string, NullifierInfo>();
         const activity = createMock1x1WithdrawalActivity(0, 0, toEther(1)); // Full amount
         const activityIndex = buildActivityIndex([activity]);
@@ -200,7 +209,7 @@ describe('chain-extender', () => {
           TEST_POOL_ADDRESS,
         );
 
-        const updatedChain = result.updatedChains.get(0)!;
+        const updatedChain = result.updatedChains.get(chainKey)!;
         expect(updatedChain).toHaveLength(2);
 
         const changeNote = updatedChain[1] as ChangeNote;
@@ -218,16 +227,18 @@ describe('chain-extender', () => {
         const deposit1 = createMockDepositNote(1, toEther(2));
         const chain0: NoteChain = [deposit0];
         const chain1: NoteChain = [deposit1];
-        const chains = new Map([
-          [0, chain0],
-          [1, chain1],
+        const chainKey0 = makeChainKey(TEST_CHAIN_ID, 0);
+        const chainKey1 = makeChainKey(TEST_CHAIN_ID, 1);
+        const chains = new Map<ChainKey, NoteChain>([
+          [chainKey0, chain0],
+          [chainKey1, chain1],
         ]);
 
-        const nullifier0 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, 0, 0);
-        const nullifier1 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, 1, 0);
+        const nullifier0 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 0);
+        const nullifier1 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 1, 0);
         const nullifierMap = new Map<string, NullifierInfo>([
-          [nullifier0, { depositIndex: 0, changeIndex: 0 }],
-          [nullifier1, { depositIndex: 1, changeIndex: 0 }],
+          [nullifier0, { originChainId: TEST_CHAIN_ID.toString(), depositIndex: 0, changeIndex: 0 }],
+          [nullifier1, { originChainId: TEST_CHAIN_ID.toString(), depositIndex: 1, changeIndex: 0 }],
         ]);
 
         const activity = createMockWithdraw2Activity(0, 0, 1, 0, toEther(0.5));
@@ -242,7 +253,7 @@ describe('chain-extender', () => {
         );
 
         // Primary chain (depositIndex 1 is larger) gets change note
-        const primaryChain = result.updatedChains.get(1)!;
+        const primaryChain = result.updatedChains.get(chainKey1)!;
         expect(primaryChain).toHaveLength(2);
         expect(primaryChain[0].status).toBe('spent');
         const primaryChange = primaryChain[1] as ChangeNote;
@@ -250,7 +261,7 @@ describe('chain-extender', () => {
         expect(primaryChange.mergedFromDepositIndex).toBe(0);
 
         // Secondary chain gets merged note
-        const secondaryChain = result.updatedChains.get(0)!;
+        const secondaryChain = result.updatedChains.get(chainKey0)!;
         expect(secondaryChain).toHaveLength(2);
         expect(secondaryChain[0].status).toBe('spent');
         const mergedNote = secondaryChain[1] as ChangeNote;
@@ -264,16 +275,18 @@ describe('chain-extender', () => {
         const deposit1 = createMockDepositNote(1, toEther(2));
         const chain0: NoteChain = [deposit0];
         const chain1: NoteChain = [deposit1];
-        const chains = new Map([
-          [0, chain0],
-          [1, chain1],
+        const chainKey0 = makeChainKey(TEST_CHAIN_ID, 0);
+        const chainKey1 = makeChainKey(TEST_CHAIN_ID, 1);
+        const chains = new Map<ChainKey, NoteChain>([
+          [chainKey0, chain0],
+          [chainKey1, chain1],
         ]);
 
-        const nullifier0 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, 0, 0);
-        const nullifier1 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, 1, 0);
+        const nullifier0 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 0);
+        const nullifier1 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 1, 0);
         const nullifierMap = new Map<string, NullifierInfo>([
-          [nullifier0, { depositIndex: 0, changeIndex: 0 }],
-          [nullifier1, { depositIndex: 1, changeIndex: 0 }],
+          [nullifier0, { originChainId: TEST_CHAIN_ID.toString(), depositIndex: 0, changeIndex: 0 }],
+          [nullifier1, { originChainId: TEST_CHAIN_ID.toString(), depositIndex: 1, changeIndex: 0 }],
         ]);
 
         const activity = createMockWithdraw2Activity(0, 0, 1, 0, toEther(0.5));
@@ -292,7 +305,7 @@ describe('chain-extender', () => {
         expect(result.updatedNullifierMap.has(nullifier1)).toBe(false);
 
         // New nullifier for primary chain
-        const newNullifier = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, 1, 1);
+        const newNullifier = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 1, 1);
         expect(result.updatedNullifierMap.has(newNullifier)).toBe(true);
       });
 
@@ -301,16 +314,18 @@ describe('chain-extender', () => {
         const deposit1 = createMockDepositNote(1, toEther(2));
         const chain0: NoteChain = [deposit0];
         const chain1: NoteChain = [deposit1];
-        const chains = new Map([
-          [0, chain0],
-          [1, chain1],
+        const chainKey0 = makeChainKey(TEST_CHAIN_ID, 0);
+        const chainKey1 = makeChainKey(TEST_CHAIN_ID, 1);
+        const chains = new Map<ChainKey, NoteChain>([
+          [chainKey0, chain0],
+          [chainKey1, chain1],
         ]);
 
-        const nullifier0 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, 0, 0);
-        const nullifier1 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, 1, 0);
+        const nullifier0 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 0);
+        const nullifier1 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 1, 0);
         const nullifierMap = new Map<string, NullifierInfo>([
-          [nullifier0, { depositIndex: 0, changeIndex: 0 }],
-          [nullifier1, { depositIndex: 1, changeIndex: 0 }],
+          [nullifier0, { originChainId: TEST_CHAIN_ID.toString(), depositIndex: 0, changeIndex: 0 }],
+          [nullifier1, { originChainId: TEST_CHAIN_ID.toString(), depositIndex: 1, changeIndex: 0 }],
         ]);
 
         const activity = createMockWithdraw2Activity(0, 0, 1, 0, toEther(0.5));
@@ -325,25 +340,27 @@ describe('chain-extender', () => {
         );
 
         // Each chain should have exactly 2 notes, not more
-        expect(result.updatedChains.get(0)).toHaveLength(2);
-        expect(result.updatedChains.get(1)).toHaveLength(2);
+        expect(result.updatedChains.get(chainKey0)).toHaveLength(2);
+        expect(result.updatedChains.get(chainKey1)).toHaveLength(2);
       });
 
-      it('should create PendingIntentNote for cross-chain Withdraw2', () => {
+      it('should create WithdrawalIntentNote for cross-chain Withdraw2', () => {
         const deposit0 = createMockDepositNote(0, toEther(1));
         const deposit1 = createMockDepositNote(1, toEther(2));
         const chain0: NoteChain = [deposit0];
         const chain1: NoteChain = [deposit1];
-        const chains = new Map([
-          [0, chain0],
-          [1, chain1],
+        const chainKey0 = makeChainKey(TEST_CHAIN_ID, 0);
+        const chainKey1 = makeChainKey(TEST_CHAIN_ID, 1);
+        const chains = new Map<ChainKey, NoteChain>([
+          [chainKey0, chain0],
+          [chainKey1, chain1],
         ]);
 
-        const nullifier0 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, 0, 0);
-        const nullifier1 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, 1, 0);
+        const nullifier0 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 0);
+        const nullifier1 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 1, 0);
         const nullifierMap = new Map<string, NullifierInfo>([
-          [nullifier0, { depositIndex: 0, changeIndex: 0 }],
-          [nullifier1, { depositIndex: 1, changeIndex: 0 }],
+          [nullifier0, { originChainId: TEST_CHAIN_ID.toString(), depositIndex: 0, changeIndex: 0 }],
+          [nullifier1, { originChainId: TEST_CHAIN_ID.toString(), depositIndex: 1, changeIndex: 0 }],
         ]);
 
         const activity = createMockWithdraw2Activity(0, 0, 1, 0, toEther(0.5), {
@@ -360,10 +377,10 @@ describe('chain-extender', () => {
           TEST_POOL_ADDRESS,
         );
 
-        // Primary chain should have PendingIntentNote
-        const primaryChain = result.updatedChains.get(1)!;
+        // Primary chain should have WithdrawalIntentNote
+        const primaryChain = result.updatedChains.get(chainKey1)!;
         expect(primaryChain).toHaveLength(3);
-        expect(primaryChain[2].noteType).toBe('pendingIntent');
+        expect(primaryChain[2].noteType).toBe('withdrawalIntent');
       });
     });
 
@@ -371,11 +388,12 @@ describe('chain-extender', () => {
       it('should mark note as spent on ragequit with matching commitment', () => {
         const depositNote = createMockDepositNote(0, toEther(1), { label: '12345' });
         const chain: NoteChain = [depositNote];
-        const chains = new Map([[0, chain]]);
+        const chainKey = makeChainKey(TEST_CHAIN_ID, 0);
+        const chains = new Map<ChainKey, NoteChain>([[chainKey, chain]]);
 
-        const nullifier = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, 0, 0);
+        const nullifier = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 0);
         const nullifierMap = new Map<string, NullifierInfo>([
-          [nullifier, { depositIndex: 0, changeIndex: 0 }],
+          [nullifier, { originChainId: TEST_CHAIN_ID.toString(), depositIndex: 0, changeIndex: 0 }],
         ]);
 
         // Compute the actual commitment for this note
@@ -392,10 +410,10 @@ describe('chain-extender', () => {
         );
 
         // Note should be marked as spent
-        expect(result.updatedChains.get(0)![0].status).toBe('spent');
+        expect(result.updatedChains.get(chainKey)![0].status).toBe('spent');
 
         // Ragequit activity data should be stored
-        expect(result.updatedChains.get(0)![0].activityData.ragequitTxHash).toBe(
+        expect(result.updatedChains.get(chainKey)![0].activityData.ragequitTxHash).toBe(
           activity.originTransactionHash,
         );
 
@@ -490,7 +508,7 @@ describe('chain-extender', () => {
         const chain: NoteChain = [depositNote];
         const chains = new Map([[0, chain]]);
 
-        const oldNullifier = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, 0, 0);
+        const oldNullifier = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 0);
         const nullifierMap = new Map<string, NullifierInfo>([
           [oldNullifier, { depositIndex: 0, changeIndex: 0 }],
         ]);
@@ -510,6 +528,99 @@ describe('chain-extender', () => {
         // Original nullifier map should still have same size
         // (we copy it internally)
         expect(nullifierMap.size).toBe(originalSize);
+      });
+    });
+
+    describe('idempotency - testing gaps', () => {
+      it('should produce same result when same page is processed twice', () => {
+        // Testing gap: Replay same page twice (idempotency)
+        // Note: We create completely fresh objects for each pass to avoid mutation issues
+        const chainKey0 = makeChainKey(TEST_CHAIN_ID, 0);
+        const chainKey1 = makeChainKey(TEST_CHAIN_ID, 1);
+
+        const nullifier0 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 0);
+        const nullifier1 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 1, 0);
+
+        // Create activities
+        const activity1 = createMock1x1WithdrawalActivity(0, 0, toEther(0.3));
+        const withdraw2Activity = createMockWithdraw2Activity(0, 1, 1, 0, toEther(0.5));
+        const activityIndex = buildActivityIndex([activity1, withdraw2Activity]);
+
+        // First pass - create completely fresh chains
+        const chains1 = new Map<ChainKey, NoteChain>([
+          [chainKey0, [createMockDepositNote(0, toEther(1))]],
+          [chainKey1, [createMockDepositNote(1, toEther(2))]],
+        ]);
+        const nullifierMap1 = new Map<string, NullifierInfo>([
+          [nullifier0, { originChainId: TEST_CHAIN_ID.toString(), depositIndex: 0, changeIndex: 0 }],
+          [nullifier1, { originChainId: TEST_CHAIN_ID.toString(), depositIndex: 1, changeIndex: 0 }],
+        ]);
+
+        const result1 = extendAllChains(
+          chains1,
+          nullifierMap1,
+          activityIndex,
+          TEST_ACCOUNT_KEY,
+          TEST_POOL_ADDRESS,
+        );
+
+        // Second pass - create completely fresh chains again
+        const chains2 = new Map<ChainKey, NoteChain>([
+          [chainKey0, [createMockDepositNote(0, toEther(1))]],
+          [chainKey1, [createMockDepositNote(1, toEther(2))]],
+        ]);
+        const nullifierMap2 = new Map<string, NullifierInfo>([
+          [nullifier0, { originChainId: TEST_CHAIN_ID.toString(), depositIndex: 0, changeIndex: 0 }],
+          [nullifier1, { originChainId: TEST_CHAIN_ID.toString(), depositIndex: 1, changeIndex: 0 }],
+        ]);
+
+        const result2 = extendAllChains(
+          chains2,
+          nullifierMap2,
+          activityIndex,
+          TEST_ACCOUNT_KEY,
+          TEST_POOL_ADDRESS,
+        );
+
+        // Results should be identical
+        expect(result1.updatedChains.get(chainKey0)?.length).toBe(result2.updatedChains.get(chainKey0)?.length);
+        expect(result1.updatedChains.get(chainKey1)?.length).toBe(result2.updatedChains.get(chainKey1)?.length);
+        expect(result1.updatedNullifierMap.size).toBe(result2.updatedNullifierMap.size);
+      });
+
+      it('should handle out-of-order activities in page', () => {
+        // Testing gap: Out-of-order activities
+        // Activities arrive: withdrawal at changeIndex 1, then withdrawal at changeIndex 0
+        const depositNote = createMockDepositNote(0, toEther(1));
+        const chain: NoteChain = [depositNote];
+        const chainKey = makeChainKey(TEST_CHAIN_ID, 0);
+        const chains = new Map<ChainKey, NoteChain>([[chainKey, chain]]);
+        const nullifierMap = new Map<string, NullifierInfo>();
+
+        // Activities in wrong order (changeIndex 1 before changeIndex 0)
+        // Note: The activity indexer should still match correctly based on nullifier
+        const activity0 = createMock1x1WithdrawalActivity(0, 0, toEther(0.3));
+        const activity1 = createMock1x1WithdrawalActivity(0, 1, toEther(0.2));
+        // Put them in reverse order in the array
+        const activityIndex = buildActivityIndex([activity1, activity0]);
+
+        const result = extendAllChains(
+          chains,
+          nullifierMap,
+          activityIndex,
+          TEST_ACCOUNT_KEY,
+          TEST_POOL_ADDRESS,
+        );
+
+        // Should still correctly process in sequential order based on nullifier matching
+        expect(result.updatedChains.get(chainKey)).toHaveLength(3);
+
+        const notes = result.updatedChains.get(chainKey)!;
+        expect(notes[0].status).toBe('spent'); // Deposit
+        expect(notes[1].changeIndex).toBe(1); // First change
+        expect((notes[1] as ChangeNote).amount).toBe(toEther(0.7).toString());
+        expect(notes[2].changeIndex).toBe(2); // Second change
+        expect((notes[2] as ChangeNote).amount).toBe(toEther(0.5).toString());
       });
     });
   });

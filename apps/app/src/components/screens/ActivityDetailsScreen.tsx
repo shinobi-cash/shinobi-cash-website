@@ -5,7 +5,7 @@
  * Uses status fields directly for concise display.
  */
 
-import { ExternalLink, ArrowRight, ChevronRight } from "lucide-react";
+import { ArrowRight, ChevronRight } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
 import { AmountDisplay } from "@/components/shared/AmountDisplay";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";
@@ -14,6 +14,7 @@ import { Section, Row } from "@/components/shared/Section";
 import { CopyableText } from "@/components/shared/CopyableText";
 import { ACTIVITY_TYPE_LABELS, type ActivityEntry } from "@/types/activity";
 import { getTxExplorerUrl, getChainName } from "@/config/chains";
+import { getNoteLabel } from "@/utils/chainIcons";
 import { formatEthAmount, formatTimestamp } from "@/utils/formatters";
 
 interface ActivityDetailsScreenProps {
@@ -86,25 +87,44 @@ export function ActivityDetailsScreen({
         {/* Transaction Info */}
         <Section title="Transaction">
           <Row label="Time" value={formatTimestamp(note.timestamp)} />
-          <Row label="Chain" value={isCrossChain ? `${originChain} → ${destChain}` : originChain} />
           <Row
-            label="Tx Hash"
+            label="Chain"
             value={
-              <a
-                href={getTxExplorerUrl(note.destinationChainId, note.destinationTransactionHash)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1 text-blue-400 hover:text-blue-300"
-              >
-                <CopyableText
-                  text={note.destinationTransactionHash}
-                  truncateStart={8}
-                  truncateEnd={6}
-                  showIcon={false}
-                  className="text-blue-400"
-                />
-                <ExternalLink className="h-3 w-3" />
-              </a>
+              isCrossChain ? (
+                <span className="flex items-center gap-1">
+                  <a
+                    href={getTxExplorerUrl(note.originChainId, note.originTransactionHash)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-400 hover:text-blue-300 hover:underline"
+                  >
+                    {originChain}
+                  </a>
+                  <ArrowRight className="h-3 w-3 text-neutral-500" />
+                  {/* Only link destination if intent is filled (has different tx hash) */}
+                  {note.destinationTransactionHash !== note.originTransactionHash ? (
+                    <a
+                      href={getTxExplorerUrl(note.destinationChainId, note.destinationTransactionHash)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-400 hover:text-blue-300 hover:underline"
+                    >
+                      {destChain}
+                    </a>
+                  ) : (
+                    <span className="text-neutral-400">{destChain}</span>
+                  )}
+                </span>
+              ) : (
+                <a
+                  href={getTxExplorerUrl(note.originChainId, note.originTransactionHash)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-400 hover:text-blue-300 hover:underline"
+                >
+                  {originChain}
+                </a>
+              )
             }
           />
           {type === "deposit" && activityData.user && (
@@ -153,10 +173,11 @@ export function ActivityDetailsScreen({
 
         {/* Note Info */}
         <Section title="Note">
+          <Row label="Note" value={getNoteLabel(note.originChainId, note.depositIndex)} />
           <Row
             label="Index"
             value={
-              <span className="font-mono">
+              <span className="font-mono text-neutral-400">
                 {note.depositIndex}-{note.changeIndex}
               </span>
             }

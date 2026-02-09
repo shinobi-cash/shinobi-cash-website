@@ -4,7 +4,15 @@
  */
 
 import type { Activity } from '@shinobi-cash/data';
-import type { DepositNote, ChangeNote, PendingIntentNote, RefundNote, Note, ActivityMetadata } from './types.js';
+import type {
+  DepositNote,
+  ChangeNote,
+  DepositIntentNote,
+  WithdrawalIntentNote,
+  RefundNote,
+  Note,
+  ActivityMetadata,
+} from './types.js';
 
 // ============================================================================
 // Deposit Note Creation
@@ -81,7 +89,8 @@ export function createChangeNote(
     timestamp: activity.timestamp.toString(),
     originTransactionHash: activity.originTransactionHash,
     destinationTransactionHash: activity.destinationTransactionHash || activity.originTransactionHash,
-    originChainId: activity.originChainId.toString(),
+    // Inherit originChainId from parent - this is the deposit's origin chain, not the withdrawal tx chain
+    originChainId: parentNote.originChainId,
     destinationChainId: (activity.destinationChainId || activity.originChainId).toString(),
     isCrossChain: parentNote.isCrossChain,
     orderId: parentNote.orderId,
@@ -128,7 +137,8 @@ export function createWithdraw2ChangeNote(
     timestamp: activity.timestamp.toString(),
     originTransactionHash: activity.originTransactionHash,
     destinationTransactionHash: activity.destinationTransactionHash || activity.originTransactionHash,
-    originChainId: activity.originChainId.toString(),
+    // Inherit originChainId from winner note - this is the deposit's origin chain
+    originChainId: winnerNote.originChainId,
     destinationChainId: (activity.destinationChainId || activity.originChainId).toString(),
     isCrossChain,
     orderId: activity.orderId ?? winnerNote.orderId,
@@ -175,7 +185,8 @@ export function createMergedNote(
     timestamp: activity.timestamp.toString(),
     originTransactionHash: activity.originTransactionHash,
     destinationTransactionHash: activity.destinationTransactionHash || activity.originTransactionHash,
-    originChainId: activity.originChainId.toString(),
+    // Inherit originChainId from loser note - this is the deposit's origin chain
+    originChainId: loserNote.originChainId,
     destinationChainId: (activity.destinationChainId || activity.originChainId).toString(),
     isCrossChain,
     orderId: activity.orderId ?? loserNote.orderId,
@@ -187,24 +198,24 @@ export function createMergedNote(
 }
 
 // ============================================================================
-// Pending Intent Note Creation
+// Withdrawal Intent Note Creation
 // ============================================================================
 
 /**
- * Create a PendingIntentNote for escrowed funds in a cross-chain withdrawal.
+ * Create a WithdrawalIntentNote for escrowed funds in a cross-chain withdrawal.
  * This note is a sibling of the ChangeNote, both branching from the spent note.
  *
  * @param parentNote - The note being spent (for depositIndex, label, poolAddress)
  * @param activity - The withdrawal Activity (for amount, orderId, refundCommitment, deadlines)
  * @param parentChangeIndex - The changeIndex of the spent note (for derivation path)
  */
-export function createPendingIntentNote(
+export function createWithdrawalIntentNote(
   parentNote: Note,
   activity: Activity,
   parentChangeIndex: number,
-): PendingIntentNote {
+): WithdrawalIntentNote {
   return {
-    noteType: 'pendingIntent',
+    noteType: 'withdrawalIntent',
     poolAddress: parentNote.poolAddress,
     depositIndex: parentNote.depositIndex,
     changeIndex: parentChangeIndex, // Same as parentChangeIndex for Note union compatibility
@@ -216,7 +227,8 @@ export function createPendingIntentNote(
     timestamp: activity.timestamp.toString(),
     originTransactionHash: activity.originTransactionHash,
     destinationTransactionHash: activity.destinationTransactionHash || activity.originTransactionHash,
-    originChainId: activity.originChainId.toString(),
+    // Inherit originChainId from parent - this is the deposit's origin chain
+    originChainId: parentNote.originChainId,
     destinationChainId: (activity.destinationChainId || activity.originChainId).toString(),
     isCrossChain: true,
     orderId: activity.orderId ?? '',
@@ -230,42 +242,95 @@ export function createPendingIntentNote(
 }
 
 // ============================================================================
+// Deposit Intent Note Creation
+// ============================================================================
+
+/**
+ * Create a DepositIntentNote for a cross-chain deposit that hasn't been filled yet.
+ * This represents funds escrowed on the origin chain, awaiting solver fill.
+ *
+ * @param activity - The CROSSCHAIN_DEPOSIT_PENDING activity
+ * @param depositIndex - The discovered deposit index
+ * @param poolAddress - The pool address
+ * @param discoveredAtOffset - Optional offset where discovered
+ */
+export function createDepositIntentNote(
+  activity: Activity,
+  depositIndex: number,
+  poolAddress: string,
+  discoveredAtOffset?: number,
+): DepositIntentNote {
+  const originChainId = activity.originChainId.toString();
+  const destChainId = (activity.destinationChainId || activity.originChainId).toString();
+
+  return {
+    noteType: 'depositIntent',
+    poolAddress,
+    depositIndex,
+    changeIndex: 0, // First note in chain
+    amount: (activity.amount || 0n).toString(),
+    label: activity.label?.toString(), // Usually undefined for pending
+    status: 'unspent',
+    blockNumber: activity.blockNumber.toString(),
+    timestamp: activity.timestamp.toString(),
+    originTransactionHash: activity.originTransactionHash,
+    destinationTransactionHash: activity.destinationTransactionHash || activity.originTransactionHash,
+    originChainId,
+    destinationChainId: destChainId,
+    isCrossChain: true,
+    orderId: activity.orderId ?? '',
+    intentStatus: activity.intentStatus ?? 'pending',
+    fillDeadline: activity.fillDeadline?.toString(),
+    expires: activity.expires?.toString(),
+    aspStatus: activity.aspStatus,
+    refundCommitment: activity.refundCommitment?.toString(),
+    activityData: buildActivityMetadata(activity),
+    discoveredAtOffset,
+  };
+}
+
+
+// ============================================================================
 // Refund Note Creation
 // ============================================================================
 
 /**
- * Create a RefundNote from a PendingIntentNote when the refund has been executed.
+ * Create a RefundNote from a WithdrawalIntentNote when the refund has been executed.
  * The refundCommitment is now in the pool's merkle tree and can be spent.
  *
- * @param pendingIntent - The PendingIntentNote that is being refunded
+ * Note: Only WithdrawalIntentNote can create RefundNote because:
+ * - Withdrawal intents escrow funds on the pool chain, refund goes back to pool
+ * - Deposit intents escrow on origin chain, refund goes to user's wallet on origin chain
+ *
+ * @param withdrawalIntent - The WithdrawalIntentNote that is being refunded
  * @param refundIndex - Index for this refund (0 for first refund from this position)
  */
 export function createRefundNote(
-  pendingIntent: PendingIntentNote,
+  withdrawalIntent: WithdrawalIntentNote,
   refundIndex: number = 0,
 ): RefundNote {
   return {
     noteType: 'refund',
-    poolAddress: pendingIntent.poolAddress,
-    depositIndex: pendingIntent.depositIndex,
-    changeIndex: pendingIntent.parentChangeIndex, // Same derivation path as PendingIntentNote
+    poolAddress: withdrawalIntent.poolAddress,
+    depositIndex: withdrawalIntent.depositIndex,
+    changeIndex: withdrawalIntent.parentChangeIndex, // Same derivation path as WithdrawalIntentNote
     refundIndex,
-    amount: pendingIntent.amount, // Refunded amount
-    label: pendingIntent.label,
+    amount: withdrawalIntent.amount, // Refunded amount
+    label: withdrawalIntent.label,
     status: 'unspent', // Can be spent!
-    refundCommitment: pendingIntent.refundCommitment,
-    // Use same blockchain metadata as the pending intent
-    blockNumber: pendingIntent.blockNumber,
-    timestamp: pendingIntent.timestamp,
-    originTransactionHash: pendingIntent.originTransactionHash,
-    destinationTransactionHash: pendingIntent.originTransactionHash, // Refund is on pool chain
-    originChainId: pendingIntent.originChainId,
-    destinationChainId: pendingIntent.originChainId, // Back to pool chain
+    refundCommitment: withdrawalIntent.refundCommitment,
+    // Use same blockchain metadata as the withdrawal intent
+    blockNumber: withdrawalIntent.blockNumber,
+    timestamp: withdrawalIntent.timestamp,
+    originTransactionHash: withdrawalIntent.originTransactionHash,
+    destinationTransactionHash: withdrawalIntent.originTransactionHash, // Refund is on pool chain
+    originChainId: withdrawalIntent.originChainId,
+    destinationChainId: withdrawalIntent.originChainId, // Back to pool chain
     isCrossChain: false, // Refund is on pool chain
     // Preserve orderId for idempotency checks
-    orderId: pendingIntent.orderId,
-    aspStatus: pendingIntent.aspStatus,
-    activityData: pendingIntent.activityData,
+    orderId: withdrawalIntent.orderId,
+    aspStatus: withdrawalIntent.aspStatus,
+    activityData: withdrawalIntent.activityData,
   };
 }
 

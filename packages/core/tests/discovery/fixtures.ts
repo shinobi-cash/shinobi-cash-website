@@ -3,7 +3,7 @@
  */
 
 import type { Activity } from '@shinobi-cash/data';
-import type { Note, DepositNote, ChangeNote, PendingIntentNote, RefundNote, NoteChain } from '../../src/discovery/types.js';
+import type { Note, DepositNote, ChangeNote, DepositIntentNote, WithdrawalIntentNote, RefundNote, NoteChain } from '../../src/discovery/types.js';
 import { deriveDepositPrecommitment, deriveAndHashNullifier } from '../../src/discovery/nullifier-utils.js';
 
 // ============================================================================
@@ -14,6 +14,7 @@ export const TEST_POOL_ADDRESS = '0x1234567890123456789012345678901234567890';
 export const TEST_ACCOUNT_KEY = 12345678901234567890n;
 export const TEST_USER_ADDRESS = '0xuser1234567890123456789012345678901234567';
 export const TEST_RECIPIENT_ADDRESS = '0xrecipient12345678901234567890123456789';
+export const TEST_CHAIN_ID = '421614';
 
 // ============================================================================
 // Activity Factories
@@ -26,7 +27,7 @@ export function createMockDepositActivity(
   amount: string | bigint,
   overrides: Partial<Activity> = {},
 ): Activity {
-  const precommitmentHash = deriveDepositPrecommitment(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, depositIndex);
+  const precommitmentHash = deriveDepositPrecommitment(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, depositIndex);
 
   return {
     id: `deposit-${depositIndex}-${++activityCounter}`,
@@ -60,13 +61,29 @@ export function createMockCrossChainDepositActivity(
   });
 }
 
+export function createMockPendingCrossChainDepositActivity(
+  depositIndex: number,
+  amount: string | bigint,
+  overrides: Partial<Activity> = {},
+): Activity {
+  return createMockDepositActivity(depositIndex, amount, {
+    type: 'CROSSCHAIN_DEPOSIT_PENDING',
+    destinationChainId: BigInt(84532), // Base Sepolia (pool chain)
+    intentStatus: 'pending',
+    orderId: `order-pending-${depositIndex}`,
+    fillDeadline: BigInt(Date.now() + 3600000), // 1 hour from now
+    expires: BigInt(Date.now() + 7200000), // 2 hours from now
+    ...overrides,
+  });
+}
+
 export function createMock1x1WithdrawalActivity(
   depositIndex: number,
   changeIndex: number,
   withdrawnAmount: string | bigint,
   overrides: Partial<Activity> = {},
 ): Activity {
-  const spentNullifier = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, depositIndex, changeIndex);
+  const spentNullifier = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, depositIndex, changeIndex);
 
   return {
     id: `withdrawal-${depositIndex}-${changeIndex}-${++activityCounter}`,
@@ -112,8 +129,8 @@ export function createMockWithdraw2Activity(
   withdrawnAmount: string | bigint,
   overrides: Partial<Activity> = {},
 ): Activity {
-  const spentNullifier = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, depositIndex0, changeIndex0);
-  const spentNullifier1 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, depositIndex1, changeIndex1);
+  const spentNullifier = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, depositIndex0, changeIndex0);
+  const spentNullifier1 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, depositIndex1, changeIndex1);
 
   return {
     id: `withdraw2-${depositIndex0}-${depositIndex1}-${++activityCounter}`,
@@ -163,7 +180,7 @@ export function createMockDepositNote(
   amount: string | bigint,
   overrides: Partial<DepositNote> = {},
 ): DepositNote {
-  const precommitmentHash = deriveDepositPrecommitment(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, depositIndex);
+  const precommitmentHash = deriveDepositPrecommitment(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, depositIndex);
 
   return {
     noteType: 'deposit',
@@ -214,17 +231,17 @@ export function createMockChangeNote(
   };
 }
 
-export function createMockPendingIntentNote(
+export function createMockWithdrawalIntentNote(
   depositIndex: number,
   parentChangeIndex: number,
   amount: string | bigint,
-  overrides: Partial<PendingIntentNote> = {},
-): PendingIntentNote {
+  overrides: Partial<WithdrawalIntentNote> = {},
+): WithdrawalIntentNote {
   return {
-    noteType: 'pendingIntent',
+    noteType: 'withdrawalIntent',
     poolAddress: TEST_POOL_ADDRESS,
     depositIndex,
-    changeIndex: parentChangeIndex,
+    changeIndex: parentChangeIndex + 1, // changeIndex is after the parent
     parentChangeIndex,
     amount: amount.toString(),
     label: (depositIndex + 1000).toString(),
@@ -242,6 +259,38 @@ export function createMockPendingIntentNote(
     expires: (Math.floor(Date.now() / 1000) + 86400).toString(),
     aspStatus: 'approved',
     refundCommitment: `0xrefund-${depositIndex}-${parentChangeIndex}`,
+    activityData: {},
+    ...overrides,
+  };
+}
+
+export function createMockDepositIntentNote(
+  depositIndex: number,
+  amount: string | bigint,
+  overrides: Partial<DepositIntentNote> = {},
+): DepositIntentNote {
+  const precommitmentHash = deriveDepositPrecommitment(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, depositIndex);
+
+  return {
+    noteType: 'depositIntent',
+    poolAddress: TEST_POOL_ADDRESS,
+    depositIndex,
+    changeIndex: 0,
+    amount: amount.toString(),
+    status: 'unspent',
+    blockNumber: (1000 + depositIndex).toString(),
+    timestamp: Date.now().toString(),
+    originTransactionHash: `0xtx-deposit-intent-${depositIndex}`,
+    destinationTransactionHash: `0xtx-deposit-intent-${depositIndex}`,
+    originChainId: '84532', // Base Sepolia (origin)
+    destinationChainId: '421614', // Arbitrum Sepolia (pool chain)
+    isCrossChain: true,
+    orderId: `order-deposit-${depositIndex}`,
+    intentStatus: 'pending',
+    fillDeadline: (Math.floor(Date.now() / 1000) + 3600).toString(),
+    expires: (Math.floor(Date.now() / 1000) + 86400).toString(),
+    aspStatus: 'pending',
+    precommitmentHash,
     activityData: {},
     ...overrides,
   };

@@ -6,18 +6,18 @@
 
 import { useRouter } from "next/navigation";
 import type { Note } from "@shinobi-cash/core/discovery";
-import { MoreVertical, Eye, Lock, Unlock, RefreshCw, Clock, AlertCircle } from "lucide-react";
+import { MoreVertical, Eye, Lock, Unlock, RefreshCw, Clock } from "lucide-react";
 import { formatTimestamp } from "@/utils/formatters";
 import {
   getStatusDotColor,
   canWithdraw,
   canRagequit,
   canClaimRefund,
-  isPendingIntentNote,
-  isRefundNote,
+  isIntentNote,
   getPendingIntentStatusText,
 } from "@/utils/noteFiltering";
 import { AmountDisplay } from "@/components/shared/AmountDisplay";
+import { getNoteLabel } from "@/utils/chainIcons";
 import { WithdrawController } from "@/controllers/WithdrawController";
 import { RagequitController } from "@/controllers/RagequitController";
 import {
@@ -35,16 +35,16 @@ interface NoteRowProps {
 export function NoteRow({ note, onClick }: NoteRowProps) {
   const router = useRouter();
 
-  // Note label is always "Note #N" - status is shown separately
-  const noteLabel = `Note #${note.depositIndex + 1}`;
+  // Note label includes chain prefix: "ARB #1" or "BASE #2"
+  const noteLabel = getNoteLabel(note.originChainId, note.depositIndex);
   const dotColor = getStatusDotColor(note);
 
   const canWithdrawPrivately = canWithdraw(note);
   const canWithdrawPublicly = canRagequit(note);
   const canClaimRefundNow = canClaimRefund(note);
 
-  // Get status text for pending intent notes
-  const pendingIntentStatus = isPendingIntentNote(note) ? getPendingIntentStatusText(note) : null;
+  // Get status text for intent notes (deposit or withdrawal)
+  const intentStatusText = isIntentNote(note) ? getPendingIntentStatusText(note) : null;
 
   const handleViewDetails = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -87,9 +87,9 @@ export function NoteRow({ note, onClick }: NoteRowProps) {
               <span className="truncate text-sm font-medium text-white">{noteLabel}</span>
             </div>
             <div className="mt-0.5 pl-[18px] text-xs text-neutral-400">
-              {pendingIntentStatus ? (
+              {intentStatusText ? (
                 <span className={canClaimRefundNow ? "text-orange-400" : ""}>
-                  {pendingIntentStatus}
+                  {intentStatusText}
                 </span>
               ) : (
                 formatTimestamp(note.timestamp)
@@ -160,7 +160,7 @@ export function NoteRow({ note, onClick }: NoteRowProps) {
             </DropdownMenuItem>
           )}
 
-          {isPendingIntentNote(note) && !canClaimRefundNow && (
+          {isIntentNote(note) && !canClaimRefundNow && (
             <DropdownMenuItem
               disabled
               className="cursor-not-allowed text-neutral-500"

@@ -6,10 +6,12 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { planChainExtensions } from '../../src/discovery/chain-extension-planner.js';
 import { buildActivityIndex } from '../../src/discovery/activity-indexer.js';
 import { deriveAndHashNullifier } from '../../src/discovery/nullifier-utils.js';
-import type { NoteChain, NullifierInfo } from '../../src/discovery/types.js';
+import type { NoteChain, NullifierInfo, ChainKey } from '../../src/discovery/types.js';
+import { makeChainKey } from '../../src/discovery/types.js';
 import {
   createMockDepositNote,
   createMockChangeNote,
+  createMockWithdrawalIntentNote,
   createMock1x1WithdrawalActivity,
   createMockCrossChainWithdrawalActivity,
   createMockWithdraw2Activity,
@@ -17,6 +19,7 @@ import {
   resetActivityCounter,
   TEST_POOL_ADDRESS,
   TEST_ACCOUNT_KEY,
+  TEST_CHAIN_ID,
   toEther,
 } from './fixtures.js';
 
@@ -30,13 +33,14 @@ describe('chain-extension-planner', () => {
       it('should return empty plans for empty activity index', () => {
         const depositNote = createMockDepositNote(0, toEther(1));
         const chain: NoteChain = [depositNote];
-        const chains = new Map([[0, chain]]);
+        const chainKey = makeChainKey(TEST_CHAIN_ID, 0);
+        const chains = new Map<ChainKey, NoteChain>([[chainKey, chain]]);
         const nullifierMap = new Map<string, NullifierInfo>();
         const activityIndex = buildActivityIndex([]);
 
         const plans = planChainExtensions(
           chain,
-          0,
+          chainKey,
           chains,
           nullifierMap,
           activityIndex,
@@ -50,14 +54,15 @@ describe('chain-extension-planner', () => {
       it('should return empty plans for spent note', () => {
         const depositNote = createMockDepositNote(0, toEther(1), { status: 'spent' });
         const chain: NoteChain = [depositNote];
-        const chains = new Map([[0, chain]]);
+        const chainKey = makeChainKey(TEST_CHAIN_ID, 0);
+        const chains = new Map<ChainKey, NoteChain>([[chainKey, chain]]);
         const nullifierMap = new Map<string, NullifierInfo>();
         const activity = createMock1x1WithdrawalActivity(0, 0, toEther(0.5));
         const activityIndex = buildActivityIndex([activity]);
 
         const plans = planChainExtensions(
           chain,
-          0,
+          chainKey,
           chains,
           nullifierMap,
           activityIndex,
@@ -68,19 +73,18 @@ describe('chain-extension-planner', () => {
         expect(plans).toHaveLength(0);
       });
 
-      it('should return empty plans for pendingIntent note', () => {
+      it('should return empty plans for intent note', () => {
         const depositNote = createMockDepositNote(0, toEther(1), { status: 'spent' });
-        const changeNote = createMockChangeNote(0, 1, toEther(0.5), {
-          noteType: 'pendingIntent' as any,
-        });
-        const chain: NoteChain = [depositNote, changeNote];
-        const chains = new Map([[0, chain]]);
+        const intentNote = createMockWithdrawalIntentNote(0, 0, toEther(0.5));
+        const chain: NoteChain = [depositNote, intentNote];
+        const chainKey = makeChainKey(TEST_CHAIN_ID, 0);
+        const chains = new Map<ChainKey, NoteChain>([[chainKey, chain]]);
         const nullifierMap = new Map<string, NullifierInfo>();
         const activityIndex = buildActivityIndex([]);
 
         const plans = planChainExtensions(
           chain,
-          0,
+          chainKey,
           chains,
           nullifierMap,
           activityIndex,
@@ -95,13 +99,14 @@ describe('chain-extension-planner', () => {
         const depositNote = createMockDepositNote(0, toEther(1), { status: 'spent' });
         const changeNote = createMockChangeNote(0, 1, 0n);
         const chain: NoteChain = [depositNote, changeNote];
-        const chains = new Map([[0, chain]]);
+        const chainKey = makeChainKey(TEST_CHAIN_ID, 0);
+        const chains = new Map<ChainKey, NoteChain>([[chainKey, chain]]);
         const nullifierMap = new Map<string, NullifierInfo>();
         const activityIndex = buildActivityIndex([]);
 
         const plans = planChainExtensions(
           chain,
-          0,
+          chainKey,
           chains,
           nullifierMap,
           activityIndex,
@@ -117,14 +122,15 @@ describe('chain-extension-planner', () => {
       it('should plan single 1:1 withdrawal', () => {
         const depositNote = createMockDepositNote(0, toEther(1));
         const chain: NoteChain = [depositNote];
-        const chains = new Map([[0, chain]]);
+        const chainKey = makeChainKey(TEST_CHAIN_ID, 0);
+        const chains = new Map<ChainKey, NoteChain>([[chainKey, chain]]);
         const nullifierMap = new Map<string, NullifierInfo>();
         const activity = createMock1x1WithdrawalActivity(0, 0, toEther(0.3));
         const activityIndex = buildActivityIndex([activity]);
 
         const plans = planChainExtensions(
           chain,
-          0,
+          chainKey,
           chains,
           nullifierMap,
           activityIndex,
@@ -147,14 +153,15 @@ describe('chain-extension-planner', () => {
       it('should plan cross-chain withdrawal with pending intent', () => {
         const depositNote = createMockDepositNote(0, toEther(1));
         const chain: NoteChain = [depositNote];
-        const chains = new Map([[0, chain]]);
+        const chainKey = makeChainKey(TEST_CHAIN_ID, 0);
+        const chains = new Map<ChainKey, NoteChain>([[chainKey, chain]]);
         const nullifierMap = new Map<string, NullifierInfo>();
         const activity = createMockCrossChainWithdrawalActivity(0, 0, toEther(0.5));
         const activityIndex = buildActivityIndex([activity]);
 
         const plans = planChainExtensions(
           chain,
-          0,
+          chainKey,
           chains,
           nullifierMap,
           activityIndex,
@@ -172,7 +179,8 @@ describe('chain-extension-planner', () => {
       it('should plan sequential withdrawals', () => {
         const depositNote = createMockDepositNote(0, toEther(1));
         const chain: NoteChain = [depositNote];
-        const chains = new Map([[0, chain]]);
+        const chainKey = makeChainKey(TEST_CHAIN_ID, 0);
+        const chains = new Map<ChainKey, NoteChain>([[chainKey, chain]]);
         const nullifierMap = new Map<string, NullifierInfo>();
 
         // Two withdrawals from same chain
@@ -182,7 +190,7 @@ describe('chain-extension-planner', () => {
 
         const plans = planChainExtensions(
           chain,
-          0,
+          chainKey,
           chains,
           nullifierMap,
           activityIndex,
@@ -210,14 +218,15 @@ describe('chain-extension-planner', () => {
       it('should compute nullifier hashes correctly', () => {
         const depositNote = createMockDepositNote(0, toEther(1));
         const chain: NoteChain = [depositNote];
-        const chains = new Map([[0, chain]]);
+        const chainKey = makeChainKey(TEST_CHAIN_ID, 0);
+        const chains = new Map<ChainKey, NoteChain>([[chainKey, chain]]);
         const nullifierMap = new Map<string, NullifierInfo>();
         const activity = createMock1x1WithdrawalActivity(0, 0, toEther(0.5));
         const activityIndex = buildActivityIndex([activity]);
 
         const plans = planChainExtensions(
           chain,
-          0,
+          chainKey,
           chains,
           nullifierMap,
           activityIndex,
@@ -226,8 +235,8 @@ describe('chain-extension-planner', () => {
         );
 
         if (plans[0].kind === 'withdraw1x1') {
-          const expectedOldHash = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, 0, 0);
-          const expectedNewHash = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, 0, 1);
+          const expectedOldHash = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 0);
+          const expectedNewHash = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 1);
           expect(plans[0].oldNullifierHash).toBe(expectedOldHash);
           expect(plans[0].newNullifierHash).toBe(expectedNewHash);
         }
@@ -236,14 +245,15 @@ describe('chain-extension-planner', () => {
       it('should set newNullifierHash to null when remaining is 0', () => {
         const depositNote = createMockDepositNote(0, toEther(1));
         const chain: NoteChain = [depositNote];
-        const chains = new Map([[0, chain]]);
+        const chainKey = makeChainKey(TEST_CHAIN_ID, 0);
+        const chains = new Map<ChainKey, NoteChain>([[chainKey, chain]]);
         const nullifierMap = new Map<string, NullifierInfo>();
         const activity = createMock1x1WithdrawalActivity(0, 0, toEther(1)); // Full withdrawal
         const activityIndex = buildActivityIndex([activity]);
 
         const plans = planChainExtensions(
           chain,
-          0,
+          chainKey,
           chains,
           nullifierMap,
           activityIndex,
@@ -264,16 +274,18 @@ describe('chain-extension-planner', () => {
         const deposit1 = createMockDepositNote(1, toEther(2));
         const chain0: NoteChain = [deposit0];
         const chain1: NoteChain = [deposit1];
-        const chains = new Map([
-          [0, chain0],
-          [1, chain1],
+        const chainKey0 = makeChainKey(TEST_CHAIN_ID, 0);
+        const chainKey1 = makeChainKey(TEST_CHAIN_ID, 1);
+        const chains = new Map<ChainKey, NoteChain>([
+          [chainKey0, chain0],
+          [chainKey1, chain1],
         ]);
 
-        const nullifier0 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, 0, 0);
-        const nullifier1 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, 1, 0);
+        const nullifier0 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 0);
+        const nullifier1 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 1, 0);
         const nullifierMap = new Map<string, NullifierInfo>([
-          [nullifier0, { depositIndex: 0, changeIndex: 0 }],
-          [nullifier1, { depositIndex: 1, changeIndex: 0 }],
+          [nullifier0, { originChainId: TEST_CHAIN_ID.toString(), depositIndex: 0, changeIndex: 0 }],
+          [nullifier1, { originChainId: TEST_CHAIN_ID.toString(), depositIndex: 1, changeIndex: 0 }],
         ]);
 
         const activity = createMockWithdraw2Activity(0, 0, 1, 0, toEther(0.5));
@@ -282,7 +294,7 @@ describe('chain-extension-planner', () => {
         // Plan from chain 0's perspective
         const plans = planChainExtensions(
           chain0,
-          0,
+          chainKey0,
           chains,
           nullifierMap,
           activityIndex,
@@ -306,12 +318,13 @@ describe('chain-extension-planner', () => {
       it('should return null when other chain not ready', () => {
         const deposit0 = createMockDepositNote(0, toEther(1));
         const chain0: NoteChain = [deposit0];
+        const chainKey0 = makeChainKey(TEST_CHAIN_ID, 0);
         // Chain 1 doesn't exist
-        const chains = new Map([[0, chain0]]);
+        const chains = new Map<ChainKey, NoteChain>([[chainKey0, chain0]]);
 
-        const nullifier0 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, 0, 0);
+        const nullifier0 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 0);
         const nullifierMap = new Map<string, NullifierInfo>([
-          [nullifier0, { depositIndex: 0, changeIndex: 0 }],
+          [nullifier0, { originChainId: TEST_CHAIN_ID.toString(), depositIndex: 0, changeIndex: 0 }],
         ]);
 
         const activity = createMockWithdraw2Activity(0, 0, 1, 0, toEther(0.5));
@@ -319,7 +332,7 @@ describe('chain-extension-planner', () => {
 
         const plans = planChainExtensions(
           chain0,
-          0,
+          chainKey0,
           chains,
           nullifierMap,
           activityIndex,
@@ -336,16 +349,18 @@ describe('chain-extension-planner', () => {
         const deposit1 = createMockDepositNote(1, toEther(2), { status: 'spent' });
         const chain0: NoteChain = [deposit0];
         const chain1: NoteChain = [deposit1];
-        const chains = new Map([
-          [0, chain0],
-          [1, chain1],
+        const chainKey0 = makeChainKey(TEST_CHAIN_ID, 0);
+        const chainKey1 = makeChainKey(TEST_CHAIN_ID, 1);
+        const chains = new Map<ChainKey, NoteChain>([
+          [chainKey0, chain0],
+          [chainKey1, chain1],
         ]);
 
-        const nullifier0 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, 0, 0);
-        const nullifier1 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, 1, 0);
+        const nullifier0 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 0);
+        const nullifier1 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 1, 0);
         const nullifierMap = new Map<string, NullifierInfo>([
-          [nullifier0, { depositIndex: 0, changeIndex: 0 }],
-          [nullifier1, { depositIndex: 1, changeIndex: 0 }],
+          [nullifier0, { originChainId: TEST_CHAIN_ID.toString(), depositIndex: 0, changeIndex: 0 }],
+          [nullifier1, { originChainId: TEST_CHAIN_ID.toString(), depositIndex: 1, changeIndex: 0 }],
         ]);
 
         const activity = createMockWithdraw2Activity(0, 0, 1, 0, toEther(0.5));
@@ -353,7 +368,7 @@ describe('chain-extension-planner', () => {
 
         const plans = planChainExtensions(
           chain0,
-          0,
+          chainKey0,
           chains,
           nullifierMap,
           activityIndex,
@@ -371,16 +386,18 @@ describe('chain-extension-planner', () => {
         const deposit1 = createMockDepositNote(1, toEther(2));
         const chain0: NoteChain = [deposit0];
         const chain1: NoteChain = [deposit1];
-        const chains = new Map([
-          [0, chain0],
-          [1, chain1],
+        const chainKey0 = makeChainKey(TEST_CHAIN_ID, 0);
+        const chainKey1 = makeChainKey(TEST_CHAIN_ID, 1);
+        const chains = new Map<ChainKey, NoteChain>([
+          [chainKey0, chain0],
+          [chainKey1, chain1],
         ]);
 
-        const nullifier0 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, 0, 0);
-        const nullifier1 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, 1, 0);
+        const nullifier0 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 0);
+        const nullifier1 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 1, 0);
         const nullifierMap = new Map<string, NullifierInfo>([
-          [nullifier0, { depositIndex: 0, changeIndex: 0 }],
-          [nullifier1, { depositIndex: 1, changeIndex: 0 }],
+          [nullifier0, { originChainId: TEST_CHAIN_ID.toString(), depositIndex: 0, changeIndex: 0 }],
+          [nullifier1, { originChainId: TEST_CHAIN_ID.toString(), depositIndex: 1, changeIndex: 0 }],
         ]);
 
         const activity = createMockWithdraw2Activity(0, 0, 1, 0, toEther(0.5));
@@ -389,7 +406,7 @@ describe('chain-extension-planner', () => {
         // First, plan from chain 0
         const plans0 = planChainExtensions(
           chain0,
-          0,
+          chainKey0,
           chains,
           nullifierMap,
           activityIndex,
@@ -405,15 +422,16 @@ describe('chain-extension-planner', () => {
       it('should return null when chain in nullifierMap but not in allChains', () => {
         const deposit0 = createMockDepositNote(0, toEther(1));
         const chain0: NoteChain = [deposit0];
+        const chainKey0 = makeChainKey(TEST_CHAIN_ID, 0);
         // Only chain 0 exists, chain 1 doesn't
-        const chains = new Map([[0, chain0]]);
+        const chains = new Map<ChainKey, NoteChain>([[chainKey0, chain0]]);
 
-        const nullifier0 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, 0, 0);
-        const nullifier1 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, 1, 0);
+        const nullifier0 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 0);
+        const nullifier1 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 1, 0);
         // Both nullifiers in map, but chain 1 doesn't exist
         const nullifierMap = new Map<string, NullifierInfo>([
-          [nullifier0, { depositIndex: 0, changeIndex: 0 }],
-          [nullifier1, { depositIndex: 1, changeIndex: 0 }],
+          [nullifier0, { originChainId: TEST_CHAIN_ID.toString(), depositIndex: 0, changeIndex: 0 }],
+          [nullifier1, { originChainId: TEST_CHAIN_ID.toString(), depositIndex: 1, changeIndex: 0 }],
         ]);
 
         const activity = createMockWithdraw2Activity(0, 0, 1, 0, toEther(0.5));
@@ -421,7 +439,7 @@ describe('chain-extension-planner', () => {
 
         const plans = planChainExtensions(
           chain0,
-          0,
+          chainKey0,
           chains,
           nullifierMap,
           activityIndex,
@@ -438,15 +456,17 @@ describe('chain-extension-planner', () => {
         const deposit1 = createMockDepositNote(1, toEther(2));
         const chain0: NoteChain = [deposit0];
         const chain1: NoteChain = [deposit1];
-        const chains = new Map([
-          [0, chain0],
-          [1, chain1],
+        const chainKey0 = makeChainKey(TEST_CHAIN_ID, 0);
+        const chainKey1 = makeChainKey(TEST_CHAIN_ID, 1);
+        const chains = new Map<ChainKey, NoteChain>([
+          [chainKey0, chain0],
+          [chainKey1, chain1],
         ]);
 
         // Only first nullifier in map
-        const nullifier0 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, 0, 0);
+        const nullifier0 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 0);
         const nullifierMap = new Map<string, NullifierInfo>([
-          [nullifier0, { depositIndex: 0, changeIndex: 0 }],
+          [nullifier0, { originChainId: TEST_CHAIN_ID.toString(), depositIndex: 0, changeIndex: 0 }],
           // nullifier1 not in map
         ]);
 
@@ -455,7 +475,7 @@ describe('chain-extension-planner', () => {
 
         const plans = planChainExtensions(
           chain0,
-          0,
+          chainKey0,
           chains,
           nullifierMap,
           activityIndex,
@@ -472,16 +492,18 @@ describe('chain-extension-planner', () => {
         const deposit1 = createMockDepositNote(1, toEther(2));
         const chain0: NoteChain = [deposit0];
         const chain1: NoteChain = [deposit1];
-        const chains = new Map([
-          [0, chain0],
-          [1, chain1],
+        const chainKey0 = makeChainKey(TEST_CHAIN_ID, 0);
+        const chainKey1 = makeChainKey(TEST_CHAIN_ID, 1);
+        const chains = new Map<ChainKey, NoteChain>([
+          [chainKey0, chain0],
+          [chainKey1, chain1],
         ]);
 
-        const nullifier0 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, 0, 0);
-        const nullifier1 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, 1, 0);
+        const nullifier0 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 0);
+        const nullifier1 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 1, 0);
         const nullifierMap = new Map<string, NullifierInfo>([
-          [nullifier0, { depositIndex: 0, changeIndex: 0 }],
-          [nullifier1, { depositIndex: 1, changeIndex: 0 }],
+          [nullifier0, { originChainId: TEST_CHAIN_ID.toString(), depositIndex: 0, changeIndex: 0 }],
+          [nullifier1, { originChainId: TEST_CHAIN_ID.toString(), depositIndex: 1, changeIndex: 0 }],
         ]);
 
         // Withdraw full combined amount (1 + 2 = 3)
@@ -490,7 +512,7 @@ describe('chain-extension-planner', () => {
 
         const plans = planChainExtensions(
           chain0,
-          0,
+          chainKey0,
           chains,
           nullifierMap,
           activityIndex,
@@ -510,16 +532,18 @@ describe('chain-extension-planner', () => {
         const deposit1 = createMockDepositNote(1, toEther(2));
         const chain0: NoteChain = [deposit0];
         const chain1: NoteChain = [deposit1];
-        const chains = new Map([
-          [0, chain0],
-          [1, chain1],
+        const chainKey0 = makeChainKey(TEST_CHAIN_ID, 0);
+        const chainKey1 = makeChainKey(TEST_CHAIN_ID, 1);
+        const chains = new Map<ChainKey, NoteChain>([
+          [chainKey0, chain0],
+          [chainKey1, chain1],
         ]);
 
-        const nullifier0 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, 0, 0);
-        const nullifier1 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, 1, 0);
+        const nullifier0 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 0);
+        const nullifier1 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 1, 0);
         const nullifierMap = new Map<string, NullifierInfo>([
-          [nullifier0, { depositIndex: 0, changeIndex: 0 }],
-          [nullifier1, { depositIndex: 1, changeIndex: 0 }],
+          [nullifier0, { originChainId: TEST_CHAIN_ID.toString(), depositIndex: 0, changeIndex: 0 }],
+          [nullifier1, { originChainId: TEST_CHAIN_ID.toString(), depositIndex: 1, changeIndex: 0 }],
         ]);
 
         const activity = createMockWithdraw2Activity(0, 0, 1, 0, toEther(0.5), {
@@ -530,7 +554,7 @@ describe('chain-extension-planner', () => {
 
         const plans = planChainExtensions(
           chain0,
-          0,
+          chainKey0,
           chains,
           nullifierMap,
           activityIndex,
@@ -538,6 +562,7 @@ describe('chain-extension-planner', () => {
           TEST_POOL_ADDRESS,
         );
 
+        expect(plans).toHaveLength(1);
         if (plans[0].kind === 'withdraw2') {
           expect(plans[0].createPendingIntent).toBe(true);
         }
@@ -548,7 +573,8 @@ describe('chain-extension-planner', () => {
       it('should plan ragequit when commitment matches', () => {
         const depositNote = createMockDepositNote(0, toEther(1), { label: '12345' });
         const chain: NoteChain = [depositNote];
-        const chains = new Map([[0, chain]]);
+        const chainKey = makeChainKey(TEST_CHAIN_ID, 0);
+        const chains = new Map<ChainKey, NoteChain>([[chainKey, chain]]);
         const nullifierMap = new Map<string, NullifierInfo>();
 
         // We need to compute the actual commitment for this note
@@ -561,7 +587,7 @@ describe('chain-extension-planner', () => {
         // But we're testing the flow
         const plans = planChainExtensions(
           chain,
-          0,
+          chainKey,
           chains,
           nullifierMap,
           activityIndex,
@@ -579,7 +605,8 @@ describe('chain-extension-planner', () => {
       it('should track consumed nullifiers across planned extensions', () => {
         const depositNote = createMockDepositNote(0, toEther(1));
         const chain: NoteChain = [depositNote];
-        const chains = new Map([[0, chain]]);
+        const chainKey = makeChainKey(TEST_CHAIN_ID, 0);
+        const chains = new Map<ChainKey, NoteChain>([[chainKey, chain]]);
         const nullifierMap = new Map<string, NullifierInfo>();
 
         // Create withdrawal activities for indices 0 and 1
@@ -589,7 +616,7 @@ describe('chain-extension-planner', () => {
 
         const plans = planChainExtensions(
           chain,
-          0,
+          chainKey,
           chains,
           nullifierMap,
           activityIndex,
@@ -605,6 +632,132 @@ describe('chain-extension-planner', () => {
           expect(plans[0].remaining).toBe(toEther(0.7));
           expect(plans[1].remaining).toBe(toEther(0.5)); // 0.7 - 0.2
         }
+      });
+
+      it('should update currentNoteType after withdrawal planning', () => {
+        // This tests BUG #2 fix: currentNoteType is now updated after planning
+        const depositNote = createMockDepositNote(0, toEther(1));
+        const chain: NoteChain = [depositNote];
+        const chainKey = makeChainKey(TEST_CHAIN_ID, 0);
+        const chains = new Map<ChainKey, NoteChain>([[chainKey, chain]]);
+        const nullifierMap = new Map<string, NullifierInfo>();
+
+        // Multiple sequential withdrawals
+        const activity1 = createMock1x1WithdrawalActivity(0, 0, toEther(0.3));
+        const activity2 = createMock1x1WithdrawalActivity(0, 1, toEther(0.2));
+        const activity3 = createMock1x1WithdrawalActivity(0, 2, toEther(0.1));
+        const activityIndex = buildActivityIndex([activity1, activity2, activity3]);
+
+        const plans = planChainExtensions(
+          chain,
+          chainKey,
+          chains,
+          nullifierMap,
+          activityIndex,
+          TEST_ACCOUNT_KEY,
+          TEST_POOL_ADDRESS,
+        );
+
+        // All three should be planned (virtual noteType correctly tracked as 'change')
+        expect(plans).toHaveLength(3);
+        expect(plans.every(p => p.kind === 'withdraw1x1')).toBe(true);
+      });
+    });
+
+    describe('edge cases - testing gaps', () => {
+      it('should reject Withdraw2 when secondary chain has no nullifier in map (withdrawalIntent scenario)', () => {
+        // Testing gap: When a chain ends in withdrawalIntent, its previous note was spent
+        // and the nullifier was removed. So Withdraw2 matching should fail.
+        const deposit0 = createMockDepositNote(0, toEther(1));
+        // Chain 1 has a spent deposit and a withdrawalIntent note
+        // In reality, when deposit1 was spent, its nullifier was removed from the map
+        const deposit1 = createMockDepositNote(1, toEther(2), { status: 'spent' });
+        const withdrawalIntent1 = createMockWithdrawalIntentNote(1, 0, toEther(0.5));
+
+        const chain0: NoteChain = [deposit0];
+        const chain1: NoteChain = [deposit1, withdrawalIntent1];
+        const chainKey0 = makeChainKey(TEST_CHAIN_ID, 0);
+        const chainKey1 = makeChainKey(TEST_CHAIN_ID, 1);
+        const chains = new Map<ChainKey, NoteChain>([
+          [chainKey0, chain0],
+          [chainKey1, chain1],
+        ]);
+
+        // Only chain0's nullifier is in the map - chain1's nullifier was removed when spent
+        const nullifier0 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 0);
+        const nullifierMap = new Map<string, NullifierInfo>([
+          [nullifier0, { originChainId: TEST_CHAIN_ID.toString(), depositIndex: 0, changeIndex: 0 }],
+          // nullifier1 NOT in map (was removed when deposit1 was spent)
+        ]);
+
+        // Withdraw2 activity references both nullifiers, but nullifier1 isn't in map
+        const activity = createMockWithdraw2Activity(0, 0, 1, 0, toEther(0.5));
+        const activityIndex = buildActivityIndex([activity]);
+
+        const plans = planChainExtensions(
+          chain0,
+          chainKey0,
+          chains,
+          nullifierMap,
+          activityIndex,
+          TEST_ACCOUNT_KEY,
+          TEST_POOL_ADDRESS,
+        );
+
+        // Should reject because chain1's nullifier is not in the map
+        expect(plans).toHaveLength(0);
+      });
+
+      it('should allow Withdraw2 when one chain was virtually extended earlier (plannedNullifiers)', () => {
+        // Testing gap: Withdraw2 where one chain was virtually extended earlier in same page
+        // This tests the plannedNullifiers fix
+        const deposit0 = createMockDepositNote(0, toEther(1));
+        const deposit1 = createMockDepositNote(1, toEther(2));
+        const chain0: NoteChain = [deposit0];
+        const chain1: NoteChain = [deposit1];
+        const chainKey0 = makeChainKey(TEST_CHAIN_ID, 0);
+        const chainKey1 = makeChainKey(TEST_CHAIN_ID, 1);
+        const chains = new Map<ChainKey, NoteChain>([
+          [chainKey0, chain0],
+          [chainKey1, chain1],
+        ]);
+
+        // Only the initial nullifiers in map (changeIndex 0)
+        const nullifier0 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 0);
+        const nullifier1 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 1, 0);
+        const nullifierMap = new Map<string, NullifierInfo>([
+          [nullifier0, { originChainId: TEST_CHAIN_ID.toString(), depositIndex: 0, changeIndex: 0 }],
+          [nullifier1, { originChainId: TEST_CHAIN_ID.toString(), depositIndex: 1, changeIndex: 0 }],
+        ]);
+
+        // First: 1x1 withdrawal from chain 0 (creates changeIndex 1)
+        // Then: Withdraw2 merging chain 0's new changeIndex 1 with chain 1's changeIndex 0
+        const withdrawal1 = createMock1x1WithdrawalActivity(0, 0, toEther(0.3));
+        // Note: This Withdraw2 activity uses the NEW nullifier (changeIndex 1) from chain 0
+        // which was just virtually created by the first withdrawal
+        const newNullifier0 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 1);
+        const withdraw2Activity = {
+          ...createMockWithdraw2Activity(0, 1, 1, 0, toEther(0.5)),
+          spentNullifier: newNullifier0, // Uses the virtually created nullifier
+          spentNullifier1: nullifier1,
+        };
+        const activityIndex = buildActivityIndex([withdrawal1, withdraw2Activity]);
+
+        const plans = planChainExtensions(
+          chain0,
+          chainKey0,
+          chains,
+          nullifierMap,
+          activityIndex,
+          TEST_ACCOUNT_KEY,
+          TEST_POOL_ADDRESS,
+        );
+
+        // Should have both: 1x1 withdrawal followed by Withdraw2
+        // The Withdraw2 works because plannedNullifiers now contains the new nullifier
+        expect(plans).toHaveLength(2);
+        expect(plans[0].kind).toBe('withdraw1x1');
+        expect(plans[1].kind).toBe('withdraw2');
       });
     });
   });

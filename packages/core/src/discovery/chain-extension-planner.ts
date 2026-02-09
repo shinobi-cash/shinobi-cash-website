@@ -7,7 +7,8 @@
  */
 
 import type { Activity } from '@shinobi-cash/data';
-import type { NoteChain, NullifierInfo, Note } from './types.js';
+import type { NoteChain, NullifierInfo, ChainKey } from './types.js';
+import { makeChainKey } from './types.js';
 import type { ActivityIndex } from './activity-indexer.js';
 import { deriveAndHashNullifier } from './nullifier-utils.js';
 import { derivedNoteCommitment } from '../withdrawal/index.js';
@@ -22,6 +23,8 @@ import { derivedNoteCommitment } from '../withdrawal/index.js';
  */
 export interface Planned1x1Extension {
   kind: 'withdraw1x1';
+  chainKey: ChainKey;
+  originChainId: string;
   depositIndex: number;
   parentChangeIndex: number;
   newChangeIndex: number;
@@ -39,9 +42,13 @@ export interface Planned1x1Extension {
  */
 export interface PlannedWithdraw2Extension {
   kind: 'withdraw2';
+  primaryChainKey: ChainKey;
+  primaryOriginChainId: string;
   primaryDepositIndex: number;
   primaryParentChangeIndex: number;
   primaryNewChangeIndex: number;
+  secondaryChainKey: ChainKey;
+  secondaryOriginChainId: string;
   secondaryDepositIndex: number;
   secondaryChangeIndex: number;
   secondaryNewChangeIndex: number;
@@ -60,6 +67,8 @@ export interface PlannedWithdraw2Extension {
  */
 export interface PlannedRagequitExtension {
   kind: 'ragequit';
+  chainKey: ChainKey;
+  originChainId: string;
   depositIndex: number;
   changeIndex: number;
   activity: Activity;
@@ -107,8 +116,8 @@ function createPlanningContext(): PlanningContext {
  */
 export function planChainExtensions(
   chain: NoteChain,
-  depositIndex: number,
-  allChains: Map<number, NoteChain>,
+  chainKey: ChainKey,
+  allChains: Map<ChainKey, NoteChain>,
   nullifierMap: Map<string, NullifierInfo>,
   activityIndex: ActivityIndex,
   accountKey: bigint,
@@ -123,11 +132,16 @@ export function planChainExtensions(
   let currentStatus = chain.length > 0 ? chain[chain.length - 1].status : 'spent';
   let currentNoteType = chain.length > 0 ? chain[chain.length - 1].noteType : 'deposit';
   let currentLabel = chain.length > 0 ? chain[chain.length - 1].label : undefined;
+  // Get origin chainId and depositIndex from the first note in chain (deposit note)
+  const originChainId = chain.length > 0 ? chain[0].originChainId : '0';
+  const depositIndex = chain.length > 0 ? chain[0].depositIndex : 0;
 
   while (true) {
     // Stop if note is not extendable
+    // Intent notes (both deposit and withdrawal) cannot be extended
     if (
-      currentNoteType === 'pendingIntent' ||
+      currentNoteType === 'depositIntent' ||
+      currentNoteType === 'withdrawalIntent' ||
       currentStatus !== 'unspent' ||
       currentAmount <= 0n
     ) {
@@ -138,6 +152,7 @@ export function planChainExtensions(
     const nullifierHash = deriveAndHashNullifier(
       accountKey,
       poolAddress,
+      originChainId,
       depositIndex,
       currentChangeIndex,
     );
@@ -151,6 +166,8 @@ export function planChainExtensions(
     const withdrawal = activityIndex.withdrawalsByNullifier.get(nullifierHash);
     if (withdrawal) {
       const plan = plan1x1Withdrawal(
+        chainKey,
+        originChainId,
         depositIndex,
         currentChangeIndex,
         currentAmount,
@@ -165,10 +182,14 @@ export function planChainExtensions(
       ctx.consumedNullifiers.add(nullifierHash);
       currentChangeIndex = plan.newChangeIndex;
       currentAmount = plan.remaining;
-      currentStatus = 'unspent'; // Change note is unspent (if remaining > 0)
+      currentStatus = plan.remaining > 0n ? 'unspent' : 'spent';
+      currentNoteType = 'change'; // After withdrawal, tip is always a ChangeNote
+      // Label propagates from parent to change notes
+      // (currentLabel stays the same - inherited from parent)
 
       if (plan.newNullifierHash) {
         ctx.plannedNullifiers.set(plan.newNullifierHash, {
+          originChainId,
           depositIndex,
           changeIndex: plan.newChangeIndex,
         });
@@ -181,6 +202,8 @@ export function planChainExtensions(
     if (withdraw2) {
       const plan = planWithdraw2(
         chain,
+        chainKey,
+        originChainId,
         depositIndex,
         currentChangeIndex,
         currentAmount,
@@ -199,19 +222,23 @@ export function planChainExtensions(
         ctx.consumedNullifiers.add(plan.secondaryOldNullifierHash);
 
         // If we're the primary chain, update virtual state
-        if (depositIndex === plan.primaryDepositIndex) {
+        if (chainKey === plan.primaryChainKey) {
           currentChangeIndex = plan.primaryNewChangeIndex;
           currentAmount = plan.remaining;
+          currentStatus = plan.remaining > 0n ? 'unspent' : 'spent';
+          currentNoteType = 'change'; // After Withdraw2, primary tip is a ChangeNote
           if (plan.primaryNewNullifierHash) {
             ctx.plannedNullifiers.set(plan.primaryNewNullifierHash, {
+              originChainId: plan.primaryOriginChainId,
               depositIndex: plan.primaryDepositIndex,
               changeIndex: plan.primaryNewChangeIndex,
             });
           }
         } else {
-          // We're secondary, chain terminates
+          // We're secondary, chain terminates with a merged note
           currentStatus = 'merged';
           currentAmount = 0n;
+          currentNoteType = 'change'; // Merged note is a ChangeNote (with status='merged')
         }
         continue;
       } else {
@@ -221,14 +248,23 @@ export function planChainExtensions(
     }
 
     // Check for ragequit
-    if (currentLabel !== undefined) {
+    // NOTE: Ragequit detection only works for the ORIGINAL chain tip (lastNote), not
+    // for virtually extended notes. This is because we derive commitment from the actual
+    // note (which has the label), not from virtual state. If a ragequit occurs after
+    // withdrawals, it will be detected in a subsequent sync pass after those withdrawals
+    // are persisted.
+    // Gate on noteType (ragequit only for deposit/change, not intent notes or refund)
+    // Also check lastNote.label since derivedNoteCommitment requires it
+    if (currentNoteType === 'deposit' || currentNoteType === 'change') {
       const lastNote = chain[chain.length - 1];
-      if (lastNote) {
+      if (lastNote && lastNote.label !== undefined) {
         const commitment = derivedNoteCommitment(accountKey, lastNote).toString();
         const ragequit = activityIndex.ragequitByCommitment.get(commitment);
         if (ragequit) {
           plans.push({
             kind: 'ragequit',
+            chainKey,
+            originChainId,
             depositIndex,
             changeIndex: currentChangeIndex,
             activity: ragequit,
@@ -255,6 +291,8 @@ export function planChainExtensions(
  * Plan a 1:1 withdrawal extension (pure function)
  */
 function plan1x1Withdrawal(
+  chainKey: ChainKey,
+  originChainId: string,
   depositIndex: number,
   currentChangeIndex: number,
   currentAmount: bigint,
@@ -274,11 +312,13 @@ function plan1x1Withdrawal(
 
   const newNullifierHash =
     remaining > 0n
-      ? deriveAndHashNullifier(accountKey, poolAddress, depositIndex, newChangeIndex)
+      ? deriveAndHashNullifier(accountKey, poolAddress, originChainId, depositIndex, newChangeIndex)
       : null;
 
   return {
     kind: 'withdraw1x1',
+    chainKey,
+    originChainId,
     depositIndex,
     parentChangeIndex: currentChangeIndex,
     newChangeIndex,
@@ -296,12 +336,14 @@ function plan1x1Withdrawal(
  */
 function planWithdraw2(
   currentChain: NoteChain,
+  currentChainKey: ChainKey,
+  currentOriginChainId: string,
   currentDepositIndex: number,
   currentChangeIndex: number,
   currentAmount: bigint,
   activity: Activity,
   currentNullifierHash: string,
-  allChains: Map<number, NoteChain>,
+  allChains: Map<ChainKey, NoteChain>,
   nullifierMap: Map<string, NullifierInfo>,
   ctx: PlanningContext,
   accountKey: bigint,
@@ -316,13 +358,16 @@ function planWithdraw2(
     return null;
   }
 
-  // Find the other chain
-  const otherInfo = nullifierMap.get(otherNullifierHash);
+  // Find the other chain - check plannedNullifiers first for virtually extended chains,
+  // then fall back to persisted nullifierMap. This allows Withdraw2 to work when one
+  // chain was virtually extended earlier in the same planning pass.
+  const otherInfo = ctx.plannedNullifiers.get(otherNullifierHash) ?? nullifierMap.get(otherNullifierHash);
   if (!otherInfo) {
     return null;
   }
 
-  const otherChain = allChains.get(otherInfo.depositIndex);
+  const otherChainKey = makeChainKey(otherInfo.originChainId, otherInfo.depositIndex);
+  const otherChain = allChains.get(otherChainKey);
   if (!otherChain) {
     return null;
   }
@@ -332,13 +377,21 @@ function planWithdraw2(
     return null;
   }
 
-  // Determine primary (larger depositIndex wins)
+  // Determine primary chain: larger depositIndex wins (continues with combined balance).
+  // This is a deterministic but arbitrary rule chosen for consistency. The primary chain
+  // receives the merged balance and can continue being extended; the secondary chain
+  // terminates with a 'merged' status note.
+  // INVARIANT: This must match the rule in chain-extender.ts for correct behavior.
   const isPrimaryChain = currentDepositIndex > otherInfo.depositIndex;
 
+  const primaryChainKey = isPrimaryChain ? currentChainKey : otherChainKey;
+  const primaryOriginChainId = isPrimaryChain ? currentOriginChainId : otherInfo.originChainId;
   const primaryDepositIndex = isPrimaryChain ? currentDepositIndex : otherInfo.depositIndex;
   const primaryChangeIndex = isPrimaryChain ? currentChangeIndex : otherLastNote.changeIndex;
   const primaryAmount = isPrimaryChain ? currentAmount : BigInt(otherLastNote.amount);
 
+  const secondaryChainKey = isPrimaryChain ? otherChainKey : currentChainKey;
+  const secondaryOriginChainId = isPrimaryChain ? otherInfo.originChainId : currentOriginChainId;
   const secondaryDepositIndex = isPrimaryChain ? otherInfo.depositIndex : currentDepositIndex;
   const secondaryChangeIndex = isPrimaryChain ? otherLastNote.changeIndex : currentChangeIndex;
   const secondaryAmount = isPrimaryChain ? BigInt(otherLastNote.amount) : currentAmount;
@@ -354,14 +407,18 @@ function planWithdraw2(
 
   const primaryNewNullifierHash =
     remaining > 0n
-      ? deriveAndHashNullifier(accountKey, poolAddress, primaryDepositIndex, primaryNewChangeIndex)
+      ? deriveAndHashNullifier(accountKey, poolAddress, primaryOriginChainId, primaryDepositIndex, primaryNewChangeIndex)
       : null;
 
   return {
     kind: 'withdraw2',
+    primaryChainKey,
+    primaryOriginChainId,
     primaryDepositIndex,
     primaryParentChangeIndex: primaryChangeIndex,
     primaryNewChangeIndex,
+    secondaryChainKey,
+    secondaryOriginChainId,
     secondaryDepositIndex,
     secondaryChangeIndex,
     secondaryNewChangeIndex,

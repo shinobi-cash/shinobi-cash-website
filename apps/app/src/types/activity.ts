@@ -70,9 +70,16 @@ export const ACTIVITY_TYPE_LABELS: Record<ActivityType, string> = {
 
 /**
  * Get unique ID for an activity entry
+ * Includes noteType to differentiate between notes with same depositIndex/changeIndex
  */
 export function getActivityId(entry: ActivityEntry): string {
-  return `${entry.note.depositIndex}-${entry.note.changeIndex}`;
+  const { note } = entry;
+  const baseId = `${note.noteType}-${note.depositIndex}-${note.changeIndex}`;
+  // RefundNotes have additional refundIndex
+  if (note.noteType === "refund") {
+    return `${baseId}-${note.refundIndex}`;
+  }
+  return baseId;
 }
 
 /**
@@ -80,6 +87,8 @@ export function getActivityId(entry: ActivityEntry): string {
  */
 export function getActivityType(note: Note): ActivityType {
   if (note.noteType === "deposit") return "deposit";
+  if (note.noteType === "depositIntent") return "deposit";
   if (note.noteType === "refund") return "refund";
+  if (note.noteType === "withdrawalIntent") return "withdrawal";
   return "withdrawal";
 }

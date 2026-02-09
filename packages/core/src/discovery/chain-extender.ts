@@ -14,15 +14,15 @@
  * - Easier testing (plan and apply can be tested independently)
  */
 
-import type { Activity } from '@shinobi-cash/data';
-import type { NoteChain, NullifierInfo, Note } from './types.js';
+import type { NoteChain, NullifierInfo } from './types.js';
+import type { ChainKey } from './types.js';
+import { makeChainKey } from './types.js';
 import type { ActivityIndex } from './activity-indexer.js';
-import { deriveAndHashNullifier } from './nullifier-utils.js';
 import {
   createChangeNote,
   createWithdraw2ChangeNote,
   createMergedNote,
-  createPendingIntentNote,
+  createWithdrawalIntentNote,
 } from './note-factory.js';
 import {
   planChainExtensions,
@@ -37,8 +37,8 @@ import {
 // ============================================================================
 
 export interface ExtensionResult {
-  /** Updated chains after extension */
-  updatedChains: Map<number, NoteChain>;
+  /** Updated chains after extension (keyed by ChainKey) */
+  updatedChains: Map<ChainKey, NoteChain>;
   /** Updated nullifier map after extension */
   updatedNullifierMap: Map<string, NullifierInfo>;
 }
@@ -55,7 +55,7 @@ export interface ExtensionResult {
  * 2. Apply all extensions (mechanical mutation)
  */
 export function extendAllChains(
-  chains: Map<number, NoteChain>,
+  chains: Map<ChainKey, NoteChain>,
   nullifierMap: Map<string, NullifierInfo>,
   activityIndex: ActivityIndex,
   accountKey: bigint,
@@ -68,12 +68,12 @@ export function extendAllChains(
   const processedWithdraw2s = new Set<string>();
 
   // Collect all plans first (PLANNING PHASE - read-only)
-  const allPlans: Array<{ depositIndex: number; plans: PlannedExtension[] }> = [];
+  const allPlans: Array<{ chainKey: ChainKey; plans: PlannedExtension[] }> = [];
 
-  for (const [depositIndex, chain] of updatedChains) {
+  for (const [chainKey, chain] of updatedChains) {
     const plans = planChainExtensions(
       chain,
-      depositIndex,
+      chainKey,
       updatedChains,
       updatedNullifierMap,
       activityIndex,
@@ -81,13 +81,13 @@ export function extendAllChains(
       poolAddress,
     );
     if (plans.length > 0) {
-      allPlans.push({ depositIndex, plans });
+      allPlans.push({ chainKey, plans });
     }
   }
 
   // Apply all plans (APPLICATION PHASE - mutation)
-  for (const { depositIndex, plans } of allPlans) {
-    const chain = updatedChains.get(depositIndex);
+  for (const { chainKey, plans } of allPlans) {
+    const chain = updatedChains.get(chainKey);
     if (!chain) continue;
 
     for (const plan of plans) {
@@ -115,7 +115,7 @@ export function extendAllChains(
  */
 function applyExtension(
   plan: PlannedExtension,
-  chains: Map<number, NoteChain>,
+  chains: Map<ChainKey, NoteChain>,
   nullifierMap: Map<string, NullifierInfo>,
   processedWithdraw2s: Set<string>,
   accountKey: bigint,
@@ -139,10 +139,10 @@ function applyExtension(
  */
 function apply1x1Withdrawal(
   plan: Planned1x1Extension,
-  chains: Map<number, NoteChain>,
+  chains: Map<ChainKey, NoteChain>,
   nullifierMap: Map<string, NullifierInfo>,
 ): void {
-  const chain = chains.get(plan.depositIndex);
+  const chain = chains.get(plan.chainKey);
   if (!chain) return;
 
   const lastNote = chain[chain.length - 1];
@@ -155,20 +155,22 @@ function apply1x1Withdrawal(
   const changeNote = createChangeNote(lastNote, plan.activity, plan.newChangeIndex, plan.remaining);
   chain.push(changeNote);
 
-  // Create PendingIntentNote if needed
+  // Create WithdrawalIntentNote if needed (for cross-chain withdrawals)
   if (plan.createPendingIntent) {
-    const pendingIntent = createPendingIntentNote(lastNote, plan.activity, plan.parentChangeIndex);
-    chain.push(pendingIntent);
+    const withdrawalIntent = createWithdrawalIntentNote(lastNote, plan.activity, plan.parentChangeIndex);
+    chain.push(withdrawalIntent);
   }
 
-  // Update nullifier map
-  nullifierMap.delete(plan.oldNullifierHash);
+  // Update nullifier map - ALWAYS insert before delete for crash safety
+  // If app crashes between operations, insert-first ensures we don't lose the nullifier
   if (plan.newNullifierHash) {
     nullifierMap.set(plan.newNullifierHash, {
+      originChainId: plan.originChainId,
       depositIndex: plan.depositIndex,
       changeIndex: plan.newChangeIndex,
     });
   }
+  nullifierMap.delete(plan.oldNullifierHash);
 }
 
 /**
@@ -176,19 +178,20 @@ function apply1x1Withdrawal(
  */
 function applyWithdraw2(
   plan: PlannedWithdraw2Extension,
-  chains: Map<number, NoteChain>,
+  chains: Map<ChainKey, NoteChain>,
   nullifierMap: Map<string, NullifierInfo>,
   processedWithdraw2s: Set<string>,
 ): void {
-  // Generate a unique key for this Withdraw2 to avoid double-processing
-  const withdraw2Key = `${plan.activity.originTransactionHash}-${plan.primaryDepositIndex}-${plan.secondaryDepositIndex}`;
+  // Generate a unique key for this Withdraw2 to avoid double-processing.
+  // Use nullifier hashes (unique per chain position) for a robust key.
+  const withdraw2Key = `${plan.activity.originTransactionHash}-${plan.primaryOldNullifierHash}-${plan.secondaryOldNullifierHash}`;
   if (processedWithdraw2s.has(withdraw2Key)) {
     return;
   }
   processedWithdraw2s.add(withdraw2Key);
 
-  const primaryChain = chains.get(plan.primaryDepositIndex);
-  const secondaryChain = chains.get(plan.secondaryDepositIndex);
+  const primaryChain = chains.get(plan.primaryChainKey);
+  const secondaryChain = chains.get(plan.secondaryChainKey);
 
   if (!primaryChain || !secondaryChain) return;
 
@@ -211,14 +214,14 @@ function applyWithdraw2(
   );
   primaryChain.push(changeNote);
 
-  // Create PendingIntentNote if needed
+  // Create WithdrawalIntentNote if needed (for cross-chain Withdraw2)
   if (plan.createPendingIntent) {
-    const pendingIntent = createPendingIntentNote(
+    const withdrawalIntent = createWithdrawalIntentNote(
       primaryLastNote,
       plan.activity,
       plan.primaryParentChangeIndex,
     );
-    primaryChain.push(pendingIntent);
+    primaryChain.push(withdrawalIntent);
   }
 
   // Create merged note on secondary chain
@@ -230,16 +233,16 @@ function applyWithdraw2(
   );
   secondaryChain.push(mergedNote);
 
-  // Update nullifier map
-  nullifierMap.delete(plan.primaryOldNullifierHash);
-  nullifierMap.delete(plan.secondaryOldNullifierHash);
-
+  // Update nullifier map - ALWAYS insert before delete for crash safety
   if (plan.primaryNewNullifierHash) {
     nullifierMap.set(plan.primaryNewNullifierHash, {
+      originChainId: plan.primaryOriginChainId,
       depositIndex: plan.primaryDepositIndex,
       changeIndex: plan.primaryNewChangeIndex,
     });
   }
+  nullifierMap.delete(plan.primaryOldNullifierHash);
+  nullifierMap.delete(plan.secondaryOldNullifierHash);
 }
 
 /**
@@ -247,10 +250,10 @@ function applyWithdraw2(
  */
 function applyRagequit(
   plan: PlannedRagequitExtension,
-  chains: Map<number, NoteChain>,
+  chains: Map<ChainKey, NoteChain>,
   nullifierMap: Map<string, NullifierInfo>,
 ): void {
-  const chain = chains.get(plan.depositIndex);
+  const chain = chains.get(plan.chainKey);
   if (!chain) return;
 
   const lastNote = chain[chain.length - 1];

@@ -12,13 +12,14 @@ const fieldFromKeccak = (bytes: `0x${string}`) => modF(BigInt(keccak256(bytes)))
 
 function contextField(
   poolAddress: string,
+  chainId: number | bigint | string,
   depositIndex: number | bigint,
   changeIndex: number | bigint,
   tag: `0x${string}`,
 ) {
   const packed = encodePacked(
-    ['address', 'uint64', 'uint64', 'bytes32'],
-    [getAddress(poolAddress), BigInt(depositIndex), BigInt(changeIndex), tag],
+    ['address', 'uint64', 'uint64', 'uint64', 'bytes32'],
+    [getAddress(poolAddress), BigInt(chainId), BigInt(depositIndex), BigInt(changeIndex), tag],
   );
   return fieldFromKeccak(packed);
 }
@@ -38,10 +39,11 @@ export function createDeriveFn(tagString: string) {
   return function derive(
     userKey: string | bigint,
     poolAddress: string,
+    chainId: number | bigint | string,
     depositIndex: number | bigint,
     changeIndex: number | bigint = 0n,
   ): bigint {
-    const ctx = contextField(poolAddress, depositIndex, changeIndex, tag);
+    const ctx = contextField(poolAddress, chainId, depositIndex, changeIndex, tag);
     return prf2(parseUserKey(userKey), ctx, dom);
   };
 }

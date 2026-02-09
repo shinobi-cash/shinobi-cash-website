@@ -137,13 +137,24 @@ export const NotesDiscoverySelectors = {
   getCounts: () => getNoteChainCounts(state.noteChains),
 
   /**
-   * Get last used deposit index (for deposit service)
+   * Get last used deposit index for a specific chain (for deposit service)
+   * @param chainId - The chain ID to get the last used index for
    */
-  getLastUsedIndex: (): number => {
+  getLastUsedIndex: (chainId?: number): number => {
     if (state.noteChains.length === 0) return -1;
 
+    // Filter chains by originChainId if chainId is provided
+    const relevantChains = chainId
+      ? state.noteChains.filter((chain) => {
+          const depositNote = chain[0];
+          return depositNote && depositNote.originChainId === chainId.toString();
+        })
+      : state.noteChains;
+
+    if (relevantChains.length === 0) return -1;
+
     // Sort by deposit index descending to get highest
-    const sorted = [...state.noteChains].sort((a, b) => {
+    const sorted = [...relevantChains].sort((a, b) => {
       const lastNoteA = getLastNote(a);
       const lastNoteB = getLastNote(b);
       return lastNoteB.depositIndex - lastNoteA.depositIndex;

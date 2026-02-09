@@ -1,4 +1,4 @@
-import type { Note, NoteChain, PendingIntentNote, RefundNote } from "@shinobi-cash/core/discovery";
+import type { Note, NoteChain, DepositIntentNote, WithdrawalIntentNote, RefundNote } from "@shinobi-cash/core/discovery";
 import type { NoteFilter, NoteCategory, ReadonlyNoteChain } from "@/types/notes";
 
 /**
@@ -15,11 +15,12 @@ import type { NoteFilter, NoteCategory, ReadonlyNoteChain } from "@/types/notes"
  *    - Cross-chain intent not filled (waiting for solver)
  *    - Cross-chain intent expired (can claim refund)
  *    - ASP pending (waiting for approval, can ragequit)
- *    - PendingIntentNote (escrowed funds waiting for solver or refund)
+ *    - DepositIntentNote (awaiting solver fill on pool chain)
+ *    - WithdrawalIntentNote (escrowed funds waiting for solver or refund)
  *
  * 3. **Spent** - No action possible
  *    - Already withdrawn (status = 'spent')
- *    - PendingIntentNote with filled/refunded status
+ *    - Intent notes with filled/refunded status
  *
  * Key fields:
  * - status: 'unspent' | 'spent' | 'merged' - spending status
@@ -32,9 +33,19 @@ import type { NoteFilter, NoteCategory, ReadonlyNoteChain } from "@/types/notes"
 // TYPE GUARDS
 // ============================================
 
-/** Check if note is a PendingIntentNote (escrowed funds in InputSettler) */
-export function isPendingIntentNote(note: Note): note is PendingIntentNote {
-  return note.noteType === "pendingIntent";
+/** Check if note is a DepositIntentNote (awaiting solver fill on pool chain) */
+export function isDepositIntentNote(note: Note): note is DepositIntentNote {
+  return note.noteType === "depositIntent";
+}
+
+/** Check if note is a WithdrawalIntentNote (escrowed funds in InputSettler) */
+export function isWithdrawalIntentNote(note: Note): note is WithdrawalIntentNote {
+  return note.noteType === "withdrawalIntent";
+}
+
+/** Check if note is any intent note (deposit or withdrawal intent) */
+export function isIntentNote(note: Note): note is DepositIntentNote | WithdrawalIntentNote {
+  return note.noteType === "depositIntent" || note.noteType === "withdrawalIntent";
 }
 
 /** Check if note is a RefundNote (claimable refund from failed cross-chain) */
@@ -53,12 +64,13 @@ export function getLastNote(noteChain: ReadonlyNoteChain): Note {
  * Check if note is in the pool (can be used for withdrawals/ragequit)
  * - Same-chain: always in pool
  * - Cross-chain: in pool when intent is filled
- * - PendingIntentNote: never in pool (escrowed in InputSettler)
+ * - DepositIntentNote: never in pool (awaiting solver fill)
+ * - WithdrawalIntentNote: never in pool (escrowed in InputSettler)
  * - RefundNote: always in pool (refund commitment inserted)
  */
 export function isInPool(note: Note): boolean {
-  // PendingIntentNote is never in pool - funds are in InputSettler
-  if (isPendingIntentNote(note)) return false;
+  // Intent notes are never in pool - funds are escrowed or awaiting fill
+  if (isIntentNote(note)) return false;
 
   // RefundNote is always in pool - refund commitment was inserted
   if (isRefundNote(note)) return true;
@@ -79,13 +91,13 @@ export function getNoteCategory(note: Note): NoteCategory {
   if (note.status === "spent") return "spent";
   if (note.status === "merged") return "spent";
 
-  // Zero balance is effectively spent (except PendingIntentNote which may be refundable)
-  if (!isPendingIntentNote(note) && BigInt(note.amount) <= BigInt(0)) return "spent";
+  // Zero balance is effectively spent (except intent notes which may be refundable)
+  if (!isIntentNote(note) && BigInt(note.amount) <= BigInt(0)) return "spent";
 
-  // PendingIntentNote: Always in pending category until resolved
-  // - Awaiting solver fill OR
-  // - Awaiting user to claim refund (expired intent)
-  if (isPendingIntentNote(note)) {
+  // Intent notes: Always in pending category until resolved
+  // - DepositIntentNote: Awaiting solver to fill deposit on pool chain
+  // - WithdrawalIntentNote: Awaiting solver fill OR refund
+  if (isIntentNote(note)) {
     // If intentStatus is already 'filled' or 'refunded', the status should be 'spent'
     // (handled above), but double-check here
     if (note.intentStatus === "filled" || note.intentStatus === "refunded") {
@@ -117,8 +129,8 @@ export function getNoteCategory(note: Note): NoteCategory {
 
 /** Can withdraw privately (in pool + ASP approved + has balance) */
 export function canWithdraw(note: Note): boolean {
-  // PendingIntentNote cannot be withdrawn - funds are escrowed
-  if (isPendingIntentNote(note)) return false;
+  // Intent notes cannot be withdrawn - funds are escrowed or awaiting fill
+  if (isIntentNote(note)) return false;
 
   // RefundNote can be withdrawn if unspent and ASP approved
   if (isRefundNote(note)) {
@@ -139,8 +151,8 @@ export function canWithdraw(note: Note): boolean {
  * (Contract only checks: depositor match, valid proof, commitment exists)
  */
 export function canRagequit(note: Note): boolean {
-  // PendingIntentNote cannot ragequit - funds are escrowed in InputSettler
-  if (isPendingIntentNote(note)) return false;
+  // Intent notes cannot ragequit - funds are escrowed or awaiting fill
+  if (isIntentNote(note)) return false;
 
   // RefundNote can ragequit (it's in the pool)
   if (isRefundNote(note)) {
@@ -152,11 +164,11 @@ export function canRagequit(note: Note): boolean {
 
 /**
  * Can claim refund for expired cross-chain intent
- * Available for PendingIntentNote when intent is pending and current time > expires
+ * Available for WithdrawalIntentNote when intent is pending and current time > expires
  */
 export function canClaimRefund(note: Note): boolean {
-  // Only PendingIntentNote can claim refund
-  if (!isPendingIntentNote(note)) return false;
+  // Only WithdrawalIntentNote can claim refund (has refundCommitment)
+  if (!isWithdrawalIntentNote(note)) return false;
 
   if (note.status !== "unspent") return false;
   if (note.intentStatus !== "pending") return false;
@@ -179,9 +191,10 @@ export function getStatusDotColor(note: Note): string {
     return "bg-neutral-500";
   }
 
-  // PendingIntentNote: show different colors based on state
-  if (isPendingIntentNote(note)) {
-    if (canClaimRefund(note)) {
+  // Intent notes: show different colors based on state
+  if (isIntentNote(note)) {
+    // WithdrawalIntentNote can have refund available
+    if (isWithdrawalIntentNote(note) && canClaimRefund(note)) {
       return "bg-orange-500"; // Refund available
     }
     return "bg-amber-400"; // Waiting for solver
@@ -218,8 +231,8 @@ export function getStatusDotColor(note: Note): string {
 
 /** Cross-chain intent waiting for solver to fill (not expired yet) */
 export function isWaitingForSolver(note: Note): boolean {
-  // PendingIntentNote is always cross-chain and waiting for solver
-  if (isPendingIntentNote(note)) {
+  // Intent notes are always cross-chain and waiting for solver
+  if (isIntentNote(note)) {
     if (note.status !== "unspent") return false;
     if (note.intentStatus !== "pending") return false;
 
@@ -330,11 +343,11 @@ export type PendingIntentState =
   | { state: "refunded"; message: string };
 
 /**
- * Get display state for a PendingIntentNote
- * This provides user-friendly information about what's happening with escrowed funds
+ * Get display state for an intent note (DepositIntentNote or WithdrawalIntentNote)
+ * This provides user-friendly information about what's happening with the intent
  */
 export function getPendingIntentDisplayState(note: Note): PendingIntentState | null {
-  if (!isPendingIntentNote(note)) return null;
+  if (!isIntentNote(note)) return null;
 
   const now = Math.floor(Date.now() / 1000);
 
@@ -377,7 +390,7 @@ export function getPendingIntentDisplayState(note: Note): PendingIntentState | n
 }
 
 /**
- * Get a user-friendly status text for a PendingIntentNote
+ * Get a user-friendly status text for an intent note
  */
 export function getPendingIntentStatusText(note: Note): string {
   const displayState = getPendingIntentDisplayState(note);

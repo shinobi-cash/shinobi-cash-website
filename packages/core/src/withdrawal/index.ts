@@ -359,11 +359,11 @@ export function derivedNoteCommitment(accountKey: bigint, note: Note): bigint {
   let secret: bigint;
 
   if (note.changeIndex === 0) {
-    nullifier = deriveDepositNullifier(accountKey, note.poolAddress, note.depositIndex);
-    secret = deriveDepositSecret(accountKey, note.poolAddress, note.depositIndex);
+    nullifier = deriveDepositNullifier(accountKey, note.poolAddress, note.originChainId, note.depositIndex);
+    secret = deriveDepositSecret(accountKey, note.poolAddress, note.originChainId, note.depositIndex);
   } else {
-    nullifier = deriveChangeNullifier(accountKey, note.poolAddress, note.depositIndex, note.changeIndex);
-    secret = deriveChangeSecret(accountKey, note.poolAddress, note.depositIndex, note.changeIndex);
+    nullifier = deriveChangeNullifier(accountKey, note.poolAddress, note.originChainId, note.depositIndex, note.changeIndex);
+    secret = deriveChangeSecret(accountKey, note.poolAddress, note.originChainId, note.depositIndex, note.changeIndex);
   }
 
   return poseidon3([BigInt(note.amount), BigInt(note.label), derivePrecommitment(nullifier, secret)]);
@@ -387,10 +387,10 @@ function deriveDepositWithdrawal(
 ): WithdrawalDerivation {
   return {
     contextHash: calculateContextHash(poolScope, withdrawalData),
-    existingNullifier: deriveDepositNullifier(accountKey, poolAddress, note.depositIndex),
-    existingSecret: deriveDepositSecret(accountKey, poolAddress, note.depositIndex),
-    newNullifier: deriveChangeNullifier(accountKey, poolAddress, note.depositIndex, 1),
-    newSecret: deriveChangeSecret(accountKey, poolAddress, note.depositIndex, 1),
+    existingNullifier: deriveDepositNullifier(accountKey, poolAddress, note.originChainId, note.depositIndex),
+    existingSecret: deriveDepositSecret(accountKey, poolAddress, note.originChainId, note.depositIndex),
+    newNullifier: deriveChangeNullifier(accountKey, poolAddress, note.originChainId, note.depositIndex, 1),
+    newSecret: deriveChangeSecret(accountKey, poolAddress, note.originChainId, note.depositIndex, 1),
     existingCommitment: derivedNoteCommitment(accountKey, note).toString(),
   };
 }
@@ -404,10 +404,10 @@ function deriveChangeWithdrawal(
 ): WithdrawalDerivation {
   return {
     contextHash: calculateContextHash(poolScope, withdrawalData),
-    existingNullifier: deriveChangeNullifier(accountKey, poolAddress, note.depositIndex, note.changeIndex),
-    existingSecret: deriveChangeSecret(accountKey, poolAddress, note.depositIndex, note.changeIndex),
-    newNullifier: deriveChangeNullifier(accountKey, poolAddress, note.depositIndex, note.changeIndex + 1),
-    newSecret: deriveChangeSecret(accountKey, poolAddress, note.depositIndex, note.changeIndex + 1),
+    existingNullifier: deriveChangeNullifier(accountKey, poolAddress, note.originChainId, note.depositIndex, note.changeIndex),
+    existingSecret: deriveChangeSecret(accountKey, poolAddress, note.originChainId, note.depositIndex, note.changeIndex),
+    newNullifier: deriveChangeNullifier(accountKey, poolAddress, note.originChainId, note.depositIndex, note.changeIndex + 1),
+    newSecret: deriveChangeSecret(accountKey, poolAddress, note.originChainId, note.depositIndex, note.changeIndex + 1),
     existingCommitment: derivedNoteCommitment(accountKey, note).toString(),
   };
 }
@@ -441,8 +441,8 @@ export function deriveCrosschainWithdrawalInputs(
   const base = deriveWithdrawalInputs(note, accountKey, poolAddress, poolScope, withdrawalData);
   const nextChangeIndex = note.noteType === 'deposit' ? 1 : note.changeIndex + 1;
 
-  const refundNullifier = deriveRefundNullifier(accountKey, poolAddress, note.depositIndex, nextChangeIndex);
-  const refundSecret = deriveRefundSecret(accountKey, poolAddress, note.depositIndex, nextChangeIndex);
+  const refundNullifier = deriveRefundNullifier(accountKey, poolAddress, note.originChainId, note.depositIndex, nextChangeIndex);
+  const refundSecret = deriveRefundSecret(accountKey, poolAddress, note.originChainId, note.depositIndex, nextChangeIndex);
 
   return {
     ...base,
@@ -468,14 +468,14 @@ function derivePrimaryInput(
 
   return {
     existingNullifier: isDeposit
-      ? deriveDepositNullifier(accountKey, poolAddress, note.depositIndex)
-      : deriveChangeNullifier(accountKey, poolAddress, note.depositIndex, note.changeIndex),
+      ? deriveDepositNullifier(accountKey, poolAddress, note.originChainId, note.depositIndex)
+      : deriveChangeNullifier(accountKey, poolAddress, note.originChainId, note.depositIndex, note.changeIndex),
     existingSecret: isDeposit
-      ? deriveDepositSecret(accountKey, poolAddress, note.depositIndex)
-      : deriveChangeSecret(accountKey, poolAddress, note.depositIndex, note.changeIndex),
+      ? deriveDepositSecret(accountKey, poolAddress, note.originChainId, note.depositIndex)
+      : deriveChangeSecret(accountKey, poolAddress, note.originChainId, note.depositIndex, note.changeIndex),
     existingCommitment: derivedNoteCommitment(accountKey, note).toString(),
-    newNullifier: deriveChangeNullifier(accountKey, poolAddress, note.depositIndex, nextChangeIndex),
-    newSecret: deriveChangeSecret(accountKey, poolAddress, note.depositIndex, nextChangeIndex),
+    newNullifier: deriveChangeNullifier(accountKey, poolAddress, note.originChainId, note.depositIndex, nextChangeIndex),
+    newSecret: deriveChangeSecret(accountKey, poolAddress, note.originChainId, note.depositIndex, nextChangeIndex),
   };
 }
 
@@ -492,11 +492,11 @@ function deriveSecondaryInput(
 
   return {
     existingNullifier: isDeposit
-      ? deriveDepositNullifier(accountKey, poolAddress, note.depositIndex)
-      : deriveChangeNullifier(accountKey, poolAddress, note.depositIndex, note.changeIndex),
+      ? deriveDepositNullifier(accountKey, poolAddress, note.originChainId, note.depositIndex)
+      : deriveChangeNullifier(accountKey, poolAddress, note.originChainId, note.depositIndex, note.changeIndex),
     existingSecret: isDeposit
-      ? deriveDepositSecret(accountKey, poolAddress, note.depositIndex)
-      : deriveChangeSecret(accountKey, poolAddress, note.depositIndex, note.changeIndex),
+      ? deriveDepositSecret(accountKey, poolAddress, note.originChainId, note.depositIndex)
+      : deriveChangeSecret(accountKey, poolAddress, note.originChainId, note.depositIndex, note.changeIndex),
     existingCommitment: derivedNoteCommitment(accountKey, note).toString(),
   };
 }
@@ -583,12 +583,14 @@ export function deriveCrosschainWithdraw2Inputs(
   const refundNullifier = deriveRefundNullifier(
     accountKey,
     poolAddress,
+    primaryNote.originChainId,
     primaryNote.depositIndex,
     nextChangeIndex,
   );
   const refundSecret = deriveRefundSecret(
     accountKey,
     poolAddress,
+    primaryNote.originChainId,
     primaryNote.depositIndex,
     nextChangeIndex,
   );
@@ -666,12 +668,12 @@ export function deriveRagequitInputs(
   const isDeposit = note.noteType === 'deposit';
 
   const existingNullifier = isDeposit
-    ? deriveDepositNullifier(accountKey, poolAddress, note.depositIndex)
-    : deriveChangeNullifier(accountKey, poolAddress, note.depositIndex, note.changeIndex);
+    ? deriveDepositNullifier(accountKey, poolAddress, note.originChainId, note.depositIndex)
+    : deriveChangeNullifier(accountKey, poolAddress, note.originChainId, note.depositIndex, note.changeIndex);
 
   const existingSecret = isDeposit
-    ? deriveDepositSecret(accountKey, poolAddress, note.depositIndex)
-    : deriveChangeSecret(accountKey, poolAddress, note.depositIndex, note.changeIndex);
+    ? deriveDepositSecret(accountKey, poolAddress, note.originChainId, note.depositIndex)
+    : deriveChangeSecret(accountKey, poolAddress, note.originChainId, note.depositIndex, note.changeIndex);
 
   return {
     existingNullifier,

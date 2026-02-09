@@ -11,6 +11,7 @@ import { usePriceData } from "@/hooks/usePriceData";
 import { formatUsdAmount, formatSmallEthAmount, formatEthAmount } from "@/utils/formatters";
 import { POOL_CHAIN } from "@shinobi-cash/constants";
 import { ShinobiCashNote, AssetChain } from "@/components/shared/AssetChain";
+import { getNoteLabel } from "@/utils/chainIcons";
 
 interface RagequitPreviewScreenProps {
   onBack: () => void;
@@ -129,7 +130,7 @@ export function RagequitPreviewScreen({
           value={
             <span className="flex items-center gap-2">
               <NoteAvatarStack notes={[note]} size="sm" />
-              <span className="text-neutral-300">#{note.depositIndex + 1}</span>
+              <span className="text-neutral-300">{getNoteLabel(note.originChainId, note.depositIndex)}</span>
             </span>
           }
         />

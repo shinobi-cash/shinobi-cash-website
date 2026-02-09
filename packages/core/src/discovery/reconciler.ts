@@ -5,14 +5,23 @@
  */
 
 import type { Activity } from '@shinobi-cash/data';
-import type { NoteChain, DepositNote, PendingIntentNote } from './types.js';
+import type { NoteChain, DepositNote, DepositIntentNote, WithdrawalIntentNote, ChainKey, Note } from './types.js';
 import type { ActivityIndex } from './activity-indexer.js';
 import { isDepositActivity } from './activity-indexer.js';
-import { createRefundNote } from './note-factory.js';
+import { createRefundNote, createDepositNote } from './note-factory.js';
 
 // ============================================================================
 // Reconciler
 // ============================================================================
+
+/** Result of reconciliation with new nullifier entries */
+export interface ReconcileResult {
+  /**
+   * Deposit indices that became active (filled deposit intents).
+   * Caller should compute nullifier hashes using accountKey and add to nullifier map.
+   */
+  filledDepositIndices: Array<{ depositIndex: number; poolAddress: string; originChainId: string }>;
+}
 
 /**
  * Reconcile existing chains with fresh activity data
@@ -21,13 +30,19 @@ import { createRefundNote } from './note-factory.js';
  * - ASP status (pending -> approved/rejected)
  * - Intent status (pending -> filled/refunded)
  * - Labels (assigned by ASP)
- * - PendingIntentNote status (from activity index)
+ * - DepositIntentNote and WithdrawalIntentNote status (from activity index)
+ *
+ * @returns New nullifier entries from filled deposit intents
  */
 export function reconcileChains(
-  chains: Map<number, NoteChain>,
+  chains: Map<ChainKey, NoteChain>,
   activities: Activity[],
   activityIndex?: ActivityIndex,
-): void {
+): ReconcileResult {
+  const result: ReconcileResult = {
+    filledDepositIndices: [],
+  };
+
   // Build lookup for deposit activities by precommitmentHash
   const depositActivityMap = new Map<string, Activity>();
   for (const activity of activities) {
@@ -38,108 +53,198 @@ export function reconcileChains(
 
   // Update each chain with fresh data
   for (const [, chain] of chains) {
-    const depositNote = chain[0] as DepositNote;
-    if (!depositNote || depositNote.noteType !== 'deposit') continue;
+    const firstNote = chain[0];
+    if (!firstNote) continue;
 
-    const fresh = depositActivityMap.get(depositNote.precommitmentHash);
-    if (!fresh) continue;
+    // Handle chains starting with DepositNote
+    if (firstNote.noteType === 'deposit') {
+      const depositNote = firstNote as DepositNote;
+      const fresh = depositActivityMap.get(depositNote.precommitmentHash);
+      if (!fresh) continue;
 
-    // Check if update is needed
-    const aspChanged = depositNote.aspStatus !== fresh.aspStatus;
-    const intentChanged = depositNote.intentStatus !== fresh.intentStatus;
-    const labelChanged = fresh.label && depositNote.label !== fresh.label;
+      // Check if update is needed
+      const aspChanged = depositNote.aspStatus !== fresh.aspStatus;
+      const intentChanged = depositNote.intentStatus !== fresh.intentStatus;
+      const labelChanged = fresh.label && depositNote.label !== fresh.label?.toString();
 
-    if (!aspChanged && !intentChanged && !labelChanged) {
-      continue;
+      if (!aspChanged && !intentChanged && !labelChanged) {
+        continue;
+      }
+
+      // Update all notes in the chain
+      for (const note of chain) {
+        // ASP status propagates to all notes
+        if (aspChanged) {
+          note.aspStatus = fresh.aspStatus;
+        }
+
+        // Intent status and label only on deposit note
+        if (note === depositNote) {
+          if (intentChanged && fresh.intentStatus) {
+            note.intentStatus = fresh.intentStatus;
+          }
+          if (labelChanged && fresh.label) {
+            note.label = fresh.label.toString();
+          }
+        } else if (labelChanged && fresh.label) {
+          // Label propagates to change notes too (inherited from deposit)
+          note.label = fresh.label.toString();
+        }
+      }
+    }
+    // Note: Intent notes are handled in reconcileIntentNotes
+  }
+
+  // Reconcile intent notes with fresh activity data
+  if (activityIndex) {
+    const intentResult = reconcileIntentNotes(chains, activityIndex);
+    // Merge filled deposit indices
+    result.filledDepositIndices.push(...intentResult.filledDepositIndices);
+  }
+
+  return result;
+}
+
+/**
+ * Reconcile intent notes with updated intent status from activities
+ *
+ * For WithdrawalIntentNote (orderId in withdrawalsByOrderId):
+ * - intentStatus='filled': Mark as spent (funds delivered to recipient)
+ * - intentStatus='refunded': Create RefundNote (spendable funds returned to pool)
+ *
+ * For DepositIntentNote (orderId in depositsByOrderId):
+ * - intentStatus='filled': Create DepositNote (commitment now in pool)
+ * - intentStatus='refunded': Mark as spent (funds returned to origin chain)
+ */
+function reconcileIntentNotes(
+  chains: Map<ChainKey, NoteChain>,
+  activityIndex: ActivityIndex,
+): ReconcileResult {
+  const result: ReconcileResult = {
+    filledDepositIndices: [],
+  };
+
+  for (const [, chain] of chains) {
+    // Collect notes to add after iteration (avoid modifying array during iteration)
+    const notesToAdd: (ReturnType<typeof createRefundNote> | DepositNote)[] = [];
+
+    for (const note of chain) {
+      // Handle both withdrawal and deposit intent notes
+      if (note.noteType === 'withdrawalIntent') {
+        const withdrawalIntent = note as WithdrawalIntentNote;
+        if (!withdrawalIntent.orderId) continue;
+
+        const withdrawalActivity = activityIndex.withdrawalsByOrderId.get(withdrawalIntent.orderId);
+        if (withdrawalActivity) {
+          reconcileWithdrawalIntent(withdrawalIntent, withdrawalActivity, chain, notesToAdd);
+        }
+      } else if (note.noteType === 'depositIntent') {
+        const depositIntent = note as DepositIntentNote;
+        if (!depositIntent.orderId) continue;
+
+        const depositActivity = activityIndex.depositsByOrderId.get(depositIntent.orderId);
+        if (depositActivity) {
+          reconcileDepositIntent(depositIntent, depositActivity, chain, notesToAdd, result);
+        }
+      }
     }
 
-    // Update all notes in the chain
-    for (const note of chain) {
-      // ASP status propagates to all notes
-      if (aspChanged) {
-        note.aspStatus = fresh.aspStatus;
-      }
-
-      // Intent status and label only on deposit note
-      if (note === depositNote) {
-        if (intentChanged && fresh.intentStatus) {
-          note.intentStatus = fresh.intentStatus;
-        }
-        if (labelChanged && fresh.label) {
-          note.label = fresh.label;
-        }
-      } else if (labelChanged && fresh.label) {
-        // Label propagates to change notes too (inherited from deposit)
-        note.label = fresh.label;
-      }
+    // Add notes to the chain
+    for (const newNote of notesToAdd) {
+      chain.push(newNote);
     }
   }
 
-  // Reconcile PendingIntentNotes with fresh activity data
-  if (activityIndex) {
-    reconcilePendingIntents(chains, activityIndex);
+  return result;
+}
+
+/**
+ * Reconcile a WithdrawalIntentNote
+ */
+function reconcileWithdrawalIntent(
+  withdrawalIntent: WithdrawalIntentNote,
+  activity: Activity,
+  chain: NoteChain,
+  notesToAdd: (ReturnType<typeof createRefundNote> | DepositNote)[],
+): void {
+  // Skip if status hasn't changed
+  if (withdrawalIntent.intentStatus === activity.intentStatus) return;
+
+  if (activity.intentStatus === 'filled') {
+    // Solver filled - funds delivered to recipient
+    withdrawalIntent.intentStatus = 'filled';
+    withdrawalIntent.status = 'spent';
+    // Update with fill transaction from destination chain
+    if (activity.destinationTransactionHash) {
+      withdrawalIntent.destinationTransactionHash = activity.destinationTransactionHash;
+    }
+  } else if (activity.intentStatus === 'refunded') {
+    // Refund executed - create RefundNote for spendable funds
+    withdrawalIntent.intentStatus = 'refunded';
+    withdrawalIntent.status = 'spent';
+
+    // Idempotency guard: check if RefundNote already exists
+    const existingRefund = chain.find(
+      (n) =>
+        n.noteType === 'refund' &&
+        n.depositIndex === withdrawalIntent.depositIndex &&
+        n.changeIndex === withdrawalIntent.parentChangeIndex &&
+        n.orderId === withdrawalIntent.orderId,
+    );
+
+    if (!existingRefund) {
+      const refundNote = createRefundNote(withdrawalIntent);
+      notesToAdd.push(refundNote);
+    }
   }
 }
 
 /**
- * Reconcile PendingIntentNotes with updated intent status from activities
- *
- * When a PendingIntentNote's orderId matches an activity with:
- * - intentStatus='filled': Mark the note as spent (funds delivered)
- * - intentStatus='refunded': Create RefundNote (spendable funds returned to pool)
+ * Reconcile a DepositIntentNote
  */
-function reconcilePendingIntents(
-  chains: Map<number, NoteChain>,
-  activityIndex: ActivityIndex,
+function reconcileDepositIntent(
+  depositIntent: DepositIntentNote,
+  activity: Activity,
+  chain: NoteChain,
+  notesToAdd: (ReturnType<typeof createRefundNote> | DepositNote)[],
+  result: ReconcileResult,
 ): void {
-  for (const [, chain] of chains) {
-    // Collect RefundNotes to add after iteration (avoid modifying array during iteration)
-    const refundNotesToAdd: ReturnType<typeof createRefundNote>[] = [];
+  // Skip if status hasn't changed
+  if (depositIntent.intentStatus === activity.intentStatus) return;
 
-    for (const note of chain) {
-      if (note.noteType !== 'pendingIntent') continue;
+  if (activity.intentStatus === 'filled') {
+    // Deposit filled - commitment is now in pool, create DepositNote
+    depositIntent.intentStatus = 'filled';
+    depositIntent.status = 'spent';
 
-      const pendingNote = note as PendingIntentNote;
-      if (!pendingNote.orderId) continue;
+    // Idempotency guard: check if DepositNote already exists
+    const existingDeposit = chain.find(
+      (n) =>
+        n.noteType === 'deposit' &&
+        n.depositIndex === depositIntent.depositIndex,
+    );
 
-      // Find activity with matching orderId
-      const activity = activityIndex.withdrawalsByOrderId.get(pendingNote.orderId);
-      if (!activity) continue;
+    if (!existingDeposit) {
+      const depositNote = createDepositNote(
+        activity,
+        depositIntent.depositIndex,
+        depositIntent.poolAddress,
+        depositIntent.discoveredAtOffset,
+      );
+      notesToAdd.push(depositNote);
 
-      // Skip if status hasn't changed
-      if (pendingNote.intentStatus === activity.intentStatus) continue;
-
-      // Update intent status
-      if (activity.intentStatus === 'filled') {
-        // Solver filled - funds delivered to recipient
-        pendingNote.intentStatus = 'filled';
-        pendingNote.status = 'spent'; // Funds left the system
-      } else if (activity.intentStatus === 'refunded') {
-        // Refund executed - create RefundNote for spendable funds
-        pendingNote.intentStatus = 'refunded';
-        pendingNote.status = 'spent'; // PendingIntentNote is consumed
-
-        // Idempotency guard: check if RefundNote already exists for this intent
-        // This prevents duplicate RefundNotes on background sync retries
-        const existingRefund = chain.find(
-          (n) =>
-            n.noteType === 'refund' &&
-            n.depositIndex === pendingNote.depositIndex &&
-            n.changeIndex === pendingNote.parentChangeIndex &&
-            n.orderId === pendingNote.orderId,
-        );
-
-        if (!existingRefund) {
-          // Create RefundNote - the refundCommitment is now in the pool's merkle tree
-          const refundNote = createRefundNote(pendingNote);
-          refundNotesToAdd.push(refundNote);
-        }
-      }
+      // Signal to caller that this deposit is now active
+      // Caller should compute nullifier hash using accountKey
+      result.filledDepositIndices.push({
+        depositIndex: depositIntent.depositIndex,
+        poolAddress: depositIntent.poolAddress,
+        originChainId: depositIntent.originChainId,
+      });
     }
-
-    // Add RefundNotes to the chain
-    for (const refundNote of refundNotesToAdd) {
-      chain.push(refundNote);
-    }
+  } else if (activity.intentStatus === 'refunded') {
+    // Deposit refunded - funds returned to origin chain, no pool action needed
+    depositIntent.intentStatus = 'refunded';
+    depositIntent.status = 'spent';
+    // No RefundNote - funds went back to user's wallet on origin chain
   }
 }
