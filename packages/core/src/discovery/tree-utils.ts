@@ -228,7 +228,8 @@ export function deserializeTree(serialized: SerializableNoteNode): NoteTree {
       note: data.note,
       parent,
       children: [],
-      isTerminal: data.isTerminal,
+      // Recompute isTerminal from note state rather than trusting serialized value
+      isTerminal: isTerminalNote(data.note),
     };
     node.children = data.children.map((child) => deserializeNode(child, node));
     return node;

@@ -190,9 +190,9 @@ export function createMergedNote(
     status: 'merged',
     blockNumber: activity.blockNumber.toString(),
     timestamp: activity.timestamp.toString(),
-    // Withdraw2 tx is always on pool chain (activity.originChainId)
     originTransactionHash: activity.originTransactionHash,
-    originChainId: activity.originChainId.toString(),
+    // Inherit originChainId from loser note - this is the deposit's origin chain, not the pool chain
+    originChainId: loserNote.originChainId,
     // Only set destination fields for cross-chain withdrawals
     destinationTransactionHash: isCrossChainWithdraw ? activity.destinationTransactionHash : undefined,
     destinationChainId: isCrossChainWithdraw ? activity.destinationChainId?.toString() : undefined,

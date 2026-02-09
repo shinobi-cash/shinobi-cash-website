@@ -260,9 +260,25 @@ export function isChangeNote(note: Note): note is ChangeNote {
   return note.noteType === 'change';
 }
 
-/** Check if a note is terminal (ragequit or merged) */
+/**
+ * Check if a note is terminal (no children allowed).
+ * Terminal states:
+ * - ragequit: public withdrawal, funds withdrawn
+ * - merged: secondary chain in Withdraw2
+ * - filled WithdrawalIntentNote: funds delivered to recipient
+ * - refunded DepositIntentNote: funds returned to origin chain
+ */
 export function isTerminalNote(note: Note): boolean {
-  return note.status === 'ragequit' || note.status === 'merged';
+  if (note.status === 'ragequit' || note.status === 'merged') {
+    return true;
+  }
+  if (note.noteType === 'withdrawalIntent' && note.intentStatus === 'filled') {
+    return true;
+  }
+  if (note.noteType === 'depositIntent' && note.intentStatus === 'refunded') {
+    return true;
+  }
+  return false;
 }
 
 /** Check if a note is any intent note (deposit or withdrawal) */
