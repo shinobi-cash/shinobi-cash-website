@@ -5,10 +5,19 @@
  */
 
 import type { Activity } from '@shinobi-cash/data';
-import type { NoteChain, DepositNote, DepositIntentNote, WithdrawalIntentNote, ChainKey, Note } from './types.js';
+import type {
+  NoteTree,
+  NoteNode,
+  DepositNote,
+  DepositIntentNote,
+  WithdrawalIntentNote,
+  ChainKey,
+  Note,
+} from './types.js';
 import type { ActivityIndex } from './activity-indexer.js';
 import { isDepositActivity } from './activity-indexer.js';
 import { createRefundNote, createDepositNote } from './note-factory.js';
+import { traverseTree, addChild, findNode } from './tree-utils.js';
 
 // ============================================================================
 // Reconciler
@@ -24,7 +33,7 @@ export interface ReconcileResult {
 }
 
 /**
- * Reconcile existing chains with fresh activity data
+ * Reconcile existing trees with fresh activity data
  *
  * Updates:
  * - ASP status (pending -> approved/rejected)
@@ -34,8 +43,8 @@ export interface ReconcileResult {
  *
  * @returns New nullifier entries from filled deposit intents
  */
-export function reconcileChains(
-  chains: Map<ChainKey, NoteChain>,
+export function reconcileTrees(
+  trees: Map<ChainKey, NoteTree>,
   activities: Activity[],
   activityIndex?: ActivityIndex,
 ): ReconcileResult {
@@ -51,14 +60,13 @@ export function reconcileChains(
     }
   }
 
-  // Update each chain with fresh data
-  for (const [, chain] of chains) {
-    const firstNote = chain[0];
-    if (!firstNote) continue;
+  // Update each tree with fresh data
+  for (const [, tree] of trees) {
+    const rootNote = tree.root.note;
 
-    // Handle chains starting with DepositNote
-    if (firstNote.noteType === 'deposit') {
-      const depositNote = firstNote as DepositNote;
+    // Handle trees starting with DepositNote
+    if (rootNote.noteType === 'deposit') {
+      const depositNote = rootNote as DepositNote;
       const fresh = depositActivityMap.get(depositNote.precommitmentHash);
       if (!fresh) continue;
 
@@ -71,8 +79,10 @@ export function reconcileChains(
         continue;
       }
 
-      // Update all notes in the chain
-      for (const note of chain) {
+      // Update all notes in the tree
+      traverseTree(tree, (node) => {
+        const note = node.note;
+
         // ASP status propagates to all notes
         if (aspChanged) {
           note.aspStatus = fresh.aspStatus;
@@ -90,14 +100,14 @@ export function reconcileChains(
           // Label propagates to change notes too (inherited from deposit)
           note.label = fresh.label.toString();
         }
-      }
+      });
     }
     // Note: Intent notes are handled in reconcileIntentNotes
   }
 
   // Reconcile intent notes with fresh activity data
   if (activityIndex) {
-    const intentResult = reconcileIntentNotes(chains, activityIndex);
+    const intentResult = reconcileIntentNotes(trees, activityIndex);
     // Merge filled deposit indices
     result.filledDepositIndices.push(...intentResult.filledDepositIndices);
   }
@@ -117,41 +127,45 @@ export function reconcileChains(
  * - intentStatus='refunded': Mark as spent (funds returned to origin chain)
  */
 function reconcileIntentNotes(
-  chains: Map<ChainKey, NoteChain>,
+  trees: Map<ChainKey, NoteTree>,
   activityIndex: ActivityIndex,
 ): ReconcileResult {
   const result: ReconcileResult = {
     filledDepositIndices: [],
   };
 
-  for (const [, chain] of chains) {
-    // Collect notes to add after iteration (avoid modifying array during iteration)
-    const notesToAdd: (ReturnType<typeof createRefundNote> | DepositNote)[] = [];
+  for (const [, tree] of trees) {
+    // Collect nodes to add children to after traversal
+    const childrenToAdd: Array<{ parent: NoteNode; child: Note }> = [];
 
-    for (const note of chain) {
-      // Handle both withdrawal and deposit intent notes
+    traverseTree(tree, (node) => {
+      const note = node.note;
+
+      // Handle withdrawal intent notes
       if (note.noteType === 'withdrawalIntent') {
         const withdrawalIntent = note as WithdrawalIntentNote;
-        if (!withdrawalIntent.orderId) continue;
+        if (!withdrawalIntent.orderId) return;
 
         const withdrawalActivity = activityIndex.withdrawalsByOrderId.get(withdrawalIntent.orderId);
         if (withdrawalActivity) {
-          reconcileWithdrawalIntent(withdrawalIntent, withdrawalActivity, chain, notesToAdd);
+          reconcileWithdrawalIntent(withdrawalIntent, withdrawalActivity, node, tree, childrenToAdd);
         }
-      } else if (note.noteType === 'depositIntent') {
+      }
+      // Handle deposit intent notes
+      else if (note.noteType === 'depositIntent') {
         const depositIntent = note as DepositIntentNote;
-        if (!depositIntent.orderId) continue;
+        if (!depositIntent.orderId) return;
 
         const depositActivity = activityIndex.depositsByOrderId.get(depositIntent.orderId);
         if (depositActivity) {
-          reconcileDepositIntent(depositIntent, depositActivity, chain, notesToAdd, result);
+          reconcileDepositIntent(depositIntent, depositActivity, node, tree, childrenToAdd, result);
         }
       }
-    }
+    });
 
-    // Add notes to the chain
-    for (const newNote of notesToAdd) {
-      chain.push(newNote);
+    // Add children to their parents
+    for (const { parent, child } of childrenToAdd) {
+      addChild(parent, child);
     }
   }
 
@@ -164,8 +178,9 @@ function reconcileIntentNotes(
 function reconcileWithdrawalIntent(
   withdrawalIntent: WithdrawalIntentNote,
   activity: Activity,
-  chain: NoteChain,
-  notesToAdd: (ReturnType<typeof createRefundNote> | DepositNote)[],
+  node: NoteNode,
+  tree: NoteTree,
+  childrenToAdd: Array<{ parent: NoteNode; child: Note }>,
 ): void {
   // Skip if status hasn't changed
   if (withdrawalIntent.intentStatus === activity.intentStatus) return;
@@ -183,18 +198,19 @@ function reconcileWithdrawalIntent(
     withdrawalIntent.intentStatus = 'refunded';
     withdrawalIntent.status = 'spent';
 
-    // Idempotency guard: check if RefundNote already exists
-    const existingRefund = chain.find(
+    // Idempotency guard: check if RefundNote already exists as child
+    const existingRefund = findNode(
+      tree,
       (n) =>
-        n.noteType === 'refund' &&
-        n.depositIndex === withdrawalIntent.depositIndex &&
-        n.changeIndex === withdrawalIntent.parentChangeIndex &&
-        n.orderId === withdrawalIntent.orderId,
+        n.note.noteType === 'refund' &&
+        n.note.depositIndex === withdrawalIntent.depositIndex &&
+        n.note.changeIndex === withdrawalIntent.parentChangeIndex &&
+        n.note.orderId === withdrawalIntent.orderId,
     );
 
     if (!existingRefund) {
       const refundNote = createRefundNote(withdrawalIntent);
-      notesToAdd.push(refundNote);
+      childrenToAdd.push({ parent: node, child: refundNote });
     }
   }
 }
@@ -205,8 +221,9 @@ function reconcileWithdrawalIntent(
 function reconcileDepositIntent(
   depositIntent: DepositIntentNote,
   activity: Activity,
-  chain: NoteChain,
-  notesToAdd: (ReturnType<typeof createRefundNote> | DepositNote)[],
+  node: NoteNode,
+  tree: NoteTree,
+  childrenToAdd: Array<{ parent: NoteNode; child: Note }>,
   result: ReconcileResult,
 ): void {
   // Skip if status hasn't changed
@@ -217,11 +234,12 @@ function reconcileDepositIntent(
     depositIntent.intentStatus = 'filled';
     depositIntent.status = 'spent';
 
-    // Idempotency guard: check if DepositNote already exists
-    const existingDeposit = chain.find(
+    // Idempotency guard: check if DepositNote already exists as child
+    const existingDeposit = findNode(
+      tree,
       (n) =>
-        n.noteType === 'deposit' &&
-        n.depositIndex === depositIntent.depositIndex,
+        n.note.noteType === 'deposit' &&
+        n.note.depositIndex === depositIntent.depositIndex,
     );
 
     if (!existingDeposit) {
@@ -231,7 +249,7 @@ function reconcileDepositIntent(
         depositIntent.poolAddress,
         depositIntent.discoveredAtOffset,
       );
-      notesToAdd.push(depositNote);
+      childrenToAdd.push({ parent: node, child: depositNote });
 
       // Signal to caller that this deposit is now active
       // Caller should compute nullifier hash using accountKey

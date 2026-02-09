@@ -112,6 +112,8 @@ export function createChangeNote(
  * @param newChangeIndex - The new change index for the change note
  * @param remaining - Combined value minus withdrawn amount
  * @param mergedFromDepositIndex - The depositIndex of the chain that was merged
+ * @param mergedFromOriginChainId - The originChainId of the chain that was merged
+ * @param mergedFromAmount - The amount contributed from the merged note
  */
 export function createWithdraw2ChangeNote(
   winnerNote: Note,
@@ -119,6 +121,8 @@ export function createWithdraw2ChangeNote(
   newChangeIndex: number,
   remaining: bigint,
   mergedFromDepositIndex: number,
+  mergedFromOriginChainId: string,
+  mergedFromAmount: bigint,
 ): ChangeNote {
   const isCrossChain =
     winnerNote.isCrossChain ||
@@ -146,6 +150,8 @@ export function createWithdraw2ChangeNote(
     aspStatus: winnerNote.aspStatus,
     refundCommitment: activity.refundCommitment ?? undefined,
     mergedFromDepositIndex,
+    mergedFromOriginChainId,
+    mergedFromAmount: mergedFromAmount.toString(),
     activityData: buildWithdraw2ActivityMetadata(activity),
   };
 }
@@ -161,15 +167,16 @@ export function createWithdraw2ChangeNote(
  * @param activity - The Withdraw2 activity
  * @param newChangeIndex - The new change index for the merged note
  * @param mergedIntoDepositIndex - The depositIndex of the primary chain this was merged into
+ * @param mergedIntoOriginChainId - The originChainId of the primary chain this was merged into
  */
 export function createMergedNote(
   loserNote: Note,
   activity: Activity,
   newChangeIndex: number,
   mergedIntoDepositIndex: number,
+  mergedIntoOriginChainId: string,
 ): ChangeNote {
-  const isCrossChain =
-    loserNote.isCrossChain ||
+  const isCrossChainWithdraw =
     activity.type === 'CROSSCHAIN_WITHDRAW2' ||
     activity.type === 'CROSSCHAIN_WITHDRAW2_PENDING';
 
@@ -183,16 +190,18 @@ export function createMergedNote(
     status: 'merged',
     blockNumber: activity.blockNumber.toString(),
     timestamp: activity.timestamp.toString(),
+    // Withdraw2 tx is always on pool chain (activity.originChainId)
     originTransactionHash: activity.originTransactionHash,
-    destinationTransactionHash: activity.destinationTransactionHash || activity.originTransactionHash,
-    // Inherit originChainId from loser note - this is the deposit's origin chain
-    originChainId: loserNote.originChainId,
-    destinationChainId: (activity.destinationChainId || activity.originChainId).toString(),
-    isCrossChain,
+    originChainId: activity.originChainId.toString(),
+    // Only set destination fields for cross-chain withdrawals
+    destinationTransactionHash: isCrossChainWithdraw ? activity.destinationTransactionHash : undefined,
+    destinationChainId: isCrossChainWithdraw ? activity.destinationChainId?.toString() : undefined,
+    isCrossChain: isCrossChainWithdraw,
     orderId: activity.orderId ?? loserNote.orderId,
-    intentStatus: isCrossChain ? (activity.intentStatus ?? 'filled') : undefined,
+    intentStatus: isCrossChainWithdraw ? (activity.intentStatus ?? 'filled') : undefined,
     aspStatus: loserNote.aspStatus,
     mergedIntoDepositIndex,
+    mergedIntoOriginChainId,
     activityData: buildWithdraw2ActivityMetadata(activity),
   };
 }
@@ -341,6 +350,8 @@ export function createRefundNote(
 function buildActivityMetadata(activity: Activity): ActivityMetadata {
   return {
     originalAmount: activity.originalAmount?.toString(),
+    // Store actual withdrawn amount from activity.amount (for withdrawals)
+    withdrawnAmount: activity.amount?.toString(),
     vettingFeeAmount: activity.vettingFeeAmount?.toString(),
     relayFeeAmount: activity.relayFeeAmount?.toString(),
     solverFeeAmount: activity.solverFeeAmount?.toString(),

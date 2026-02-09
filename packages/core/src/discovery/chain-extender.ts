@@ -1,8 +1,8 @@
 /**
  * @shinobi-cash/core/discovery
- * Phase 2: Chain Extension
+ * Phase 2: Tree Extension
  *
- * Extends note chains with withdrawals (both 1:1 and 2:1 Withdraw2)
+ * Extends note trees with withdrawals (both 1:1 and 2:1 Withdraw2)
  *
  * Architecture: Plan / Apply Split
  * - Planning: Pure, read-only computation of what extensions to apply
@@ -14,9 +14,8 @@
  * - Easier testing (plan and apply can be tested independently)
  */
 
-import type { NoteChain, NullifierInfo } from './types.js';
+import type { NoteTree, NullifierInfo } from './types.js';
 import type { ChainKey } from './types.js';
-import { makeChainKey } from './types.js';
 import type { ActivityIndex } from './activity-indexer.js';
 import {
   createChangeNote,
@@ -25,43 +24,44 @@ import {
   createWithdrawalIntentNote,
 } from './note-factory.js';
 import {
-  planChainExtensions,
+  planTreeExtensions,
   type PlannedExtension,
   type Planned1x1Extension,
   type PlannedWithdraw2Extension,
   type PlannedRagequitExtension,
 } from './chain-extension-planner.js';
+import { findNodeByPosition, addChild, getSpendableLeaves, markTerminal } from './tree-utils.js';
 
 // ============================================================================
 // Extension Result Type
 // ============================================================================
 
 export interface ExtensionResult {
-  /** Updated chains after extension (keyed by ChainKey) */
-  updatedChains: Map<ChainKey, NoteChain>;
+  /** Updated trees after extension (keyed by ChainKey) */
+  updatedTrees: Map<ChainKey, NoteTree>;
   /** Updated nullifier map after extension */
   updatedNullifierMap: Map<string, NullifierInfo>;
 }
 
 // ============================================================================
-// Chain Extender (Orchestrator)
+// Tree Extender (Orchestrator)
 // ============================================================================
 
 /**
- * Extend all chains with withdrawals from the current activity page
+ * Extend all trees with withdrawals from the current activity page
  *
  * Uses Plan/Apply pattern:
  * 1. Plan all extensions (pure, read-only)
  * 2. Apply all extensions (mechanical mutation)
  */
-export function extendAllChains(
-  chains: Map<ChainKey, NoteChain>,
+export function extendAllTrees(
+  trees: Map<ChainKey, NoteTree>,
   nullifierMap: Map<string, NullifierInfo>,
   activityIndex: ActivityIndex,
   accountKey: bigint,
   poolAddress: string,
 ): ExtensionResult {
-  const updatedChains = new Map(chains);
+  const updatedTrees = new Map(trees);
   const updatedNullifierMap = new Map(nullifierMap);
 
   // Track processed Withdraw2s to avoid double-processing
@@ -70,11 +70,11 @@ export function extendAllChains(
   // Collect all plans first (PLANNING PHASE - read-only)
   const allPlans: Array<{ chainKey: ChainKey; plans: PlannedExtension[] }> = [];
 
-  for (const [chainKey, chain] of updatedChains) {
-    const plans = planChainExtensions(
-      chain,
+  for (const [chainKey, tree] of updatedTrees) {
+    const plans = planTreeExtensions(
+      tree,
       chainKey,
-      updatedChains,
+      updatedTrees,
       updatedNullifierMap,
       activityIndex,
       accountKey,
@@ -86,23 +86,18 @@ export function extendAllChains(
   }
 
   // Apply all plans (APPLICATION PHASE - mutation)
-  for (const { chainKey, plans } of allPlans) {
-    const chain = updatedChains.get(chainKey);
-    if (!chain) continue;
-
+  for (const { plans } of allPlans) {
     for (const plan of plans) {
       applyExtension(
         plan,
-        updatedChains,
+        updatedTrees,
         updatedNullifierMap,
         processedWithdraw2s,
-        accountKey,
-        poolAddress,
       );
     }
   }
 
-  return { updatedChains, updatedNullifierMap };
+  return { updatedTrees, updatedNullifierMap };
 }
 
 // ============================================================================
@@ -115,21 +110,19 @@ export function extendAllChains(
  */
 function applyExtension(
   plan: PlannedExtension,
-  chains: Map<ChainKey, NoteChain>,
+  trees: Map<ChainKey, NoteTree>,
   nullifierMap: Map<string, NullifierInfo>,
   processedWithdraw2s: Set<string>,
-  accountKey: bigint,
-  poolAddress: string,
 ): void {
   switch (plan.kind) {
     case 'withdraw1x1':
-      apply1x1Withdrawal(plan, chains, nullifierMap);
+      apply1x1Withdrawal(plan, trees, nullifierMap);
       break;
     case 'withdraw2':
-      applyWithdraw2(plan, chains, nullifierMap, processedWithdraw2s);
+      applyWithdraw2(plan, trees, nullifierMap, processedWithdraw2s);
       break;
     case 'ragequit':
-      applyRagequit(plan, chains, nullifierMap);
+      applyRagequit(plan, trees, nullifierMap);
       break;
   }
 }
@@ -139,26 +132,28 @@ function applyExtension(
  */
 function apply1x1Withdrawal(
   plan: Planned1x1Extension,
-  chains: Map<ChainKey, NoteChain>,
+  trees: Map<ChainKey, NoteTree>,
   nullifierMap: Map<string, NullifierInfo>,
 ): void {
-  const chain = chains.get(plan.chainKey);
-  if (!chain) return;
+  const tree = trees.get(plan.chainKey);
+  if (!tree) return;
 
-  const lastNote = chain[chain.length - 1];
-  if (!lastNote) return;
+  // Find the node to extend by position
+  const nodeToExtend = findNodeByPosition(tree, plan.depositIndex, plan.parentChangeIndex);
+  if (!nodeToExtend) return;
 
   // Mark current note as spent
-  lastNote.status = 'spent';
+  nodeToExtend.note.status = 'spent';
 
-  // Create change note
-  const changeNote = createChangeNote(lastNote, plan.activity, plan.newChangeIndex, plan.remaining);
-  chain.push(changeNote);
+  // Create change note as child
+  const changeNote = createChangeNote(nodeToExtend.note, plan.activity, plan.newChangeIndex, plan.remaining);
+  addChild(nodeToExtend, changeNote);
 
   // Create WithdrawalIntentNote if needed (for cross-chain withdrawals)
+  // This is added as a SIBLING of the change note (same parent)
   if (plan.createPendingIntent) {
-    const withdrawalIntent = createWithdrawalIntentNote(lastNote, plan.activity, plan.parentChangeIndex);
-    chain.push(withdrawalIntent);
+    const withdrawalIntent = createWithdrawalIntentNote(nodeToExtend.note, plan.activity, plan.parentChangeIndex);
+    addChild(nodeToExtend, withdrawalIntent);
   }
 
   // Update nullifier map - ALWAYS insert before delete for crash safety
@@ -178,7 +173,7 @@ function apply1x1Withdrawal(
  */
 function applyWithdraw2(
   plan: PlannedWithdraw2Extension,
-  chains: Map<ChainKey, NoteChain>,
+  trees: Map<ChainKey, NoteTree>,
   nullifierMap: Map<string, NullifierInfo>,
   processedWithdraw2s: Set<string>,
 ): void {
@@ -190,48 +185,55 @@ function applyWithdraw2(
   }
   processedWithdraw2s.add(withdraw2Key);
 
-  const primaryChain = chains.get(plan.primaryChainKey);
-  const secondaryChain = chains.get(plan.secondaryChainKey);
+  const primaryTree = trees.get(plan.primaryChainKey);
+  const secondaryTree = trees.get(plan.secondaryChainKey);
 
-  if (!primaryChain || !secondaryChain) return;
+  if (!primaryTree || !secondaryTree) return;
 
-  const primaryLastNote = primaryChain[primaryChain.length - 1];
-  const secondaryLastNote = secondaryChain[secondaryChain.length - 1];
+  // Find nodes to extend by position
+  const primaryNode = findNodeByPosition(primaryTree, plan.primaryDepositIndex, plan.primaryParentChangeIndex);
+  const secondaryNode = findNodeByPosition(secondaryTree, plan.secondaryDepositIndex, plan.secondaryChangeIndex);
 
-  if (!primaryLastNote || !secondaryLastNote) return;
+  if (!primaryNode || !secondaryNode) return;
 
   // Mark both notes as spent
-  primaryLastNote.status = 'spent';
-  secondaryLastNote.status = 'spent';
+  primaryNode.note.status = 'spent';
+  secondaryNode.note.status = 'spent';
 
-  // Create change note on primary chain
+  // Create change note on primary tree as child
   const changeNote = createWithdraw2ChangeNote(
-    primaryLastNote,
+    primaryNode.note,
     plan.activity,
     plan.primaryNewChangeIndex,
     plan.remaining,
     plan.secondaryDepositIndex,
+    secondaryNode.note.originChainId,
+    BigInt(secondaryNode.note.amount), // mergedFromAmount
   );
-  primaryChain.push(changeNote);
+  addChild(primaryNode, changeNote);
 
   // Create WithdrawalIntentNote if needed (for cross-chain Withdraw2)
+  // This is added as a SIBLING of the change note (same parent)
   if (plan.createPendingIntent) {
     const withdrawalIntent = createWithdrawalIntentNote(
-      primaryLastNote,
+      primaryNode.note,
       plan.activity,
       plan.primaryParentChangeIndex,
     );
-    primaryChain.push(withdrawalIntent);
+    addChild(primaryNode, withdrawalIntent);
   }
 
-  // Create merged note on secondary chain
+  // Create merged note on secondary tree as child
   const mergedNote = createMergedNote(
-    secondaryLastNote,
+    secondaryNode.note,
     plan.activity,
     plan.secondaryNewChangeIndex,
     plan.primaryDepositIndex,
+    primaryNode.note.originChainId,
   );
-  secondaryChain.push(mergedNote);
+  const mergedChild = addChild(secondaryNode, mergedNote);
+  // Mark merged node as terminal (no children allowed)
+  markTerminal(mergedChild);
 
   // Update nullifier map - ALWAYS insert before delete for crash safety
   if (plan.primaryNewNullifierHash) {
@@ -250,26 +252,34 @@ function applyWithdraw2(
  */
 function applyRagequit(
   plan: PlannedRagequitExtension,
-  chains: Map<ChainKey, NoteChain>,
+  trees: Map<ChainKey, NoteTree>,
   nullifierMap: Map<string, NullifierInfo>,
 ): void {
-  const chain = chains.get(plan.chainKey);
-  if (!chain) return;
+  const tree = trees.get(plan.chainKey);
+  if (!tree) return;
 
-  const lastNote = chain[chain.length - 1];
-  if (!lastNote) return;
+  // Find the node by position
+  const node = findNodeByPosition(tree, plan.depositIndex, plan.changeIndex);
+  if (!node) return;
 
-  // Mark note as spent
-  lastNote.status = 'spent';
+  // Mark note as spent with ragequit status
+  node.note.status = 'ragequit';
 
-  // Store ragequit activity data
-  lastNote.activityData = {
-    ...lastNote.activityData,
+  // Store ragequit activity data (including original amount for history display)
+  node.note.activityData = {
+    ...node.note.activityData,
     ragequitTxHash: plan.activity.originTransactionHash,
     ragequitTimestamp: plan.activity.timestamp.toString(),
     ragequitBlockNumber: plan.activity.blockNumber.toString(),
     ragequitUser: plan.activity.user,
+    ragequitAmount: node.note.amount, // Store original amount before zeroing
   };
+
+  // Set remaining balance to 0 (funds have been withdrawn)
+  node.note.amount = '0';
+
+  // Mark as terminal (no children allowed after ragequit)
+  markTerminal(node);
 
   // Remove nullifier
   nullifierMap.delete(plan.nullifierHash);

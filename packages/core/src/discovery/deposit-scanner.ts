@@ -4,18 +4,19 @@
  * Scans for user's deposits by matching precommitments
  */
 
-import type { NoteChain, NullifierInfo } from './types.js';
+import type { NoteTree, NullifierInfo } from './types.js';
 import type { ActivityIndex } from './activity-indexer.js';
 import { deriveDepositPrecommitment, deriveAndHashNullifier } from './nullifier-utils.js';
 import { createDepositNote, createDepositIntentNote } from './note-factory.js';
+import { createNoteTree } from './tree-utils.js';
 
 // ============================================================================
 // Scan Result Type
 // ============================================================================
 
 export interface ScanResult {
-  /** Newly discovered note chains */
-  newChains: NoteChain[];
+  /** Newly discovered note trees */
+  newTrees: NoteTree[];
   /** Nullifier mappings for the new deposits */
   newNullifierEntries: Map<string, NullifierInfo>;
   /** Updated next deposit index to scan */
@@ -24,8 +25,6 @@ export interface ScanResult {
   filledDepositsFound: number;
   /** Number of pending deposits found (awaiting solver fill) */
   pendingDepositsFound: number;
-  /** @deprecated Use filledDepositsFound + pendingDepositsFound. Total deposits found for backwards compat. */
-  depositsFound: number;
 }
 
 // ============================================================================
@@ -68,12 +67,11 @@ export function scanForDeposits(
   currentOffset?: number,
 ): ScanResult {
   const result: ScanResult = {
-    newChains: [],
+    newTrees: [],
     newNullifierEntries: new Map(),
     nextDepositIndex: startIndex,
     filledDepositsFound: 0,
     pendingDepositsFound: 0,
-    depositsFound: 0, // Backwards compat - sum of filled + pending
   };
 
   // Pre-compute precommitments for potential deposit indices
@@ -100,17 +98,17 @@ export function scanForDeposits(
     const isPendingCrossChainDeposit =
       activity.type === 'CROSSCHAIN_DEPOSIT_PENDING' && activity.intentStatus !== 'filled';
 
-    // Create appropriate note type
-    let chain: NoteChain;
+    // Create appropriate note type as a tree
+    let tree: NoteTree;
     if (isPendingCrossChainDeposit) {
       // Pending cross-chain deposit: create DepositIntentNote
       // Don't add to nullifier map yet (commitment not in pool)
       const depositIntent = createDepositIntentNote(activity, idx, poolAddress, currentOffset);
-      chain = [depositIntent];
+      tree = createNoteTree(depositIntent);
     } else {
       // Filled deposit (same-chain or cross-chain): create DepositNote
       const depositNote = createDepositNote(activity, idx, poolAddress, currentOffset);
-      chain = [depositNote];
+      tree = createNoteTree(depositNote);
 
       // Add nullifier mapping for filled deposits (commitment is in pool)
       const nullifierHash = deriveAndHashNullifier(accountKey, poolAddress, chainId, idx, 0);
@@ -122,14 +120,13 @@ export function scanForDeposits(
     }
 
     // Add to results
-    result.newChains.push(chain);
+    result.newTrees.push(tree);
     result.nextDepositIndex = idx + 1;
     if (isPendingCrossChainDeposit) {
       result.pendingDepositsFound++;
     } else {
       result.filledDepositsFound++;
     }
-    result.depositsFound++; // Backwards compat
   }
 
   return result;

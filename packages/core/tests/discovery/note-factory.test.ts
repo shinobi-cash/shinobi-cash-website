@@ -212,13 +212,15 @@ describe('note-factory', () => {
     it('should create a change note for Withdraw2 winner', () => {
       const winnerNote = createMockDepositNote(1, toEther(1));
       const activity = createMockWithdraw2Activity(0, 0, 1, 0, toEther(0.5));
-      const note = createWithdraw2ChangeNote(winnerNote, activity, 1, toEther(1.5), 0);
+      const note = createWithdraw2ChangeNote(winnerNote, activity, 1, toEther(1.5), 0, '421614', toEther(1));
 
       expect(note.noteType).toBe('change');
       expect(note.depositIndex).toBe(1);
       expect(note.changeIndex).toBe(1);
       expect(note.amount).toBe(toEther(1.5).toString());
       expect(note.mergedFromDepositIndex).toBe(0);
+      expect(note.mergedFromOriginChainId).toBe('421614');
+      expect(note.mergedFromAmount).toBe(toEther(1).toString());
     });
 
     it('should detect cross-chain from activity type', () => {
@@ -226,7 +228,7 @@ describe('note-factory', () => {
       const activity = createMockWithdraw2Activity(0, 0, 1, 0, toEther(0.5), {
         type: 'CROSSCHAIN_WITHDRAW2',
       });
-      const note = createWithdraw2ChangeNote(winnerNote, activity, 1, toEther(1.5), 0);
+      const note = createWithdraw2ChangeNote(winnerNote, activity, 1, toEther(1.5), 0, '421614', toEther(1));
 
       expect(note.isCrossChain).toBe(true);
     });
@@ -234,7 +236,7 @@ describe('note-factory', () => {
     it('should detect cross-chain from parent note', () => {
       const winnerNote = createMockDepositNote(1, toEther(1), { isCrossChain: true });
       const activity = createMockWithdraw2Activity(0, 0, 1, 0, toEther(0.5));
-      const note = createWithdraw2ChangeNote(winnerNote, activity, 1, toEther(1.5), 0);
+      const note = createWithdraw2ChangeNote(winnerNote, activity, 1, toEther(1.5), 0, '421614', toEther(1));
 
       expect(note.isCrossChain).toBe(true);
     });
@@ -242,7 +244,7 @@ describe('note-factory', () => {
     it('should include spentNullifier1 in activity metadata', () => {
       const winnerNote = createMockDepositNote(1, toEther(1));
       const activity = createMockWithdraw2Activity(0, 0, 1, 0, toEther(0.5));
-      const note = createWithdraw2ChangeNote(winnerNote, activity, 1, toEther(1.5), 0);
+      const note = createWithdraw2ChangeNote(winnerNote, activity, 1, toEther(1.5), 0, '421614', toEther(1));
 
       expect(note.activityData.spentNullifier1).toBe(activity.spentNullifier1);
     });
@@ -252,7 +254,7 @@ describe('note-factory', () => {
       const activity = createMockWithdraw2Activity(0, 0, 1, 0, toEther(0.5), {
         orderId: 'activity-order',
       });
-      const note = createWithdraw2ChangeNote(winnerNote, activity, 1, toEther(1.5), 0);
+      const note = createWithdraw2ChangeNote(winnerNote, activity, 1, toEther(1.5), 0, '421614', toEther(1));
 
       expect(note.orderId).toBe('activity-order');
     });
@@ -262,7 +264,7 @@ describe('note-factory', () => {
       const activity = createMockWithdraw2Activity(0, 0, 1, 0, toEther(0.5), {
         orderId: undefined,
       });
-      const note = createWithdraw2ChangeNote(winnerNote, activity, 1, toEther(1.5), 0);
+      const note = createWithdraw2ChangeNote(winnerNote, activity, 1, toEther(1.5), 0, '421614', toEther(1));
 
       expect(note.orderId).toBe('parent-order');
     });

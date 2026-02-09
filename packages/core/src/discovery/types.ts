@@ -9,7 +9,7 @@ import type { ASPStatus, IntentStatus } from '@shinobi-cash/data';
 // Note Status
 // ============================================================================
 
-export type NoteStatus = 'unspent' | 'spent' | 'merged';
+export type NoteStatus = 'unspent' | 'spent' | 'merged' | 'ragequit';
 
 // ============================================================================
 // Activity Metadata
@@ -17,6 +17,8 @@ export type NoteStatus = 'unspent' | 'spent' | 'merged';
 
 export interface ActivityMetadata {
   originalAmount?: string;
+  /** The actual withdrawn amount from activity.amount (for withdrawals) */
+  withdrawnAmount?: string;
   vettingFeeAmount?: string;
   relayFeeAmount?: string;
   solverFeeAmount?: string;
@@ -37,6 +39,7 @@ export interface ActivityMetadata {
   ragequitTimestamp?: string;
   ragequitBlockNumber?: string;
   ragequitUser?: string;
+  ragequitAmount?: string;
 }
 
 // ============================================================================
@@ -54,9 +57,11 @@ interface BaseNote {
   blockNumber: string;
   timestamp: string;
   originTransactionHash: string;
-  destinationTransactionHash: string;
+  /** Only set for cross-chain operations (different from originTransactionHash) */
+  destinationTransactionHash?: string;
   originChainId: string;
-  destinationChainId: string;
+  /** Only set for cross-chain operations (different from originChainId) */
+  destinationChainId?: string;
   // Cross-chain
   isCrossChain: boolean;
   orderId?: string;
@@ -85,8 +90,14 @@ export interface ChangeNote extends BaseNote {
   noteType: 'change';
   changeIndex: number;
   refundCommitment?: string;
-  /** For Withdraw2 change notes: which chain was merged into this one */
+  /** For Withdraw2 winner: depositIndex of the note that was merged into this one */
   mergedFromDepositIndex?: number;
+  /** For Withdraw2 winner: originChainId of the note that was merged into this one */
+  mergedFromOriginChainId?: string;
+  /** For Withdraw2 winner: amount contributed from the merged note */
+  mergedFromAmount?: string;
+  /** For Withdraw2 secondary (merged note): originChainId of the winner note it merged into */
+  mergedIntoOriginChainId?: string;
 }
 
 /** Refund note - created from failed cross-chain withdrawals */
@@ -168,7 +179,57 @@ export interface WithdrawalIntentNote extends BaseIntentNote {
 }
 
 export type Note = DepositNote | ChangeNote | RefundNote | DepositIntentNote | WithdrawalIntentNote;
-export type NoteChain = Note[];
+
+// ============================================================================
+// Note Tree Structure
+// ============================================================================
+
+/**
+ * Tree node wrapper for notes with parent/child relationships.
+ *
+ * Note Relationships:
+ * - DepositNote → ChangeNote (state transition: withdrawal)
+ * - DepositIntentNote → DepositNote (state transition: fill)
+ * - ChangeNote → ChangeNote (state transition: subsequent withdrawal)
+ * - Spent note → [ChangeNote, WithdrawalIntentNote] (siblings: branching)
+ * - WithdrawalIntentNote → RefundNote (state transition: refund)
+ * - RefundNote → ChangeNote (state transition: spend refund)
+ */
+export interface NoteNode {
+  /** The note data */
+  note: Note;
+
+  /** Parent node reference (null for root/DepositNote/DepositIntentNote) */
+  parent: NoteNode | null;
+
+  /** Child nodes (can have multiple for sibling branches) */
+  children: NoteNode[];
+
+  /**
+   * Terminal flag - no children allowed.
+   * Set for: ragequit, merged, filled WithdrawalIntentNote, refunded DepositIntentNote
+   */
+  isTerminal: boolean;
+}
+
+/**
+ * A note tree rooted at a DepositNote or DepositIntentNote.
+ * Represents all notes derived from a single deposit.
+ */
+export interface NoteTree {
+  /** Root node (always DepositNote or DepositIntentNote) */
+  root: NoteNode;
+}
+
+/**
+ * Serializable format for tree persistence (no circular references).
+ */
+export interface SerializableNoteNode {
+  note: Note;
+  children: SerializableNoteNode[];
+  isTerminal: boolean;
+}
+
 
 // ============================================================================
 // Type Guards
@@ -182,6 +243,31 @@ export function isDepositIntentNote(note: Note): note is DepositIntentNote {
 /** Check if a note is a WithdrawalIntentNote */
 export function isWithdrawalIntentNote(note: Note): note is WithdrawalIntentNote {
   return note.noteType === 'withdrawalIntent';
+}
+
+/** Check if a note is a RefundNote */
+export function isRefundNote(note: Note): note is RefundNote {
+  return note.noteType === 'refund';
+}
+
+/** Check if a note is a DepositNote */
+export function isDepositNote(note: Note): note is DepositNote {
+  return note.noteType === 'deposit';
+}
+
+/** Check if a note is a ChangeNote */
+export function isChangeNote(note: Note): note is ChangeNote {
+  return note.noteType === 'change';
+}
+
+/** Check if a note is terminal (ragequit or merged) */
+export function isTerminalNote(note: Note): boolean {
+  return note.status === 'ragequit' || note.status === 'merged';
+}
+
+/** Check if a note is any intent note (deposit or withdrawal) */
+export function isIntentNote(note: Note): note is DepositIntentNote | WithdrawalIntentNote {
+  return note.noteType === 'depositIntent' || note.noteType === 'withdrawalIntent';
 }
 
 // ============================================================================
@@ -217,8 +303,8 @@ export function parseChainKey(key: ChainKey): { originChainId: string; depositIn
 }
 
 export interface DiscoveryState {
-  /** All discovered note chains, keyed by ChainKey (originChainId:depositIndex) */
-  chains: Map<ChainKey, NoteChain>;
+  /** All discovered note trees, keyed by ChainKey (originChainId:depositIndex) */
+  trees: Map<ChainKey, NoteTree>;
   /** Nullifier hash -> note location for quick lookups */
   nullifierMap: Map<string, NullifierInfo>;
   /** Next deposit index to scan per chain (keyed by chainId string) */
@@ -229,22 +315,18 @@ export interface DiscoveryState {
   newFilledDepositsFound: number;
   /** Count of new pending deposits found in this sync (awaiting fill) */
   newPendingDepositsFound: number;
-  /** @deprecated Use newFilledDepositsFound. Total new deposits for backwards compat. */
-  newDepositsFound: number;
 }
 
 /** Serializable version of DiscoveryState for persistence */
 export interface SerializableDiscoveryState {
-  /** Chains keyed by ChainKey (originChainId:depositIndex) */
-  chains: Array<{ chainKey: ChainKey; chain: NoteChain }>;
+  /** Trees keyed by ChainKey (originChainId:depositIndex) */
+  trees: Array<{ chainKey: ChainKey; tree: SerializableNoteNode }>;
   nullifierMap: Array<{ hash: string; info: NullifierInfo }>;
   /** Next deposit index per chain (keyed by chainId string) */
   nextDepositIndex: Array<{ chainId: string; index: number }>;
   minOffset: number;
   newFilledDepositsFound: number;
   newPendingDepositsFound: number;
-  /** @deprecated Use newFilledDepositsFound. */
-  newDepositsFound: number;
 }
 
 // ============================================================================
@@ -252,7 +334,8 @@ export interface SerializableDiscoveryState {
 // ============================================================================
 
 export interface DiscoveryResult {
-  notes: NoteChain[];
+  /** All discovered note trees */
+  trees: NoteTree[];
   /** Last used deposit index per chain (keyed by chainId string) */
   lastUsedIndexByChain: Map<string, number>;
   newNotesFound: number;

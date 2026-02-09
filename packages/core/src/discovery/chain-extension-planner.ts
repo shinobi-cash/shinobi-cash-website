@@ -1,17 +1,18 @@
 /**
  * @shinobi-cash/core/discovery
- * Phase 2: Chain Extension Planning (Read-Only)
+ * Phase 2: Tree Extension Planning (Read-Only)
  *
- * Pure planning layer for chain extensions.
+ * Pure planning layer for tree extensions.
  * All functions in this file are read-only - no mutations allowed.
  */
 
 import type { Activity } from '@shinobi-cash/data';
-import type { NoteChain, NullifierInfo, ChainKey } from './types.js';
+import type { NoteTree, NullifierInfo, ChainKey } from './types.js';
 import { makeChainKey } from './types.js';
 import type { ActivityIndex } from './activity-indexer.js';
 import { deriveAndHashNullifier } from './nullifier-utils.js';
 import { derivedNoteCommitment } from '../withdrawal/index.js';
+import { getLastSpendableLeaf } from './tree-utils.js';
 
 // ============================================================================
 // Planned Extension Types
@@ -103,21 +104,21 @@ function createPlanningContext(): PlanningContext {
 }
 
 // ============================================================================
-// Chain Extension Planning (Read-Only)
+// Tree Extension Planning (Read-Only)
 // ============================================================================
 
 /**
- * Plan extensions for a single chain
+ * Plan extensions for a single tree
  *
  * This function is PURE and READ-ONLY:
- * - Does not mutate chain, nullifierMap, or any other state
+ * - Does not mutate tree, nullifierMap, or any other state
  * - Returns a list of planned extensions
  * - Can be called multiple times with same inputs for same results
  */
-export function planChainExtensions(
-  chain: NoteChain,
+export function planTreeExtensions(
+  tree: NoteTree,
   chainKey: ChainKey,
-  allChains: Map<ChainKey, NoteChain>,
+  allTrees: Map<ChainKey, NoteTree>,
   nullifierMap: Map<string, NullifierInfo>,
   activityIndex: ActivityIndex,
   accountKey: bigint,
@@ -126,15 +127,24 @@ export function planChainExtensions(
   const plans: PlannedExtension[] = [];
   const ctx = createPlanningContext();
 
-  // Simulate the chain state as we plan extensions
-  let currentChangeIndex = chain.length > 0 ? chain[chain.length - 1].changeIndex : -1;
-  let currentAmount = chain.length > 0 ? BigInt(chain[chain.length - 1].amount) : 0n;
-  let currentStatus = chain.length > 0 ? chain[chain.length - 1].status : 'spent';
-  let currentNoteType = chain.length > 0 ? chain[chain.length - 1].noteType : 'deposit';
-  let currentLabel = chain.length > 0 ? chain[chain.length - 1].label : undefined;
-  // Get origin chainId and depositIndex from the first note in chain (deposit note)
-  const originChainId = chain.length > 0 ? chain[0].originChainId : '0';
-  const depositIndex = chain.length > 0 ? chain[0].depositIndex : 0;
+  // Get the last spendable leaf to extend from
+  const lastLeaf = getLastSpendableLeaf(tree);
+  if (!lastLeaf) {
+    // No spendable leaf - tree cannot be extended
+    return plans;
+  }
+
+  // Get root note for origin chainId and depositIndex
+  const rootNote = tree.root.note;
+  const originChainId = rootNote.originChainId;
+  const depositIndex = rootNote.depositIndex;
+
+  // Simulate the tree state as we plan extensions
+  let currentChangeIndex = lastLeaf.note.changeIndex;
+  let currentAmount = BigInt(lastLeaf.note.amount);
+  let currentStatus = lastLeaf.note.status;
+  let currentNoteType = lastLeaf.note.noteType;
+  let currentLabel = lastLeaf.note.label;
 
   while (true) {
     // Stop if note is not extendable
@@ -201,7 +211,7 @@ export function planChainExtensions(
     const withdraw2 = activityIndex.withdraw2ByNullifier.get(nullifierHash);
     if (withdraw2) {
       const plan = planWithdraw2(
-        chain,
+        tree,
         chainKey,
         originChainId,
         depositIndex,
@@ -209,7 +219,7 @@ export function planChainExtensions(
         currentAmount,
         withdraw2,
         nullifierHash,
-        allChains,
+        allTrees,
         nullifierMap,
         ctx,
         accountKey,
@@ -248,17 +258,16 @@ export function planChainExtensions(
     }
 
     // Check for ragequit
-    // NOTE: Ragequit detection only works for the ORIGINAL chain tip (lastNote), not
+    // NOTE: Ragequit detection only works for the ORIGINAL tree leaf (lastLeaf), not
     // for virtually extended notes. This is because we derive commitment from the actual
     // note (which has the label), not from virtual state. If a ragequit occurs after
     // withdrawals, it will be detected in a subsequent sync pass after those withdrawals
     // are persisted.
     // Gate on noteType (ragequit only for deposit/change, not intent notes or refund)
-    // Also check lastNote.label since derivedNoteCommitment requires it
+    // Also check label since derivedNoteCommitment requires it
     if (currentNoteType === 'deposit' || currentNoteType === 'change') {
-      const lastNote = chain[chain.length - 1];
-      if (lastNote && lastNote.label !== undefined) {
-        const commitment = derivedNoteCommitment(accountKey, lastNote).toString();
+      if (lastLeaf && lastLeaf.note.label !== undefined) {
+        const commitment = derivedNoteCommitment(accountKey, lastLeaf.note).toString();
         const ragequit = activityIndex.ragequitByCommitment.get(commitment);
         if (ragequit) {
           plans.push({
@@ -335,7 +344,7 @@ function plan1x1Withdrawal(
  * Plan a Withdraw2 extension (pure function)
  */
 function planWithdraw2(
-  currentChain: NoteChain,
+  currentTree: NoteTree,
   currentChainKey: ChainKey,
   currentOriginChainId: string,
   currentDepositIndex: number,
@@ -343,7 +352,7 @@ function planWithdraw2(
   currentAmount: bigint,
   activity: Activity,
   currentNullifierHash: string,
-  allChains: Map<ChainKey, NoteChain>,
+  allTrees: Map<ChainKey, NoteTree>,
   nullifierMap: Map<string, NullifierInfo>,
   ctx: PlanningContext,
   accountKey: bigint,
@@ -367,13 +376,13 @@ function planWithdraw2(
   }
 
   const otherChainKey = makeChainKey(otherInfo.originChainId, otherInfo.depositIndex);
-  const otherChain = allChains.get(otherChainKey);
-  if (!otherChain) {
+  const otherTree = allTrees.get(otherChainKey);
+  if (!otherTree) {
     return null;
   }
 
-  const otherLastNote = otherChain[otherChain.length - 1];
-  if (!otherLastNote || otherLastNote.status !== 'unspent') {
+  const otherLastLeaf = getLastSpendableLeaf(otherTree);
+  if (!otherLastLeaf || otherLastLeaf.note.status !== 'unspent') {
     return null;
   }
 
@@ -387,14 +396,14 @@ function planWithdraw2(
   const primaryChainKey = isPrimaryChain ? currentChainKey : otherChainKey;
   const primaryOriginChainId = isPrimaryChain ? currentOriginChainId : otherInfo.originChainId;
   const primaryDepositIndex = isPrimaryChain ? currentDepositIndex : otherInfo.depositIndex;
-  const primaryChangeIndex = isPrimaryChain ? currentChangeIndex : otherLastNote.changeIndex;
-  const primaryAmount = isPrimaryChain ? currentAmount : BigInt(otherLastNote.amount);
+  const primaryChangeIndex = isPrimaryChain ? currentChangeIndex : otherLastLeaf.note.changeIndex;
+  const primaryAmount = isPrimaryChain ? currentAmount : BigInt(otherLastLeaf.note.amount);
 
   const secondaryChainKey = isPrimaryChain ? otherChainKey : currentChainKey;
   const secondaryOriginChainId = isPrimaryChain ? otherInfo.originChainId : currentOriginChainId;
   const secondaryDepositIndex = isPrimaryChain ? otherInfo.depositIndex : currentDepositIndex;
-  const secondaryChangeIndex = isPrimaryChain ? otherLastNote.changeIndex : currentChangeIndex;
-  const secondaryAmount = isPrimaryChain ? BigInt(otherLastNote.amount) : currentAmount;
+  const secondaryChangeIndex = isPrimaryChain ? otherLastLeaf.note.changeIndex : currentChangeIndex;
+  const secondaryAmount = isPrimaryChain ? BigInt(otherLastLeaf.note.amount) : currentAmount;
 
   const combinedValue = primaryAmount + secondaryAmount;
   const withdrawn = BigInt(activity.amount || 0);

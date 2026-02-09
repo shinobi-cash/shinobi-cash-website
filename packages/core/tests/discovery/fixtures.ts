@@ -3,8 +3,9 @@
  */
 
 import type { Activity } from '@shinobi-cash/data';
-import type { Note, DepositNote, ChangeNote, DepositIntentNote, WithdrawalIntentNote, RefundNote, NoteChain } from '../../src/discovery/types.js';
+import type { Note, DepositNote, ChangeNote, DepositIntentNote, WithdrawalIntentNote, RefundNote, NoteTree } from '../../src/discovery/types.js';
 import { deriveDepositPrecommitment, deriveAndHashNullifier } from '../../src/discovery/nullifier-utils.js';
+import { createNoteTree, addChild } from '../../src/discovery/tree-utils.js';
 
 // ============================================================================
 // Test Constants
@@ -241,7 +242,7 @@ export function createMockWithdrawalIntentNote(
     noteType: 'withdrawalIntent',
     poolAddress: TEST_POOL_ADDRESS,
     depositIndex,
-    changeIndex: parentChangeIndex + 1, // changeIndex is after the parent
+    changeIndex: parentChangeIndex, // For Note union compatibility
     parentChangeIndex,
     amount: amount.toString(),
     label: (depositIndex + 1000).toString(),
@@ -269,8 +270,6 @@ export function createMockDepositIntentNote(
   amount: string | bigint,
   overrides: Partial<DepositIntentNote> = {},
 ): DepositIntentNote {
-  const precommitmentHash = deriveDepositPrecommitment(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, depositIndex);
-
   return {
     noteType: 'depositIntent',
     poolAddress: TEST_POOL_ADDRESS,
@@ -290,7 +289,6 @@ export function createMockDepositIntentNote(
     fillDeadline: (Math.floor(Date.now() / 1000) + 3600).toString(),
     expires: (Math.floor(Date.now() / 1000) + 86400).toString(),
     aspStatus: 'pending',
-    precommitmentHash,
     activityData: {},
     ...overrides,
   };
@@ -326,25 +324,36 @@ export function createMockRefundNote(
 }
 
 // ============================================================================
-// Chain Factories
+// Tree Factories
 // ============================================================================
 
-export function createMockNoteChain(
+/**
+ * Create a NoteTree with just a deposit note at the root
+ */
+export function createMockNoteTree(
   depositIndex: number,
   depositAmount: string | bigint,
-): NoteChain {
-  return [createMockDepositNote(depositIndex, depositAmount)];
+): NoteTree {
+  const depositNote = createMockDepositNote(depositIndex, depositAmount);
+  return createNoteTree(depositNote);
 }
 
-export function createMockChainWithWithdrawal(
+/**
+ * Create a NoteTree with a deposit → change structure (simulates one withdrawal)
+ */
+export function createMockTreeWithWithdrawal(
   depositIndex: number,
   depositAmount: string | bigint,
   withdrawnAmount: string | bigint,
-): NoteChain {
+): NoteTree {
   const remaining = BigInt(depositAmount) - BigInt(withdrawnAmount);
   const depositNote = createMockDepositNote(depositIndex, depositAmount, { status: 'spent' });
   const changeNote = createMockChangeNote(depositIndex, 1, remaining);
-  return [depositNote, changeNote];
+
+  const tree = createNoteTree(depositNote);
+  addChild(tree.root, changeNote);
+
+  return tree;
 }
 
 // ============================================================================

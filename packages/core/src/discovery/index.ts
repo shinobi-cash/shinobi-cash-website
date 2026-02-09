@@ -15,7 +15,7 @@ import type {
   DiscoveryProgress,
   DiscoveryOptions,
   DiscoveryPolicy,
-  NoteChain,
+  NoteTree,
   ActivityFetcher,
   PersistenceCallbacks,
   SerializableDiscoveryState,
@@ -24,9 +24,10 @@ import type {
 import { DEFAULT_DISCOVERY_POLICY, makeChainKey } from './types.js';
 import { buildActivityIndex } from './activity-indexer.js';
 import { scanForDeposits } from './deposit-scanner.js';
-import { extendAllChains } from './chain-extender.js';
-import { reconcileChains } from './reconciler.js';
+import { extendAllTrees } from './chain-extender.js';
+import { reconcileTrees } from './reconciler.js';
 import { deriveAndHashNullifier } from './nullifier-utils.js';
+import { serializeTree, deserializeTree, getSpendableLeaves } from './tree-utils.js';
 
 // ============================================================================
 // Re-exports
@@ -34,12 +35,15 @@ import { deriveAndHashNullifier } from './nullifier-utils.js';
 
 export type {
   Note,
-  NoteChain,
   DepositNote,
   ChangeNote,
   RefundNote,
   DepositIntentNote,
   WithdrawalIntentNote,
+  // Tree structure types
+  NoteNode,
+  NoteTree,
+  SerializableNoteNode,
   NoteStatus,
   NullifierInfo,
   DiscoveryState,
@@ -60,14 +64,38 @@ export {
   parseChainKey,
   isDepositIntentNote,
   isWithdrawalIntentNote,
+  isRefundNote,
+  isDepositNote,
+  isChangeNote,
+  isTerminalNote,
+  isIntentNote,
 } from './types.js';
+
+// Tree utilities
+export {
+  createNoteTree,
+  createNoteNode,
+  addChild,
+  findNode,
+  findNodeByPosition,
+  findNodeByOrderId,
+  getLeafNodes,
+  getSpendableLeaves,
+  getLastSpendableLeaf,
+  getTotalSpendableBalance,
+  traverseTree,
+  markTerminal,
+  serializeTree,
+  deserializeTree,
+  selectWinnerChain,
+} from './tree-utils.js';
 
 export { DEFAULT_DISCOVERY_POLICY } from './types.js';
 
 export { buildActivityIndex, isDepositActivity, is1x1WithdrawalActivity, isWithdraw2Activity } from './activity-indexer.js';
 export { scanForDeposits } from './deposit-scanner.js';
-export { extendAllChains } from './chain-extender.js';
-export { reconcileChains } from './reconciler.js';
+export { extendAllTrees } from './chain-extender.js';
+export { reconcileTrees } from './reconciler.js';
 export type { ReconcileResult } from './reconciler.js';
 export { deriveNullifier, hashNullifier, deriveAndHashNullifier, deriveDepositPrecommitment } from './nullifier-utils.js';
 export {
@@ -162,7 +190,7 @@ export class NoteDiscovery {
       // Persist periodically
       if (pagesProcessed % policy.persistEveryPages === 0) {
         // Calculate minOffset before saving
-        state.minOffset = calculateMinOffset(state.chains);
+        state.minOffset = calculateMinOffset(state.trees);
         await this.saveState(publicKey, poolAddress, state);
       }
 
@@ -170,7 +198,7 @@ export class NoteDiscovery {
     }
 
     // Calculate final minOffset and persist
-    state.minOffset = calculateMinOffset(state.chains);
+    state.minOffset = calculateMinOffset(state.trees);
     await this.saveState(publicKey, poolAddress, state);
 
     // Mark complete
@@ -218,11 +246,11 @@ export class NoteDiscovery {
         currentOffset,
       );
 
-      // Merge new chains into state using ChainKey
-      for (const chain of scanResult.newChains) {
-        const depositNote = chain[0]!;
-        const key = makeChainKey(depositNote.originChainId, depositNote.depositIndex);
-        state.chains.set(key, chain);
+      // Merge new trees into state using ChainKey
+      for (const tree of scanResult.newTrees) {
+        const rootNote = tree.root.note;
+        const key = makeChainKey(rootNote.originChainId, rootNote.depositIndex);
+        state.trees.set(key, tree);
       }
       for (const [hash, info] of scanResult.newNullifierEntries) {
         state.nullifierMap.set(hash, info);
@@ -230,12 +258,11 @@ export class NoteDiscovery {
       state.nextDepositIndex.set(chainId, scanResult.nextDepositIndex);
       state.newFilledDepositsFound += scanResult.filledDepositsFound;
       state.newPendingDepositsFound += scanResult.pendingDepositsFound;
-      state.newDepositsFound += scanResult.depositsFound; // Backwards compat
     }
 
     // PHASE 2: Reconcile (update ASP status, labels, intent status)
-    // MUST run before chain extension so filled deposit intents get their nullifiers computed
-    const reconcileResult = reconcileChains(state.chains, activities, activityIndex);
+    // MUST run before tree extension so filled deposit intents get their nullifiers computed
+    const reconcileResult = reconcileTrees(state.trees, activities, activityIndex);
 
     // Handle filled deposit intents: compute nullifier hashes for newly active deposits
     for (const filled of reconcileResult.filledDepositIndices) {
@@ -253,16 +280,16 @@ export class NoteDiscovery {
       });
     }
 
-    // PHASE 3: Extend all chains (handles both 1:1 and 2:1 withdrawals)
+    // PHASE 3: Extend all trees (handles both 1:1 and 2:1 withdrawals)
     // Now all nullifiers (including from filled deposit intents) are in the map
-    const extensionResult = extendAllChains(
-      state.chains,
+    const extensionResult = extendAllTrees(
+      state.trees,
       state.nullifierMap,
       activityIndex,
       accountKey,
       poolAddress,
     );
-    state.chains = extensionResult.updatedChains;
+    state.trees = extensionResult.updatedTrees;
     state.nullifierMap = extensionResult.updatedNullifierMap;
 
     return state;
@@ -275,26 +302,25 @@ export class NoteDiscovery {
   private async loadOrInitState(publicKey: string, poolAddress: string): Promise<DiscoveryState> {
     const cached = await this.persistence.loadState(publicKey, poolAddress);
     if (cached) {
-      return deserializeState(cached);
+      return deserializeDiscoveryState(cached);
     }
     return {
-      chains: new Map(),
+      trees: new Map(),
       nullifierMap: new Map(),
       nextDepositIndex: new Map(),
       minOffset: 0,
       newFilledDepositsFound: 0,
       newPendingDepositsFound: 0,
-      newDepositsFound: 0,
     };
   }
 
   private async saveState(publicKey: string, poolAddress: string, state: DiscoveryState): Promise<void> {
-    const serializable = serializeState(state);
+    const serializable = serializeDiscoveryState(state);
     await this.persistence.saveState(publicKey, poolAddress, serializable);
   }
 
   private buildResult(state: DiscoveryState): DiscoveryResult {
-    const notes = Array.from(state.chains.values());
+    const trees = Array.from(state.trees.values());
 
     // Build per-chain last used indices (subtract 1 since nextDepositIndex is the NEXT index)
     const lastUsedIndexByChain = new Map<string, number>();
@@ -303,7 +329,7 @@ export class NoteDiscovery {
     }
 
     return {
-      notes,
+      trees,
       lastUsedIndexByChain,
       // Use filled deposits for UX - these are the spendable ones
       newNotesFound: state.newFilledDepositsFound,
@@ -316,11 +342,11 @@ export class NoteDiscovery {
 // Serialization Helpers
 // ============================================================================
 
-function serializeState(state: DiscoveryState): SerializableDiscoveryState {
+function serializeDiscoveryState(state: DiscoveryState): SerializableDiscoveryState {
   return {
-    chains: Array.from(state.chains.entries()).map(([chainKey, chain]) => ({
+    trees: Array.from(state.trees.entries()).map(([chainKey, tree]) => ({
       chainKey,
-      chain,
+      tree: serializeTree(tree),
     })),
     nullifierMap: Array.from(state.nullifierMap.entries()).map(([hash, info]) => ({
       hash,
@@ -333,19 +359,17 @@ function serializeState(state: DiscoveryState): SerializableDiscoveryState {
     minOffset: state.minOffset,
     newFilledDepositsFound: state.newFilledDepositsFound,
     newPendingDepositsFound: state.newPendingDepositsFound,
-    newDepositsFound: state.newDepositsFound,
   };
 }
 
-function deserializeState(serialized: SerializableDiscoveryState): DiscoveryState {
+function deserializeDiscoveryState(serialized: SerializableDiscoveryState): DiscoveryState {
   return {
-    chains: new Map(serialized.chains.map((c) => [c.chainKey, c.chain])),
+    trees: new Map(serialized.trees.map((t) => [t.chainKey, deserializeTree(t.tree)])),
     nullifierMap: new Map(serialized.nullifierMap.map((n) => [n.hash, n.info])),
     nextDepositIndex: new Map(serialized.nextDepositIndex.map((n) => [n.chainId, n.index])),
     minOffset: serialized.minOffset,
     newFilledDepositsFound: serialized.newFilledDepositsFound ?? 0,
     newPendingDepositsFound: serialized.newPendingDepositsFound ?? 0,
-    newDepositsFound: serialized.newDepositsFound,
   };
 }
 
@@ -353,18 +377,19 @@ function deserializeState(serialized: SerializableDiscoveryState): DiscoveryStat
  * Calculate the minimum offset from which we need to re-fetch activities.
  * This is the lowest discoveredAtOffset among all unspent notes.
  */
-function calculateMinOffset(chains: Map<ChainKey, import('./types.js').NoteChain>): number {
+function calculateMinOffset(trees: Map<ChainKey, NoteTree>): number {
   let minOffset = Number.MAX_SAFE_INTEGER;
   let hasUnspentNotes = false;
 
-  for (const [, chain] of chains) {
-    const lastNote = chain[chain.length - 1];
-    if (lastNote && lastNote.status === 'unspent') {
+  for (const [, tree] of trees) {
+    // Check if any leaf is spendable (unspent)
+    const spendableLeaves = getSpendableLeaves(tree);
+    if (spendableLeaves.length > 0) {
       hasUnspentNotes = true;
-      // Get the deposit note's discoveredAtOffset
-      const depositNote = chain[0];
-      if (depositNote?.discoveredAtOffset !== undefined) {
-        minOffset = Math.min(minOffset, depositNote.discoveredAtOffset);
+      // Get the root note's discoveredAtOffset
+      const rootNote = tree.root.note;
+      if (rootNote.discoveredAtOffset !== undefined) {
+        minOffset = Math.min(minOffset, rootNote.discoveredAtOffset);
       }
     }
   }

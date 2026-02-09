@@ -3,14 +3,14 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { extendAllChains } from '../../src/discovery/chain-extender.js';
+import { extendAllTrees } from '../../src/discovery/chain-extender.js';
 import { buildActivityIndex } from '../../src/discovery/activity-indexer.js';
 import { deriveAndHashNullifier } from '../../src/discovery/nullifier-utils.js';
-import type { NoteChain, NullifierInfo, DepositNote, ChangeNote, WithdrawalIntentNote, ChainKey } from '../../src/discovery/types.js';
+import type { NoteTree, NullifierInfo, ChangeNote, WithdrawalIntentNote, ChainKey } from '../../src/discovery/types.js';
 import { makeChainKey } from '../../src/discovery/types.js';
 import {
+  createMockNoteTree,
   createMockDepositNote,
-  createMockChangeNote,
   createMock1x1WithdrawalActivity,
   createMockCrossChainWithdrawalActivity,
   createMockWithdraw2Activity,
@@ -22,89 +22,90 @@ import {
   toEther,
 } from './fixtures.js';
 import { derivedNoteCommitment } from '../../src/withdrawal/index.js';
+import { getLeafNodes, findNodeByPosition, createNoteTree } from '../../src/discovery/tree-utils.js';
 
 describe('chain-extender', () => {
   beforeEach(() => {
     resetActivityCounter();
   });
 
-  describe('extendAllChains', () => {
+  describe('extendAllTrees', () => {
     describe('no extensions', () => {
-      it('should return unchanged chains for empty activity index', () => {
-        const depositNote = createMockDepositNote(0, toEther(1));
-        const chain: NoteChain = [depositNote];
+      it('should return unchanged trees for empty activity index', () => {
+        const tree = createMockNoteTree(0, toEther(1));
         const chainKey = makeChainKey(TEST_CHAIN_ID, 0);
-        const chains = new Map<ChainKey, NoteChain>([[chainKey, chain]]);
+        const trees = new Map<ChainKey, NoteTree>([[chainKey, tree]]);
         const nullifierMap = new Map<string, NullifierInfo>();
         const activityIndex = buildActivityIndex([]);
 
-        const result = extendAllChains(
-          chains,
+        const result = extendAllTrees(
+          trees,
           nullifierMap,
           activityIndex,
           TEST_ACCOUNT_KEY,
           TEST_POOL_ADDRESS,
         );
 
-        expect(result.updatedChains.size).toBe(1);
-        expect(result.updatedChains.get(chainKey)).toHaveLength(1);
+        expect(result.updatedTrees.size).toBe(1);
+        const updatedTree = result.updatedTrees.get(chainKey)!;
+        expect(getLeafNodes(updatedTree)).toHaveLength(1);
         expect(result.updatedNullifierMap.size).toBe(0);
       });
 
-      it('should handle empty chains map', () => {
-        const chains = new Map<ChainKey, NoteChain>();
+      it('should handle empty trees map', () => {
+        const trees = new Map<ChainKey, NoteTree>();
         const nullifierMap = new Map<string, NullifierInfo>();
         const activityIndex = buildActivityIndex([]);
 
-        const result = extendAllChains(
-          chains,
+        const result = extendAllTrees(
+          trees,
           nullifierMap,
           activityIndex,
           TEST_ACCOUNT_KEY,
           TEST_POOL_ADDRESS,
         );
 
-        expect(result.updatedChains.size).toBe(0);
+        expect(result.updatedTrees.size).toBe(0);
       });
     });
 
     describe('1:1 withdrawal extension', () => {
-      it('should extend chain with 1:1 withdrawal', () => {
-        const depositNote = createMockDepositNote(0, toEther(1));
-        const chain: NoteChain = [depositNote];
+      it('should extend tree with 1:1 withdrawal', () => {
+        const tree = createMockNoteTree(0, toEther(1));
         const chainKey = makeChainKey(TEST_CHAIN_ID, 0);
-        const chains = new Map<ChainKey, NoteChain>([[chainKey, chain]]);
+        const trees = new Map<ChainKey, NoteTree>([[chainKey, tree]]);
         const nullifierMap = new Map<string, NullifierInfo>();
         const activity = createMock1x1WithdrawalActivity(0, 0, toEther(0.3));
         const activityIndex = buildActivityIndex([activity]);
 
-        const result = extendAllChains(
-          chains,
+        const result = extendAllTrees(
+          trees,
           nullifierMap,
           activityIndex,
           TEST_ACCOUNT_KEY,
           TEST_POOL_ADDRESS,
         );
 
-        const updatedChain = result.updatedChains.get(chainKey)!;
-        expect(updatedChain).toHaveLength(2);
+        const updatedTree = result.updatedTrees.get(chainKey)!;
 
         // Original note should be spent
-        expect(updatedChain[0].status).toBe('spent');
+        expect(updatedTree.root.note.status).toBe('spent');
+
+        // Should have one child (change note)
+        expect(updatedTree.root.children).toHaveLength(1);
 
         // Change note should be created
-        const changeNote = updatedChain[1] as ChangeNote;
-        expect(changeNote.noteType).toBe('change');
-        expect(changeNote.changeIndex).toBe(1);
-        expect(changeNote.amount).toBe(toEther(0.7).toString());
-        expect(changeNote.status).toBe('unspent');
+        const changeNode = updatedTree.root.children[0];
+        expect(changeNode.note.noteType).toBe('change');
+        expect(changeNode.note.changeIndex).toBe(1);
+        expect(changeNode.note.amount).toBe(toEther(0.7).toString());
+        expect(changeNode.note.status).toBe('unspent');
       });
 
       it('should update nullifier map after extension', () => {
-        const depositNote = createMockDepositNote(0, toEther(1));
-        const chain: NoteChain = [depositNote];
+        const tree = createMockNoteTree(0, toEther(1));
         const chainKey = makeChainKey(TEST_CHAIN_ID, 0);
-        const chains = new Map<ChainKey, NoteChain>([[chainKey, chain]]);
+        const trees = new Map<ChainKey, NoteTree>([[chainKey, tree]]);
 
         const oldNullifier = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 0);
         const nullifierMap = new Map<string, NullifierInfo>([
@@ -114,8 +115,8 @@ describe('chain-extender', () => {
         const activity = createMock1x1WithdrawalActivity(0, 0, toEther(0.3));
         const activityIndex = buildActivityIndex([activity]);
 
-        const result = extendAllChains(
-          chains,
+        const result = extendAllTrees(
+          trees,
           nullifierMap,
           activityIndex,
           TEST_ACCOUNT_KEY,
@@ -136,83 +137,85 @@ describe('chain-extender', () => {
       });
 
       it('should create WithdrawalIntentNote for cross-chain withdrawal', () => {
-        const depositNote = createMockDepositNote(0, toEther(1));
-        const chain: NoteChain = [depositNote];
+        const tree = createMockNoteTree(0, toEther(1));
         const chainKey = makeChainKey(TEST_CHAIN_ID, 0);
-        const chains = new Map<ChainKey, NoteChain>([[chainKey, chain]]);
+        const trees = new Map<ChainKey, NoteTree>([[chainKey, tree]]);
         const nullifierMap = new Map<string, NullifierInfo>();
         const activity = createMockCrossChainWithdrawalActivity(0, 0, toEther(0.5));
         const activityIndex = buildActivityIndex([activity]);
 
-        const result = extendAllChains(
-          chains,
+        const result = extendAllTrees(
+          trees,
           nullifierMap,
           activityIndex,
           TEST_ACCOUNT_KEY,
           TEST_POOL_ADDRESS,
         );
 
-        const updatedChain = result.updatedChains.get(chainKey)!;
-        expect(updatedChain).toHaveLength(3); // Deposit, Change, WithdrawalIntent
+        const updatedTree = result.updatedTrees.get(chainKey)!;
 
-        const intentNote = updatedChain[2] as WithdrawalIntentNote;
-        expect(intentNote.noteType).toBe('withdrawalIntent');
-        expect(intentNote.amount).toBe(toEther(0.5).toString());
-        expect(intentNote.intentStatus).toBe('pending');
+        // Root should have 2 children: ChangeNote and WithdrawalIntentNote (siblings)
+        expect(updatedTree.root.children).toHaveLength(2);
+
+        const intentNode = updatedTree.root.children.find((c) => c.note.noteType === 'withdrawalIntent');
+        expect(intentNode).toBeDefined();
+        expect(intentNode!.note.amount).toBe(toEther(0.5).toString());
+        expect((intentNode!.note as WithdrawalIntentNote).intentStatus).toBe('pending');
       });
 
       it('should apply sequential withdrawals', () => {
-        const depositNote = createMockDepositNote(0, toEther(1));
-        const chain: NoteChain = [depositNote];
+        const tree = createMockNoteTree(0, toEther(1));
         const chainKey = makeChainKey(TEST_CHAIN_ID, 0);
-        const chains = new Map<ChainKey, NoteChain>([[chainKey, chain]]);
+        const trees = new Map<ChainKey, NoteTree>([[chainKey, tree]]);
         const nullifierMap = new Map<string, NullifierInfo>();
 
         const activity1 = createMock1x1WithdrawalActivity(0, 0, toEther(0.3));
         const activity2 = createMock1x1WithdrawalActivity(0, 1, toEther(0.2));
         const activityIndex = buildActivityIndex([activity1, activity2]);
 
-        const result = extendAllChains(
-          chains,
+        const result = extendAllTrees(
+          trees,
           nullifierMap,
           activityIndex,
           TEST_ACCOUNT_KEY,
           TEST_POOL_ADDRESS,
         );
 
-        const updatedChain = result.updatedChains.get(chainKey)!;
-        expect(updatedChain).toHaveLength(3); // Deposit + 2 change notes
+        const updatedTree = result.updatedTrees.get(chainKey)!;
 
-        // All intermediate notes should be spent
-        expect(updatedChain[0].status).toBe('spent');
-        expect(updatedChain[1].status).toBe('spent');
+        // Root (deposit) → Change1 → Change2
+        expect(updatedTree.root.note.status).toBe('spent');
+        expect(updatedTree.root.children).toHaveLength(1);
 
-        // Final note should have remaining balance
-        expect(updatedChain[2].amount).toBe(toEther(0.5).toString());
-        expect(updatedChain[2].status).toBe('unspent');
+        const change1 = updatedTree.root.children[0];
+        expect(change1.note.status).toBe('spent');
+        expect(change1.children).toHaveLength(1);
+
+        const change2 = change1.children[0];
+        expect(change2.note.amount).toBe(toEther(0.5).toString());
+        expect(change2.note.status).toBe('unspent');
       });
 
       it('should handle full withdrawal (remaining = 0)', () => {
-        const depositNote = createMockDepositNote(0, toEther(1));
-        const chain: NoteChain = [depositNote];
+        const tree = createMockNoteTree(0, toEther(1));
         const chainKey = makeChainKey(TEST_CHAIN_ID, 0);
-        const chains = new Map<ChainKey, NoteChain>([[chainKey, chain]]);
+        const trees = new Map<ChainKey, NoteTree>([[chainKey, tree]]);
         const nullifierMap = new Map<string, NullifierInfo>();
         const activity = createMock1x1WithdrawalActivity(0, 0, toEther(1)); // Full amount
         const activityIndex = buildActivityIndex([activity]);
 
-        const result = extendAllChains(
-          chains,
+        const result = extendAllTrees(
+          trees,
           nullifierMap,
           activityIndex,
           TEST_ACCOUNT_KEY,
           TEST_POOL_ADDRESS,
         );
 
-        const updatedChain = result.updatedChains.get(chainKey)!;
-        expect(updatedChain).toHaveLength(2);
+        const updatedTree = result.updatedTrees.get(chainKey)!;
+        expect(updatedTree.root.children).toHaveLength(1);
 
-        const changeNote = updatedChain[1] as ChangeNote;
+        const changeNote = updatedTree.root.children[0].note as ChangeNote;
         expect(changeNote.amount).toBe('0');
         expect(changeNote.status).toBe('spent');
 
@@ -222,16 +225,14 @@ describe('chain-extender', () => {
     });
 
     describe('Withdraw2 extension', () => {
-      it('should merge two chains with Withdraw2', () => {
-        const deposit0 = createMockDepositNote(0, toEther(1));
-        const deposit1 = createMockDepositNote(1, toEther(2));
-        const chain0: NoteChain = [deposit0];
-        const chain1: NoteChain = [deposit1];
+      it('should merge two trees with Withdraw2', () => {
+        const tree0 = createMockNoteTree(0, toEther(1));
+        const tree1 = createMockNoteTree(1, toEther(2));
         const chainKey0 = makeChainKey(TEST_CHAIN_ID, 0);
         const chainKey1 = makeChainKey(TEST_CHAIN_ID, 1);
-        const chains = new Map<ChainKey, NoteChain>([
-          [chainKey0, chain0],
-          [chainKey1, chain1],
+        const trees = new Map<ChainKey, NoteTree>([
+          [chainKey0, tree0],
+          [chainKey1, tree1],
         ]);
 
         const nullifier0 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 0);
@@ -244,42 +245,42 @@ describe('chain-extender', () => {
         const activity = createMockWithdraw2Activity(0, 0, 1, 0, toEther(0.5));
         const activityIndex = buildActivityIndex([activity]);
 
-        const result = extendAllChains(
-          chains,
+        const result = extendAllTrees(
+          trees,
           nullifierMap,
           activityIndex,
           TEST_ACCOUNT_KEY,
           TEST_POOL_ADDRESS,
         );
 
-        // Primary chain (depositIndex 1 is larger) gets change note
-        const primaryChain = result.updatedChains.get(chainKey1)!;
-        expect(primaryChain).toHaveLength(2);
-        expect(primaryChain[0].status).toBe('spent');
-        const primaryChange = primaryChain[1] as ChangeNote;
+        // Primary tree (depositIndex 1 is larger) gets change note
+        const primaryTree = result.updatedTrees.get(chainKey1)!;
+        expect(primaryTree.root.note.status).toBe('spent');
+        expect(primaryTree.root.children).toHaveLength(1);
+
+        const primaryChange = primaryTree.root.children[0].note as ChangeNote;
         expect(primaryChange.amount).toBe(toEther(2.5).toString()); // 1 + 2 - 0.5
         expect(primaryChange.mergedFromDepositIndex).toBe(0);
 
-        // Secondary chain gets merged note
-        const secondaryChain = result.updatedChains.get(chainKey0)!;
-        expect(secondaryChain).toHaveLength(2);
-        expect(secondaryChain[0].status).toBe('spent');
-        const mergedNote = secondaryChain[1] as ChangeNote;
+        // Secondary tree gets merged note
+        const secondaryTree = result.updatedTrees.get(chainKey0)!;
+        expect(secondaryTree.root.note.status).toBe('spent');
+        expect(secondaryTree.root.children).toHaveLength(1);
+
+        const mergedNote = secondaryTree.root.children[0].note as ChangeNote;
         expect(mergedNote.amount).toBe('0');
         expect(mergedNote.status).toBe('merged');
         expect(mergedNote.mergedIntoDepositIndex).toBe(1);
       });
 
       it('should update nullifier map for Withdraw2', () => {
-        const deposit0 = createMockDepositNote(0, toEther(1));
-        const deposit1 = createMockDepositNote(1, toEther(2));
-        const chain0: NoteChain = [deposit0];
-        const chain1: NoteChain = [deposit1];
+        const tree0 = createMockNoteTree(0, toEther(1));
+        const tree1 = createMockNoteTree(1, toEther(2));
         const chainKey0 = makeChainKey(TEST_CHAIN_ID, 0);
         const chainKey1 = makeChainKey(TEST_CHAIN_ID, 1);
-        const chains = new Map<ChainKey, NoteChain>([
-          [chainKey0, chain0],
-          [chainKey1, chain1],
+        const trees = new Map<ChainKey, NoteTree>([
+          [chainKey0, tree0],
+          [chainKey1, tree1],
         ]);
 
         const nullifier0 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 0);
@@ -292,8 +293,8 @@ describe('chain-extender', () => {
         const activity = createMockWithdraw2Activity(0, 0, 1, 0, toEther(0.5));
         const activityIndex = buildActivityIndex([activity]);
 
-        const result = extendAllChains(
-          chains,
+        const result = extendAllTrees(
+          trees,
           nullifierMap,
           activityIndex,
           TEST_ACCOUNT_KEY,
@@ -304,21 +305,19 @@ describe('chain-extender', () => {
         expect(result.updatedNullifierMap.has(nullifier0)).toBe(false);
         expect(result.updatedNullifierMap.has(nullifier1)).toBe(false);
 
-        // New nullifier for primary chain
+        // New nullifier for primary tree
         const newNullifier = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 1, 1);
         expect(result.updatedNullifierMap.has(newNullifier)).toBe(true);
       });
 
       it('should not double-process Withdraw2', () => {
-        const deposit0 = createMockDepositNote(0, toEther(1));
-        const deposit1 = createMockDepositNote(1, toEther(2));
-        const chain0: NoteChain = [deposit0];
-        const chain1: NoteChain = [deposit1];
+        const tree0 = createMockNoteTree(0, toEther(1));
+        const tree1 = createMockNoteTree(1, toEther(2));
         const chainKey0 = makeChainKey(TEST_CHAIN_ID, 0);
         const chainKey1 = makeChainKey(TEST_CHAIN_ID, 1);
-        const chains = new Map<ChainKey, NoteChain>([
-          [chainKey0, chain0],
-          [chainKey1, chain1],
+        const trees = new Map<ChainKey, NoteTree>([
+          [chainKey0, tree0],
+          [chainKey1, tree1],
         ]);
 
         const nullifier0 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 0);
@@ -331,29 +330,27 @@ describe('chain-extender', () => {
         const activity = createMockWithdraw2Activity(0, 0, 1, 0, toEther(0.5));
         const activityIndex = buildActivityIndex([activity]);
 
-        const result = extendAllChains(
-          chains,
+        const result = extendAllTrees(
+          trees,
           nullifierMap,
           activityIndex,
           TEST_ACCOUNT_KEY,
           TEST_POOL_ADDRESS,
         );
 
-        // Each chain should have exactly 2 notes, not more
-        expect(result.updatedChains.get(chainKey0)).toHaveLength(2);
-        expect(result.updatedChains.get(chainKey1)).toHaveLength(2);
+        // Each tree should have exactly 1 child (not more)
+        expect(result.updatedTrees.get(chainKey0)!.root.children).toHaveLength(1);
+        expect(result.updatedTrees.get(chainKey1)!.root.children).toHaveLength(1);
       });
 
       it('should create WithdrawalIntentNote for cross-chain Withdraw2', () => {
-        const deposit0 = createMockDepositNote(0, toEther(1));
-        const deposit1 = createMockDepositNote(1, toEther(2));
-        const chain0: NoteChain = [deposit0];
-        const chain1: NoteChain = [deposit1];
+        const tree0 = createMockNoteTree(0, toEther(1));
+        const tree1 = createMockNoteTree(1, toEther(2));
         const chainKey0 = makeChainKey(TEST_CHAIN_ID, 0);
         const chainKey1 = makeChainKey(TEST_CHAIN_ID, 1);
-        const chains = new Map<ChainKey, NoteChain>([
-          [chainKey0, chain0],
-          [chainKey1, chain1],
+        const trees = new Map<ChainKey, NoteTree>([
+          [chainKey0, tree0],
+          [chainKey1, tree1],
         ]);
 
         const nullifier0 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 0);
@@ -369,27 +366,29 @@ describe('chain-extender', () => {
         });
         const activityIndex = buildActivityIndex([activity]);
 
-        const result = extendAllChains(
-          chains,
+        const result = extendAllTrees(
+          trees,
           nullifierMap,
           activityIndex,
           TEST_ACCOUNT_KEY,
           TEST_POOL_ADDRESS,
         );
 
-        // Primary chain should have WithdrawalIntentNote
-        const primaryChain = result.updatedChains.get(chainKey1)!;
-        expect(primaryChain).toHaveLength(3);
-        expect(primaryChain[2].noteType).toBe('withdrawalIntent');
+        // Primary tree should have 2 children: ChangeNote and WithdrawalIntentNote
+        const primaryTree = result.updatedTrees.get(chainKey1)!;
+        expect(primaryTree.root.children).toHaveLength(2);
+
+        const intentNode = primaryTree.root.children.find((c) => c.note.noteType === 'withdrawalIntent');
+        expect(intentNode).toBeDefined();
       });
     });
 
     describe('ragequit extension', () => {
-      it('should mark note as spent on ragequit with matching commitment', () => {
+      it('should mark note as ragequit with matching commitment', () => {
         const depositNote = createMockDepositNote(0, toEther(1), { label: '12345' });
-        const chain: NoteChain = [depositNote];
+        const tree = createNoteTree(depositNote);
         const chainKey = makeChainKey(TEST_CHAIN_ID, 0);
-        const chains = new Map<ChainKey, NoteChain>([[chainKey, chain]]);
+        const trees = new Map<ChainKey, NoteTree>([[chainKey, tree]]);
 
         const nullifier = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 0);
         const nullifierMap = new Map<string, NullifierInfo>([
@@ -401,59 +400,62 @@ describe('chain-extender', () => {
         const activity = createMockRagequitActivity(0, 0, commitment);
         const activityIndex = buildActivityIndex([activity]);
 
-        const result = extendAllChains(
-          chains,
+        const result = extendAllTrees(
+          trees,
           nullifierMap,
           activityIndex,
           TEST_ACCOUNT_KEY,
           TEST_POOL_ADDRESS,
         );
 
-        // Note should be marked as spent
-        expect(result.updatedChains.get(chainKey)![0].status).toBe('spent');
+        const updatedTree = result.updatedTrees.get(chainKey)!;
+
+        // Note should be marked as ragequit
+        expect(updatedTree.root.note.status).toBe('ragequit');
 
         // Ragequit activity data should be stored
-        expect(result.updatedChains.get(chainKey)![0].activityData.ragequitTxHash).toBe(
-          activity.originTransactionHash,
-        );
+        expect(updatedTree.root.note.activityData.ragequitTxHash).toBe(activity.originTransactionHash);
 
         // Nullifier should be removed
         expect(result.updatedNullifierMap.has(nullifier)).toBe(false);
       });
 
-      it('should not modify chain for non-matching commitment', () => {
+      it('should not modify tree for non-matching commitment', () => {
         const depositNote = createMockDepositNote(0, toEther(1), { label: '12345' });
-        const chain: NoteChain = [depositNote];
-        const chains = new Map([[0, chain]]);
+        const tree = createNoteTree(depositNote);
+        const chainKey = makeChainKey(TEST_CHAIN_ID, 0);
+        const trees = new Map<ChainKey, NoteTree>([[chainKey, tree]]);
         const nullifierMap = new Map<string, NullifierInfo>();
 
         // Ragequit with non-matching commitment
         const activity = createMockRagequitActivity(0, 0, 'non-matching-commitment');
         const activityIndex = buildActivityIndex([activity]);
 
-        const result = extendAllChains(
-          chains,
+        const result = extendAllTrees(
+          trees,
           nullifierMap,
           activityIndex,
           TEST_ACCOUNT_KEY,
           TEST_POOL_ADDRESS,
         );
 
-        // Chain unchanged because commitment doesn't match
-        expect(result.updatedChains.get(0)).toHaveLength(1);
-        expect(result.updatedChains.get(0)![0].status).toBe('unspent');
+        const updatedTree = result.updatedTrees.get(chainKey)!;
+
+        // Tree unchanged because commitment doesn't match
+        expect(updatedTree.root.children).toHaveLength(0);
+        expect(updatedTree.root.note.status).toBe('unspent');
       });
     });
 
-    describe('multiple chains', () => {
-      it('should extend multiple chains independently', () => {
-        const deposit0 = createMockDepositNote(0, toEther(1));
-        const deposit1 = createMockDepositNote(1, toEther(2));
-        const chain0: NoteChain = [deposit0];
-        const chain1: NoteChain = [deposit1];
-        const chains = new Map([
-          [0, chain0],
-          [1, chain1],
+    describe('multiple trees', () => {
+      it('should extend multiple trees independently', () => {
+        const tree0 = createMockNoteTree(0, toEther(1));
+        const tree1 = createMockNoteTree(1, toEther(2));
+        const chainKey0 = makeChainKey(TEST_CHAIN_ID, 0);
+        const chainKey1 = makeChainKey(TEST_CHAIN_ID, 1);
+        const trees = new Map<ChainKey, NoteTree>([
+          [chainKey0, tree0],
+          [chainKey1, tree1],
         ]);
         const nullifierMap = new Map<string, NullifierInfo>();
 
@@ -461,20 +463,20 @@ describe('chain-extender', () => {
         const activity1 = createMock1x1WithdrawalActivity(1, 0, toEther(0.5));
         const activityIndex = buildActivityIndex([activity0, activity1]);
 
-        const result = extendAllChains(
-          chains,
+        const result = extendAllTrees(
+          trees,
           nullifierMap,
           activityIndex,
           TEST_ACCOUNT_KEY,
           TEST_POOL_ADDRESS,
         );
 
-        // Both chains extended independently
-        expect(result.updatedChains.get(0)).toHaveLength(2);
-        expect(result.updatedChains.get(1)).toHaveLength(2);
+        // Both trees extended independently
+        expect(result.updatedTrees.get(chainKey0)!.root.children).toHaveLength(1);
+        expect(result.updatedTrees.get(chainKey1)!.root.children).toHaveLength(1);
 
-        const change0 = result.updatedChains.get(0)![1] as ChangeNote;
-        const change1 = result.updatedChains.get(1)![1] as ChangeNote;
+        const change0 = result.updatedTrees.get(chainKey0)!.root.children[0].note as ChangeNote;
+        const change1 = result.updatedTrees.get(chainKey1)!.root.children[0].note as ChangeNote;
 
         expect(change0.amount).toBe(toEther(0.7).toString());
         expect(change1.amount).toBe(toEther(1.5).toString());
@@ -482,43 +484,22 @@ describe('chain-extender', () => {
     });
 
     describe('immutability', () => {
-      it('should not mutate original chains map', () => {
-        const depositNote = createMockDepositNote(0, toEther(1));
-        const chain: NoteChain = [depositNote];
-        const chains = new Map([[0, chain]]);
-        const nullifierMap = new Map<string, NullifierInfo>();
-        const activity = createMock1x1WithdrawalActivity(0, 0, toEther(0.3));
-        const activityIndex = buildActivityIndex([activity]);
-
-        extendAllChains(
-          chains,
-          nullifierMap,
-          activityIndex,
-          TEST_ACCOUNT_KEY,
-          TEST_POOL_ADDRESS,
-        );
-
-        // Original chain should be mutated (Plan/Apply modifies in place)
-        // This is expected behavior
-        expect(chain).toHaveLength(2);
-      });
-
       it('should not mutate original nullifier map', () => {
-        const depositNote = createMockDepositNote(0, toEther(1));
-        const chain: NoteChain = [depositNote];
-        const chains = new Map([[0, chain]]);
+        const tree = createMockNoteTree(0, toEther(1));
+        const chainKey = makeChainKey(TEST_CHAIN_ID, 0);
+        const trees = new Map<ChainKey, NoteTree>([[chainKey, tree]]);
 
         const oldNullifier = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 0);
         const nullifierMap = new Map<string, NullifierInfo>([
-          [oldNullifier, { depositIndex: 0, changeIndex: 0 }],
+          [oldNullifier, { originChainId: TEST_CHAIN_ID.toString(), depositIndex: 0, changeIndex: 0 }],
         ]);
         const originalSize = nullifierMap.size;
 
         const activity = createMock1x1WithdrawalActivity(0, 0, toEther(0.3));
         const activityIndex = buildActivityIndex([activity]);
 
-        extendAllChains(
-          chains,
+        extendAllTrees(
+          trees,
           nullifierMap,
           activityIndex,
           TEST_ACCOUNT_KEY,
@@ -531,10 +512,8 @@ describe('chain-extender', () => {
       });
     });
 
-    describe('idempotency - testing gaps', () => {
+    describe('idempotency', () => {
       it('should produce same result when same page is processed twice', () => {
-        // Testing gap: Replay same page twice (idempotency)
-        // Note: We create completely fresh objects for each pass to avoid mutation issues
         const chainKey0 = makeChainKey(TEST_CHAIN_ID, 0);
         const chainKey1 = makeChainKey(TEST_CHAIN_ID, 1);
 
@@ -546,36 +525,36 @@ describe('chain-extender', () => {
         const withdraw2Activity = createMockWithdraw2Activity(0, 1, 1, 0, toEther(0.5));
         const activityIndex = buildActivityIndex([activity1, withdraw2Activity]);
 
-        // First pass - create completely fresh chains
-        const chains1 = new Map<ChainKey, NoteChain>([
-          [chainKey0, [createMockDepositNote(0, toEther(1))]],
-          [chainKey1, [createMockDepositNote(1, toEther(2))]],
+        // First pass - create fresh trees
+        const trees1 = new Map<ChainKey, NoteTree>([
+          [chainKey0, createMockNoteTree(0, toEther(1))],
+          [chainKey1, createMockNoteTree(1, toEther(2))],
         ]);
         const nullifierMap1 = new Map<string, NullifierInfo>([
           [nullifier0, { originChainId: TEST_CHAIN_ID.toString(), depositIndex: 0, changeIndex: 0 }],
           [nullifier1, { originChainId: TEST_CHAIN_ID.toString(), depositIndex: 1, changeIndex: 0 }],
         ]);
 
-        const result1 = extendAllChains(
-          chains1,
+        const result1 = extendAllTrees(
+          trees1,
           nullifierMap1,
           activityIndex,
           TEST_ACCOUNT_KEY,
           TEST_POOL_ADDRESS,
         );
 
-        // Second pass - create completely fresh chains again
-        const chains2 = new Map<ChainKey, NoteChain>([
-          [chainKey0, [createMockDepositNote(0, toEther(1))]],
-          [chainKey1, [createMockDepositNote(1, toEther(2))]],
+        // Second pass - create fresh trees again
+        const trees2 = new Map<ChainKey, NoteTree>([
+          [chainKey0, createMockNoteTree(0, toEther(1))],
+          [chainKey1, createMockNoteTree(1, toEther(2))],
         ]);
         const nullifierMap2 = new Map<string, NullifierInfo>([
           [nullifier0, { originChainId: TEST_CHAIN_ID.toString(), depositIndex: 0, changeIndex: 0 }],
           [nullifier1, { originChainId: TEST_CHAIN_ID.toString(), depositIndex: 1, changeIndex: 0 }],
         ]);
 
-        const result2 = extendAllChains(
-          chains2,
+        const result2 = extendAllTrees(
+          trees2,
           nullifierMap2,
           activityIndex,
           TEST_ACCOUNT_KEY,
@@ -583,44 +562,52 @@ describe('chain-extender', () => {
         );
 
         // Results should be identical
-        expect(result1.updatedChains.get(chainKey0)?.length).toBe(result2.updatedChains.get(chainKey0)?.length);
-        expect(result1.updatedChains.get(chainKey1)?.length).toBe(result2.updatedChains.get(chainKey1)?.length);
+        const tree0Leaves1 = getLeafNodes(result1.updatedTrees.get(chainKey0)!).length;
+        const tree0Leaves2 = getLeafNodes(result2.updatedTrees.get(chainKey0)!).length;
+        expect(tree0Leaves1).toBe(tree0Leaves2);
+
+        const tree1Leaves1 = getLeafNodes(result1.updatedTrees.get(chainKey1)!).length;
+        const tree1Leaves2 = getLeafNodes(result2.updatedTrees.get(chainKey1)!).length;
+        expect(tree1Leaves1).toBe(tree1Leaves2);
+
         expect(result1.updatedNullifierMap.size).toBe(result2.updatedNullifierMap.size);
       });
 
       it('should handle out-of-order activities in page', () => {
-        // Testing gap: Out-of-order activities
-        // Activities arrive: withdrawal at changeIndex 1, then withdrawal at changeIndex 0
-        const depositNote = createMockDepositNote(0, toEther(1));
-        const chain: NoteChain = [depositNote];
+        const tree = createMockNoteTree(0, toEther(1));
         const chainKey = makeChainKey(TEST_CHAIN_ID, 0);
-        const chains = new Map<ChainKey, NoteChain>([[chainKey, chain]]);
+        const trees = new Map<ChainKey, NoteTree>([[chainKey, tree]]);
         const nullifierMap = new Map<string, NullifierInfo>();
 
         // Activities in wrong order (changeIndex 1 before changeIndex 0)
-        // Note: The activity indexer should still match correctly based on nullifier
         const activity0 = createMock1x1WithdrawalActivity(0, 0, toEther(0.3));
         const activity1 = createMock1x1WithdrawalActivity(0, 1, toEther(0.2));
         // Put them in reverse order in the array
         const activityIndex = buildActivityIndex([activity1, activity0]);
 
-        const result = extendAllChains(
-          chains,
+        const result = extendAllTrees(
+          trees,
           nullifierMap,
           activityIndex,
           TEST_ACCOUNT_KEY,
           TEST_POOL_ADDRESS,
         );
 
-        // Should still correctly process in sequential order based on nullifier matching
-        expect(result.updatedChains.get(chainKey)).toHaveLength(3);
+        const updatedTree = result.updatedTrees.get(chainKey)!;
 
-        const notes = result.updatedChains.get(chainKey)!;
-        expect(notes[0].status).toBe('spent'); // Deposit
-        expect(notes[1].changeIndex).toBe(1); // First change
-        expect((notes[1] as ChangeNote).amount).toBe(toEther(0.7).toString());
-        expect(notes[2].changeIndex).toBe(2); // Second change
-        expect((notes[2] as ChangeNote).amount).toBe(toEther(0.5).toString());
+        // Should still correctly process in sequential order based on nullifier matching
+        // deposit → change1 → change2
+        expect(updatedTree.root.note.status).toBe('spent');
+        expect(updatedTree.root.children).toHaveLength(1);
+
+        const change1 = updatedTree.root.children[0];
+        expect(change1.note.changeIndex).toBe(1);
+        expect((change1.note as ChangeNote).amount).toBe(toEther(0.7).toString());
+
+        expect(change1.children).toHaveLength(1);
+        const change2 = change1.children[0];
+        expect(change2.note.changeIndex).toBe(2);
+        expect((change2.note as ChangeNote).amount).toBe(toEther(0.5).toString());
       });
     });
   });
