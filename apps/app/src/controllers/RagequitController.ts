@@ -183,7 +183,9 @@ export const RagequitController = {
     state.selectedNote = null;
     state.lastError = null;
     currentEngine = null;
-    transition({ status: "idle" });
+    if (state.state.status !== "idle") {
+      transition({ status: "idle" });
+    }
   },
 
   retry(): void {

@@ -46,6 +46,11 @@ export function NoteRow({ note, onClick }: NoteRowProps) {
   // Get status text for intent notes (deposit or withdrawal)
   const intentStatusText = isIntentNote(note) ? getPendingIntentStatusText(note) : null;
 
+  // For ragequit notes, use the ragequit timestamp; otherwise use note timestamp
+  const displayTimestamp = note.status === "ragequit" && note.activityData.ragequitTimestamp
+    ? note.activityData.ragequitTimestamp
+    : note.timestamp;
+
   const handleViewDetails = (e: React.MouseEvent) => {
     e.stopPropagation();
     onClick?.();
@@ -92,7 +97,7 @@ export function NoteRow({ note, onClick }: NoteRowProps) {
                   {intentStatusText}
                 </span>
               ) : (
-                formatTimestamp(note.timestamp)
+                formatTimestamp(displayTimestamp)
               )}
             </div>
           </div>
@@ -146,7 +151,7 @@ export function NoteRow({ note, onClick }: NoteRowProps) {
               className="cursor-pointer text-red-400 hover:bg-red-500/10 hover:text-red-300 focus:bg-red-500/10 focus:text-red-300"
             >
               <Unlock className="h-4 w-4" />
-              Withdraw Publicly
+              Ragequit
             </DropdownMenuItem>
           )}
 

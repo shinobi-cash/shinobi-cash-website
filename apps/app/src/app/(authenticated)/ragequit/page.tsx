@@ -10,21 +10,22 @@ import { useRagequitController } from "@/hooks/useRagequitController";
 import { useNotesDiscovery } from "@/hooks/useNotesDiscovery";
 import { RagequitController, RagequitSelectors } from "@/controllers/RagequitController";
 import { getSpendableNotes } from "@/utils/noteFiltering";
-import type { NoteChain, ChangeNote } from "@shinobi-cash/core/discovery";
+import { traverseTree, type NoteTree, type ChangeNote } from "@shinobi-cash/core/discovery";
 import type { WalletClient, Account, Transport, Chain } from "viem";
 
-/** Check if a note chain has any merge history (received funds from another note) */
-function checkMergeHistory(noteChains: readonly (readonly unknown[])[], depositIndex: number): boolean {
-  const chain = noteChains.find((nc) => {
-    const firstNote = nc[0] as { depositIndex?: number } | undefined;
-    return firstNote?.depositIndex === depositIndex;
-  });
-  if (!chain) return false;
+/** Check if a note tree has any merge history (received funds from another note) */
+function checkMergeHistory(noteTrees: NoteTree[], depositIndex: number): boolean {
+  const tree = noteTrees.find((t) => t.root.note.depositIndex === depositIndex);
+  if (!tree) return false;
 
-  return chain.some((note) => {
-    const changeNote = note as ChangeNote;
-    return changeNote.mergedFromDepositIndex !== undefined;
+  let hasMerge = false;
+  traverseTree(tree, (node) => {
+    const changeNote = node.note as ChangeNote;
+    if (changeNote.mergedFromDepositIndex !== undefined) {
+      hasMerge = true;
+    }
   });
+  return hasMerge;
 }
 
 type RagequitScreen = "preview" | "timeline";
@@ -46,14 +47,13 @@ export default function RagequitPage() {
   useEffect(() => {
     if (noteIndexParam !== null && discovery.state.status === "ready") {
       const noteIndex = parseInt(noteIndexParam, 10);
-      // Cast to mutable array for getSpendableNotes
-      const spendableNotes = getSpendableNotes([...discovery.noteChains] as NoteChain[]);
+      const spendableNotes = getSpendableNotes(discovery.noteTrees as NoteTree[]);
       const note = spendableNotes.find((n) => n.depositIndex === noteIndex);
       if (note) {
         RagequitController.selectNote(note);
       }
     }
-  }, [noteIndexParam, discovery.state.status, discovery.noteChains]);
+  }, [noteIndexParam, discovery.state.status, discovery.noteTrees]);
 
   // Handle confirm from preview
   const handleConfirm = async () => {
@@ -115,7 +115,7 @@ export default function RagequitPage() {
     return (
       <div className="flex h-full items-center justify-center p-8 text-center">
         <div className="space-y-4">
-          <p className="text-neutral-400">No note selected for public withdrawal.</p>
+          <p className="text-neutral-400">No note selected for ragequit.</p>
           <button
             onClick={() => router.push("/notes")}
             className="text-blue-400 hover:text-blue-300"
@@ -127,8 +127,8 @@ export default function RagequitPage() {
     );
   }
 
-  // Check if this note chain has merge history
-  const noteHasMergeHistory = checkMergeHistory(discovery.noteChains, selectedNote.depositIndex);
+  // Check if this note tree has merge history
+  const noteHasMergeHistory = checkMergeHistory(discovery.noteTrees as NoteTree[], selectedNote.depositIndex);
 
   // Default: Preview screen
   return (
