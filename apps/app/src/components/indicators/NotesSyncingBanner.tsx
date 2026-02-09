@@ -11,7 +11,7 @@ export function NotesSyncingScreen() {
   const state = useSnapshot(NotesDiscoveryController.state);
 
   const isDiscovering = state.state.status === "discovering";
-  const isEmpty = state.noteChains.length === 0;
+  const isEmpty = state.noteTrees.length === 0;
 
   // Only show when discovering with no cached notes
   if (!isDiscovering || !isEmpty) {

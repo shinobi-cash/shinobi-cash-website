@@ -11,8 +11,8 @@
 
 import { useMemo } from "react";
 import { useSnapshot } from "valtio";
-import type { Note, NoteChain } from "@shinobi-cash/core/discovery";
-import type { NotesStatus, NotesError, NoteFilter, NoteChainView } from "@/types/notes";
+import type { Note, NoteTree } from "@shinobi-cash/core/discovery";
+import type { NotesStatus, NotesError, NoteFilter, NoteTreeView } from "@/types/notes";
 import { useNotesDiscovery } from "./useNotesDiscovery";
 import {
   NotesDiscoveryController,
@@ -30,7 +30,7 @@ export interface NotesScreenControllerAPI {
   syncError: string | null; // Set when we have cached data but sync failed
 
   // Filtered views
-  filteredNoteViews: NoteChainView[];
+  filteredNoteViews: NoteTreeView[];
 
   // Filter state
   activeFilter: NoteFilter;
@@ -49,13 +49,12 @@ export interface NotesScreenControllerAPI {
   // Spendable notes (can withdraw or ragequit)
   spendableNotes: Note[];
 
-  // Selected note chain (domain data)
-  // NoteChain = Note[] (represents full deposit history)
-  selectedNoteChain: NoteChain | null;
+  // Selected note tree (domain data)
+  selectedNoteTree: NoteTree | null;
 
   // Actions
   setFilter: (filter: NoteFilter) => void;
-  selectNoteChain: (noteChain: NoteChain) => void;
+  selectNoteTree: (tree: NoteTree) => void;
   clearSelection: () => void;
   reset: () => void;
 }
@@ -65,8 +64,8 @@ export interface NotesScreenControllerAPI {
  * Combines discovery controller (domain) + screen controller (UI)
  *
  * Uses selective subscriptions - only accesses:
- * - noteChains, state.status, lastError from discovery (not progress)
- * - activeFilter, selectedNoteChain from screen controller
+ * - noteTrees, state.status, lastError from discovery (not progress)
+ * - activeFilter, selectedNoteTree from screen controller
  *
  * @returns Controller interface for notes screen
  */
@@ -74,28 +73,28 @@ export function useNotesScreen(): NotesScreenControllerAPI {
   // Selective subscription to discovery controller
   // Only access properties we actually need - excludes progress
   const {
-    noteChains,
+    noteTrees,
     state: discoveryState,
     lastError,
   } = useSnapshot(NotesDiscoveryController.state);
 
   // Selective subscription to screen controller
-  const { activeFilter, selectedNoteChain } = useSnapshot(NotesScreenController.state);
+  const { activeFilter, selectedNoteTree } = useSnapshot(NotesScreenController.state);
 
   // Trigger the useNotesDiscovery hook for its side effects (transaction refresh)
   useNotesDiscovery();
 
   const viewState = useMemo(
     () => NotesDiscoverySelectors.getViewState(),
-    // Re-compute when discovery state or note chains change
+    // Re-compute when discovery state or note trees change
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [discoveryState.status, noteChains]
+    [discoveryState.status, noteTrees]
   );
 
   // Get filtered views (from screen controller)
   const filteredNoteViews = useMemo(
-    () => NotesScreenSelectors.getFilteredNoteViews(noteChains, activeFilter),
-    [noteChains, activeFilter]
+    () => NotesScreenSelectors.getFilteredNoteViews(noteTrees as NoteTree[], activeFilter),
+    [noteTrees, activeFilter]
   );
 
   // Calculate total balance from spendable notes
@@ -132,11 +131,11 @@ export function useNotesScreen(): NotesScreenControllerAPI {
     spendableNotes: viewState.spendableNotes,
 
     // Selection
-    selectedNoteChain: selectedNoteChain as NoteChain | null,
+    selectedNoteTree: selectedNoteTree as NoteTree | null,
 
     // Actions
     setFilter: NotesScreenController.setFilter,
-    selectNoteChain: NotesScreenController.selectNoteChain,
+    selectNoteTree: NotesScreenController.selectNoteTree,
     clearSelection: NotesScreenController.clearSelection,
     reset: NotesScreenController.reset,
   };

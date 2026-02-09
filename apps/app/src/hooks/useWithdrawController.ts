@@ -39,7 +39,7 @@ export function useWithdrawController() {
       notes: withdrawableNotes,
       isLoading,
     });
-  }, [discoveryState.noteChains, discoveryState.state.status]);
+  }, [discoveryState.noteTrees, discoveryState.state.status]);
 
   return snapshot;
 }

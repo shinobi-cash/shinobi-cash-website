@@ -8,10 +8,15 @@ import {
 import {
   NoteDiscovery,
   makeChainKey,
+  serializeTree,
+  deserializeTree,
   type ActivityFetcher,
   type SerializableDiscoveryState,
+  type NoteTree,
+  type SerializableNoteNode,
+  type NullifierInfo,
 } from "@shinobi-cash/core/discovery";
-import type { DiscoveryResult, DiscoveryOptions, NoteChain, NullifierInfo } from "@shinobi-cash/core/discovery";
+import type { DiscoveryResult, DiscoveryOptions } from "@shinobi-cash/core/discovery";
 import {
   type IndexedDBStore,
   notesStorageAdapter,
@@ -45,21 +50,22 @@ export class NotesRepository {
     const cached = await this.getCachedData(publicKey, poolAddress);
 
     if (cached) {
-      // Build per-chain last used indices from notes
+      // Deserialize trees
+      const trees = cached.trees.map(deserializeTree);
+
+      // Build per-chain last used indices from trees
       const lastUsedIndexByChain = new Map<string, number>();
-      for (const chain of cached.notes) {
-        const depositNote = chain[0];
-        if (depositNote) {
-          const chainId = depositNote.originChainId;
-          const current = lastUsedIndexByChain.get(chainId) ?? -1;
-          if (depositNote.depositIndex > current) {
-            lastUsedIndexByChain.set(chainId, depositNote.depositIndex);
-          }
+      for (const tree of trees) {
+        const rootNote = tree.root.note;
+        const chainId = rootNote.originChainId;
+        const current = lastUsedIndexByChain.get(chainId) ?? -1;
+        if (rootNote.depositIndex > current) {
+          lastUsedIndexByChain.set(chainId, rootNote.depositIndex);
         }
       }
 
       return {
-        notes: cached.notes,
+        trees,
         lastUsedIndexByChain,
         newNotesFound: 0,
         minOffset: cached.minOffset ?? 0,
@@ -72,17 +78,18 @@ export class NotesRepository {
   /**
    * Store discovered notes
    */
-  async storeDiscoveredNotes(
+  async storeDiscoveredTrees(
     publicKey: string,
     poolAddress: string,
-    notes: NoteChain[],
+    trees: NoteTree[],
     minOffset?: number
   ): Promise<void> {
     if (!this.encryptionService.isKeyAvailable()) {
       throw new Error("Session not initialized");
     }
 
-    await this.storeData(publicKey, poolAddress, notes, minOffset);
+    const serializedTrees = trees.map(serializeTree);
+    await this.storeData(publicKey, poolAddress, serializedTrees, minOffset);
   }
 
   /**
@@ -91,21 +98,19 @@ export class NotesRepository {
   async storeData(
     publicKey: string,
     poolAddress: string,
-    notes: NoteChain[],
+    trees: SerializableNoteNode[],
     minOffset?: number,
     nullifierMap?: Array<{ hash: string; info: NullifierInfo }>,
-    nextDepositIndex?: Array<{ chainId: string; index: number }>,
-    newDepositsFound?: number
+    nextDepositIndex?: Array<{ chainId: string; index: number }>
   ): Promise<void> {
     const sensitiveData: CachedNoteData = {
       poolAddress,
       publicKey,
-      notes,
+      trees,
       lastSyncTime: Date.now(),
       minOffset,
       nullifierMap,
       nextDepositIndex,
-      newDepositsFound,
     };
 
     const encrypted = await this.encryptionService.encrypt(sensitiveData);
@@ -178,38 +183,33 @@ export class NotesRepository {
         const cached = await this.getCachedData(pubKey, pool);
         if (!cached) return null;
 
-        // Convert stored notes to chains array format using ChainKey
-        const chains = cached.notes.map((chain) => {
-          const depositNote = chain[0];
-          const chainKey = depositNote
-            ? makeChainKey(depositNote.originChainId, depositNote.depositIndex)
-            : "0:0";
-          return { chainKey, chain };
+        // Convert stored trees to the expected format with ChainKey
+        const trees = cached.trees.map((tree) => {
+          const chainKey = makeChainKey(tree.note.originChainId, tree.note.depositIndex);
+          return { chainKey, tree };
         });
 
         return {
-          chains,
+          trees,
           nullifierMap: cached.nullifierMap ?? [],
           nextDepositIndex: cached.nextDepositIndex ?? [],
           minOffset: cached.minOffset ?? 0,
-          newFilledDepositsFound: 0, // Not persisted in old format, start fresh
+          newFilledDepositsFound: 0,
           newPendingDepositsFound: 0,
-          newDepositsFound: cached.newDepositsFound ?? 0,
         };
       },
 
       saveState: async (pubKey: string, pool: string, state: SerializableDiscoveryState) => {
-        // Convert chains array back to NoteChain[]
-        const notes = state.chains.map((c) => c.chain);
+        // Extract serialized trees from state
+        const trees = state.trees.map((t) => t.tree);
 
         await this.storeData(
           pubKey,
           pool,
-          notes,
+          trees,
           state.minOffset,
           state.nullifierMap,
-          state.nextDepositIndex,
-          state.newDepositsFound
+          state.nextDepositIndex
         );
       },
     });

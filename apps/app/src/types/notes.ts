@@ -1,6 +1,4 @@
-import type { Note, NoteChain } from "@shinobi-cash/core/discovery";
-
-export type ReadonlyNoteChain = readonly Readonly<Note>[];
+import type { Note, NoteTree } from "@shinobi-cash/core/discovery";
 
 export type NotesStatus = "idle" | "loading" | "error" | "empty" | "ready";
 
@@ -10,10 +8,8 @@ export type NotesError =
   | { type: "network"; message: string }
   | null;
 
-export interface NoteChainView {
-  chain: NoteChain;
-  lastNote: Note;
-  length: number;
+export interface NoteTreeView {
+  tree: NoteTree;
   key: string;
 }
 

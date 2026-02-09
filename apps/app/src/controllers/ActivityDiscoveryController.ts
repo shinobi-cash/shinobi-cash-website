@@ -1,9 +1,9 @@
 import { proxy } from "valtio";
 
-import type { ReadonlyNoteChain } from "@/types/notes";
+import type { NoteTree } from "@shinobi-cash/core/discovery";
 import { NotesDiscoverySelectors } from "@/controllers/NotesDiscoveryController";
 import type { ActivityEntry, ActivityStatus } from "@/types/activity";
-import { deriveActivitiesFromNoteChains, getActivityCounts } from "@/utils/activityDerivation";
+import { deriveActivitiesFromNoteTrees, getActivityCounts } from "@/utils/activityDerivation";
 
 interface ActivityDiscoveryState {
   entries: ActivityEntry[];
@@ -39,9 +39,9 @@ export const ActivityDiscoverySelectors = {
 export const ActivityDiscoveryController = {
   state,
 
-  deriveFromNoteChains(noteChains: readonly ReadonlyNoteChain[]): void {
+  deriveFromNoteTrees(noteTrees: readonly NoteTree[]): void {
     const notesView = NotesDiscoverySelectors.getViewState();
-    const entries = deriveActivitiesFromNoteChains(noteChains);
+    const entries = deriveActivitiesFromNoteTrees(noteTrees as NoteTree[]);
     const counts = getActivityCounts(entries);
 
     const status: ActivityStatus =

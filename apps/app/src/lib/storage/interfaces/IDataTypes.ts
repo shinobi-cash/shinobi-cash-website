@@ -3,7 +3,7 @@
  */
 
 import type { WalletAccountId } from "@shinobi-cash/core/auth";
-import type { NoteChain, NullifierInfo } from "@shinobi-cash/core/discovery";
+import type { SerializableNoteNode, NullifierInfo } from "@shinobi-cash/core/discovery";
 
 /**
  * Account Metadata - This is stored in IndexedDB account store
@@ -29,14 +29,13 @@ export interface AccountData extends AccountMetadata {
 export interface CachedNoteData {
   poolAddress: string;
   publicKey: string;
-  notes: NoteChain[];
+  trees: SerializableNoteNode[];
   lastSyncTime: number;
   minOffset?: number;
   /** Full discovery state for proper resumption. NullifierInfo includes originChainId. */
   nullifierMap?: Array<{ hash: string; info: NullifierInfo }>;
   /** Next deposit index per chain (keyed by chainId string) */
   nextDepositIndex?: Array<{ chainId: string; index: number }>;
-  newDepositsFound?: number;
 }
 
 export interface EncryptedNotesData {

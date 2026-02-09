@@ -5,7 +5,7 @@
  * No domain logic lives here.
  *
  * Uses selective subscriptions to minimize re-renders:
- * - Only subscribes to noteChains from NotesDiscoveryController
+ * - Only subscribes to noteTrees from NotesDiscoveryController
  * - Progress/status changes in notes discovery don't trigger re-renders
  */
 
@@ -20,22 +20,23 @@ import { ActivityDiscoveryController } from "@/controllers/ActivityDiscoveryCont
  * React adapter for ActivityDiscoveryController
  *
  * - Subscribes to activity discovery state
- * - Re-derives activities when note chains change (selective subscription)
+ * - Re-derives activities when note trees change (selective subscription)
  *
  * @returns Readonly snapshot of activity discovery state
  */
 export function useActivityDiscovery() {
-  // Subscribe to only noteChains from upstream discovery (selective)
+  // Subscribe to only noteTrees from upstream discovery (selective)
   // This prevents re-renders when progress/status changes in NotesDiscoveryController
-  const { noteChains } = useSnapshot(NotesDiscoveryController.state);
+  const { noteTrees } = useSnapshot(NotesDiscoveryController.state);
 
   // Subscribe to activity discovery controller
   const activitySnapshot = useSnapshot(ActivityDiscoveryController.state);
 
-  // Recompute activities whenever note chains change
+  // Recompute activities whenever note trees change
   useEffect(() => {
-    ActivityDiscoveryController.deriveFromNoteChains(noteChains);
-  }, [noteChains]);
+    // Cast to mutable type - the function only reads, doesn't mutate
+    ActivityDiscoveryController.deriveFromNoteTrees(noteTrees as unknown as import("@shinobi-cash/core/discovery").NoteTree[]);
+  }, [noteTrees]);
 
   return activitySnapshot;
 }

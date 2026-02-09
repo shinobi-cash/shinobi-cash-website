@@ -5,7 +5,7 @@
  * Uses status fields directly for concise display.
  */
 
-import { ArrowRight, ChevronRight } from "lucide-react";
+import { ArrowRight, ChevronRight, Merge } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
 import { AmountDisplay } from "@/components/shared/AmountDisplay";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";
@@ -34,7 +34,8 @@ export function ActivityDetailsScreen({
   const { activityData } = note;
 
   const originChain = getChainName(note.originChainId);
-  const destChain = getChainName(note.destinationChainId);
+  // For same-chain operations, destinationChainId is undefined
+  const destChain = note.destinationChainId ? getChainName(note.destinationChainId) : originChain;
 
   // Check if we have fees to show
   const fees = {
@@ -102,9 +103,9 @@ export function ActivityDetailsScreen({
                   </a>
                   <ArrowRight className="h-3 w-3 text-neutral-500" />
                   {/* Only link destination if intent is filled (has different tx hash) */}
-                  {note.destinationTransactionHash !== note.originTransactionHash ? (
+                  {note.destinationTransactionHash && note.destinationTransactionHash !== note.originTransactionHash ? (
                     <a
-                      href={getTxExplorerUrl(note.destinationChainId, note.destinationTransactionHash)}
+                      href={getTxExplorerUrl(note.destinationChainId!, note.destinationTransactionHash)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-blue-400 hover:text-blue-300 hover:underline"
@@ -182,6 +183,20 @@ export function ActivityDetailsScreen({
               </span>
             }
           />
+          {/* Show merged note info for Withdraw2 */}
+          {"mergedFromDepositIndex" in note && note.mergedFromDepositIndex !== undefined && (
+            <Row
+              label="Merged With"
+              value={
+                <span className="flex items-center gap-1.5 text-violet-400">
+                  <Merge className="h-3 w-3" />
+                  {note.mergedFromOriginChainId
+                    ? getNoteLabel(note.mergedFromOriginChainId, note.mergedFromDepositIndex)
+                    : `Note #${note.mergedFromDepositIndex + 1}`}
+                </span>
+              }
+            />
+          )}
           <Row label="Pool" value={<CopyableText text={note.poolAddress} />} />
           {note.label && (!note.isCrossChain || note.intentStatus === "filled") && (
             <Row

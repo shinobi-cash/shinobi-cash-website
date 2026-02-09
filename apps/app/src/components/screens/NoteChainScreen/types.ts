@@ -30,6 +30,8 @@ export interface TimelineEntry {
   };
   isMerged?: boolean;
   mergedIntoNoteIndex?: number;
+  mergedIntoChainId?: string;
   mergedFromNoteIndex?: number;
+  mergedFromChainId?: string;
   crossChainSteps?: CrossChainStep[];
 }
