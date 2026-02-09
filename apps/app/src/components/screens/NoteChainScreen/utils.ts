@@ -142,6 +142,12 @@ export function buildTimelineEntries(noteChain: NoteChain): TimelineEntry[] {
   const isDepositPending =
     isDepositIntentNote(firstNote) && firstNote.intentStatus === "pending";
 
+  // For filled deposit intents, find the DepositNote that was created after fill
+  // The DepositNote has the fill transaction hash for cross-chain steps
+  const depositNoteForSteps = isDepositIntentNote(firstNote) && firstNote.intentStatus === "filled"
+    ? noteChain.find((n) => n.noteType === "deposit") ?? firstNote
+    : firstNote;
+
   // Determine label based on cross-chain and pending status
   const getDepositLabel = (): string => {
     if (!isDepositCrossChain) return "Deposited";
@@ -155,14 +161,14 @@ export function buildTimelineEntries(noteChain: NoteChain): TimelineEntry[] {
   entries.push({
     key: `deposit-${firstNote.depositIndex}`,
     label: getDepositLabel(),
-    amount: BigInt(firstNote.amount),
+    amount: BigInt(depositNoteForSteps.amount),
     prefix: "+",
     dotColor: depositDotColor,
-    txHash: firstNote.destinationTransactionHash,
-    txUrl: getTxExplorerUrl(getTxChainId(firstNote), firstNote.destinationTransactionHash),
-    timestamp: firstNote.timestamp,
-    note: firstNote,
-    crossChainSteps: isDepositCrossChain ? buildCrossChainDepositSteps(firstNote) : undefined,
+    txHash: depositNoteForSteps.destinationTransactionHash,
+    txUrl: getTxExplorerUrl(getTxChainId(depositNoteForSteps), depositNoteForSteps.destinationTransactionHash),
+    timestamp: depositNoteForSteps.timestamp,
+    note: depositNoteForSteps,
+    crossChainSteps: isDepositCrossChain ? buildCrossChainDepositSteps(depositNoteForSteps) : undefined,
   });
 
   // Subsequent entries
