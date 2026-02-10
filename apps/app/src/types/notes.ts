@@ -1,6 +1,4 @@
-import type { Note, NoteChain } from "@shinobi-cash/core/discovery";
-
-export type ReadonlyNoteChain = readonly Readonly<Note>[];
+import type { NoteTree, NoteCategory } from "@shinobi-cash/core/discovery";
 
 export type NotesStatus = "idle" | "loading" | "error" | "empty" | "ready";
 
@@ -10,20 +8,10 @@ export type NotesError =
   | { type: "network"; message: string }
   | null;
 
-export interface NoteChainView {
-  chain: NoteChain;
-  lastNote: Note;
-  length: number;
+export interface NoteTreeView {
+  tree: NoteTree;
   key: string;
 }
-
-/**
- * Note category for the 3-category model
- * - spendable: User can take action (withdraw or ragequit)
- * - pending: Waiting for something (solver, ASP approval)
- * - spent: Already used or refunded
- */
-export type NoteCategory = "spendable" | "pending" | "spent";
 
 /**
  * Filter type for note list tabs

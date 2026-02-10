@@ -6,12 +6,6 @@ export const PHASE_COLORS: Record<IntentPhase, {
   badge: string;
   text: string;
 }> = {
-  CREATED: {
-    dot: "bg-yellow-500",
-    ring: "ring-yellow-500/30",
-    badge: "bg-yellow-500/20 text-yellow-400",
-    text: "text-yellow-400",
-  },
   ESCROWED: {
     dot: "bg-yellow-500",
     ring: "ring-yellow-500/30",
@@ -39,7 +33,6 @@ export const PHASE_COLORS: Record<IntentPhase, {
 };
 
 export const PHASE_LABELS: Record<IntentPhase, string> = {
-  CREATED: "created",
   ESCROWED: "escrowed",
   FILLED: "filled",
   FINALIZED: "finalized",

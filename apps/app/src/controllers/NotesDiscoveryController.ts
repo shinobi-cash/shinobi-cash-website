@@ -1,17 +1,12 @@
 import { proxy } from "valtio";
-import type { NoteChain, DiscoveryProgress, Note } from "@shinobi-cash/core/discovery";
+import type { NoteTree, DiscoveryProgress, Note, Activity } from "@shinobi-cash/core/discovery";
+import { getSpendableNotes, getWithdrawableNotes, getNoteTreeCounts } from "@shinobi-cash/core/discovery";
 import { notesRepo } from "@/lib/storage/repositories/NotesRepository";
 import { fetchActivities } from "@/utils/indexer";
 import { createStateMachine } from "@/utils/stateMachine";
 import { SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
 import { AuthController } from "@/controllers/AuthController";
-import { NotesError, NotesStatus, ReadonlyNoteChain } from "@/types/notes";
-import {
-  getSpendableNotes,
-  getWithdrawableNotes,
-  getLastNote,
-  getNoteChainCounts,
-} from "@/utils/noteFiltering";
+import { NotesError, NotesStatus } from "@/types/notes";
 import { NOTES_SYNC_INTERVAL_MS } from "@/constants/timings";
 
 /**
@@ -30,8 +25,11 @@ interface NotesDiscoveryControllerState {
   // Core state machine
   state: DiscoveryState;
 
-  // Discovered notes (single source of truth)
-  noteChains: NoteChain[];
+  // Discovered note trees (single source of truth)
+  noteTrees: NoteTree[];
+
+  // Raw activities for display (source of truth for activity feed)
+  activities: Activity[];
 
   // Discovery progress
   progress: DiscoveryProgress | null;
@@ -67,7 +65,8 @@ interface NotesDiscoveryViewState {
 
 const state = proxy<NotesDiscoveryControllerState>({
   state: { status: "idle" },
-  noteChains: [],
+  noteTrees: [],
+  activities: [],
   progress: null,
   lastError: null,
   lastSyncedAt: null,
@@ -117,41 +116,48 @@ const { transition } = createStateMachine<DiscoveryState>({
  */
 export const NotesDiscoverySelectors = {
   /**
-   * Get all note chains
+   * Get all note trees
    */
-  getNoteChains: (): ReadonlyNoteChain[] => state.noteChains,
+  getNoteTrees: (): NoteTree[] => state.noteTrees,
 
   /**
    * Get spendable notes (for balance display - includes approved + rejected)
    */
-  getSpendableNotes: (): Note[] => getSpendableNotes(state.noteChains),
+  getSpendableNotes: (): Note[] => getSpendableNotes(state.noteTrees),
 
   /**
    * Get withdrawable notes (for private withdrawal - ASP approved only)
    */
-  getWithdrawableNotes: (): Note[] => getWithdrawableNotes(state.noteChains),
+  getWithdrawableNotes: (): Note[] => getWithdrawableNotes(state.noteTrees),
 
   /**
    * Get counts by status
    */
-  getCounts: () => getNoteChainCounts(state.noteChains),
+  getCounts: () => getNoteTreeCounts(state.noteTrees),
 
   /**
-   * Get last used deposit index (for deposit service)
+   * Get last used deposit index for a specific chain (for deposit service)
+   * @param chainId - The chain ID to get the last used index for
    */
-  getLastUsedIndex: (): number => {
-    if (state.noteChains.length === 0) return -1;
+  getLastUsedIndex: (chainId?: number): number => {
+    if (state.noteTrees.length === 0) return -1;
+
+    // Filter trees by originChainId if chainId is provided
+    const relevantTrees = chainId
+      ? state.noteTrees.filter((tree) => {
+          const rootNote = tree.root.note;
+          return rootNote.originChainId === chainId.toString();
+        })
+      : state.noteTrees;
+
+    if (relevantTrees.length === 0) return -1;
 
     // Sort by deposit index descending to get highest
-    const sorted = [...state.noteChains].sort((a, b) => {
-      const lastNoteA = getLastNote(a);
-      const lastNoteB = getLastNote(b);
-      return lastNoteB.depositIndex - lastNoteA.depositIndex;
+    const sorted = [...relevantTrees].sort((a, b) => {
+      return b.root.note.depositIndex - a.root.note.depositIndex;
     });
 
-    const highestChain = sorted[0];
-    const lastNote = getLastNote(highestChain);
-    return lastNote.depositIndex;
+    return sorted[0].root.note.depositIndex;
   },
 
   /**
@@ -159,17 +165,17 @@ export const NotesDiscoverySelectors = {
    */
   isReady: (): boolean => state.state.status === "ready",
   isDiscovering: (): boolean => state.state.status === "discovering",
-  isEmpty: (): boolean => state.noteChains.length === 0,
+  isEmpty: (): boolean => state.noteTrees.length === 0,
   isIdle: (): boolean => state.state.status === "idle",
 
   getViewState(): NotesDiscoveryViewState {
-    const { noteChains, state: discoveryState, lastError } = state;
+    const { noteTrees, state: discoveryState, lastError } = state;
 
-    const counts = getNoteChainCounts(noteChains);
-    const spendableNotes = getSpendableNotes(noteChains);
+    const counts = getNoteTreeCounts(noteTrees);
+    const spendableNotes = getSpendableNotes(noteTrees);
 
     const isDiscovering = discoveryState.status === "discovering";
-    const isEmpty = noteChains.length === 0;
+    const isEmpty = noteTrees.length === 0;
     const hasError = discoveryState.status === "error";
 
     // Determine status: prioritize showing cached data over error state
@@ -195,7 +201,7 @@ export const NotesDiscoverySelectors = {
     return {
       status,
       counts,
-      totalCount: noteChains.length,
+      totalCount: noteTrees.length,
       spendableNotes,
       isLoading: isDiscovering && isEmpty,
       isRefreshing: isDiscovering && !isEmpty,
@@ -224,8 +230,8 @@ export const NotesDiscoveryController = {
     // Load cache first for immediate UI
     await NotesDiscoveryController._loadCache();
 
-    // If we have cached notes, mark ready immediately
-    if (state.noteChains.length > 0) {
+    // If we have cached trees, mark ready immediately
+    if (state.noteTrees.length > 0) {
       transition({ status: "ready" });
     }
 
@@ -249,9 +255,10 @@ export const NotesDiscoveryController = {
         SHINOBI_CASH_ETH_POOL.address
       );
 
-      if (cached && cached.notes) {
-        log.debug(`Loaded ${cached.notes.length} cached note chains`);
-        state.noteChains = cached.notes;
+      if (cached && cached.trees) {
+        log.debug(`Loaded ${cached.trees.length} cached note trees, ${cached.activities.length} activities`);
+        state.noteTrees = cached.trees;
+        state.activities = cached.activities;
       }
     } catch (error) {
       log.error("Failed to load cached notes:", error);
@@ -289,7 +296,7 @@ export const NotesDiscoveryController = {
     abortController = new AbortController();
 
     // Load cache first (non-blocking)
-    const hasCache = state.noteChains.length > 0;
+    const hasCache = state.noteTrees.length > 0;
     if (!hasCache) {
       await NotesDiscoveryController._loadCache();
     }
@@ -318,8 +325,9 @@ export const NotesDiscoveryController = {
 
       // Only update if this is still the current run
       if (runId === discoveryId) {
-        log.debug(`Discovery complete: ${result.notes.length} note chains found`);
-        state.noteChains = result.notes;
+        log.debug(`Discovery complete: ${result.trees.length} note trees, ${result.activities.length} activities`);
+        state.noteTrees = result.trees;
+        state.activities = result.activities;
         state.progress = null;
         state.lastSyncedAt = Date.now();
         transition({ status: "ready" });
@@ -380,7 +388,8 @@ export const NotesDiscoveryController = {
 
     // Reset state
     transition({ status: "idle" });
-    state.noteChains = [];
+    state.noteTrees = [];
+    state.activities = [];
     state.progress = null;
     state.lastError = null;
     state.lastSyncedAt = null;

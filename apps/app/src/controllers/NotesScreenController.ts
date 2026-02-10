@@ -5,14 +5,9 @@
  */
 
 import { proxy } from "valtio";
-import type { NoteChain } from "@shinobi-cash/core/discovery";
-import { NoteChainView, NoteFilter, ReadonlyNoteChain } from "@/types/notes";
-import {
-  filterNoteChains,
-  getLastNote,
-  sortNoteChainsByTimestamp,
-  canWithdraw,
-} from "@/utils/noteFiltering";
+import type { NoteTree } from "@shinobi-cash/core/discovery";
+import { getSpendableLeaves, filterNoteTrees, sortTreesByTimestamp, canWithdraw } from "@shinobi-cash/core/discovery";
+import { NoteTreeView, NoteFilter } from "@/types/notes";
 
 /**
  * Screen UI state
@@ -21,14 +16,13 @@ interface NotesScreenState {
   // UI filter state
   activeFilter: NoteFilter;
 
-  // Selected note chain (domain data for drill-down)
-  // NoteChain = Note[] (array representing full deposit history)
-  selectedNoteChain: NoteChain | null;
+  // Selected note tree (domain data for drill-down)
+  selectedNoteTree: NoteTree | null;
 }
 
 const state = proxy<NotesScreenState>({
   activeFilter: "spendable",
-  selectedNoteChain: null,
+  selectedNoteTree: null,
 });
 
 /**
@@ -36,40 +30,38 @@ const state = proxy<NotesScreenState>({
  */
 export const NotesScreenSelectors = {
   /**
-   * Get filtered note chains based on active filter
+   * Get filtered note trees based on active filter
    */
-  getFilteredNoteChains(
-    noteChains: readonly ReadonlyNoteChain[],
+  getFilteredNoteTrees(
+    trees: NoteTree[],
     filter: NoteFilter
-  ): ReadonlyNoteChain[] {
-    return filterNoteChains(noteChains, filter);
+  ): NoteTree[] {
+    return filterNoteTrees(trees, filter);
   },
 
   /**
    * Get sorted + filtered view models for UI rendering
    */
   getFilteredNoteViews(
-    noteChains: readonly ReadonlyNoteChain[],
+    trees: NoteTree[],
     filter: NoteFilter
-  ): NoteChainView[] {
-    const filtered = filterNoteChains(noteChains, filter);
-    const sorted = sortNoteChainsByTimestamp(filtered);
+  ): NoteTreeView[] {
+    const filtered = filterNoteTrees(trees, filter);
+    const sorted = sortTreesByTimestamp(filtered);
 
-    return sorted.map((chain) => {
-      const lastNote = getLastNote(chain);
+    return sorted.map((tree) => {
+      const rootNote = tree.root.note;
       return {
-        chain: chain as unknown as NoteChain, // domain escape hatch
-        lastNote,
-        length: chain.length,
-        key: `${lastNote.depositIndex}-${lastNote.changeIndex}`,
+        tree,
+        key: `${rootNote.originChainId}-${rootNote.depositIndex}`,
       };
     });
   },
 
   /**
-   * Get selected note chain
+   * Get selected note tree
    */
-  getSelectedNoteChain: (): NoteChain | null => state.selectedNoteChain,
+  getSelectedNoteTree: (): NoteTree | null => state.selectedNoteTree,
 
   /**
    * Get active filter
@@ -77,13 +69,13 @@ export const NotesScreenSelectors = {
   getActiveFilter: (): NoteFilter => state.activeFilter,
 
   /**
-   * Check if a note chain can be withdrawn privately
-   * Delegates to canWithdraw helper for consistent logic
+   * Check if a note tree can be withdrawn privately
+   * Returns true if any spendable leaf can be withdrawn
    */
-  canWithdrawFromChain(noteChain: NoteChain): boolean {
-    if (!noteChain || noteChain.length === 0) return false;
-    const lastNote = noteChain[noteChain.length - 1];
-    return canWithdraw(lastNote);
+  canWithdrawFromTree(tree: NoteTree): boolean {
+    if (!tree) return false;
+    const spendableLeaves = getSpendableLeaves(tree);
+    return spendableLeaves.some((node) => canWithdraw(node.note));
   },
 };
 
@@ -102,17 +94,17 @@ export const NotesScreenController = {
   },
 
   /**
-   * Select note chain (for drill-down)
+   * Select note tree (for drill-down)
    */
-  selectNoteChain(noteChain: NoteChain): void {
-    state.selectedNoteChain = noteChain;
+  selectNoteTree(tree: NoteTree): void {
+    state.selectedNoteTree = tree;
   },
 
   /**
    * Clear selection
    */
   clearSelection(): void {
-    state.selectedNoteChain = null;
+    state.selectedNoteTree = null;
   },
 
   /**
@@ -120,6 +112,6 @@ export const NotesScreenController = {
    */
   reset(): void {
     state.activeFilter = "spendable";
-    state.selectedNoteChain = null;
+    state.selectedNoteTree = null;
   },
 };

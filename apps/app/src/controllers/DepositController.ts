@@ -171,7 +171,7 @@ export const DepositController = {
 
     transition({ status: "preparing", step: "commitment" });
 
-    const lastUsedIndex = NotesDiscoverySelectors.getLastUsedIndex();
+    const lastUsedIndex = NotesDiscoverySelectors.getLastUsedIndex(wallet.chainId);
     let noteData: CashNoteData | null = null;
     let retries = 0;
 
@@ -181,6 +181,7 @@ export const DepositController = {
         noteData = await depositService.generateCommitment(
           crypto.accountKey,
           crypto.publicKey,
+          wallet.chainId,
           lastUsedIndex
         );
         break;

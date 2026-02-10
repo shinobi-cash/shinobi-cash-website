@@ -7,14 +7,15 @@ import { RefreshCw } from "lucide-react";
 import { NoteRow } from "./NoteRow";
 import { type NotesScreenControllerAPI } from "@/hooks/useNotesScreen";
 import { NOTE_FILTER_LABELS, type NoteFilter } from "@/types/notes";
-import type { NoteChain } from "@shinobi-cash/core/discovery";
+import type { NoteTree } from "@shinobi-cash/core/discovery";
+import { getSpendableLeaves, getLeafNodes } from "@shinobi-cash/core/discovery";
 
 interface NotesSectionProps {
   controller: NotesScreenControllerAPI;
-  onNoteChainClick: (noteChain: NoteChain) => void;
+  onNoteTreeClick: (tree: NoteTree) => void;
 }
 
-export function NotesSection({ controller, onNoteChainClick }: NotesSectionProps) {
+export function NotesSection({ controller, onNoteTreeClick }: NotesSectionProps) {
   // Controller is passed in to avoid double instantiation
 
   const renderFilterButton = (filter: NoteFilter, count: number, borderColor: string) => (
@@ -105,6 +106,31 @@ export function NotesSection({ controller, onNoteChainClick }: NotesSectionProps
     return null;
   };
 
+  // Helper to get display note from tree
+  // - For spendable/pending: first spendable leaf
+  // - For spent: most recently spent leaf (by timestamp)
+  const getDisplayNote = (tree: NoteTree) => {
+    const spendableLeaves = getSpendableLeaves(tree);
+    if (spendableLeaves.length > 0) {
+      return spendableLeaves[0].note;
+    }
+
+    // For spent trees, find the most recently spent leaf
+    const leaves = getLeafNodes(tree);
+    if (leaves.length > 0) {
+      // Sort by timestamp descending
+      // RagequitNote is a terminal child with its own timestamp
+      const sorted = [...leaves].sort((a, b) => {
+        const tsA = Number(a.note.originTimestamp);
+        const tsB = Number(b.note.originTimestamp);
+        return tsB - tsA;
+      });
+      return sorted[0].note;
+    }
+
+    return tree.root.note;
+  };
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex-shrink-0 border-b border-white/10">
@@ -125,8 +151,8 @@ export function NotesSection({ controller, onNoteChainClick }: NotesSectionProps
               {controller.filteredNoteViews.map((view) => (
                 <NoteRow
                   key={view.key}
-                  note={view.lastNote}
-                  onClick={() => onNoteChainClick(view.chain)}
+                  note={getDisplayNote(view.tree)}
+                  onClick={() => onNoteTreeClick(view.tree)}
                 />
               ))}
             </div>

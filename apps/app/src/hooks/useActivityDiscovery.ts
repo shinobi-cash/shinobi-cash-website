@@ -5,7 +5,7 @@
  * No domain logic lives here.
  *
  * Uses selective subscriptions to minimize re-renders:
- * - Only subscribes to noteChains from NotesDiscoveryController
+ * - Only subscribes to activities from NotesDiscoveryController
  * - Progress/status changes in notes discovery don't trigger re-renders
  */
 
@@ -20,22 +20,22 @@ import { ActivityDiscoveryController } from "@/controllers/ActivityDiscoveryCont
  * React adapter for ActivityDiscoveryController
  *
  * - Subscribes to activity discovery state
- * - Re-derives activities when note chains change (selective subscription)
+ * - Re-derives activities when raw activities change (selective subscription)
  *
  * @returns Readonly snapshot of activity discovery state
  */
 export function useActivityDiscovery() {
-  // Subscribe to only noteChains from upstream discovery (selective)
+  // Subscribe to only activities from upstream discovery (selective)
   // This prevents re-renders when progress/status changes in NotesDiscoveryController
-  const { noteChains } = useSnapshot(NotesDiscoveryController.state);
+  const { activities } = useSnapshot(NotesDiscoveryController.state);
 
   // Subscribe to activity discovery controller
   const activitySnapshot = useSnapshot(ActivityDiscoveryController.state);
 
-  // Recompute activities whenever note chains change
+  // Recompute activity entries whenever raw activities change
   useEffect(() => {
-    ActivityDiscoveryController.deriveFromNoteChains(noteChains);
-  }, [noteChains]);
+    ActivityDiscoveryController.deriveFromActivities(activities);
+  }, [activities]);
 
   return activitySnapshot;
 }

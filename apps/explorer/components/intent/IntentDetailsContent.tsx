@@ -70,7 +70,7 @@ export function IntentDetailsContent({ intent: rawIntent, timeline, isLoadingTim
             {intent.intentType === "DEPOSIT" ? "Deposit" : "Withdrawal"} Intent
           </h3>
           <span
-            className={`rounded px-2 py-0.5 text-xs font-medium ${PHASE_COLORS[intent.phase]?.badge ?? PHASE_COLORS.CREATED.badge}`}
+            className={`rounded px-2 py-0.5 text-xs font-medium ${PHASE_COLORS[intent.phase]?.badge}`}
           >
             {PHASE_LABELS[intent.phase] ?? intent.phase.toLowerCase()}
           </span>

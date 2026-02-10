@@ -37,6 +37,7 @@ export const depositService = {
   async generateCommitment(
     accountKey: bigint,
     publicKey: string,
+    chainId: number,
     lastUsedIndex: number
   ): Promise<CashNoteData> {
     const poolAddress = SHINOBI_CASH_ETH_POOL.address;
@@ -47,11 +48,13 @@ export const depositService = {
     } else {
       const notesRepo = new NotesRepository(notesStorageAdapter, sharedEncryptionService);
       const cached = await notesRepo.getCachedNotes(publicKey, poolAddress);
-      depositIndex = cached?.lastUsedIndex !== undefined ? cached.lastUsedIndex + 1 : 0;
+      // Get chain-specific last used index
+      const chainLastUsed = cached?.lastUsedIndexByChain?.get(chainId.toString()) ?? -1;
+      depositIndex = chainLastUsed >= 0 ? chainLastUsed + 1 : 0;
     }
 
-    const nullifier = deriveDepositNullifier(accountKey, poolAddress, depositIndex);
-    const secret = deriveDepositSecret(accountKey, poolAddress, depositIndex);
+    const nullifier = deriveDepositNullifier(accountKey, poolAddress, chainId, depositIndex);
+    const secret = deriveDepositSecret(accountKey, poolAddress, chainId, depositIndex);
     const precommitment = derivePrecommitment(nullifier, secret);
 
     return {

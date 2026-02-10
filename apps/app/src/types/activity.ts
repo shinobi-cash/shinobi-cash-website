@@ -1,16 +1,11 @@
 /**
  * Activity Types
  *
- * ActivityEntry wraps a Note with computed display values.
+ * ActivityEntry wraps a raw Activity with computed display values.
  * This provides a view model for the activity list/details screens.
  */
 
-import type { Note } from "@shinobi-cash/core/discovery";
-
-/**
- * Display type derived from note type
- */
-export type ActivityType = "deposit" | "withdrawal" | "refund";
+import type { Activity, ActivityType } from "@shinobi-cash/core/discovery";
 
 /**
  * Activity filter options
@@ -18,25 +13,23 @@ export type ActivityType = "deposit" | "withdrawal" | "refund";
 export type ActivityFilter = "all" | "deposit" | "withdrawal" | "refund";
 
 /**
- * Activity entry - wraps a Note with computed display values
+ * Activity entry - wraps raw Activity with display values
  */
 export interface ActivityEntry {
-  /** The underlying note */
-  note: Note;
+  /** The raw activity from indexer */
+  activity: Activity;
 
-  /** Display type (deposit/withdrawal/refund) */
+  /** Display type (deposit/withdrawal/refund/ragequit) */
   type: ActivityType;
 
-  /**
-   * Display amount:
-   * - For deposits: the deposited amount (note.amount)
-   * - For withdrawals: the withdrawn amount (prevNote.amount - note.amount)
-   * - For refunds: the refunded amount
-   */
+  /** Display amount as string */
   displayAmount: string;
 
   /** Whether this is a cross-chain operation */
   isCrossChain: boolean;
+
+  /** Display timestamp (Unix seconds as string) */
+  displayTimestamp: string;
 }
 
 /**
@@ -66,20 +59,13 @@ export const ACTIVITY_TYPE_LABELS: Record<ActivityType, string> = {
   deposit: "Deposit",
   withdrawal: "Withdrawal",
   refund: "Refund",
+  ragequit: "Ragequit",
 };
 
 /**
- * Get unique ID for an activity entry
+ * Get unique ID for an activity entry.
+ * Uses the activity's unique ID from indexer.
  */
 export function getActivityId(entry: ActivityEntry): string {
-  return `${entry.note.depositIndex}-${entry.note.changeIndex}`;
-}
-
-/**
- * Get activity type from note
- */
-export function getActivityType(note: Note): ActivityType {
-  if (note.noteType === "deposit") return "deposit";
-  if (note.noteType === "refund") return "refund";
-  return "withdrawal";
+  return entry.activity.id;
 }

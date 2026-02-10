@@ -96,9 +96,9 @@ export function NoteAvatarGroup({
 
       {/* Label */}
       <div className="flex flex-col items-start">
-        <span className="text-sm font-medium text-white">
+        <span className="text-sm font-medium font-mono text-white">
           {notes.length === 1
-            ? `Note #${notes[0].depositIndex + 1}`
+            ? notes[0].serialNumber
             : `${notes.length} Notes`
           }
         </span>

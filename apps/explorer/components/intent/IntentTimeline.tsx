@@ -61,7 +61,6 @@ function getPhaseDescription(phase: IntentPhase, event?: IntentTimelineEvent): s
   }
 
   const descriptions: Record<IntentPhase, string> = {
-    CREATED: "Intent created and funds escrowed",
     ESCROWED: "Intent created and funds escrowed",
     FILLED: "Solver filled the intent",
     FINALIZED: "Intent finalized and settled",

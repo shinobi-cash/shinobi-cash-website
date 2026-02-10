@@ -7,13 +7,13 @@
 
 import { proxy } from "valtio";
 import type { Note } from "@shinobi-cash/core/discovery";
+import { canRagequit } from "@shinobi-cash/core/discovery";
 import type { ContractRagequitProof } from "@shinobi-cash/core/withdrawal";
 import { AuthController } from "@/controllers/AuthController";
 import { NotesDiscoveryController } from "@/controllers/NotesDiscoveryController";
 import { RagequitEngine, type RagequitPhase } from "@/services/RagequitEngine";
 import { createStateMachine } from "@/utils/stateMachine";
 import { type AppError, Errors, getUserMessage } from "@/lib/errors/errors";
-import { canRagequit } from "@/utils/noteFiltering";
 import type { WalletClient, Account, Transport, Chain } from "viem";
 
 type RagequitState =
@@ -183,7 +183,9 @@ export const RagequitController = {
     state.selectedNote = null;
     state.lastError = null;
     currentEngine = null;
-    transition({ status: "idle" });
+    if (state.state.status !== "idle") {
+      transition({ status: "idle" });
+    }
   },
 
   retry(): void {

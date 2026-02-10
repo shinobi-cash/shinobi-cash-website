@@ -206,7 +206,7 @@ export class QueryBuilder {
    * Create an Intent query builder
    *
    * Query cross-chain intents from IntentStatusView:
-   * - Current phase (CREATED, ESCROWED, FILLED, FINALIZED, REFUNDED)
+   * - Current phase (ESCROWED, FILLED, FINALIZED, REFUNDED)
    * - Intent type (DEPOSIT, WITHDRAWAL)
    * - Timeline of all events
    *

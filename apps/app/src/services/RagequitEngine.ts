@@ -7,7 +7,8 @@
  * 3. Direct transaction to pool contract
  */
 
-import type { Note } from "@shinobi-cash/core/discovery";
+import type { Note, SpendableNote } from "@shinobi-cash/core/discovery";
+import { isSpendableNote } from "@shinobi-cash/core/discovery";
 import type { ContractRagequitProof, RagequitDerivation } from "@shinobi-cash/core/withdrawal";
 import {
   deriveRagequitInputs,
@@ -81,21 +82,27 @@ export class RagequitEngine {
     this.reset();
     this.state.request = request;
 
-    // Validate note can be ragequit
-    if (request.note.status !== "unspent") {
+    const note = request.note;
+
+    // Validate note can be ragequit - must be a spendable note
+    if (!isSpendableNote(note)) {
+      throw Errors.withdrawal.precondition("Note is not a spendable note");
+    }
+
+    if (note.status !== "unspent") {
       throw Errors.withdrawal.precondition("Note is already spent");
     }
 
-    if (BigInt(request.note.amount) <= BigInt(0)) {
+    if (BigInt(note.amount) <= BigInt(0)) {
       throw Errors.withdrawal.precondition("Note has no balance");
     }
 
     // 1. Derive ragequit inputs
     this.state.phase = "deriving";
     const derivation = deriveRagequitInputs(
-      request.note,
+      note as SpendableNote,
       request.accountKey,
-      request.note.poolAddress,
+      note.poolAddress,
     );
     this.state.derivation = derivation;
 

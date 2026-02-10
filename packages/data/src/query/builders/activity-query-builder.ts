@@ -205,6 +205,8 @@ export class ActivityQueryBuilder<
       solver
       isSponsored
       orderId
+      fillDeadline
+      expires
       blockNumber
       timestamp
       originTransactionHash
@@ -626,6 +628,8 @@ interface RawActivity {
   solver?: string;
   isSponsored?: boolean;
   orderId?: string;
+  fillDeadline?: string;
+  expires?: string;
   blockNumber: string;
   timestamp: string;
   originTransactionHash: string;
@@ -645,6 +649,8 @@ function convertRawActivity(raw: RawActivity): Activity {
     relayFeeAmount: raw.relayFeeAmount ? BigInt(raw.relayFeeAmount) : undefined,
     solverFeeAmount: raw.solverFeeAmount ? BigInt(raw.solverFeeAmount) : undefined,
     paymasterFeeRefund: raw.paymasterFeeRefund ? BigInt(raw.paymasterFeeRefund) : undefined,
+    fillDeadline: raw.fillDeadline ? BigInt(raw.fillDeadline) : undefined,
+    expires: raw.expires ? BigInt(raw.expires) : undefined,
     blockNumber: BigInt(raw.blockNumber),
     timestamp: BigInt(raw.timestamp),
     originChainId: raw.originChainId ? BigInt(raw.originChainId) : null,

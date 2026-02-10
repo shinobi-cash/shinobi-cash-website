@@ -152,10 +152,10 @@ export function WithdrawalPreviewScreen({
           value={
             <span className="flex items-center gap-2">
               <NoteAvatarStack notes={selectedNotes} size="sm" />
-              <span className="text-neutral-300">
+              <span className="font-mono text-neutral-300">
                 {selectedNotes.length === 1
-                  ? `#${selectedNotes[0].depositIndex + 1}`
-                  : `#${selectedNotes[0].depositIndex + 1} + #${selectedNotes[1].depositIndex + 1}`}
+                  ? selectedNotes[0].serialNumber
+                  : `${selectedNotes[0].serialNumber} + ${selectedNotes[1].serialNumber}`}
               </span>
             </span>
           }

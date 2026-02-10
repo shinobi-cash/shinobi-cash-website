@@ -1,377 +1,346 @@
 /**
  * @shinobi-cash/core/discovery
- * Phase 2: Chain Extension
- * Extends note chains with withdrawals (both 1:1 and 2:1 Withdraw2)
+ * Phase 2: Tree Extension
+ *
+ * Extends note trees with withdrawals (both 1:1 and 2:1 Withdraw2)
+ *
+ * Architecture: Plan / Apply Split
+ * - Planning: Pure, read-only computation of what extensions to apply
+ * - Applying: Mechanical mutation based on the plan
+ *
+ * This separation ensures:
+ * - Deterministic behavior (same inputs = same outputs)
+ * - Replay safety (plans can be recomputed)
+ * - Easier testing (plan and apply can be tested independently)
  */
 
 import type { Activity } from '@shinobi-cash/data';
-import type { NoteChain, NullifierInfo, Note } from './types.js';
+import type { NoteTree, NullifierInfo, SpendableNote } from './types.js';
+import type { ChainKey } from './types.js';
+import { isSpendableNote } from './types.js';
 import type { ActivityIndex } from './activity-indexer.js';
-import { deriveAndHashNullifier } from './nullifier-utils.js';
-import { createChangeNote, createWithdraw2ChangeNote, createMergedNote } from './note-factory.js';
-import { derivedNoteCommitment } from '../withdrawal/index.js';
+import {
+  isWithdrawalActivity,
+  isWithdraw2Activity,
+  isCrossChainWithdrawalPendingActivity,
+  isCrossChainWithdraw2PendingActivity,
+  type RagequitActivity,
+} from '@shinobi-cash/data';
+import {
+  createChangeNote,
+  createWithdrawalNote,
+  createWithdraw2ChangeNote,
+  createMergedNote,
+  createWithdrawalIntentNote,
+  createRagequitNote,
+  type ChangeActivity,
+  type Withdraw2MergeActivity,
+} from './note-factory.js';
+import {
+  planTreeExtensions,
+  type PlannedExtension,
+  type Planned1x1Extension,
+  type PlannedWithdraw2Extension,
+  type PlannedRagequitExtension,
+} from './chain-extension-planner.js';
+import { findNodeByPosition, addChild, markTerminal } from './tree-utils.js';
 
 // ============================================================================
 // Extension Result Type
 // ============================================================================
 
 export interface ExtensionResult {
-  /** Updated chains after extension */
-  updatedChains: Map<number, NoteChain>;
+  /** Updated trees after extension (keyed by ChainKey) */
+  updatedTrees: Map<ChainKey, NoteTree>;
   /** Updated nullifier map after extension */
   updatedNullifierMap: Map<string, NullifierInfo>;
+  /** Raw activities that matched user's withdrawals/ragequits */
+  matchedActivities: Activity[];
 }
 
 // ============================================================================
-// Chain Extender
+// Tree Extender (Orchestrator)
 // ============================================================================
 
 /**
- * Extend all chains with withdrawals from the current activity page
+ * Extend all trees with withdrawals from the current activity page
  *
- * For each chain with an unspent tip:
- * 1. Derive nullifier for current tip
- * 2. Check for 1:1 withdrawal -> create change note
- * 3. Check for 2:1 Withdraw2 -> merge chains
- * 4. Repeat until no more matches
+ * Uses Plan/Apply pattern:
+ * 1. Plan all extensions (pure, read-only)
+ * 2. Apply all extensions (mechanical mutation)
  */
-export function extendAllChains(
-  chains: Map<number, NoteChain>,
+export function extendAllTrees(
+  trees: Map<ChainKey, NoteTree>,
   nullifierMap: Map<string, NullifierInfo>,
   activityIndex: ActivityIndex,
   accountKey: bigint,
   poolAddress: string,
 ): ExtensionResult {
-  const updatedChains = new Map(chains);
+  const updatedTrees = new Map(trees);
   const updatedNullifierMap = new Map(nullifierMap);
+  const matchedActivities: Activity[] = [];
 
-  // Process each chain
-  for (const [depositIndex, chain] of updatedChains) {
-    extendSingleChain(
-      chain,
-      depositIndex,
-      updatedChains,
+  // Track processed Withdraw2s to avoid double-processing
+  const processedWithdraw2s = new Set<string>();
+
+  // Collect all plans first (PLANNING PHASE - read-only)
+  const allPlans: Array<{ chainKey: ChainKey; plans: PlannedExtension[] }> = [];
+
+  for (const [chainKey, tree] of updatedTrees) {
+    const plans = planTreeExtensions(
+      tree,
+      chainKey,
+      updatedTrees,
       updatedNullifierMap,
       activityIndex,
       accountKey,
       poolAddress,
     );
+    if (plans.length > 0) {
+      allPlans.push({ chainKey, plans });
+    }
   }
 
-  return { updatedChains, updatedNullifierMap };
+  // Track which activities we've already added (for Withdraw2 deduplication)
+  const addedActivityIds = new Set<string>();
+
+  // Apply all plans (APPLICATION PHASE - mutation)
+  for (const { plans } of allPlans) {
+    for (const plan of plans) {
+      applyExtension(
+        plan,
+        updatedTrees,
+        updatedNullifierMap,
+        processedWithdraw2s,
+      );
+
+      // Collect the activity from each plan (deduplicate by ID)
+      if (!addedActivityIds.has(plan.activity.id)) {
+        matchedActivities.push(plan.activity);
+        addedActivityIds.add(plan.activity.id);
+      }
+    }
+  }
+
+  return { updatedTrees, updatedNullifierMap, matchedActivities };
 }
 
 // ============================================================================
-// Single Chain Extension
+// Extension Application (Mutation)
 // ============================================================================
 
-function extendSingleChain(
-  chain: NoteChain,
-  depositIndex: number,
-  allChains: Map<number, NoteChain>,
+/**
+ * Apply a single planned extension
+ * This function ONLY mutates - all decisions were made in planning
+ */
+function applyExtension(
+  plan: PlannedExtension,
+  trees: Map<ChainKey, NoteTree>,
   nullifierMap: Map<string, NullifierInfo>,
-  activityIndex: ActivityIndex,
-  accountKey: bigint,
-  poolAddress: string,
+  processedWithdraw2s: Set<string>,
 ): void {
-  while (true) {
-    const lastNote = chain[chain.length - 1];
-    if (!lastNote) break;
-
-    // Stop if note is not extendable
-    if (lastNote.status !== 'unspent' || BigInt(lastNote.amount) <= 0n) {
+  switch (plan.kind) {
+    case 'withdraw1x1':
+      apply1x1Withdrawal(plan, trees, nullifierMap);
       break;
-    }
-
-    // Derive nullifier hash for current tip
-    const nullifierHash = deriveAndHashNullifier(
-      accountKey,
-      poolAddress,
-      depositIndex,
-      lastNote.changeIndex,
-    );
-
-    // Check for 1:1 withdrawal first
-    const withdrawal = activityIndex.withdrawalsByNullifier.get(nullifierHash);
-    if (withdrawal) {
-      process1x1Withdrawal(
-        chain,
-        depositIndex,
-        lastNote,
-        withdrawal,
-        nullifierMap,
-        nullifierHash,
-        accountKey,
-        poolAddress,
-      );
-      continue;
-    }
-
-    // Check for 2:1 Withdraw2
-    const withdraw2 = activityIndex.withdraw2ByNullifier.get(nullifierHash);
-    if (withdraw2) {
-      const resolved = processWithdraw2(
-        chain,
-        depositIndex,
-        lastNote,
-        withdraw2,
-        nullifierHash,
-        allChains,
-        nullifierMap,
-        accountKey,
-        poolAddress,
-      );
-      if (!resolved) {
-        // Other chain not ready - stop extending this chain
-        break;
-      }
-      continue;
-    }
-
-    // Check for ragequit (public withdrawal)
-    // Skip if label is undefined (pending deposits can't be ragequit)
-    if (lastNote.label !== undefined) {
-      const commitment = derivedNoteCommitment(accountKey, lastNote).toString();
-      const ragequit = activityIndex.ragequitByCommitment.get(commitment);
-      if (ragequit) {
-        processRagequit(lastNote, ragequit, nullifierMap, nullifierHash);
-        break; // Ragequit is final - no more extensions possible
-      }
-    }
-
-    // No more withdrawals found
-    break;
+    case 'withdraw2':
+      applyWithdraw2(plan, trees, nullifierMap, processedWithdraw2s);
+      break;
+    case 'ragequit':
+      applyRagequit(plan, trees, nullifierMap);
+      break;
   }
 }
 
-// ============================================================================
-// 1:1 Withdrawal Processing
-// ============================================================================
-
-function process1x1Withdrawal(
-  chain: NoteChain,
-  depositIndex: number,
-  lastNote: Note,
-  withdrawal: Activity,
+/**
+ * Apply a 1:1 withdrawal extension
+ *
+ * Creates siblings under the spent node:
+ * - ChangeNote (remaining balance, spendable) - always created
+ * - WithdrawalNote (same-chain) OR WithdrawalIntentNote (cross-chain, pending or filled)
+ *
+ * For cross-chain withdrawals:
+ * - WithdrawalIntentNote is always created as sibling
+ * - If already filled: reconciler adds CrosschainWithdrawalNote as child of intent
+ * - If refunded: reconciler adds RefundNote as child of intent
+ */
+function apply1x1Withdrawal(
+  plan: Planned1x1Extension,
+  trees: Map<ChainKey, NoteTree>,
   nullifierMap: Map<string, NullifierInfo>,
-  oldNullifierHash: string,
-  accountKey: bigint,
-  poolAddress: string,
 ): void {
-  // Calculate remaining amount
-  const withdrawn = BigInt(withdrawal.amount || 0);
-  const remaining = BigInt(lastNote.amount) - withdrawn;
+  const tree = trees.get(plan.chainKey);
+  if (!tree) return;
+
+  // Find the node to extend by position
+  const nodeToExtend = findNodeByPosition(tree, plan.depositIndex, plan.parentChangeIndex);
+  if (!nodeToExtend) return;
+
+  // Verify the node contains a spendable note
+  const parentNote = nodeToExtend.note;
+  if (!isSpendableNote(parentNote)) return;
 
   // Mark current note as spent
-  lastNote.status = 'spent';
+  parentNote.status = 'spent';
 
-  // Create change note
-  const newChangeIndex = lastNote.changeIndex + 1;
-  const changeNote = createChangeNote(lastNote, withdrawal, newChangeIndex, remaining);
-  chain.push(changeNote);
+  // Always create ChangeNote for remaining balance (spendable)
+  // Type assertion: planner guarantees activity is a valid withdrawal activity
+  const changeNote = createChangeNote(parentNote, plan.activity as ChangeActivity, plan.newChangeIndex, plan.remaining);
+  addChild(nodeToExtend, changeNote);
 
-  // Update nullifier map
-  nullifierMap.delete(oldNullifierHash);
-  if (remaining > 0n) {
-    const newNullifierHash = deriveAndHashNullifier(accountKey, poolAddress, depositIndex, newChangeIndex);
-    nullifierMap.set(newNullifierHash, { depositIndex, changeIndex: newChangeIndex });
-  }
-}
-
-// ============================================================================
-// 2:1 Withdraw2 Processing
-// ============================================================================
-
-/**
- * Process a Withdraw2 (2:1 JoinSplit) activity
- *
- * Chain inheritance rule: The most recent deposit (latest depositIndex) continues
- * - Primary chain (latest/larger depositIndex): Continues with combined change note
- * - Secondary chain (older/smaller depositIndex): Terminates, marked as 'merged'
- *
- * @returns true if resolved, false if other chain not ready
- */
-function processWithdraw2(
-  currentChain: NoteChain,
-  currentDepositIndex: number,
-  currentLastNote: Note,
-  activity: Activity,
-  currentNullifierHash: string,
-  allChains: Map<number, NoteChain>,
-  nullifierMap: Map<string, NullifierInfo>,
-  accountKey: bigint,
-  poolAddress: string,
-): boolean {
-  // Determine which nullifier is ours
-  const isNullifier0 = activity.spentNullifier === currentNullifierHash;
-  const otherNullifierHash = isNullifier0 ? activity.spentNullifier1! : activity.spentNullifier!;
-
-  // Find the other chain
-  const otherInfo = nullifierMap.get(otherNullifierHash);
-  if (!otherInfo) {
-    // Other chain not discovered yet - shouldn't happen with correct discovery order
-    return false;
+  // Determine withdrawal type and create appropriate sibling note using type guards
+  if (isCrossChainWithdrawalPendingActivity(plan.activity)) {
+    // Cross-chain pending: create WithdrawalIntentNote (tracks intent)
+    // The reconciler will add CrosschainWithdrawalNote or RefundNote as child when filled/refunded
+    const withdrawalIntent = createWithdrawalIntentNote(parentNote, plan.activity, plan.parentChangeIndex);
+    addChild(nodeToExtend, withdrawalIntent);
+  } else if (isWithdrawalActivity(plan.activity)) {
+    // Same-chain: create WithdrawalNote (terminal record)
+    const withdrawalRecord = createWithdrawalNote(parentNote, plan.activity, plan.parentChangeIndex);
+    const recordNode = addChild(nodeToExtend, withdrawalRecord);
+    markTerminal(recordNode);
   }
 
-  const otherChain = allChains.get(otherInfo.depositIndex);
-  if (!otherChain) {
-    return false;
+  // Update nullifier map - ALWAYS insert before delete for crash safety
+  // If app crashes between operations, insert-first ensures we don't lose the nullifier
+  if (plan.newNullifierHash) {
+    nullifierMap.set(plan.newNullifierHash, {
+      originChainId: plan.originChainId,
+      depositIndex: plan.depositIndex,
+      changeIndex: plan.newChangeIndex,
+    });
   }
-
-  const otherLastNote = otherChain[otherChain.length - 1];
-  if (!otherLastNote) {
-    return false;
-  }
-
-  // Determine which chain is primary (latest/most recent deposit continues)
-  const isPrimaryChain = currentDepositIndex > otherInfo.depositIndex;
-
-  // Check if other chain already processed this Withdraw2
-  if (otherLastNote.status !== 'unspent') {
-    if ((otherLastNote.status === 'spent' || otherLastNote.status === 'merged') && isPrimaryChain) {
-      // Secondary chain processed first and marked itself spent
-      // Primary chain still needs to handle both chains
-      // Fall through to processAsPrimaryChain
-    } else {
-      // Either: primary already processed (both are done), or
-      // current is secondary and other chain is in unexpected state
-      return true;
-    }
-  }
-
-  if (isPrimaryChain) {
-    // This chain continues with the combined change note
-    processAsPrimaryChain(
-      currentChain,
-      currentDepositIndex,
-      currentLastNote,
-      otherChain,
-      otherLastNote,
-      otherInfo.depositIndex,
-      activity,
-      nullifierMap,
-      currentNullifierHash,
-      otherNullifierHash,
-      accountKey,
-      poolAddress,
-    );
-  } else {
-    // This chain terminates - gets merged into the primary chain
-    // Primary chain will handle nullifier cleanup
-    processAsSecondaryChain(currentLastNote, otherInfo.depositIndex);
-  }
-
-  return true;
+  nullifierMap.delete(plan.oldNullifierHash);
 }
 
 /**
- * Process current chain as the primary (continuing) chain in a Withdraw2
- * - Creates combined change note with value from both chains
- * - Marks secondary chain's note as merged
- * - Cleans up nullifiers for both chains
+ * Apply a Withdraw2 extension
+ *
+ * Creates on primary tree:
+ * - ChangeNote (remaining balance, spendable)
+ * - WithdrawalNote (same-chain) OR WithdrawalIntentNote (cross-chain)
+ *
+ * Creates on secondary tree:
+ * - MergedNote (terminal)
+ *
+ * For cross-chain withdrawals:
+ * - WithdrawalIntentNote is always created
+ * - Reconciler adds CrosschainWithdrawalNote or RefundNote as child when filled/refunded
  */
-function processAsPrimaryChain(
-  primaryChain: NoteChain,
-  primaryDepositIndex: number,
-  primaryLastNote: Note,
-  secondaryChain: NoteChain,
-  secondaryLastNote: Note,
-  secondaryDepositIndex: number,
-  activity: Activity,
+function applyWithdraw2(
+  plan: PlannedWithdraw2Extension,
+  trees: Map<ChainKey, NoteTree>,
   nullifierMap: Map<string, NullifierInfo>,
-  primaryNullifierHash: string,
-  secondaryNullifierHash: string,
-  accountKey: bigint,
-  poolAddress: string,
+  processedWithdraw2s: Set<string>,
 ): void {
-  // Calculate combined remaining value
-  const combined = BigInt(primaryLastNote.amount) + BigInt(secondaryLastNote.amount);
-  const withdrawn = BigInt(activity.amount || 0);
-  const remaining = combined - withdrawn;
+  // Generate a unique key for this Withdraw2 to avoid double-processing.
+  // Use nullifier hashes (unique per chain position) for a robust key.
+  const withdraw2Key = `${plan.activity.originTransactionHash}-${plan.primaryOldNullifierHash}-${plan.secondaryOldNullifierHash}`;
+  if (processedWithdraw2s.has(withdraw2Key)) {
+    return;
+  }
+  processedWithdraw2s.add(withdraw2Key);
 
-  // Mark primary note as spent
-  primaryLastNote.status = 'spent';
+  const primaryTree = trees.get(plan.primaryChainKey);
+  const secondaryTree = trees.get(plan.secondaryChainKey);
 
-  // Mark secondary note as spent (it contributed to the merge)
-  secondaryLastNote.status = 'spent';
+  if (!primaryTree || !secondaryTree) return;
 
-  // Create change note on primary chain (receives combined balance minus withdrawal)
-  const primaryNewChangeIndex = primaryLastNote.changeIndex + 1;
+  // Find nodes to extend by position
+  const primaryNode = findNodeByPosition(primaryTree, plan.primaryDepositIndex, plan.primaryParentChangeIndex);
+  const secondaryNode = findNodeByPosition(secondaryTree, plan.secondaryDepositIndex, plan.secondaryChangeIndex);
+
+  if (!primaryNode || !secondaryNode) return;
+
+  // Verify both nodes contain spendable notes
+  const primaryNote = primaryNode.note;
+  const secondaryNote = secondaryNode.note;
+  if (!isSpendableNote(primaryNote) || !isSpendableNote(secondaryNote)) return;
+
+  // Mark both notes as spent
+  primaryNote.status = 'spent';
+  secondaryNote.status = 'spent';
+
+  // Create change note on primary tree (spendable remaining balance)
+  // Type assertion: planner guarantees activity is a Withdraw2 activity
   const changeNote = createWithdraw2ChangeNote(
-    primaryLastNote,
-    activity,
-    primaryNewChangeIndex,
-    remaining,
-    secondaryDepositIndex,
+    primaryNote,
+    plan.activity as Withdraw2MergeActivity,
+    plan.primaryNewChangeIndex,
+    plan.remaining,
+    secondaryNote.serialNumber,
+    BigInt(secondaryNote.amount),
   );
-  primaryChain.push(changeNote);
+  addChild(primaryNode, changeNote);
 
-  // Create merged note on secondary chain (balance = 0, linked to primary)
-  const secondaryNewChangeIndex = secondaryLastNote.changeIndex + 1;
-  const mergedNote = createMergedNote(
-    secondaryLastNote,
-    activity,
-    secondaryNewChangeIndex,
-    primaryDepositIndex,
-  );
-  secondaryChain.push(mergedNote);
-
-  // Update nullifier map - remove both old nullifiers
-  nullifierMap.delete(primaryNullifierHash);
-  nullifierMap.delete(secondaryNullifierHash);
-
-  // Add new nullifier if there's remaining balance
-  if (remaining > 0n) {
-    const newNullifierHash = deriveAndHashNullifier(
-      accountKey,
-      poolAddress,
-      primaryDepositIndex,
-      primaryNewChangeIndex,
+  // Create withdrawal record note as sibling based on withdrawal type using type guards
+  if (isCrossChainWithdraw2PendingActivity(plan.activity)) {
+    // Cross-chain pending: create WithdrawalIntentNote (tracks intent)
+    // Reconciler adds CrosschainWithdrawalNote or RefundNote as child when filled/refunded
+    const withdrawalIntent = createWithdrawalIntentNote(
+      primaryNote,
+      plan.activity,
+      plan.primaryParentChangeIndex,
     );
-    nullifierMap.set(newNullifierHash, { depositIndex: primaryDepositIndex, changeIndex: primaryNewChangeIndex });
+    addChild(primaryNode, withdrawalIntent);
+  } else if (isWithdraw2Activity(plan.activity)) {
+    // Same-chain: create WithdrawalNote (terminal record)
+    const withdrawalRecord = createWithdrawalNote(primaryNote, plan.activity, plan.primaryParentChangeIndex);
+    const recordNode = addChild(primaryNode, withdrawalRecord);
+    markTerminal(recordNode);
   }
+
+  // Create merged note on secondary tree (terminal)
+  // Type assertion: planner guarantees activity is a Withdraw2 activity
+  const mergedNote = createMergedNote(
+    secondaryNote,
+    plan.activity as Withdraw2MergeActivity,
+    primaryNote.serialNumber,
+  );
+  const mergedChild = addChild(secondaryNode, mergedNote);
+  markTerminal(mergedChild);
+
+  // Update nullifier map - ALWAYS insert before delete for crash safety
+  if (plan.primaryNewNullifierHash) {
+    nullifierMap.set(plan.primaryNewNullifierHash, {
+      originChainId: plan.primaryOriginChainId,
+      depositIndex: plan.primaryDepositIndex,
+      changeIndex: plan.primaryNewChangeIndex,
+    });
+  }
+  nullifierMap.delete(plan.primaryOldNullifierHash);
+  nullifierMap.delete(plan.secondaryOldNullifierHash);
 }
 
 /**
- * Process current chain as the secondary (terminating) chain in a Withdraw2
- * - Marks note as spent so the while loop exits
- * - The primary chain will handle creating the merged note when processed
+ * Apply a ragequit extension
+ *
+ * Creates RagequitNote as child of the spent parent note.
  */
-function processAsSecondaryChain(currentLastNote: Note, _primaryDepositIndex: number): void {
-  // Mark as spent so the while loop exits (note is no longer 'unspent')
-  // The primary chain will create the proper merged note and update this chain
-  currentLastNote.status = 'spent';
-}
-
-// ============================================================================
-// Ragequit Processing
-// ============================================================================
-
-/**
- * Process a ragequit (public withdrawal)
- * - Marks the note as spent
- * - Stores ragequit activity data on the note
- * - No change note is created (ragequit withdraws the full amount)
- * - Removes the nullifier from the map
- */
-function processRagequit(
-  lastNote: Note,
-  ragequit: Activity,
+function applyRagequit(
+  plan: PlannedRagequitExtension,
+  trees: Map<ChainKey, NoteTree>,
   nullifierMap: Map<string, NullifierInfo>,
-  nullifierHash: string,
 ): void {
-  // Mark note as spent
-  lastNote.status = 'spent';
+  const tree = trees.get(plan.chainKey);
+  if (!tree) return;
 
-  // Store ragequit activity data on the note for UI display
-  lastNote.activityData = {
-    ...lastNote.activityData,
-    ragequitTxHash: ragequit.originTransactionHash,
-    ragequitTimestamp: ragequit.timestamp.toString(),
-    ragequitBlockNumber: ragequit.blockNumber.toString(),
-    ragequitUser: ragequit.user,
-  };
+  // Find the node by position
+  const node = findNodeByPosition(tree, plan.depositIndex, plan.changeIndex);
+  if (!node) return;
 
-  // Remove nullifier from map (no change note for ragequit)
-  nullifierMap.delete(nullifierHash);
+  // Verify the node contains a spendable note
+  const note = node.note;
+  if (!isSpendableNote(note)) return;
+
+  // Mark parent note as spent
+  note.status = 'spent';
+
+  // Create RagequitNote as child (terminal record of public withdrawal)
+  const ragequitNote = createRagequitNote(note, plan.activity as RagequitActivity);
+  const ragequitNode = addChild(node, ragequitNote);
+  markTerminal(ragequitNode);
+
+  // Remove nullifier
+  nullifierMap.delete(plan.nullifierHash);
 }

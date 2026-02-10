@@ -6,9 +6,10 @@
 
 import { useRouter } from "next/navigation";
 import type { Note } from "@shinobi-cash/core/discovery";
-import { MoreVertical, Eye, Lock, Unlock } from "lucide-react";
+import { isIntentNote, canWithdraw, canRagequit } from "@shinobi-cash/core/discovery";
+import { MoreVertical, Eye, Lock, Unlock, Clock } from "lucide-react";
 import { formatTimestamp } from "@/utils/formatters";
-import { getStatusDotColor, canWithdraw, canRagequit } from "@/utils/noteFiltering";
+import { getStatusDotColor } from "@/utils/noteFiltering";
 import { AmountDisplay } from "@/components/shared/AmountDisplay";
 import { WithdrawController } from "@/controllers/WithdrawController";
 import { RagequitController } from "@/controllers/RagequitController";
@@ -26,11 +27,16 @@ interface NoteRowProps {
 
 export function NoteRow({ note, onClick }: NoteRowProps) {
   const router = useRouter();
-  const noteLabel = `Note #${note.depositIndex + 1}`;
   const dotColor = getStatusDotColor(note);
 
   const canWithdrawPrivately = canWithdraw(note);
   const canWithdrawPublicly = canRagequit(note);
+
+  // Intent notes show "Awaiting delivery" status
+  const isIntent = isIntentNote(note);
+  const intentStatusText = isIntent ? "Awaiting cross-chain delivery" : null;
+
+  const displayTimestamp = note.originTimestamp;
 
   const handleViewDetails = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -59,14 +65,18 @@ export function NoteRow({ note, onClick }: NoteRowProps) {
         onClick={onClick}
       >
         <div className="flex items-center justify-between gap-4">
-          {/* Left: Status dot + Label + Timestamp */}
+          {/* Left: Status dot + Label + Status/Timestamp */}
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <span className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ${dotColor}`} />
-              <span className="truncate text-sm font-medium text-white">{noteLabel}</span>
+              <span className="truncate text-sm font-medium font-mono text-white">{note.serialNumber}</span>
             </div>
             <div className="mt-0.5 pl-[18px] text-xs text-neutral-400">
-              {formatTimestamp(note.timestamp)}
+              {intentStatusText ? (
+                <span>{intentStatusText}</span>
+              ) : (
+                formatTimestamp(displayTimestamp)
+              )}
             </div>
           </div>
 
@@ -119,7 +129,17 @@ export function NoteRow({ note, onClick }: NoteRowProps) {
               className="cursor-pointer text-red-400 hover:bg-red-500/10 hover:text-red-300 focus:bg-red-500/10 focus:text-red-300"
             >
               <Unlock className="h-4 w-4" />
-              Withdraw Publicly
+              Ragequit
+            </DropdownMenuItem>
+          )}
+
+          {isIntent && (
+            <DropdownMenuItem
+              disabled
+              className="cursor-not-allowed text-neutral-500"
+            >
+              <Clock className="h-4 w-4" />
+              Awaiting Delivery
             </DropdownMenuItem>
           )}
         </DropdownMenuContent>

@@ -16,7 +16,7 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
 
   const isAuthenticated = state.state.status === "authenticated";
   const isNotesSyncing =
-    notesState.state.status === "discovering" && notesState.noteChains.length === 0;
+    notesState.state.status === "discovering" && notesState.noteTrees.length === 0;
 
   const content = isAuthenticated ? (
     <>

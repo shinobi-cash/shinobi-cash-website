@@ -1,6 +1,7 @@
 "use client";
 
 import type { Note } from "@shinobi-cash/core/discovery";
+import { isSpendableNote } from "@shinobi-cash/core/discovery";
 import { Loader2, Info } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";
@@ -34,7 +35,7 @@ export function RagequitPreviewScreen({
   return (
     <ScreenLayout
       containerClassName="flex-1 sm:flex-none sm:h-[600px]"
-      header={<ScreenHeader title="Public Withdrawal" onBack={onBack} />}
+      header={<ScreenHeader title="Ragequit" onBack={onBack} />}
       contentClassName="space-y-4 px-4 py-4"
       footer={
         <Button
@@ -49,7 +50,7 @@ export function RagequitPreviewScreen({
               Processing…
             </span>
           ) : (
-            "Confirm Withdrawal"
+            "Confirm Ragequit"
           )}
         </Button>
       }
@@ -58,8 +59,7 @@ export function RagequitPreviewScreen({
       <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.02] p-4">
         <Info className="mt-0.5 h-5 w-5 shrink-0 text-neutral-400" />
         <div className="space-y-1">
-          <p className="text-sm font-medium text-neutral-200">Public withdrawal</p>
-          <p className="text-xs text-neutral-400">
+          <p className="text-sm text-neutral-400">
             Your identity will be visible on-chain, linking your deposit address to this withdrawal.
             {hasMergeHistory && (
               <span className="mt-1 block">
@@ -129,27 +129,29 @@ export function RagequitPreviewScreen({
           value={
             <span className="flex items-center gap-2">
               <NoteAvatarStack notes={[note]} size="sm" />
-              <span className="text-neutral-300">#{note.depositIndex + 1}</span>
+              <span className="font-mono text-neutral-300">{note.serialNumber}</span>
             </span>
           }
         />
         <Row label="Chain" value={POOL_CHAIN.name} />
-        <Row
-          label="ASP Status"
-          value={
-            <span
-              className={`capitalize ${
-                note.aspStatus === "approved"
-                  ? "text-emerald-400"
-                  : note.aspStatus === "rejected"
-                    ? "text-rose-400"
-                    : "text-amber-400"
-              }`}
-            >
-              {note.aspStatus}
-            </span>
-          }
-        />
+        {isSpendableNote(note) && (
+          <Row
+            label="ASP Status"
+            value={
+              <span
+                className={`capitalize ${
+                  note.aspStatus === "approved"
+                    ? "text-emerald-400"
+                    : note.aspStatus === "rejected"
+                      ? "text-rose-400"
+                      : "text-amber-400"
+                }`}
+              >
+                {note.aspStatus}
+              </span>
+            }
+          />
+        )}
       </Section>
 
       {/* Gas Info */}
