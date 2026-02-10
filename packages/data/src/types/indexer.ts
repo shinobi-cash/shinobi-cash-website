@@ -39,7 +39,7 @@ export type IntentStatus = 'pending' | 'filled' | 'refunded';
 /**
  * Intent phase in the cross-chain lifecycle
  */
-export type IntentPhase = 'CREATED' | 'ESCROWED' | 'FILLED' | 'FINALIZED' | 'REFUNDED';
+export type IntentPhase = 'ESCROWED' | 'FILLED' | 'FINALIZED' | 'REFUNDED';
 
 /**
  * Intent type (deposit or withdrawal)
@@ -506,16 +506,15 @@ export interface SerializedIntentTimelineEvent {
  */
 
 /**
- * Deposit Activity - has deposit-specific fields guaranteed
+ * Deposit Activity - same-chain deposit with commitment in tree
  */
-export interface DepositActivity extends Omit<Activity, 'type'> {
+export interface DepositActivity extends Omit<Activity, 'type' | 'amount'> {
   type: 'DEPOSIT';
 
   // Guaranteed deposit fields
   precommitmentHash: string;
-
-  // Optional (when activated)
-  label?: string | null;
+  amount: bigint;
+  label: string;
 
   // Withdrawal fields are undefined
   spentNullifier?: undefined;
@@ -524,14 +523,15 @@ export interface DepositActivity extends Omit<Activity, 'type'> {
 }
 
 /**
- * Withdrawal Activity - has withdrawal-specific fields guaranteed
+ * Withdrawal Activity - same-chain withdrawal
  */
-export interface WithdrawalActivity extends Omit<Activity, 'type'> {
+export interface WithdrawalActivity extends Omit<Activity, 'type' | 'amount'> {
   type: 'WITHDRAWAL';
 
   // Guaranteed withdrawal fields
   spentNullifier: string;
   recipient: string;
+  amount: bigint;
 
   // Optional change note
   newCommitment?: string;
@@ -545,13 +545,14 @@ export interface WithdrawalActivity extends Omit<Activity, 'type'> {
 /**
  * Withdraw2 Activity - 2:1 JoinSplit (combines 2 inputs into 1 change output + withdrawal)
  */
-export interface Withdraw2Activity extends Omit<Activity, 'type'> {
+export interface Withdraw2Activity extends Omit<Activity, 'type' | 'amount'> {
   type: 'WITHDRAW2';
 
   // Guaranteed withdrawal fields (2 nullifiers for 2:1)
   spentNullifier: string;
   spentNullifier1: string;
   recipient: string;
+  amount: bigint;
 
   // Optional change note
   newCommitment?: string;
@@ -562,7 +563,7 @@ export interface Withdraw2Activity extends Omit<Activity, 'type'> {
 }
 
 /**
- * Cross-chain Deposit Activity
+ * Cross-chain Deposit Activity (filled by solver)
  */
 export interface CrossChainDepositActivity extends Omit<Activity, 'type'> {
   type: 'CROSSCHAIN_DEPOSIT';
@@ -571,35 +572,34 @@ export interface CrossChainDepositActivity extends Omit<Activity, 'type'> {
   precommitmentHash: string;
   orderId: string;
   destinationChainId: bigint;
-
-  // Optional (when filled by solver)
-  label?: string | null;
-  amount: bigint | null;
-  destinationTransactionHash?: string;
+  destinationTransactionHash: string;
+  amount: bigint;
+  label: string;
 }
 
 /**
- * Cross-chain Withdrawal Activity
+ * Cross-chain Withdrawal Activity (filled by solver)
  */
-export interface CrossChainWithdrawalActivity extends Omit<Activity, 'type'> {
+export interface CrossChainWithdrawalActivity extends Omit<Activity, 'type' | 'amount'> {
   type: 'CROSSCHAIN_WITHDRAWAL';
 
   // Guaranteed fields
   spentNullifier: string;
   orderId: string;
   recipient: string;
+  amount: bigint;
   destinationChainId: bigint;
+  destinationTransactionHash: string;
 
   // Optional
   newCommitment?: string;
   refundCommitment?: string;
-  destinationTransactionHash?: string;
 }
 
 /**
- * Cross-chain Withdraw2 Activity - 2:1 JoinSplit cross-chain
+ * Cross-chain Withdraw2 Activity - 2:1 JoinSplit cross-chain (filled by solver)
  */
-export interface CrossChainWithdraw2Activity extends Omit<Activity, 'type'> {
+export interface CrossChainWithdraw2Activity extends Omit<Activity, 'type' | 'amount'> {
   type: 'CROSSCHAIN_WITHDRAW2';
 
   // Guaranteed fields (2 nullifiers for 2:1)
@@ -607,59 +607,56 @@ export interface CrossChainWithdraw2Activity extends Omit<Activity, 'type'> {
   spentNullifier1: string;
   orderId: string;
   recipient: string;
+  amount: bigint;
   destinationChainId: bigint;
+  destinationTransactionHash: string;
 
   // Optional
   newCommitment?: string;
   refundCommitment?: string;
-  destinationTransactionHash?: string;
 }
 
 /**
  * Pending Cross-chain Deposit Activity (awaiting solver fill)
  */
-export interface CrossChainDepositPendingActivity extends Omit<Activity, 'type'> {
+export interface CrossChainDepositPendingActivity extends Omit<Activity, 'type' | 'amount' | 'destinationChainId'> {
   type: 'CROSSCHAIN_DEPOSIT_PENDING';
 
   // Guaranteed fields
   precommitmentHash: string;
   orderId: string;
   originChainId: bigint;
-
-  // Intent deadlines
-  fillDeadline?: bigint;
-  expires?: bigint;
-
-  // Amount may be null until filled
-  amount: bigint | null;
+  destinationChainId: bigint;
+  amount: bigint;
+  fillDeadline: bigint;
+  expires: bigint;
 }
 
 /**
  * Pending Cross-chain Withdrawal Activity (awaiting solver fill)
  */
-export interface CrossChainWithdrawalPendingActivity extends Omit<Activity, 'type'> {
+export interface CrossChainWithdrawalPendingActivity extends Omit<Activity, 'type' | 'amount'> {
   type: 'CROSSCHAIN_WITHDRAWAL_PENDING';
 
   // Guaranteed fields
   spentNullifier: string;
   orderId: string;
   recipient: string;
+  amount: bigint;
   originChainId: bigint;
   destinationChainId: bigint;
-
-  // Intent deadlines
-  fillDeadline?: bigint;
-  expires?: bigint;
+  fillDeadline: bigint;
+  expires: bigint;
+  refundCommitment: string;
 
   // Optional
   newCommitment?: string;
-  refundCommitment?: string;
 }
 
 /**
  * Pending Cross-chain Withdraw2 Activity - 2:1 JoinSplit cross-chain (awaiting solver fill)
  */
-export interface CrossChainWithdraw2PendingActivity extends Omit<Activity, 'type'> {
+export interface CrossChainWithdraw2PendingActivity extends Omit<Activity, 'type' | 'amount'> {
   type: 'CROSSCHAIN_WITHDRAW2_PENDING';
 
   // Guaranteed fields (2 nullifiers for 2:1)
@@ -667,25 +664,25 @@ export interface CrossChainWithdraw2PendingActivity extends Omit<Activity, 'type
   spentNullifier1: string;
   orderId: string;
   recipient: string;
+  amount: bigint;
   originChainId: bigint;
   destinationChainId: bigint;
-
-  // Intent deadlines
-  fillDeadline?: bigint;
-  expires?: bigint;
+  fillDeadline: bigint;
+  expires: bigint;
+  refundCommitment: string;
 
   // Optional
   newCommitment?: string;
-  refundCommitment?: string;
 }
 
 /**
  * Ragequit Activity - emergency withdrawal bypassing privacy
  */
-export interface RagequitActivity extends Omit<Activity, 'type'> {
+export interface RagequitActivity extends Omit<Activity, 'type' | 'amount'> {
   type: 'RAGEQUIT';
 
   // Guaranteed fields
+  user: string;
   commitment: string;
   amount: bigint;
 }
