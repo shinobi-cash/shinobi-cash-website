@@ -65,7 +65,7 @@ interface IndexerRequest {
     // Intent-specific params
     orderId?: string;
     intentType?: "DEPOSIT" | "WITHDRAWAL";
-    phase?: "CREATED" | "ESCROWED" | "FILLED" | "FINALIZED" | "REFUNDED";
+    phase?:  "ESCROWED" | "FILLED" | "FINALIZED" | "REFUNDED";
     originChainId?: string;
     destinationChainId?: string;
   };

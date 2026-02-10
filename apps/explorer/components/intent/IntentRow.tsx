@@ -11,7 +11,7 @@ interface Props {
 export function IntentRow({ intent }: Props) {
   const isDeposit = intent.intentType === "DEPOSIT";
   const phaseLabel = PHASE_LABELS[intent.phase] ?? intent.phase.toLowerCase();
-  const phaseColors = PHASE_COLORS[intent.phase] ?? PHASE_COLORS.CREATED;
+  const phaseColors = PHASE_COLORS[intent.phase];
 
   const originChain = intent.originChainId ? getChainName(Number(intent.originChainId)) : "Unknown";
   const destChain = intent.destinationChainId ? getChainName(Number(intent.destinationChainId)) : "Pool";
