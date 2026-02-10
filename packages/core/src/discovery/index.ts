@@ -187,6 +187,11 @@ export class NoteDiscovery {
     // Load or initialize state
     let state = await this.loadOrInitState(publicKey, poolAddress);
 
+    // Rebuild nullifier map if empty (migration for old cached data)
+    if (state.nullifierMap.size === 0 && state.trees.size > 0) {
+      rebuildNullifierMap(state, accountKey, poolAddress);
+    }
+
     // Progress tracking
     const progress: DiscoveryProgress = {
       pagesProcessed: 0,
@@ -348,6 +353,40 @@ export class NoteDiscovery {
 // ============================================================================
 // Internal Helpers
 // ============================================================================
+
+/**
+ * Rebuild nullifier map from trees (migration for old cached data without nullifierMap)
+ *
+ * For each tree, finds all spendable leaves and adds their nullifiers to the map.
+ * This enables Withdraw2 to find the "other" note's nullifier.
+ *
+ * @internal Exported for testing
+ */
+export function rebuildNullifierMap(
+  state: DiscoveryState,
+  accountKey: bigint,
+  poolAddress: string,
+): void {
+  for (const tree of state.trees.values()) {
+    // getSpendableLeaves already filters for spendable notes with status === 'unspent'
+    const spendableLeaves = getSpendableLeaves(tree);
+    for (const leaf of spendableLeaves) {
+      const note = leaf.note;
+      const nullifierHash = deriveAndHashNullifier(
+        accountKey,
+        poolAddress,
+        note.originChainId,
+        note.depositIndex,
+        note.changeIndex,
+      );
+      state.nullifierMap.set(nullifierHash, {
+        originChainId: note.originChainId,
+        depositIndex: note.depositIndex,
+        changeIndex: note.changeIndex,
+      });
+    }
+  }
+}
 
 function serializeDiscoveryState(state: DiscoveryState): SerializableDiscoveryState {
   return {
