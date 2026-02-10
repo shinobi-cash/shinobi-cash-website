@@ -19,8 +19,10 @@ import {
   resetActivityCounter,
   TEST_POOL_ADDRESS,
   TEST_CHAIN_ID,
+  TEST_ACCOUNT_KEY,
   toEther,
 } from './fixtures.js';
+import { deriveDepositPrecommitment } from '../../src/discovery/nullifier-utils.js';
 import { createNoteTree, addChild, findNode, getLeafNodes, traverseTree } from '../../src/discovery/tree-utils.js';
 
 describe('reconciler', () => {
@@ -70,6 +72,118 @@ describe('reconciler', () => {
         reconcileTrees(trees, [activity]);
 
         expect(tree.root.note.aspStatus).toBe('approved');
+      });
+
+      it('should update ASP status on cross-chain deposit (DepositIntentNote root with CrosschainDepositNote child)', () => {
+        // Create tree with DepositIntentNote root and CrosschainDepositNote child (filled intent)
+        const depositIntent = createMockDepositIntentNote(0, toEther(1), {
+          orderId: 'asp-test-order',
+          originChainId: '84532',
+          destinationChainId: TEST_CHAIN_ID,
+          intentStatus: 'filled',
+          status: 'spent',
+        });
+        const tree = createNoteTree(depositIntent);
+
+        // Derive precommitmentHash the same way the activity fixture does
+        const precommitmentHash = deriveDepositPrecommitment(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0);
+
+        // Manually add a CrosschainDepositNote child with pending ASP status
+        const crosschainDeposit = {
+          noteType: 'crosschainDeposit' as const,
+          serialNumber: 'BAS-001-00-0-00',
+          poolAddress: TEST_POOL_ADDRESS,
+          depositIndex: 0,
+          changeIndex: 0,
+          amount: toEther(1).toString(),
+          status: 'unspent' as const,
+          aspStatus: 'pending' as const,
+          isCrossChain: true,
+          originChainId: '84532',
+          originTransactionHash: '0xorigin-tx',
+          originTimestamp: '1234567890',
+          destinationChainId: TEST_CHAIN_ID,
+          destinationTransactionHash: '0xdest-tx',
+          destinationBlockNumber: '100',
+          destinationTimestamp: '1234567900',
+          blockNumber: '100',
+          precommitmentHash, // Must match activity - derived using same function
+          activityData: {},
+        };
+        addChild(tree.root, crosschainDeposit);
+
+        const chainKey = makeChainKey('84532', 0);
+        const trees = new Map<ChainKey, NoteTree>([[chainKey, tree]]);
+
+        // Activity with approved ASP status
+        const activity = createMockCrossChainDepositActivity(0, toEther(1), {
+          aspStatus: 'approved',
+          label: BigInt(99999),
+        });
+
+        reconcileTrees(trees, [activity]);
+
+        // CrosschainDepositNote should have updated ASP status
+        const depositChild = tree.root.children[0];
+        expect(depositChild.note.aspStatus).toBe('approved');
+        expect(depositChild.note.label).toBe('99999');
+      });
+
+      it('should propagate ASP status to change notes in cross-chain deposit tree', () => {
+        // Create tree with DepositIntentNote root, CrosschainDepositNote, and ChangeNote
+        const depositIntent = createMockDepositIntentNote(0, toEther(1), {
+          orderId: 'asp-propagate-order',
+          originChainId: '84532',
+          destinationChainId: TEST_CHAIN_ID,
+          intentStatus: 'filled',
+          status: 'spent',
+        });
+        const tree = createNoteTree(depositIntent);
+
+        // Derive precommitmentHash the same way the activity fixture does
+        const precommitmentHash = deriveDepositPrecommitment(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0);
+
+        // CrosschainDepositNote child
+        const crosschainDeposit = {
+          noteType: 'crosschainDeposit' as const,
+          serialNumber: 'BAS-001-00-0-00',
+          poolAddress: TEST_POOL_ADDRESS,
+          depositIndex: 0,
+          changeIndex: 0,
+          amount: toEther(1).toString(),
+          status: 'spent' as const,
+          aspStatus: 'pending' as const,
+          isCrossChain: true,
+          originChainId: '84532',
+          originTransactionHash: '0xorigin-tx',
+          originTimestamp: '1234567890',
+          destinationChainId: TEST_CHAIN_ID,
+          destinationTransactionHash: '0xdest-tx',
+          destinationBlockNumber: '100',
+          destinationTimestamp: '1234567900',
+          blockNumber: '100',
+          precommitmentHash, // Must match activity - derived using same function
+          activityData: {},
+        };
+        const depositNode = addChild(tree.root, crosschainDeposit);
+
+        // ChangeNote child of deposit
+        const changeNote = createMockChangeNote(0, 1, toEther(0.5), { aspStatus: 'pending' });
+        addChild(depositNode, changeNote);
+
+        const chainKey = makeChainKey('84532', 0);
+        const trees = new Map<ChainKey, NoteTree>([[chainKey, tree]]);
+
+        // Activity with approved ASP status
+        const activity = createMockCrossChainDepositActivity(0, toEther(1), {
+          aspStatus: 'approved',
+        });
+
+        reconcileTrees(trees, [activity]);
+
+        // Both CrosschainDepositNote and ChangeNote should have updated ASP status
+        expect(tree.root.children[0].note.aspStatus).toBe('approved');
+        expect(tree.root.children[0].children[0].note.aspStatus).toBe('approved');
       });
     });
 

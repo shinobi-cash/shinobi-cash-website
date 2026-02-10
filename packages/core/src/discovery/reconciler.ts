@@ -31,6 +31,49 @@ import { traverseTree, addChild, markTerminal } from './tree-utils.js';
 import { isTerminalNote, isSpendableNote } from './types.js';
 
 // ============================================================================
+// Helpers
+// ============================================================================
+
+/**
+ * Update ASP status and label on all spendable notes in a tree
+ */
+function updateTreeAspStatus(tree: NoteTree, fresh: Activity): void {
+  // Find any spendable note to compare current state
+  let currentAspStatus: string | undefined;
+  let currentLabel: string | undefined;
+
+  traverseTree(tree, (node) => {
+    if (isSpendableNote(node.note) && currentAspStatus === undefined) {
+      currentAspStatus = node.note.aspStatus;
+      currentLabel = node.note.label;
+    }
+  });
+
+  // Check if update is needed
+  const aspChanged = currentAspStatus !== fresh.aspStatus;
+  const labelChanged = fresh.label && currentLabel !== fresh.label?.toString();
+
+  if (!aspChanged && !labelChanged) {
+    return;
+  }
+
+  // Update all spendable notes in the tree
+  traverseTree(tree, (node) => {
+    const note = node.note;
+
+    // ASP status and label only propagate to spendable notes
+    if (isSpendableNote(note)) {
+      if (aspChanged) {
+        note.aspStatus = fresh.aspStatus;
+      }
+      if (labelChanged && fresh.label) {
+        note.label = fresh.label.toString();
+      }
+    }
+  });
+}
+
+// ============================================================================
 // Reconciler
 // ============================================================================
 
@@ -78,34 +121,26 @@ export function reconcileTrees(
   for (const [, tree] of trees) {
     const rootNote = tree.root.note;
 
-    // Handle trees starting with DepositNote
+    // Handle trees starting with DepositNote (same-chain deposits)
     if (rootNote.noteType === 'deposit') {
       const depositNote = rootNote as DepositNote;
       const fresh = depositActivityMap.get(depositNote.precommitmentHash);
-      if (!fresh) continue;
-
-      // Check if update is needed
-      const aspChanged = depositNote.aspStatus !== fresh.aspStatus;
-      const labelChanged = fresh.label && depositNote.label !== fresh.label?.toString();
-
-      if (!aspChanged && !labelChanged) {
-        continue;
+      if (fresh) {
+        updateTreeAspStatus(tree, fresh);
       }
-
-      // Update all spendable notes in the tree
-      traverseTree(tree, (node) => {
-        const note = node.note;
-
-        // ASP status and label only propagate to spendable notes
-        if (isSpendableNote(note)) {
-          if (aspChanged) {
-            note.aspStatus = fresh.aspStatus;
-          }
-          if (labelChanged && fresh.label) {
-            note.label = fresh.label.toString();
-          }
+    }
+    // Handle trees starting with DepositIntentNote (cross-chain deposits)
+    else if (rootNote.noteType === 'depositIntent') {
+      // Find the filled deposit child (if any)
+      const depositChild = tree.root.children.find(
+        (child) => child.note.noteType === 'crosschainDeposit' || child.note.noteType === 'deposit'
+      );
+      if (depositChild && 'precommitmentHash' in depositChild.note) {
+        const fresh = depositActivityMap.get(depositChild.note.precommitmentHash as string);
+        if (fresh) {
+          updateTreeAspStatus(tree, fresh);
         }
-      });
+      }
     }
     // Note: Intent notes are handled in reconcileIntentNotes
   }
