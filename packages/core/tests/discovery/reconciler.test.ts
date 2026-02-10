@@ -185,6 +185,71 @@ describe('reconciler', () => {
         expect(tree.root.children[0].note.aspStatus).toBe('approved');
         expect(tree.root.children[0].children[0].note.aspStatus).toBe('approved');
       });
+
+      it('should return matched activities for ASP status updates', () => {
+        const depositNote = createMockDepositNote(0, toEther(1), { aspStatus: 'pending' });
+        const tree = createNoteTree(depositNote);
+        const chainKey = makeChainKey(TEST_CHAIN_ID, 0);
+        const trees = new Map<ChainKey, NoteTree>([[chainKey, tree]]);
+
+        const activity = createMockDepositActivity(0, toEther(1), { aspStatus: 'approved' });
+
+        const result = reconcileTrees(trees, [activity]);
+
+        // Activity should be included in matchedActivities for storage
+        expect(result.matchedActivities).toHaveLength(1);
+        expect(result.matchedActivities[0].id).toBe(activity.id);
+        expect(result.matchedActivities[0].aspStatus).toBe('approved');
+      });
+
+      it('should return matched activities for cross-chain deposit ASP updates', () => {
+        const depositIntent = createMockDepositIntentNote(0, toEther(1), {
+          orderId: 'asp-activity-test',
+          originChainId: '84532',
+          destinationChainId: TEST_CHAIN_ID,
+          intentStatus: 'filled',
+          status: 'spent',
+        });
+        const tree = createNoteTree(depositIntent);
+
+        const precommitmentHash = deriveDepositPrecommitment(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0);
+
+        const crosschainDeposit = {
+          noteType: 'crosschainDeposit' as const,
+          serialNumber: 'BAS-001-00-0-00',
+          poolAddress: TEST_POOL_ADDRESS,
+          depositIndex: 0,
+          changeIndex: 0,
+          amount: toEther(1).toString(),
+          status: 'unspent' as const,
+          aspStatus: 'pending' as const,
+          isCrossChain: true,
+          originChainId: '84532',
+          originTransactionHash: '0xorigin-tx',
+          originTimestamp: '1234567890',
+          destinationChainId: TEST_CHAIN_ID,
+          destinationTransactionHash: '0xdest-tx',
+          destinationBlockNumber: '100',
+          destinationTimestamp: '1234567900',
+          blockNumber: '100',
+          precommitmentHash,
+          activityData: {},
+        };
+        addChild(tree.root, crosschainDeposit);
+
+        const chainKey = makeChainKey('84532', 0);
+        const trees = new Map<ChainKey, NoteTree>([[chainKey, tree]]);
+
+        const activity = createMockCrossChainDepositActivity(0, toEther(1), {
+          aspStatus: 'approved',
+        });
+
+        const result = reconcileTrees(trees, [activity]);
+
+        // Activity should be included in matchedActivities for storage
+        expect(result.matchedActivities).toHaveLength(1);
+        expect(result.matchedActivities[0].aspStatus).toBe('approved');
+      });
     });
 
     // Intent notes (DepositIntentNote, WithdrawalIntentNote) are reconciled separately

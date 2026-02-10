@@ -84,7 +84,7 @@ export interface ReconcileResult {
    * Caller should compute nullifier hashes using accountKey and add to nullifier map.
    */
   filledDepositIndices: Array<{ depositIndex: number; poolAddress: string; originChainId: string }>;
-  /** Raw activities that matched during reconciliation (filled/refunded intents) */
+  /** Raw activities that matched during reconciliation (filled/refunded intents + ASP updates) */
   matchedActivities: Activity[];
 }
 
@@ -117,6 +117,9 @@ export function reconcileTrees(
     }
   }
 
+  // Track which activities we've added (for deduplication)
+  const addedActivityIds = new Set<string>();
+
   // Update each tree with fresh data
   for (const [, tree] of trees) {
     const rootNote = tree.root.note;
@@ -127,6 +130,11 @@ export function reconcileTrees(
       const fresh = depositActivityMap.get(depositNote.precommitmentHash);
       if (fresh) {
         updateTreeAspStatus(tree, fresh);
+        // Store updated activity for persistence
+        if (!addedActivityIds.has(fresh.id)) {
+          result.matchedActivities.push(fresh);
+          addedActivityIds.add(fresh.id);
+        }
       }
     }
     // Handle trees starting with DepositIntentNote (cross-chain deposits)
@@ -139,6 +147,11 @@ export function reconcileTrees(
         const fresh = depositActivityMap.get(depositChild.note.precommitmentHash as string);
         if (fresh) {
           updateTreeAspStatus(tree, fresh);
+          // Store updated activity for persistence
+          if (!addedActivityIds.has(fresh.id)) {
+            result.matchedActivities.push(fresh);
+            addedActivityIds.add(fresh.id);
+          }
         }
       }
     }
@@ -147,7 +160,7 @@ export function reconcileTrees(
 
   // Reconcile intent notes with fresh activity data
   if (activityIndex) {
-    const intentResult = reconcileIntentNotes(trees, activityIndex);
+    const intentResult = reconcileIntentNotes(trees, activityIndex, addedActivityIds);
     result.filledDepositIndices.push(...intentResult.filledDepositIndices);
     result.matchedActivities.push(...intentResult.matchedActivities);
   }
@@ -169,14 +182,12 @@ export function reconcileTrees(
 function reconcileIntentNotes(
   trees: Map<ChainKey, NoteTree>,
   activityIndex: ActivityIndex,
+  addedActivityIds: Set<string>,
 ): ReconcileResult {
   const result: ReconcileResult = {
     filledDepositIndices: [],
     matchedActivities: [],
   };
-
-  // Track which activities we've added (for deduplication)
-  const addedActivityIds = new Set<string>();
 
   for (const [, tree] of trees) {
     // Collect nodes to add children to after traversal
