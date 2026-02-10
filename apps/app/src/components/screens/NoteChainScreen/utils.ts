@@ -1,67 +1,170 @@
 /**
  * Utility functions for NoteChainScreen
+ *
+ * Each note type has its own builder function that uses fields directly.
+ * No fallback logic - each builder knows exactly what fields to use.
  */
 
-import type { NoteTree, NoteNode, Note, ChangeNote } from "@shinobi-cash/core/discovery";
-import { traverseTree } from "@shinobi-cash/core/discovery";
+import type {
+  NoteTree,
+  NoteNode,
+  Note,
+  DepositNote,
+  CrosschainDepositNote,
+  DepositIntentNote,
+  ChangeNote,
+  WithdrawalIntentNote,
+  CrosschainWithdrawalNote,
+  WithdrawalRefundedNote,
+  MergedNote,
+  RagequitNote,
+} from "@shinobi-cash/core/discovery";
+import {
+  traverseTree,
+  isDepositIntentNote,
+  isWithdrawalIntentNote,
+  isWithdrawalRefundedNote,
+  isDepositNote,
+  isCrosschainDepositNote,
+  isChangeNote,
+  isWithdrawalNote,
+  isCrosschainWithdrawalNote,
+  isRagequitNote,
+  isMergedNote,
+} from "@shinobi-cash/core/discovery";
 import { getTxExplorerUrl, getChainName } from "@/config/chains";
-import { isDepositIntentNote, isWithdrawalIntentNote, isRefundNote } from "@/utils/noteFiltering";
 import { POOL_CHAIN } from "@shinobi-cash/constants";
 import type { CrossChainStep, TimelineEntry } from "./types";
 
+// ============================================================================
+// Type-Specific Entry Builders
+// Each builder uses the note's fields directly - no fallbacks
+// ============================================================================
+
 /**
- * Check if a deposit was cross-chain.
- * Cross-chain deposit = originChainId !== destinationChainId
+ * Build entry for a DepositNote (same-chain deposit)
  */
-export function isCrossChainDeposit(note: Note): boolean {
-  // If no destinationChainId, it's same-chain
-  if (!note.destinationChainId) return false;
-  return note.originChainId !== note.destinationChainId;
+function buildDepositNoteEntry(deposit: DepositNote): TimelineEntry {
+  return {
+    key: `deposit-${deposit.depositIndex}`,
+    label: "Deposited",
+    amount: BigInt(deposit.amount),
+    prefix: "+",
+    dotColor: "bg-emerald-400",
+    txHash: deposit.originTransactionHash,
+    txUrl: getTxExplorerUrl(deposit.originChainId, deposit.originTransactionHash),
+    timestamp: deposit.originTimestamp,
+    note: deposit,
+  };
 }
 
 /**
- * Get the correct chain ID for a transaction link.
- * - Same-chain: use originChainId (destinationChainId is undefined)
- * - Cross-chain: use destinationChainId if destination tx exists, else originChainId
+ * Build entry for a CrosschainDepositNote (filled cross-chain deposit)
  */
-export function getTxChainId(note: Note): string {
-  if (!note.isCrossChain) {
-    return note.originChainId;
-  }
-  // Cross-chain: use destination if destination tx exists
-  return note.destinationTransactionHash
-    ? note.destinationChainId!
-    : note.originChainId;
+function buildCrosschainDepositNoteEntry(deposit: CrosschainDepositNote): TimelineEntry {
+  return {
+    key: `deposit-${deposit.depositIndex}`,
+    label: "Crosschain Deposited",
+    amount: BigInt(deposit.amount),
+    prefix: "+",
+    dotColor: "bg-emerald-400",
+    txHash: deposit.destinationTransactionHash,
+    txUrl: getTxExplorerUrl(deposit.destinationChainId, deposit.destinationTransactionHash),
+    timestamp: deposit.destinationTimestamp,
+    note: deposit,
+    crossChainSteps: buildCrosschainDepositSteps(deposit),
+  };
 }
 
 /**
- * Build cross-chain steps for a cross-chain deposit.
- * Shows Deposited on origin chain and Confirmed on pool chain.
+ * Build cross-chain steps for a CrosschainDepositNote
  */
-export function buildCrossChainDepositSteps(depositNote: Note): CrossChainStep[] {
-  const steps: CrossChainStep[] = [];
+function buildCrosschainDepositSteps(deposit: CrosschainDepositNote): CrossChainStep[] {
+  return [
+    {
+      label: "Escrowed",
+      txHash: deposit.originTransactionHash,
+      txUrl: getTxExplorerUrl(deposit.originChainId, deposit.originTransactionHash),
+      chainName: getChainName(deposit.originChainId),
+      timestamp: deposit.originTimestamp,
+      dotColor: "bg-emerald-400",
+    },
+    {
+      label: "Filled",
+      txHash: deposit.destinationTransactionHash,
+      txUrl: getTxExplorerUrl(deposit.destinationChainId, deposit.destinationTransactionHash),
+      chainName: getChainName(deposit.destinationChainId),
+      timestamp: deposit.destinationTimestamp,
+      dotColor: "bg-emerald-400",
+    },
+  ];
+}
 
-  // Cross-chain deposits always have destination fields set
-  const destChainId = depositNote.destinationChainId!;
-  const destTxHash = depositNote.destinationTransactionHash;
-  const isFilled = destTxHash !== undefined && destTxHash !== depositNote.originTransactionHash;
+/**
+ * Build entry for a DepositIntentNote (cross-chain deposit)
+ * Uses tree structure: intent has escrow tx, filledDeposit child has fill tx
+ */
+function buildDepositIntentEntry(
+  intent: DepositIntentNote,
+  filledDeposit?: CrosschainDepositNote,
+): TimelineEntry {
+  // Check if filled by looking for child deposit note
+  const isFilled = filledDeposit !== undefined;
+  // For display, show the filled deposit note if available
+  const displayNote = filledDeposit ?? intent;
 
-  steps.push({
-    label: "Escrowed",
-    txHash: depositNote.originTransactionHash,
-    txUrl: getTxExplorerUrl(depositNote.originChainId, depositNote.originTransactionHash),
-    chainName: getChainName(depositNote.originChainId),
-    timestamp: depositNote.timestamp,
+  const txHash = isFilled && filledDeposit
+    ? filledDeposit.destinationTransactionHash
+    : intent.originTransactionHash;
+  const txChainId = isFilled && filledDeposit
+    ? filledDeposit.destinationChainId
+    : intent.originChainId;
+  const timestamp = isFilled && filledDeposit
+    ? filledDeposit.destinationTimestamp
+    : intent.originTimestamp;
+
+  return {
+    key: `deposit-${intent.depositIndex}`,
+    label: isFilled ? "Crosschain Deposited" : "Crosschain Deposit (Pending)",
+    amount: BigInt(displayNote.amount),
+    prefix: "+",
     dotColor: isFilled ? "bg-emerald-400" : "bg-amber-400",
-  });
+    txHash,
+    txUrl: getTxExplorerUrl(txChainId, txHash),
+    timestamp,
+    note: displayNote,
+    crossChainSteps: buildDepositIntentSteps(intent, filledDeposit),
+  };
+}
 
-  if (isFilled) {
+/**
+ * Build cross-chain steps for a DepositIntentNote
+ * Uses the intent for escrow info and optional filledDeposit child for fill info
+ */
+function buildDepositIntentSteps(
+  intent: DepositIntentNote,
+  filledDeposit?: CrosschainDepositNote,
+): CrossChainStep[] {
+  const isFilled = filledDeposit !== undefined;
+
+  const steps: CrossChainStep[] = [
+    {
+      label: "Escrowed",
+      txHash: intent.originTransactionHash,
+      txUrl: getTxExplorerUrl(intent.originChainId, intent.originTransactionHash),
+      chainName: getChainName(intent.originChainId),
+      timestamp: intent.originTimestamp,
+      dotColor: isFilled ? "bg-emerald-400" : "bg-amber-400",
+    },
+  ];
+
+  if (isFilled && filledDeposit) {
     steps.push({
       label: "Filled",
-      txHash: destTxHash,
-      txUrl: getTxExplorerUrl(destChainId, destTxHash),
-      chainName: getChainName(destChainId),
-      timestamp: depositNote.timestamp,
+      txHash: filledDeposit.destinationTransactionHash,
+      txUrl: getTxExplorerUrl(filledDeposit.destinationChainId, filledDeposit.destinationTransactionHash),
+      chainName: getChainName(filledDeposit.destinationChainId),
+      timestamp: filledDeposit.destinationTimestamp,
       dotColor: "bg-emerald-400",
     });
   } else {
@@ -69,346 +172,311 @@ export function buildCrossChainDepositSteps(depositNote: Note): CrossChainStep[]
       label: "Fill pending",
       txHash: "",
       txUrl: "",
-      chainName: getChainName(destChainId),
+      chainName: getChainName(intent.destinationChainId),
       timestamp: "",
       dotColor: "bg-neutral-500",
     });
   }
 
   return steps;
+}
+
+
+/**
+ * Build entry for a pending WithdrawalIntentNote
+ * Shows cross-chain withdrawal in pending state with escrow step
+ */
+function buildPendingIntentEntry(intent: WithdrawalIntentNote): TimelineEntry {
+  return {
+    key: `intent-${intent.depositIndex}-${intent.changeIndex}`,
+    label: "Crosschain Withdrawal (Pending)",
+    amount: BigInt(intent.amount),
+    prefix: "-",
+    dotColor: "bg-amber-400",
+    txHash: intent.originTransactionHash,
+    txUrl: getTxExplorerUrl(intent.originChainId, intent.originTransactionHash),
+    timestamp: intent.originTimestamp,
+    note: intent,
+    crossChainSteps: [
+      {
+        label: "Escrowed",
+        txHash: intent.originTransactionHash,
+        txUrl: getTxExplorerUrl(intent.originChainId, intent.originTransactionHash),
+        chainName: getChainName(intent.originChainId),
+        timestamp: intent.originTimestamp,
+        dotColor: "bg-amber-400",
+      },
+      {
+        label: "Delivery pending",
+        txHash: "",
+        txUrl: "",
+        chainName: getChainName(intent.destinationChainId),
+        timestamp: "",
+        dotColor: "bg-neutral-500",
+      },
+    ],
+  };
 }
 
 /**
- * Build cross-chain steps for a cross-chain withdrawal.
- * Shows Escrowed step from ChangeNote, and Delivered/Refunded/Pending status.
+ * Build entry for a CrosschainWithdrawalNote (filled cross-chain withdrawal)
+ * Shows finalized withdrawal with escrow and fill steps
  */
-export function buildCrossChainWithdrawalSteps(
-  changeNote: Note,
-  pendingNote?: Note & { intentStatus?: string },
-): CrossChainStep[] {
-  const steps: CrossChainStep[] = [];
-
-  // Cross-chain withdrawals always have destination fields set
-  const destChainId = changeNote.destinationChainId!;
-  const destTxHash = changeNote.destinationTransactionHash;
-  const isFilled =
-    pendingNote?.intentStatus === "filled" ||
-    (destTxHash !== undefined && destTxHash !== changeNote.originTransactionHash);
-
-  steps.push({
-    label: "Escrowed",
-    txHash: changeNote.originTransactionHash,
-    txUrl: getTxExplorerUrl(POOL_CHAIN.id.toString(), changeNote.originTransactionHash),
-    chainName: getChainName(POOL_CHAIN.id.toString()),
-    timestamp: changeNote.timestamp,
-    dotColor: isFilled ? "bg-emerald-400" : "bg-amber-400",
-  });
-
-  if (isFilled) {
-    const fillTxHash = pendingNote?.destinationTransactionHash ?? destTxHash!;
-    const fillTimestamp = pendingNote?.timestamp || changeNote.timestamp;
-
-    steps.push({
-      label: "Delivered",
-      txHash: fillTxHash,
-      txUrl: getTxExplorerUrl(destChainId, fillTxHash),
-      chainName: getChainName(destChainId),
-      timestamp: fillTimestamp,
-      dotColor: "bg-emerald-400",
-    });
-  } else if (pendingNote?.intentStatus === "refunded") {
-    steps.push({
-      label: "Refunded",
-      txHash: pendingNote.originTransactionHash,
-      txUrl: getTxExplorerUrl(pendingNote.originChainId, pendingNote.originTransactionHash),
-      chainName: getChainName(pendingNote.originChainId),
-      timestamp: pendingNote.timestamp,
-      dotColor: "bg-orange-400",
-    });
-  } else {
-    steps.push({
-      label: "Delivery pending",
-      txHash: "",
-      txUrl: "",
-      chainName: getChainName(destChainId),
-      timestamp: "",
-      dotColor: "bg-neutral-500",
-    });
-  }
-
-  return steps;
+function buildCrosschainWithdrawalEntry(
+  withdrawal: CrosschainWithdrawalNote,
+  parentIntent: WithdrawalIntentNote,
+): TimelineEntry {
+  return {
+    key: `crosschain-withdraw-${withdrawal.depositIndex}-${withdrawal.changeIndex}`,
+    label: "Crosschain Withdrew",
+    amount: BigInt(withdrawal.withdrawnAmount),
+    prefix: "-",
+    dotColor: "bg-rose-400",
+    txHash: withdrawal.destinationTransactionHash,
+    txUrl: getTxExplorerUrl(withdrawal.destinationChainId, withdrawal.destinationTransactionHash),
+    timestamp: withdrawal.destinationTimestamp,
+    note: withdrawal,
+    crossChainSteps: [
+      {
+        label: "Escrowed",
+        txHash: parentIntent.originTransactionHash,
+        txUrl: getTxExplorerUrl(parentIntent.originChainId, parentIntent.originTransactionHash),
+        chainName: getChainName(parentIntent.originChainId),
+        timestamp: parentIntent.originTimestamp,
+        dotColor: "bg-emerald-400",
+      },
+      {
+        label: "Delivered",
+        txHash: withdrawal.destinationTransactionHash,
+        txUrl: getTxExplorerUrl(withdrawal.destinationChainId, withdrawal.destinationTransactionHash),
+        chainName: getChainName(withdrawal.destinationChainId),
+        timestamp: withdrawal.destinationTimestamp,
+        dotColor: "bg-emerald-400",
+      },
+    ],
+  };
 }
+
+/**
+ * Build entry for a WithdrawalRefundedNote (child of refunded WithdrawalIntentNote)
+ */
+function buildRefundEntry(refund: WithdrawalRefundedNote): TimelineEntry {
+  return {
+    key: `refund-${refund.depositIndex}-${refund.changeIndex}`,
+    label: "Refunded",
+    amount: BigInt(refund.amount),
+    prefix: "+",
+    dotColor: "bg-orange-400",
+    txHash: refund.originTransactionHash,
+    txUrl: getTxExplorerUrl(refund.originChainId, refund.originTransactionHash),
+    timestamp: refund.originTimestamp,
+    note: refund,
+  };
+}
+
+/**
+ * Build entry for a ChangeNote (same-chain withdrawal)
+ * Shows the withdrawal amount for same-chain withdrawals.
+ * Cross-chain withdrawals are displayed via WithdrawalIntentNote/CrosschainWithdrawalNote.
+ */
+function buildChangeEntry(
+  change: ChangeNote,
+  parentNote: Note,
+): TimelineEntry {
+  // Calculate withdrawn amount
+  const withdrawnAmount = change.activityData.withdrawnAmount
+    ? BigInt(change.activityData.withdrawnAmount)
+    : BigInt(parentNote.amount) - BigInt(change.amount);
+
+  // Determine dot color - check mergedFrom map for merge winner
+  const hasMergedFrom = Object.keys(change.mergedFrom).length > 0;
+  const dotColor = hasMergedFrom ? "bg-violet-400" : "bg-rose-400";
+
+  // Get merged info from the mergedFrom map
+  const mergedFromSerialNumbers = Object.keys(change.mergedFrom);
+
+  return {
+    key: `withdraw-${change.depositIndex}-${change.changeIndex}`,
+    label: "Withdrew",
+    amount: withdrawnAmount < BigInt(0) ? -withdrawnAmount : withdrawnAmount,
+    prefix: "-",
+    dotColor,
+    txHash: change.originTransactionHash,
+    txUrl: getTxExplorerUrl(change.originChainId, change.originTransactionHash),
+    timestamp: change.originTimestamp,
+    note: change,
+    mergedFromSerialNumber: mergedFromSerialNumbers[0],
+    fees: {
+      relayFee: change.activityData.relayFeeAmount,
+      solverFee: change.activityData.solverFeeAmount,
+      vettingFee: change.activityData.vettingFeeAmount,
+    },
+  };
+}
+
+/**
+ * Build entry for a MergedNote (Withdraw2 loser chain - terminal)
+ */
+function buildMergedNoteEntry(merged: MergedNote): TimelineEntry {
+  // Use the explicit contributedAmount field from MergedNote
+  const contributedAmount = BigInt(merged.contributedAmount);
+
+  return {
+    key: `merged-${merged.depositIndex}-${merged.changeIndex}`,
+    label: "Merged (Withdrew)",
+    amount: contributedAmount,
+    prefix: "-",
+    dotColor: "bg-violet-400",
+    txHash: merged.originTransactionHash,
+    txUrl: getTxExplorerUrl(merged.originChainId, merged.originTransactionHash),
+    timestamp: merged.originTimestamp,
+    note: merged,
+    isMerged: true,
+    mergedIntoSerialNumber: merged.mergedIntoSerialNumber,
+  };
+}
+
+/**
+ * Build entry for a RagequitNote (child of spent spendable note)
+ */
+function buildRagequitEntry(ragequit: RagequitNote): TimelineEntry {
+  return {
+    key: `ragequit-${ragequit.depositIndex}-${ragequit.changeIndex}`,
+    label: "Ragequit",
+    amount: BigInt(ragequit.ragequitAmount),
+    prefix: "-",
+    dotColor: "bg-orange-400",
+    txHash: ragequit.originTransactionHash,
+    txUrl: getTxExplorerUrl(POOL_CHAIN.id.toString(), ragequit.originTransactionHash),
+    timestamp: ragequit.originTimestamp,
+    note: ragequit,
+  };
+}
+
+// ============================================================================
+// Main Entry Point
+// ============================================================================
 
 /**
  * Build timeline entries from a note tree.
- * Traverses the tree in parent-first order to build a chronological timeline.
+ * Dispatches to type-specific builders based on note type.
  */
 export function buildTimelineEntries(noteTree: NoteTree): TimelineEntry[] {
   const entries: TimelineEntry[] = [];
   const processedNodes = new Set<NoteNode>();
 
-  // Helper to find sibling WithdrawalIntentNote for cross-chain withdrawal display
-  const findSiblingIntent = (node: NoteNode): NoteNode | undefined => {
-    if (!node.parent) return undefined;
-    return node.parent.children.find(
-      (sibling) => sibling !== node && isWithdrawalIntentNote(sibling.note)
-    );
+  // Helper to find RagequitNote child
+  const findRagequitChild = (node: NoteNode): RagequitNote | undefined => {
+    const ragequitNode = node.children.find((c) => isRagequitNote(c.note));
+    return ragequitNode?.note as RagequitNote | undefined;
   };
 
-  // Traverse tree in depth-first order
   traverseTree(noteTree, (node) => {
     if (processedNodes.has(node)) return;
     processedNodes.add(node);
 
     const note = node.note;
 
-    // Handle root deposit note (first note in tree)
+    // Handle root node (deposit)
     if (node.parent === null) {
-      const isDepositCrossChain = isCrossChainDeposit(note);
-      const isDepositPending = isDepositIntentNote(note) && note.intentStatus === "pending";
-
-      // For filled deposit intents, find the DepositNote child
-      const depositNoteForSteps = isDepositIntentNote(note) && note.intentStatus === "filled"
-        ? node.children.find((c) => c.note.noteType === "deposit")?.note ?? note
-        : note;
-
-      const getDepositLabel = (): string => {
-        if (!isDepositCrossChain) return "Deposited";
-        if (isDepositPending) return "Crosschain Deposit (Pending)";
-        return "Crosschain Deposited";
-      };
-
-      const depositDotColor = isDepositPending ? "bg-amber-400" : "bg-emerald-400";
-
-      entries.push({
-        key: `deposit-${note.depositIndex}`,
-        label: getDepositLabel(),
-        amount: BigInt(depositNoteForSteps.amount),
-        prefix: "+",
-        dotColor: depositDotColor,
-        // For deposits, use origin tx (same-chain) or destination tx (filled cross-chain)
-        txHash: depositNoteForSteps.destinationTransactionHash ?? depositNoteForSteps.originTransactionHash,
-        txUrl: getTxExplorerUrl(getTxChainId(depositNoteForSteps), depositNoteForSteps.destinationTransactionHash ?? depositNoteForSteps.originTransactionHash),
-        timestamp: depositNoteForSteps.timestamp,
-        note: depositNoteForSteps,
-        crossChainSteps: isDepositCrossChain ? buildCrossChainDepositSteps(depositNoteForSteps) : undefined,
-      });
-
-      // Check for ragequit on root deposit note
-      if (note.status === "ragequit" && note.activityData.ragequitTxHash) {
-        // Use ragequitAmount (stored before zeroing) or fallback to note.amount
-        const ragequitAmount = note.activityData.ragequitAmount || note.amount;
-        entries.push({
-          key: `ragequit-${note.depositIndex}-${note.changeIndex}`,
-          label: "Ragequit",
-          amount: BigInt(ragequitAmount),
-          prefix: "-",
-          dotColor: "bg-orange-400",
-          txHash: note.activityData.ragequitTxHash,
-          txUrl: getTxExplorerUrl(POOL_CHAIN.id.toString(), note.activityData.ragequitTxHash),
-          timestamp: note.activityData.ragequitTimestamp || note.timestamp,
-          note: note,
-        });
+      if (isDepositIntentNote(note)) {
+        // Cross-chain deposit (pending or filled)
+        // Look for CrosschainDepositNote child if filled
+        const filledDepositNode = node.children.find(
+          (c) => isCrosschainDepositNote(c.note)
+        );
+        const filledDeposit = filledDepositNode?.note as CrosschainDepositNote | undefined;
+        entries.push(buildDepositIntentEntry(note, filledDeposit));
+      } else if (isCrosschainDepositNote(note)) {
+        // Filled cross-chain deposit (discovered as filled)
+        entries.push(buildCrosschainDepositNoteEntry(note));
+      } else if (isDepositNote(note)) {
+        // Same-chain deposit
+        entries.push(buildDepositNoteEntry(note));
       }
+
+      // Check for ragequit child on root
+      const ragequitNote = findRagequitChild(node);
+      if (ragequitNote) entries.push(buildRagequitEntry(ragequitNote));
       return;
     }
 
-    // Skip DepositNote children of DepositIntentNote (already handled above)
-    if (note.noteType === "deposit" && isDepositIntentNote(node.parent.note)) {
+    // Skip deposit children of DepositIntentNote (handled above)
+    if ((isDepositNote(note) || isCrosschainDepositNote(note)) && isDepositIntentNote(node.parent.note)) {
       return;
     }
 
-    // Handle WithdrawalIntentNote (escrowed cross-chain withdrawal)
+    // Handle WithdrawalIntentNote (cross-chain withdrawal)
     if (isWithdrawalIntentNote(note)) {
-      const getIntentLabel = (): string => {
-        switch (note.intentStatus) {
-          case "filled":
-            return "Delivered (Cross-chain)";
-          case "refunded":
-            return "Refunded (Cross-chain)";
-          default:
-            return "Escrowed (Cross-chain)";
-        }
-      };
-      const getIntentDotColor = (): string => {
-        switch (note.intentStatus) {
-          case "filled":
-            return "bg-emerald-400";
-          case "refunded":
-            return "bg-orange-400";
-          default:
-            return "bg-amber-400";
-        }
-      };
+      const hasRefund = node.children.some((c) => isWithdrawalRefundedNote(c.note));
+      const hasFill = node.children.some((c) => isCrosschainWithdrawalNote(c.note));
 
-      const isFilled = note.intentStatus === "filled";
-      const txHash = isFilled ? note.destinationTransactionHash : note.originTransactionHash;
-      const txChainId = isFilled ? note.destinationChainId : note.originChainId;
-
-      entries.push({
-        key: `pending-intent-${note.depositIndex}-${note.changeIndex}`,
-        label: getIntentLabel(),
-        amount: BigInt(note.amount),
-        prefix: "-",
-        dotColor: getIntentDotColor(),
-        txHash,
-        txUrl: getTxExplorerUrl(txChainId, txHash),
-        timestamp: note.timestamp,
-        note: note,
-      });
-      return;
-    }
-
-    // Handle RefundNote
-    if (isRefundNote(note)) {
-      entries.push({
-        key: `refund-${note.depositIndex}-${note.changeIndex}-${note.refundIndex}`,
-        label: "Refunded",
-        amount: BigInt(note.amount),
-        prefix: "+",
-        dotColor: "bg-orange-400",
-        txHash: note.originTransactionHash,
-        txUrl: getTxExplorerUrl(note.originChainId, note.originTransactionHash),
-        timestamp: note.timestamp,
-        note: note,
-      });
-      return;
-    }
-
-    // Handle ChangeNote (withdrawal)
-    const changeNote = note as ChangeNote;
-    const parentNote = node.parent.note;
-    const mergedFromNoteIndex = changeNote.mergedFromDepositIndex;
-    const isMergedNote =
-      note.status === "merged" &&
-      "mergedIntoDepositIndex" in note &&
-      note.mergedIntoDepositIndex !== undefined;
-
-    // Check for sibling intent note (cross-chain withdrawal)
-    const siblingIntent = findSiblingIntent(node);
-    // Use note.isCrossChain - set correctly in note-factory based on activity type
-    const isWithdrawalCrossChain = note.isCrossChain;
-
-    const crossChainSteps = isWithdrawalCrossChain
-      ? buildCrossChainWithdrawalSteps(
-          note,
-          siblingIntent ? (siblingIntent.note as Note & { intentStatus?: string }) : undefined,
-        )
-      : undefined;
-
-    if (isMergedNote) {
-      const contributedAmount = BigInt(parentNote.amount);
-
-      const mergedIntentStatus = siblingIntent
-        ? (siblingIntent.note as Note & { intentStatus?: string }).intentStatus
-        : undefined;
-      const isMergedIntentPending = mergedIntentStatus === "pending";
-
-      const getMergedLabel = (): string => {
-        if (isWithdrawalCrossChain) {
-          return isMergedIntentPending
-            ? "Crosschain Withdrawal (Pending)"
-            : "Crosschain Withdrew";
-        }
-        return "Withdrew";
-      };
-
-      entries.push({
-        key: `merged-${note.depositIndex}-${note.changeIndex}`,
-        label: getMergedLabel(),
-        amount: contributedAmount,
-        prefix: "-",
-        dotColor: isMergedIntentPending ? "bg-amber-400" : "bg-violet-400",
-        // Withdraw2 tx is originTransactionHash (on pool chain)
-        txHash: note.originTransactionHash,
-        txUrl: getTxExplorerUrl(getTxChainId(note), note.originTransactionHash),
-        timestamp: note.timestamp,
-        note: note,
-        isMerged: true,
-        // For loser note: show merge icon with winner chain label
-        mergedIntoNoteIndex: changeNote.mergedIntoDepositIndex,
-        mergedIntoChainId: changeNote.mergedIntoOriginChainId,
-        fees: {
-          relayFee: note.activityData.relayFeeAmount,
-          solverFee: note.activityData.solverFeeAmount,
-          vettingFee: note.activityData.vettingFeeAmount,
-        },
-        crossChainSteps,
-      });
-    } else {
-      // Calculate withdrawn amount:
-      // - Prefer withdrawnAmount from activityData (actual amount from activity)
-      // - Fallback: calculate parent - note amounts (only works for 1:1 withdrawals)
-      let withdrawnAmount: bigint;
-
-      if (note.activityData.withdrawnAmount) {
-        // Use actual withdrawn amount from activity
-        withdrawnAmount = BigInt(note.activityData.withdrawnAmount);
+      if (hasFill) {
+        // Skip - CrosschainWithdrawalNote child will display the finalized withdrawal
+      } else if (hasRefund) {
+        // Show refund entry
+        const refundNote = node.children.find((c) => isWithdrawalRefundedNote(c.note))?.note as WithdrawalRefundedNote;
+        entries.push(buildRefundEntry(refundNote));
       } else {
-        // Fallback: calculate from parent - note (may be wrong for Withdraw2)
-        const calculatedAmount = BigInt(parentNote.amount) - BigInt(note.amount);
-        withdrawnAmount = calculatedAmount < BigInt(0) ? -calculatedAmount : calculatedAmount;
+        // Pending cross-chain withdrawal
+        entries.push(buildPendingIntentEntry(note));
+      }
+      return;
+    }
+
+    // Handle CrosschainWithdrawalNote (finalized cross-chain withdrawal)
+    if (isCrosschainWithdrawalNote(note)) {
+      // Parent should be WithdrawalIntentNote
+      if (node.parent && isWithdrawalIntentNote(node.parent.note)) {
+        entries.push(buildCrosschainWithdrawalEntry(note, node.parent.note));
+      }
+      return;
+    }
+
+    // Handle WithdrawalRefundedNote (child of refunded WithdrawalIntentNote)
+    // Already handled above when processing the intent
+    if (isWithdrawalRefundedNote(note)) {
+      return;
+    }
+
+    // Handle WithdrawalNote (terminal record of same-chain withdrawal)
+    // Skip display - the ChangeNote sibling shows the withdrawal
+    if (isWithdrawalNote(note)) {
+      return;
+    }
+
+    // Handle MergedNote (Withdraw2 loser - terminal)
+    if (isMergedNote(note)) {
+      entries.push(buildMergedNoteEntry(note));
+      return;
+    }
+
+    // Handle ChangeNote (same-chain withdrawal)
+    if (isChangeNote(note)) {
+      const parentNote = node.parent.note;
+      // Check for sibling WithdrawalIntentNote (cross-chain withdrawal)
+      const hasSiblingIntent = node.parent.children.some(
+        (sibling) => sibling !== node && isWithdrawalIntentNote(sibling.note)
+      );
+
+      // For cross-chain withdrawals, WithdrawalIntentNote displays the withdrawal
+      // ChangeNote only shows withdrawal entry for same-chain withdrawals
+      if (!hasSiblingIntent) {
+        entries.push(buildChangeEntry(note, parentNote));
       }
 
-      const intentStatus = siblingIntent
-        ? (siblingIntent.note as Note & { intentStatus?: string }).intentStatus
-        : undefined;
-      const isIntentPending = intentStatus === "pending";
-
-      const getWithdrawalLabel = (): string => {
-        if (isWithdrawalCrossChain) {
-          return isIntentPending ? "Crosschain Withdrawal (Pending)" : "Crosschain Withdrew";
-        }
-        return "Withdrew";
-      };
-
-      const dotColor =
-        mergedFromNoteIndex !== undefined
-          ? "bg-violet-400"
-          : isIntentPending
-            ? "bg-amber-400"
-            : "bg-rose-400";
-
-      entries.push({
-        key: `withdraw-${note.depositIndex}-${note.changeIndex}`,
-        label: getWithdrawalLabel(),
-        amount: withdrawnAmount,
-        prefix: "-",
-        dotColor,
-        // Withdrawal tx is originTransactionHash (on pool chain)
-        txHash: note.originTransactionHash,
-        txUrl: getTxExplorerUrl(getTxChainId(note), note.originTransactionHash),
-        timestamp: note.timestamp,
-        note: note,
-        mergedFromNoteIndex: mergedFromNoteIndex,
-        mergedFromChainId: changeNote.mergedFromOriginChainId,
-        fees: {
-          relayFee: note.activityData.relayFeeAmount,
-          solverFee: note.activityData.solverFeeAmount,
-          vettingFee: note.activityData.vettingFeeAmount,
-        },
-        crossChainSteps,
-      });
+      // Check for ragequit child
+      const ragequitNote = findRagequitChild(node);
+      if (ragequitNote) entries.push(buildRagequitEntry(ragequitNote));
     }
 
-    // Check for ragequit on this note
-    if (note.status === "ragequit" && note.activityData.ragequitTxHash) {
-      // Use ragequitAmount (stored before zeroing) or fallback to note.amount
-      const ragequitAmount = note.activityData.ragequitAmount || note.amount;
-      entries.push({
-        key: `ragequit-${note.depositIndex}-${note.changeIndex}`,
-        label: "Ragequit",
-        amount: BigInt(ragequitAmount),
-        prefix: "-",
-        dotColor: "bg-orange-400",
-        txHash: note.activityData.ragequitTxHash,
-        // Ragequit always happens on pool chain
-        txUrl: getTxExplorerUrl(POOL_CHAIN.id.toString(), note.activityData.ragequitTxHash),
-        timestamp: note.activityData.ragequitTimestamp || note.timestamp,
-        note: note,
-      });
+    // Handle RagequitNote (terminal record of ragequit)
+    // Already handled as child of spendable note
+    if (isRagequitNote(note)) {
+      return;
     }
   });
 
   return entries;
 }
+

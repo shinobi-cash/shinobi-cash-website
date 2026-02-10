@@ -1,518 +1,74 @@
-import type { Note, DepositIntentNote, WithdrawalIntentNote, RefundNote, NoteTree } from "@shinobi-cash/core/discovery";
-import { getSpendableLeaves, getLeafNodes } from "@shinobi-cash/core/discovery";
-import type { NoteFilter, NoteCategory } from "@/types/notes";
-
 /**
- * Note Filtering Utilities - 3-Category Model
+ * Note Filtering Utilities - UI Layer
  *
- * Categories based on what actions the user can take:
- *
- * 1. **Spendable** - Can take action NOW
- *    - ASP approved → Private Withdraw or Ragequit
- *    - ASP rejected → Ragequit only
- *    - RefundNote (unspent) → Can be withdrawn
- *
- * 2. **Pending** - Waiting for something
- *    - Cross-chain intent not filled (waiting for solver)
- *    - Cross-chain intent expired (can claim refund)
- *    - ASP pending (waiting for approval, can ragequit)
- *    - DepositIntentNote (awaiting solver fill on pool chain)
- *    - WithdrawalIntentNote (escrowed funds waiting for solver or refund)
- *
- * 3. **Spent** - No action possible
- *    - Already withdrawn (status = 'spent')
- *    - Intent notes with filled/refunded status
- *
- * Key fields:
- * - status: 'unspent' | 'spent' | 'merged' - spending status
- * - aspStatus: 'pending' | 'approved' | 'rejected' - compliance status
- * - intentStatus: 'pending' | 'filled' | 'refunded' - cross-chain intent
- * - expires: unix timestamp when refund becomes available (cross-chain only)
+ * UI-specific utilities only. Core domain logic is in @shinobi-cash/core/discovery.
  */
 
-// ============================================
-// TYPE GUARDS
-// ============================================
+import type { Note, Activity } from "@shinobi-cash/core/discovery";
+import {
+  isIntentNote,
+  isMergedNote,
+  isRagequitNote,
+  isWithdrawalNote,
+  isCrosschainWithdrawalNote,
+  isSpendableNote,
+} from "@shinobi-cash/core/discovery";
 
-/** Check if note is a DepositIntentNote (awaiting solver fill on pool chain) */
-export function isDepositIntentNote(note: Note): note is DepositIntentNote {
-  return note.noteType === "depositIntent";
-}
-
-/** Check if note is a WithdrawalIntentNote (escrowed funds in InputSettler) */
-export function isWithdrawalIntentNote(note: Note): note is WithdrawalIntentNote {
-  return note.noteType === "withdrawalIntent";
-}
-
-/** Check if note is any intent note (deposit or withdrawal intent) */
-export function isIntentNote(note: Note): note is DepositIntentNote | WithdrawalIntentNote {
-  return note.noteType === "depositIntent" || note.noteType === "withdrawalIntent";
-}
-
-/** Check if note is a RefundNote (claimable refund from failed cross-chain) */
-export function isRefundNote(note: Note): note is RefundNote {
-  return note.noteType === "refund";
+/** Check if note is a terminal note (no further actions possible) */
+function isTerminalNote(note: Note): boolean {
+  return isMergedNote(note) || isRagequitNote(note) || isWithdrawalNote(note) || isCrosschainWithdrawalNote(note);
 }
 
 /**
- * Check if note is in the pool (can be used for withdrawals/ragequit)
- * - Same-chain: always in pool
- * - Cross-chain: in pool when intent is filled
- * - DepositIntentNote: never in pool (awaiting solver fill)
- * - WithdrawalIntentNote: never in pool (escrowed in InputSettler)
- * - RefundNote: always in pool (refund commitment inserted)
- */
-export function isInPool(note: Note): boolean {
-  // Intent notes are never in pool - funds are escrowed or awaiting fill
-  if (isIntentNote(note)) return false;
-
-  // RefundNote is always in pool - refund commitment was inserted
-  if (isRefundNote(note)) return true;
-
-  return !note.isCrossChain || note.intentStatus === "filled";
-}
-
-// ============================================
-// CATEGORY DETERMINATION
-// ============================================
-
-/**
- * Get the display category for a note
- * This determines which tab the note appears in
- */
-export function getNoteCategory(note: Note): NoteCategory {
-  // Spent: Already used, merged, or ragequit
-  if (note.status === "spent") return "spent";
-  if (note.status === "merged") return "spent";
-  if (note.status === "ragequit") return "spent";
-
-  // Zero balance is effectively spent (except intent notes which may be refundable)
-  if (!isIntentNote(note) && BigInt(note.amount) <= BigInt(0)) return "spent";
-
-  // Intent notes: Always in pending category until resolved
-  // - DepositIntentNote: Awaiting solver to fill deposit on pool chain
-  // - WithdrawalIntentNote: Awaiting solver fill OR refund
-  if (isIntentNote(note)) {
-    // If intentStatus is already 'filled' or 'refunded', the status should be 'spent'
-    // (handled above), but double-check here
-    if (note.intentStatus === "filled" || note.intentStatus === "refunded") {
-      return "spent";
-    }
-    return "pending";
-  }
-
-  // RefundNote: Spendable if unspent (it's in the pool and can be withdrawn)
-  if (isRefundNote(note)) {
-    return note.status === "unspent" ? "spendable" : "spent";
-  }
-
-  // Pending: Not in pool yet (cross-chain waiting for solver)
-  if (!isInPool(note)) return "pending";
-
-  // Pending: In pool but ASP hasn't decided
-  if (note.aspStatus === "pending") return "pending";
-
-  // Spendable: In pool with ASP decision (approved or rejected)
-  // - Approved: can withdraw privately or ragequit
-  // - Rejected: can only ragequit
-  return "spendable";
-}
-
-// ============================================
-// ACTION AVAILABILITY
-// ============================================
-
-/** Can withdraw privately (in pool + ASP approved + has balance) */
-export function canWithdraw(note: Note): boolean {
-  // Intent notes cannot be withdrawn - funds are escrowed or awaiting fill
-  if (isIntentNote(note)) return false;
-
-  // RefundNote can be withdrawn if unspent and ASP approved
-  if (isRefundNote(note)) {
-    return note.status === "unspent" && note.aspStatus === "approved" && BigInt(note.amount) > BigInt(0);
-  }
-
-  return (
-    note.status === "unspent" &&
-    isInPool(note) &&
-    note.aspStatus === "approved" &&
-    BigInt(note.amount) > BigInt(0)
-  );
-}
-
-/**
- * Can ragequit - emergency exit bypassing privacy
- * Available for all notes in pool with balance, regardless of ASP status
- * (Contract only checks: depositor match, valid proof, commitment exists)
- */
-export function canRagequit(note: Note): boolean {
-  // Intent notes cannot ragequit - funds are escrowed or awaiting fill
-  if (isIntentNote(note)) return false;
-
-  // RefundNote can ragequit (it's in the pool)
-  if (isRefundNote(note)) {
-    return note.status === "unspent" && BigInt(note.amount) > BigInt(0);
-  }
-
-  return note.status === "unspent" && isInPool(note) && BigInt(note.amount) > BigInt(0);
-}
-
-/**
- * Can claim refund for expired cross-chain intent
- * Available for WithdrawalIntentNote when intent is pending and current time > expires
- */
-export function canClaimRefund(note: Note): boolean {
-  // Only WithdrawalIntentNote can claim refund (has refundCommitment)
-  if (!isWithdrawalIntentNote(note)) return false;
-
-  if (note.status !== "unspent") return false;
-  if (note.intentStatus !== "pending") return false;
-  if (!note.expires) return false;
-
-  const now = Math.floor(Date.now() / 1000);
-  return now > Number(note.expires);
-}
-
-// ============================================
-// STATUS DOT COLOR
-// ============================================
-
-/**
- * Get Tailwind background color class for note status dot
+ * Get Tailwind background color class for note status dot.
+ * UI-specific - returns CSS class strings.
  */
 export function getStatusDotColor(note: Note): string {
-  // Spent, merged, or ragequit notes
-  if (note.status === "spent" || note.status === "merged" || note.status === "ragequit") {
-    return "bg-neutral-500";
-  }
+  if (isTerminalNote(note)) return "bg-neutral-500";
+  if (isIntentNote(note)) return "bg-amber-400";
 
-  // Intent notes: show different colors based on state
-  if (isIntentNote(note)) {
-    // WithdrawalIntentNote can have refund available
-    if (isWithdrawalIntentNote(note) && canClaimRefund(note)) {
-      return "bg-orange-500"; // Refund available
-    }
-    return "bg-amber-400"; // Waiting for solver
-  }
-
-  // RefundNote: show as spendable (approved) or based on ASP status
-  if (isRefundNote(note)) {
+  if (isSpendableNote(note)) {
+    if (note.status === "spent") return "bg-neutral-500";
     if (note.aspStatus === "approved") return "bg-emerald-500";
     if (note.aspStatus === "rejected") return "bg-rose-500";
-    return "bg-amber-400"; // Pending ASP
+    if (note.aspStatus === "pending") return "bg-amber-400";
   }
-
-  // Cross-chain intent pending (waiting for solver)
-  if (note.isCrossChain && note.intentStatus === "pending") {
-    return "bg-amber-400";
-  }
-
-  // Cross-chain intent refunded
-  if (note.isCrossChain && note.intentStatus === "refunded") {
-    return "bg-orange-500";
-  }
-
-  // ASP status
-  if (note.aspStatus === "approved") return "bg-emerald-500";
-  if (note.aspStatus === "rejected") return "bg-rose-500";
-  if (note.aspStatus === "pending") return "bg-amber-400";
 
   return "bg-neutral-500";
 }
 
-// ============================================
-// PENDING STATE DETAILS
-// ============================================
+/**
+ * Get Tailwind background color class for activity status dot.
+ * Works with raw Activity from indexer.
+ */
+export function getActivityStatusDotColor(activity: Activity): string {
+  const { type, aspStatus, intentStatus } = activity;
 
-/** Cross-chain intent waiting for solver to fill (not expired yet) */
-export function isWaitingForSolver(note: Note): boolean {
-  // Intent notes are always cross-chain and waiting for solver
-  if (isIntentNote(note)) {
-    if (note.status !== "unspent") return false;
-    if (note.intentStatus !== "pending") return false;
-
-    // If no expires field, assume still waiting
-    if (!note.expires) return true;
-
-    const now = Math.floor(Date.now() / 1000);
-    return now <= Number(note.expires);
+  // Pending cross-chain operations (awaiting solver)
+  if (type === "CROSSCHAIN_DEPOSIT_PENDING" ||
+      type === "CROSSCHAIN_WITHDRAWAL_PENDING" ||
+      type === "CROSSCHAIN_WITHDRAW2_PENDING") {
+    if (intentStatus === "pending") return "bg-amber-400";
+    if (intentStatus === "refunded") return "bg-rose-400";
+    // Filled intents are complete
+    return "bg-neutral-500";
   }
 
-  // Other cross-chain notes (ChangeNote with pending intent)
-  if (note.status !== "unspent") return false;
-  if (!note.isCrossChain) return false;
-  if (note.intentStatus !== "pending") return false;
-
-  // If no expires field, assume still waiting
-  if (!note.expires) return true;
-
-  const now = Math.floor(Date.now() / 1000);
-  return now <= Number(note.expires);
-}
-
-// ============================================
-// TREE-BASED FILTER FUNCTIONS
-// ============================================
-
-/**
- * Get tree category based on all leaf nodes.
- * A tree is:
- * - "spendable" if any leaf is spendable
- * - "pending" if any leaf is pending (and none are spendable)
- * - "spent" if all leaves are spent
- */
-export function getTreeCategory(tree: NoteTree): NoteCategory {
-  const leaves = getLeafNodes(tree);
-
-  let hasSpendable = false;
-  let hasPending = false;
-
-  for (const leaf of leaves) {
-    const category = getNoteCategory(leaf.note);
-    if (category === "spendable") hasSpendable = true;
-    if (category === "pending") hasPending = true;
+  // Completed withdrawals and ragequits are always gray (terminal)
+  if (type === "WITHDRAWAL" ||
+      type === "WITHDRAW2" ||
+      type === "CROSSCHAIN_WITHDRAWAL" ||
+      type === "CROSSCHAIN_WITHDRAW2" ||
+      type === "RAGEQUIT") {
+    return "bg-neutral-500";
   }
 
-  if (hasSpendable) return "spendable";
-  if (hasPending) return "pending";
-  return "spent";
-}
-
-/**
- * Filter note trees by category
- */
-export function filterNoteTrees(
-  trees: NoteTree[],
-  filter: NoteFilter
-): NoteTree[] {
-  return trees.filter((tree) => {
-    const category = getTreeCategory(tree);
-    return category === filter;
-  });
-}
-
-/**
- * Get counts for each category
- */
-export function getNoteTreeCounts(trees: NoteTree[]): {
-  spendable: number;
-  pending: number;
-  spent: number;
-} {
-  return trees.reduce(
-    (counts, tree) => {
-      const category = getTreeCategory(tree);
-
-      if (category === "spendable") {
-        counts.spendable++;
-      } else if (category === "pending") {
-        counts.pending++;
-      } else {
-        counts.spent++;
-      }
-
-      return counts;
-    },
-    { spendable: 0, pending: 0, spent: 0 }
-  );
-}
-
-/**
- * Get the most recent timestamp from a tree.
- * For spent trees, returns the leaf timestamp (when spent).
- * For other trees, returns the root timestamp (when deposited).
- */
-function getMostRecentTimestamp(tree: NoteTree): number {
-  const category = getTreeCategory(tree);
-
-  if (category === "spent") {
-    // For spent trees, find the most recent leaf timestamp
-    const leaves = getLeafNodes(tree);
-    let maxTimestamp = Number(tree.root.note.timestamp);
-
-    for (const leaf of leaves) {
-      const note = leaf.note;
-      // Check ragequit timestamp first (if available)
-      const ragequitTs = note.activityData.ragequitTimestamp;
-      if (ragequitTs) {
-        maxTimestamp = Math.max(maxTimestamp, Number(ragequitTs));
-      }
-      // Also check the note's own timestamp
-      maxTimestamp = Math.max(maxTimestamp, Number(note.timestamp));
-    }
-
-    return maxTimestamp;
+  // Deposits - use ASP status
+  if (type === "DEPOSIT" || type === "CROSSCHAIN_DEPOSIT") {
+    if (aspStatus === "approved") return "bg-emerald-500";
+    if (aspStatus === "rejected") return "bg-rose-500";
+    if (aspStatus === "pending") return "bg-amber-400";
   }
 
-  // For spendable/pending, use deposit timestamp
-  return Number(tree.root.note.timestamp);
-}
-
-/**
- * Sort trees by timestamp (most recent first)
- * - Spendable/Pending: sorted by deposit time
- * - Spent: sorted by when they were spent (most recent activity)
- */
-export function sortTreesByTimestamp(trees: NoteTree[]): NoteTree[] {
-  return [...trees].sort((a, b) => {
-    return getMostRecentTimestamp(b) - getMostRecentTimestamp(a);
-  });
-}
-
-/**
- * Get all spendable notes from a tree.
- * This handles cases where both ChangeNote AND RefundNote are spendable.
- */
-export function getSpendableNotesFromTree(tree: NoteTree): Note[] {
-  const spendableLeaves = getSpendableLeaves(tree);
-  return spendableLeaves
-    .map((node) => node.note)
-    .filter((note) => getNoteCategory(note) === "spendable");
-}
-
-/**
- * Get all spendable notes from all trees
- */
-export function getSpendableNotes(trees: NoteTree[]): Note[] {
-  return trees.flatMap(getSpendableNotesFromTree);
-}
-
-/**
- * Get total spendable balance from a tree.
- * Sums balance of ALL spendable notes in the tree.
- */
-export function getTotalSpendableBalance(tree: NoteTree): bigint {
-  const spendableNotes = getSpendableNotesFromTree(tree);
-  return spendableNotes.reduce((sum, note) => sum + BigInt(note.amount), BigInt(0));
-}
-
-/**
- * Check if a tree has multiple spendable notes.
- * This is useful for UI to show note selection when both ChangeNote
- * and RefundNote are spendable.
- */
-export function hasMultipleSpendableNotes(tree: NoteTree): boolean {
-  return getSpendableNotesFromTree(tree).length > 1;
-}
-
-/**
- * Get notes that can be withdrawn privately (ASP approved only)
- * This is a subset of spendable notes - excludes ASP rejected
- */
-export function getWithdrawableNotes(trees: NoteTree[]): Note[] {
-  return getSpendableNotes(trees).filter(canWithdraw);
-}
-
-/**
- * Get spendable trees (trees that have at least one spendable note)
- */
-export function getSpendableTrees(trees: NoteTree[]): NoteTree[] {
-  return filterNoteTrees(trees, "spendable");
-}
-
-// ============================================
-// PENDING INTENT DISPLAY HELPERS
-// ============================================
-
-export type PendingIntentState =
-  | { state: "awaiting_solver"; timeRemaining: number | null }
-  | { state: "awaiting_fill"; message: string }
-  | { state: "refund_available"; timeExpiredAgo: number }
-  | { state: "filled"; message: string }
-  | { state: "refunded"; message: string };
-
-/**
- * Get display state for an intent note (DepositIntentNote or WithdrawalIntentNote)
- * This provides user-friendly information about what's happening with the intent
- */
-export function getPendingIntentDisplayState(note: Note): PendingIntentState | null {
-  if (!isIntentNote(note)) return null;
-
-  const now = Math.floor(Date.now() / 1000);
-
-  // Intent was filled by solver
-  if (note.intentStatus === "filled") {
-    return { state: "filled", message: "Funds delivered to recipient" };
-  }
-
-  // Intent was refunded
-  if (note.intentStatus === "refunded") {
-    return { state: "refunded", message: "Refund claimed - funds returned to pool" };
-  }
-
-  // Intent is still pending
-  if (note.intentStatus === "pending") {
-    // Check if we're past the fill deadline but not yet expired
-    if (note.fillDeadline) {
-      const fillDeadline = Number(note.fillDeadline);
-      if (now > fillDeadline && note.expires && now <= Number(note.expires)) {
-        return { state: "awaiting_fill", message: "Solver window passed, awaiting timeout" };
-      }
-    }
-
-    // Check if intent has expired (refund available)
-    if (note.expires) {
-      const expires = Number(note.expires);
-      if (now > expires) {
-        return { state: "refund_available", timeExpiredAgo: now - expires };
-      }
-
-      // Still waiting for solver
-      return { state: "awaiting_solver", timeRemaining: expires - now };
-    }
-
-    // No expiry set, assume still waiting
-    return { state: "awaiting_solver", timeRemaining: null };
-  }
-
-  return null;
-}
-
-/**
- * Get a user-friendly status text for an intent note
- */
-export function getPendingIntentStatusText(note: Note): string {
-  const displayState = getPendingIntentDisplayState(note);
-  if (!displayState) return "";
-
-  switch (displayState.state) {
-    case "awaiting_solver":
-      if (displayState.timeRemaining !== null) {
-        return `Awaiting delivery (${formatTimeRemaining(displayState.timeRemaining)})`;
-      }
-      return "Awaiting cross-chain delivery";
-
-    case "awaiting_fill":
-      return displayState.message;
-
-    case "refund_available":
-      return "Refund available - claim now";
-
-    case "filled":
-      return displayState.message;
-
-    case "refunded":
-      return displayState.message;
-
-    default:
-      return "";
-  }
-}
-
-/**
- * Format seconds into a human-readable time remaining string
- */
-function formatTimeRemaining(seconds: number): string {
-  if (seconds <= 0) return "expired";
-
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-
-  if (hours > 0) {
-    return `${hours}h ${minutes}m`;
-  }
-  if (minutes > 0) {
-    return `${minutes}m`;
-  }
-  return `${seconds}s`;
+  return "bg-neutral-500";
 }

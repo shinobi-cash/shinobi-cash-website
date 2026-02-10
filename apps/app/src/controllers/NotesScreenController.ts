@@ -6,13 +6,8 @@
 
 import { proxy } from "valtio";
 import type { NoteTree } from "@shinobi-cash/core/discovery";
-import { getSpendableLeaves } from "@shinobi-cash/core/discovery";
+import { getSpendableLeaves, filterNoteTrees, sortTreesByTimestamp, canWithdraw } from "@shinobi-cash/core/discovery";
 import { NoteTreeView, NoteFilter } from "@/types/notes";
-import {
-  filterNoteTrees,
-  sortTreesByTimestamp,
-  canWithdraw,
-} from "@/utils/noteFiltering";
 
 /**
  * Screen UI state

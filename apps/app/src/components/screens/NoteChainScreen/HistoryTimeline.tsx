@@ -5,9 +5,7 @@
 import { Merge } from "lucide-react";
 import { getChainName } from "@/config/chains";
 import { formatEthAmount, formatTimestamp, formatUsdAmount } from "@/utils/formatters";
-import { getNoteLabel } from "@/utils/chainIcons";
 import type { TimelineEntry } from "./types";
-import { getTxChainId } from "./utils";
 
 interface HistoryTimelineProps {
   entries: TimelineEntry[];
@@ -42,17 +40,9 @@ function TimelineEntryItem({ entry, isLast, toUsdValue }: TimelineEntryItemProps
   const hasCrossChainSteps = entry.crossChainSteps && entry.crossChainSteps.length > 0;
 
   // Get merge label for both winner and loser chains
-  // Winner chain: shows "balance from" (mergedFromNoteIndex)
-  // Loser chain: shows "merged into" (mergedIntoNoteIndex)
-  const mergeLabel = entry.mergedFromNoteIndex !== undefined
-    ? entry.mergedFromChainId
-      ? getNoteLabel(entry.mergedFromChainId, entry.mergedFromNoteIndex)
-      : `Note #${entry.mergedFromNoteIndex + 1}`
-    : entry.mergedIntoNoteIndex !== undefined
-      ? entry.mergedIntoChainId
-        ? getNoteLabel(entry.mergedIntoChainId, entry.mergedIntoNoteIndex)
-        : `Note #${entry.mergedIntoNoteIndex + 1}`
-      : null;
+  // Winner chain: shows "balance from" (mergedFromSerialNumber)
+  // Loser chain: shows "merged into" (mergedIntoSerialNumber)
+  const mergeLabel = entry.mergedFromSerialNumber ?? entry.mergedIntoSerialNumber ?? null;
 
   return (
     <li>
@@ -121,7 +111,7 @@ function TimelineEntryItem({ entry, isLast, toUsdValue }: TimelineEntryItemProps
                 rel="noopener noreferrer"
                 className="text-blue-400 hover:text-blue-300 hover:underline"
               >
-                {getChainName(getTxChainId(entry.note))}
+                {getChainName(entry.note.originChainId)}
               </a>
               <span className="mx-2">|</span>
               <span>{formatTimestamp(entry.timestamp)}</span>

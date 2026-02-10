@@ -4,7 +4,8 @@
  * Validates manually selected notes and determines withdrawal type (1:1 or 2:1)
  */
 
-import type { Note } from '../discovery/types.js';
+import type { Note, SpendableNote } from '../discovery/types.js';
+import { isSpendableNote } from '../discovery/types.js';
 
 // ============================================================================
 // Types
@@ -13,7 +14,7 @@ import type { Note } from '../discovery/types.js';
 export type WithdrawalType = 'standard' | 'withdraw2';
 
 export interface SelectedNote {
-  note: Note;
+  note: SpendableNote;
   depositIndex: number;
   changeIndex: number;
   amount: bigint;
@@ -54,14 +55,11 @@ export type SelectionResult =
 // Validation
 // ============================================================================
 
-function isSpendable(note: Note): boolean {
-  return note.status === 'unspent' && BigInt(note.amount) > 0n;
+function isSpendable(note: Note): note is SpendableNote {
+  return isSpendableNote(note) && note.status === 'unspent' && BigInt(note.amount) > 0n;
 }
 
-function toSelectedNote(note: Note): SelectedNote {
-  if (note.label === undefined) {
-    throw new Error(`Cannot select note without label for withdrawal (depositIndex: ${note.depositIndex})`);
-  }
+function toSelectedNote(note: SpendableNote): SelectedNote {
   return {
     note,
     depositIndex: note.depositIndex,
@@ -84,7 +82,7 @@ export function selectSingleNote(note: Note, withdrawAmount: bigint): SelectionR
       success: false,
       error: {
         code: 'NOTE_NOT_SPENDABLE',
-        message: `Note is not spendable (status: ${note.status}, amount: ${note.amount})`,
+        message: `Note is not spendable (type: ${note.noteType}, amount: ${note.amount})`,
       },
     };
   }
@@ -123,7 +121,7 @@ export function selectTwoNotes(note1: Note, note2: Note, withdrawAmount: bigint)
       success: false,
       error: {
         code: 'NOTE_NOT_SPENDABLE',
-        message: `First note is not spendable (status: ${note1.status}, amount: ${note1.amount})`,
+        message: `First note is not spendable (type: ${note1.noteType}, amount: ${note1.amount})`,
       },
     };
   }
@@ -133,7 +131,7 @@ export function selectTwoNotes(note1: Note, note2: Note, withdrawAmount: bigint)
       success: false,
       error: {
         code: 'NOTE_NOT_SPENDABLE',
-        message: `Second note is not spendable (status: ${note2.status}, amount: ${note2.amount})`,
+        message: `Second note is not spendable (type: ${note2.noteType}, amount: ${note2.amount})`,
       },
     };
   }

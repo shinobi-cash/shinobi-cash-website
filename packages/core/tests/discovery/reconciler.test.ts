@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { reconcileTrees } from '../../src/discovery/reconciler.js';
 import { buildActivityIndex } from '../../src/discovery/activity-indexer.js';
-import type { NoteTree, DepositNote, DepositIntentNote, WithdrawalIntentNote, ChainKey } from '../../src/discovery/types.js';
+import type { NoteTree, DepositNote, ChainKey } from '../../src/discovery/types.js';
 import { makeChainKey } from '../../src/discovery/types.js';
 import {
   createMockDepositActivity,
@@ -73,54 +73,8 @@ describe('reconciler', () => {
       });
     });
 
-    describe('intent status updates', () => {
-      it('should update intent status on deposit note', () => {
-        const depositNote = createMockDepositNote(0, toEther(1), {
-          isCrossChain: true,
-          intentStatus: 'pending',
-        });
-        const tree = createNoteTree(depositNote);
-        const chainKey = makeChainKey(TEST_CHAIN_ID, 0);
-        const trees = new Map<ChainKey, NoteTree>([[chainKey, tree]]);
-
-        const activity = createMockDepositActivity(0, toEther(1), {
-          type: 'CROSSCHAIN_DEPOSIT',
-          intentStatus: 'filled',
-        });
-
-        reconcileTrees(trees, [activity]);
-
-        expect((tree.root.note as DepositNote).intentStatus).toBe('filled');
-      });
-
-      it('should not update intent status on non-deposit notes', () => {
-        const depositNote = createMockDepositNote(0, toEther(1), {
-          isCrossChain: true,
-          intentStatus: 'pending',
-          status: 'spent',
-        });
-        const changeNote = createMockChangeNote(0, 1, toEther(0.5), {
-          isCrossChain: true,
-          intentStatus: 'pending',
-        });
-        const tree = createNoteTree(depositNote);
-        addChild(tree.root, changeNote);
-        const chainKey = makeChainKey(TEST_CHAIN_ID, 0);
-        const trees = new Map<ChainKey, NoteTree>([[chainKey, tree]]);
-
-        const activity = createMockDepositActivity(0, toEther(1), {
-          type: 'CROSSCHAIN_DEPOSIT',
-          intentStatus: 'filled',
-        });
-
-        reconcileTrees(trees, [activity]);
-
-        // Only deposit note gets intent update
-        expect((tree.root.note as DepositNote).intentStatus).toBe('filled');
-        // Change note keeps original (intent only on deposit)
-        expect(tree.root.children[0].note.intentStatus).toBe('pending');
-      });
-    });
+    // Intent notes (DepositIntentNote, WithdrawalIntentNote) are reconciled separately
+    // via reconcileIntentNotes with the activityIndex parameter
 
     describe('label updates', () => {
       it('should update label on deposit note', () => {
@@ -237,13 +191,11 @@ describe('reconciler', () => {
   });
 
   describe('reconcileIntentNotes', () => {
-    it('should update WithdrawalIntentNote when filled', () => {
+    it('should create CrosschainWithdrawalNote when withdrawal intent filled', () => {
       const depositNote = createMockDepositNote(0, toEther(1), { status: 'spent' });
       const changeNote = createMockChangeNote(0, 1, toEther(0), { status: 'spent' });
       const withdrawalIntent = createMockWithdrawalIntentNote(0, 0, toEther(0.5), {
         orderId: 'order-123',
-        intentStatus: 'pending',
-        status: 'unspent',
       });
 
       const tree = createNoteTree(depositNote);
@@ -255,6 +207,8 @@ describe('reconciler', () => {
       const activity = createMockCrossChainWithdrawalActivity(0, 0, toEther(0.5), {
         orderId: 'order-123',
         intentStatus: 'filled',
+        type: 'CROSSCHAIN_WITHDRAWAL',
+        destinationTransactionHash: '0xfill-tx',
       });
       const activityIndex = buildActivityIndex([activity]);
 
@@ -262,17 +216,17 @@ describe('reconciler', () => {
 
       const intentNode = findNode(tree, (n) => n.note.noteType === 'withdrawalIntent');
       expect(intentNode).toBeDefined();
-      expect((intentNode!.note as WithdrawalIntentNote).intentStatus).toBe('filled');
-      expect(intentNode!.note.status).toBe('spent');
+      // Intent note should have CrosschainWithdrawalNote child when filled
+      expect(intentNode!.children).toHaveLength(1);
+      expect(intentNode!.children[0].note.noteType).toBe('crosschainWithdrawal');
+      expect(intentNode!.children[0].isTerminal).toBe(true);
     });
 
-    it('should create RefundNote when withdrawal intent refunded', () => {
-      const depositNote = createMockDepositNote(0, toEther(1), { status: 'spent' });
+    it('should create WithdrawalRefundedNote when withdrawal intent refunded', () => {
+      const depositNote = createMockDepositNote(0, toEther(1), { status: 'spent', label: 'my-label', aspStatus: 'approved' });
       const changeNote = createMockChangeNote(0, 1, toEther(0), { status: 'spent' });
       const withdrawalIntent = createMockWithdrawalIntentNote(0, 0, toEther(0.5), {
         orderId: 'order-456',
-        intentStatus: 'pending',
-        status: 'unspent',
         refundCommitment: '0xrefund-commitment',
       });
 
@@ -293,24 +247,21 @@ describe('reconciler', () => {
       // Find intent node
       const intentNode = findNode(tree, (n) => n.note.noteType === 'withdrawalIntent');
       expect(intentNode).toBeDefined();
-      expect((intentNode!.note as WithdrawalIntentNote).intentStatus).toBe('refunded');
-      expect(intentNode!.note.status).toBe('spent');
 
-      // RefundNote should be child of intent node
+      // WithdrawalRefundedNote should be child of intent node
       expect(intentNode!.children).toHaveLength(1);
       const refundNode = intentNode!.children[0];
-      expect(refundNode.note.noteType).toBe('refund');
+      expect(refundNode.note.noteType).toBe('withdrawalRefunded');
       expect(refundNode.note.amount).toBe(toEther(0.5).toString());
-      expect(refundNode.note.status).toBe('unspent');
+      // Refund note is spendable with label/aspStatus from parent
+      expect((refundNode.note as DepositNote).status).toBe('unspent');
     });
 
-    it('should not create duplicate RefundNote (idempotency)', () => {
+    it('should not create duplicate child notes (idempotency)', () => {
       const depositNote = createMockDepositNote(0, toEther(1), { status: 'spent' });
       const changeNote = createMockChangeNote(0, 1, toEther(0), { status: 'spent' });
       const withdrawalIntent = createMockWithdrawalIntentNote(0, 0, toEther(0.5), {
         orderId: 'order-789',
-        intentStatus: 'pending',
-        status: 'unspent',
       });
 
       const tree = createNoteTree(depositNote);
@@ -330,11 +281,7 @@ describe('reconciler', () => {
       const intentNode = findNode(tree, (n) => n.note.noteType === 'withdrawalIntent');
       expect(intentNode!.children).toHaveLength(1);
 
-      // Reset intent status to simulate re-processing
-      (intentNode!.note as WithdrawalIntentNote).intentStatus = 'pending';
-      intentNode!.note.status = 'unspent';
-
-      // Second reconcile - should NOT create duplicate RefundNote
+      // Second reconcile - should NOT create duplicate (checked by children.length > 0)
       reconcileTrees(trees, [], activityIndex);
       expect(intentNode!.children).toHaveLength(1); // Still 1, not 2
     });
@@ -343,7 +290,6 @@ describe('reconciler', () => {
       const depositNote = createMockDepositNote(0, toEther(1), { status: 'spent' });
       const withdrawalIntent = createMockWithdrawalIntentNote(0, 0, toEther(0.5), {
         orderId: '',
-        intentStatus: 'pending',
       });
 
       const tree = createNoteTree(depositNote);
@@ -356,14 +302,14 @@ describe('reconciler', () => {
       reconcileTrees(trees, [], activityIndex);
 
       const intentNode = findNode(tree, (n) => n.note.noteType === 'withdrawalIntent');
-      expect((intentNode!.note as WithdrawalIntentNote).intentStatus).toBe('pending');
+      // No children added when orderId is empty
+      expect(intentNode!.children).toHaveLength(0);
     });
 
     it('should skip if no matching activity for orderId', () => {
       const depositNote = createMockDepositNote(0, toEther(1), { status: 'spent' });
       const withdrawalIntent = createMockWithdrawalIntentNote(0, 0, toEther(0.5), {
         orderId: 'order-no-match',
-        intentStatus: 'pending',
       });
 
       const tree = createNoteTree(depositNote);
@@ -380,53 +326,27 @@ describe('reconciler', () => {
       reconcileTrees(trees, [], activityIndex);
 
       const intentNode = findNode(tree, (n) => n.note.noteType === 'withdrawalIntent');
-      expect((intentNode!.note as WithdrawalIntentNote).intentStatus).toBe('pending');
-    });
-
-    it('should skip if intent status unchanged', () => {
-      const depositNote = createMockDepositNote(0, toEther(1), { status: 'spent' });
-      const withdrawalIntent = createMockWithdrawalIntentNote(0, 0, toEther(0.5), {
-        orderId: 'order-same',
-        intentStatus: 'filled',
-        status: 'spent',
-      });
-
-      const tree = createNoteTree(depositNote);
-      addChild(tree.root, withdrawalIntent);
-      const chainKey = makeChainKey(TEST_CHAIN_ID, 0);
-      const trees = new Map<ChainKey, NoteTree>([[chainKey, tree]]);
-
-      const activity = createMockCrossChainWithdrawalActivity(0, 0, toEther(0.5), {
-        orderId: 'order-same',
-        intentStatus: 'filled',
-      });
-      const activityIndex = buildActivityIndex([activity]);
-
-      reconcileTrees(trees, [], activityIndex);
-
-      // No RefundNote added
-      const intentNode = findNode(tree, (n) => n.note.noteType === 'withdrawalIntent');
+      // No children added when orderId doesn't match
       expect(intentNode!.children).toHaveLength(0);
     });
 
     it('should handle multiple WithdrawalIntentNotes in same tree', () => {
       // Build a more complex tree structure
-      const depositNote = createMockDepositNote(0, toEther(2), { status: 'spent' });
+      const depositNote = createMockDepositNote(0, toEther(2), { status: 'spent', label: 'my-label', aspStatus: 'approved' });
       const change1 = createMockChangeNote(0, 1, toEther(1), { status: 'spent' });
       const intent1 = createMockWithdrawalIntentNote(0, 0, toEther(0.5), {
         orderId: 'order-A',
-        intentStatus: 'pending',
       });
       const change2 = createMockChangeNote(0, 2, toEther(0.5), { status: 'spent' });
       const intent2 = createMockWithdrawalIntentNote(0, 1, toEther(0.3), {
         orderId: 'order-B',
-        intentStatus: 'pending',
+        refundCommitment: '0xrefund-B',
       });
 
       const tree = createNoteTree(depositNote);
       const change1Node = addChild(tree.root, change1);
       addChild(tree.root, intent1); // First intent as sibling of change1
-      const change2Node = addChild(change1Node, change2);
+      addChild(change1Node, change2);
       addChild(change1Node, intent2); // Second intent as sibling of change2
 
       const chainKey = makeChainKey(TEST_CHAIN_ID, 0);
@@ -436,6 +356,8 @@ describe('reconciler', () => {
         createMockCrossChainWithdrawalActivity(0, 0, toEther(0.5), {
           orderId: 'order-A',
           intentStatus: 'filled',
+          type: 'CROSSCHAIN_WITHDRAWAL',
+          destinationTransactionHash: '0xfill-tx-A',
         }),
         createMockCrossChainWithdrawalActivity(0, 1, toEther(0.3), {
           orderId: 'order-B',
@@ -446,27 +368,23 @@ describe('reconciler', () => {
 
       reconcileTrees(trees, [], activityIndex);
 
-      // Find intent nodes
-      const intent1Node = findNode(tree, (n) => n.note.orderId === 'order-A');
-      const intent2Node = findNode(tree, (n) => n.note.orderId === 'order-B');
+      // Find intent nodes by orderId
+      const intent1Node = findNode(tree, (n) => n.note.noteType === 'withdrawalIntent' && (n.note as any).orderId === 'order-A');
+      const intent2Node = findNode(tree, (n) => n.note.noteType === 'withdrawalIntent' && (n.note as any).orderId === 'order-B');
 
-      // First intent should be filled
-      expect((intent1Node!.note as WithdrawalIntentNote).intentStatus).toBe('filled');
-      expect(intent1Node!.note.status).toBe('spent');
+      // First intent should have CrosschainWithdrawalNote child
+      expect(intent1Node!.children).toHaveLength(1);
+      expect(intent1Node!.children[0].note.noteType).toBe('crosschainWithdrawal');
 
-      // Second intent should be refunded with RefundNote
-      expect((intent2Node!.note as WithdrawalIntentNote).intentStatus).toBe('refunded');
-      expect(intent2Node!.note.status).toBe('spent');
+      // Second intent should have WithdrawalRefundedNote child
       expect(intent2Node!.children).toHaveLength(1);
-      expect(intent2Node!.children[0].note.noteType).toBe('refund');
+      expect(intent2Node!.children[0].note.noteType).toBe('withdrawalRefunded');
     });
 
     describe('deposit intent reconciliation', () => {
-      it('should create DepositNote when deposit intent is filled', () => {
+      it('should create CrosschainDepositNote when deposit intent is filled', () => {
         const depositIntent = createMockDepositIntentNote(0, toEther(1), {
           orderId: 'deposit-order-123',
-          intentStatus: 'pending',
-          status: 'unspent',
           originChainId: '84532',
           destinationChainId: '421614',
         });
@@ -482,16 +400,12 @@ describe('reconciler', () => {
 
         const result = reconcileTrees(trees, [], activityIndex);
 
-        // DepositIntentNote should be marked as spent
-        expect((tree.root.note as DepositIntentNote).intentStatus).toBe('filled');
-        expect(tree.root.note.status).toBe('spent');
-
-        // DepositNote should be created as child
+        // CrosschainDepositNote should be created as child
         expect(tree.root.children).toHaveLength(1);
         const depositNode = tree.root.children[0];
-        expect(depositNode.note.noteType).toBe('deposit');
+        expect(depositNode.note.noteType).toBe('crosschainDeposit');
         expect(depositNode.note.amount).toBe(toEther(1).toString());
-        expect(depositNode.note.status).toBe('unspent');
+        expect((depositNode.note as DepositNote).status).toBe('unspent');
 
         // Should return filled deposit index
         expect(result.filledDepositIndices).toHaveLength(1);
@@ -500,11 +414,9 @@ describe('reconciler', () => {
         expect(result.filledDepositIndices[0].originChainId).toBe('84532');
       });
 
-      it('should mark deposit as spent when refunded', () => {
+      it('should create DepositRefundedNote when deposit refunded', () => {
         const depositIntent = createMockDepositIntentNote(0, toEther(1), {
           orderId: 'deposit-order-456',
-          intentStatus: 'pending',
-          status: 'unspent',
         });
         const tree = createNoteTree(depositIntent);
         const chainKey = makeChainKey('84532', 0);
@@ -518,21 +430,19 @@ describe('reconciler', () => {
 
         const result = reconcileTrees(trees, [], activityIndex);
 
-        expect((tree.root.note as DepositIntentNote).intentStatus).toBe('refunded');
-        expect(tree.root.note.status).toBe('spent');
-
-        // No DepositNote created
-        expect(tree.root.children).toHaveLength(0);
+        // DepositRefundedNote should be created as child (terminal)
+        expect(tree.root.children).toHaveLength(1);
+        const refundedNode = tree.root.children[0];
+        expect(refundedNode.note.noteType).toBe('depositRefunded');
+        expect(refundedNode.isTerminal).toBe(true);
 
         // No filled deposit indices
         expect(result.filledDepositIndices).toHaveLength(0);
       });
 
-      it('should not create duplicate DepositNote (idempotency)', () => {
+      it('should not create duplicate child notes (idempotency)', () => {
         const depositIntent = createMockDepositIntentNote(0, toEther(1), {
           orderId: 'deposit-order-idempotent',
-          intentStatus: 'pending',
-          status: 'unspent',
         });
         const tree = createNoteTree(depositIntent);
         const chainKey = makeChainKey('84532', 0);
@@ -548,22 +458,19 @@ describe('reconciler', () => {
         reconcileTrees(trees, [], activityIndex);
         expect(tree.root.children).toHaveLength(1);
 
-        // Reset to simulate re-processing
-        (tree.root.note as DepositIntentNote).intentStatus = 'pending';
-        tree.root.note.status = 'unspent';
-
-        // Second reconcile - should NOT create duplicate
+        // Second reconcile - should NOT create duplicate (checked by children.length > 0)
         reconcileTrees(trees, [], activityIndex);
         expect(tree.root.children).toHaveLength(1);
       });
 
-      it('should skip if deposit intent status unchanged', () => {
+      it('should skip if already resolved (has children)', () => {
         const depositIntent = createMockDepositIntentNote(0, toEther(1), {
           orderId: 'deposit-order-unchanged',
-          intentStatus: 'filled',
-          status: 'spent',
         });
         const tree = createNoteTree(depositIntent);
+        // Manually add a child to simulate already-resolved intent
+        const existingChild = createMockDepositNote(0, toEther(1));
+        addChild(tree.root, existingChild);
         const chainKey = makeChainKey('84532', 0);
         const trees = new Map<ChainKey, NoteTree>([[chainKey, tree]]);
 
@@ -575,7 +482,8 @@ describe('reconciler', () => {
 
         const result = reconcileTrees(trees, [], activityIndex);
 
-        expect(tree.root.children).toHaveLength(0);
+        // No new children added
+        expect(tree.root.children).toHaveLength(1);
         expect(result.filledDepositIndices).toHaveLength(0);
       });
     });
@@ -586,8 +494,6 @@ describe('reconciler', () => {
         const changeNote = createMockChangeNote(0, 1, toEther(0.5));
         const withdrawalIntent = createMockWithdrawalIntentNote(0, 0, toEther(0.5), {
           orderId: 'withdrawal-order-filled',
-          intentStatus: 'pending',
-          status: 'unspent',
         });
 
         const tree = createNoteTree(depositNote);
@@ -599,25 +505,25 @@ describe('reconciler', () => {
         const activity = createMockCrossChainWithdrawalActivity(0, 0, toEther(0.5), {
           orderId: 'withdrawal-order-filled',
           intentStatus: 'filled',
+          type: 'CROSSCHAIN_WITHDRAWAL',
+          destinationTransactionHash: '0xfill-tx',
         });
         const activityIndex = buildActivityIndex([activity]);
 
         reconcileTrees(trees, [], activityIndex);
 
         const intentNode = findNode(tree, (n) => n.note.noteType === 'withdrawalIntent');
-        expect((intentNode!.note as WithdrawalIntentNote).intentStatus).toBe('filled');
-        expect(intentNode!.note.status).toBe('spent');
-        // No RefundNote for filled intents
-        expect(intentNode!.children).toHaveLength(0);
+        // CrosschainWithdrawalNote is created as child (terminal record of delivery)
+        expect(intentNode!.children).toHaveLength(1);
+        expect(intentNode!.children[0].note.noteType).toBe('crosschainWithdrawal');
+        expect(intentNode!.children[0].isTerminal).toBe(true);
       });
 
       it('should handle pending → refunded', () => {
-        const depositNote = createMockDepositNote(0, toEther(1), { status: 'spent' });
+        const depositNote = createMockDepositNote(0, toEther(1), { status: 'spent', label: 'my-label', aspStatus: 'approved' });
         const changeNote = createMockChangeNote(0, 1, toEther(0.5));
         const withdrawalIntent = createMockWithdrawalIntentNote(0, 0, toEther(0.5), {
           orderId: 'withdrawal-order-refunded',
-          intentStatus: 'pending',
-          status: 'unspent',
           refundCommitment: '0xrefund-commitment-123',
         });
 
@@ -636,20 +542,17 @@ describe('reconciler', () => {
         reconcileTrees(trees, [], activityIndex);
 
         const intentNode = findNode(tree, (n) => n.note.noteType === 'withdrawalIntent');
-        expect((intentNode!.note as WithdrawalIntentNote).intentStatus).toBe('refunded');
-        expect(intentNode!.note.status).toBe('spent');
-        // RefundNote should be child of intent
+        // WithdrawalRefundedNote should be child of intent
         expect(intentNode!.children).toHaveLength(1);
-        expect(intentNode!.children[0].note.noteType).toBe('refund');
-        expect(intentNode!.children[0].note.status).toBe('unspent');
+        expect(intentNode!.children[0].note.noteType).toBe('withdrawalRefunded');
+        // WithdrawalRefundedNote is spendable
+        expect((intentNode!.children[0].note as DepositNote).status).toBe('unspent');
         expect(intentNode!.children[0].note.amount).toBe(toEther(0.5).toString());
       });
 
       it('should handle deposit intent refund', () => {
         const depositIntent = createMockDepositIntentNote(0, toEther(1), {
           orderId: 'deposit-order-refunded',
-          intentStatus: 'pending',
-          status: 'unspent',
         });
         const tree = createNoteTree(depositIntent);
         const chainKey = makeChainKey('84532', 0);
@@ -657,17 +560,16 @@ describe('reconciler', () => {
 
         const activity = createMockCrossChainDepositActivity(0, toEther(1), {
           orderId: 'deposit-order-refunded',
-          type: 'CROSSCHAIN_DEPOSIT_PENDING',
           intentStatus: 'refunded',
         });
         const activityIndex = buildActivityIndex([activity]);
 
         reconcileTrees(trees, [], activityIndex);
 
-        expect((tree.root.note as DepositIntentNote).intentStatus).toBe('refunded');
-        expect(tree.root.note.status).toBe('spent');
-        // No RefundNote for deposit refunds - funds returned to origin chain
-        expect(tree.root.children).toHaveLength(0);
+        // DepositRefundedNote created as child (terminal - funds returned to origin chain)
+        expect(tree.root.children).toHaveLength(1);
+        expect(tree.root.children[0].note.noteType).toBe('depositRefunded');
+        expect(tree.root.children[0].isTerminal).toBe(true);
       });
     });
   });

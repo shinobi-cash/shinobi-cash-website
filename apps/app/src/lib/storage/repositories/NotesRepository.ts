@@ -15,7 +15,10 @@ import {
   type NoteTree,
   type SerializableNoteNode,
   type NullifierInfo,
+  type Activity,
+  type SerializedActivity,
 } from "@shinobi-cash/core/discovery";
+import { serializeActivity, deserializeActivity } from "@shinobi-cash/data";
 import type { DiscoveryResult, DiscoveryOptions } from "@shinobi-cash/core/discovery";
 import {
   type IndexedDBStore,
@@ -64,9 +67,13 @@ export class NotesRepository {
         }
       }
 
+      // Deserialize activities
+      const activities = (cached.activities ?? []).map(deserializeActivity);
+
       return {
         trees,
         lastUsedIndexByChain,
+        activities,
         newNotesFound: 0,
         minOffset: cached.minOffset ?? 0,
       };
@@ -101,7 +108,8 @@ export class NotesRepository {
     trees: SerializableNoteNode[],
     minOffset?: number,
     nullifierMap?: Array<{ hash: string; info: NullifierInfo }>,
-    nextDepositIndex?: Array<{ chainId: string; index: number }>
+    nextDepositIndex?: Array<{ chainId: string; index: number }>,
+    activities?: SerializedActivity[]
   ): Promise<void> {
     const sensitiveData: CachedNoteData = {
       poolAddress,
@@ -111,6 +119,7 @@ export class NotesRepository {
       minOffset,
       nullifierMap,
       nextDepositIndex,
+      activities,
     };
 
     const encrypted = await this.encryptionService.encrypt(sensitiveData);
@@ -193,6 +202,7 @@ export class NotesRepository {
           trees,
           nullifierMap: cached.nullifierMap ?? [],
           nextDepositIndex: cached.nextDepositIndex ?? [],
+          activities: cached.activities ?? [],
           minOffset: cached.minOffset ?? 0,
           newFilledDepositsFound: 0,
           newPendingDepositsFound: 0,
@@ -209,7 +219,8 @@ export class NotesRepository {
           trees,
           state.minOffset,
           state.nullifierMap,
-          state.nextDepositIndex
+          state.nextDepositIndex,
+          state.activities
         );
       },
     });

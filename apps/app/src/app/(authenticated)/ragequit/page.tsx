@@ -9,8 +9,7 @@ import { useScreenNavigation } from "@/hooks/useScreenNavigation";
 import { useRagequitController } from "@/hooks/useRagequitController";
 import { useNotesDiscovery } from "@/hooks/useNotesDiscovery";
 import { RagequitController, RagequitSelectors } from "@/controllers/RagequitController";
-import { getSpendableNotes } from "@/utils/noteFiltering";
-import { traverseTree, type NoteTree, type ChangeNote } from "@shinobi-cash/core/discovery";
+import { traverseTree, getSpendableNotes, type NoteTree, type ChangeNote } from "@shinobi-cash/core/discovery";
 import type { WalletClient, Account, Transport, Chain } from "viem";
 
 /** Check if a note tree has any merge history (received funds from another note) */
@@ -20,9 +19,12 @@ function checkMergeHistory(noteTrees: NoteTree[], depositIndex: number): boolean
 
   let hasMerge = false;
   traverseTree(tree, (node) => {
-    const changeNote = node.note as ChangeNote;
-    if (changeNote.mergedFromDepositIndex !== undefined) {
-      hasMerge = true;
+    // Check if this is a ChangeNote with merge history
+    if (node.note.noteType === "change") {
+      const changeNote = node.note as ChangeNote;
+      if (Object.keys(changeNote.mergedFrom).length > 0) {
+        hasMerge = true;
+      }
     }
   });
   return hasMerge;

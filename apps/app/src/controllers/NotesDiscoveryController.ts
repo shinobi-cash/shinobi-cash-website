@@ -1,16 +1,12 @@
 import { proxy } from "valtio";
-import type { NoteTree, DiscoveryProgress, Note } from "@shinobi-cash/core/discovery";
+import type { NoteTree, DiscoveryProgress, Note, Activity } from "@shinobi-cash/core/discovery";
+import { getSpendableNotes, getWithdrawableNotes, getNoteTreeCounts } from "@shinobi-cash/core/discovery";
 import { notesRepo } from "@/lib/storage/repositories/NotesRepository";
 import { fetchActivities } from "@/utils/indexer";
 import { createStateMachine } from "@/utils/stateMachine";
 import { SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
 import { AuthController } from "@/controllers/AuthController";
 import { NotesError, NotesStatus } from "@/types/notes";
-import {
-  getSpendableNotes,
-  getWithdrawableNotes,
-  getNoteTreeCounts,
-} from "@/utils/noteFiltering";
 import { NOTES_SYNC_INTERVAL_MS } from "@/constants/timings";
 
 /**
@@ -31,6 +27,9 @@ interface NotesDiscoveryControllerState {
 
   // Discovered note trees (single source of truth)
   noteTrees: NoteTree[];
+
+  // Raw activities for display (source of truth for activity feed)
+  activities: Activity[];
 
   // Discovery progress
   progress: DiscoveryProgress | null;
@@ -67,6 +66,7 @@ interface NotesDiscoveryViewState {
 const state = proxy<NotesDiscoveryControllerState>({
   state: { status: "idle" },
   noteTrees: [],
+  activities: [],
   progress: null,
   lastError: null,
   lastSyncedAt: null,
@@ -256,8 +256,9 @@ export const NotesDiscoveryController = {
       );
 
       if (cached && cached.trees) {
-        log.debug(`Loaded ${cached.trees.length} cached note trees`);
+        log.debug(`Loaded ${cached.trees.length} cached note trees, ${cached.activities.length} activities`);
         state.noteTrees = cached.trees;
+        state.activities = cached.activities;
       }
     } catch (error) {
       log.error("Failed to load cached notes:", error);
@@ -324,8 +325,9 @@ export const NotesDiscoveryController = {
 
       // Only update if this is still the current run
       if (runId === discoveryId) {
-        log.debug(`Discovery complete: ${result.trees.length} note trees found`);
+        log.debug(`Discovery complete: ${result.trees.length} note trees, ${result.activities.length} activities`);
         state.noteTrees = result.trees;
+        state.activities = result.activities;
         state.progress = null;
         state.lastSyncedAt = Date.now();
         transition({ status: "ready" });
@@ -387,6 +389,7 @@ export const NotesDiscoveryController = {
     // Reset state
     transition({ status: "idle" });
     state.noteTrees = [];
+    state.activities = [];
     state.progress = null;
     state.lastError = null;
     state.lastSyncedAt = null;

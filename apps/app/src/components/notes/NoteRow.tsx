@@ -6,18 +6,11 @@
 
 import { useRouter } from "next/navigation";
 import type { Note } from "@shinobi-cash/core/discovery";
-import { MoreVertical, Eye, Lock, Unlock, RefreshCw, Clock } from "lucide-react";
+import { isIntentNote, canWithdraw, canRagequit } from "@shinobi-cash/core/discovery";
+import { MoreVertical, Eye, Lock, Unlock, Clock } from "lucide-react";
 import { formatTimestamp } from "@/utils/formatters";
-import {
-  getStatusDotColor,
-  canWithdraw,
-  canRagequit,
-  canClaimRefund,
-  isIntentNote,
-  getPendingIntentStatusText,
-} from "@/utils/noteFiltering";
+import { getStatusDotColor } from "@/utils/noteFiltering";
 import { AmountDisplay } from "@/components/shared/AmountDisplay";
-import { getNoteLabel } from "@/utils/chainIcons";
 import { WithdrawController } from "@/controllers/WithdrawController";
 import { RagequitController } from "@/controllers/RagequitController";
 import {
@@ -34,22 +27,16 @@ interface NoteRowProps {
 
 export function NoteRow({ note, onClick }: NoteRowProps) {
   const router = useRouter();
-
-  // Note label includes chain prefix: "ARB #1" or "BASE #2"
-  const noteLabel = getNoteLabel(note.originChainId, note.depositIndex);
   const dotColor = getStatusDotColor(note);
 
   const canWithdrawPrivately = canWithdraw(note);
   const canWithdrawPublicly = canRagequit(note);
-  const canClaimRefundNow = canClaimRefund(note);
 
-  // Get status text for intent notes (deposit or withdrawal)
-  const intentStatusText = isIntentNote(note) ? getPendingIntentStatusText(note) : null;
+  // Intent notes show "Awaiting delivery" status
+  const isIntent = isIntentNote(note);
+  const intentStatusText = isIntent ? "Awaiting cross-chain delivery" : null;
 
-  // For ragequit notes, use the ragequit timestamp; otherwise use note timestamp
-  const displayTimestamp = note.status === "ragequit" && note.activityData.ragequitTimestamp
-    ? note.activityData.ragequitTimestamp
-    : note.timestamp;
+  const displayTimestamp = note.originTimestamp;
 
   const handleViewDetails = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -68,13 +55,6 @@ export function NoteRow({ note, onClick }: NoteRowProps) {
     router.push(`/ragequit?note=${note.depositIndex}`);
   };
 
-  const handleClaimRefund = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    // TODO: Implement refund claim flow
-    // For now, show details which will explain the refund process
-    onClick?.();
-  };
-
   return (
     <div className="flex w-full items-center px-4 py-3 transition-colors hover:bg-white/[0.04]">
       {/* Main clickable area */}
@@ -89,13 +69,11 @@ export function NoteRow({ note, onClick }: NoteRowProps) {
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <span className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ${dotColor}`} />
-              <span className="truncate text-sm font-medium text-white">{noteLabel}</span>
+              <span className="truncate text-sm font-medium font-mono text-white">{note.serialNumber}</span>
             </div>
             <div className="mt-0.5 pl-[18px] text-xs text-neutral-400">
               {intentStatusText ? (
-                <span className={canClaimRefundNow ? "text-orange-400" : ""}>
-                  {intentStatusText}
-                </span>
+                <span>{intentStatusText}</span>
               ) : (
                 formatTimestamp(displayTimestamp)
               )}
@@ -155,17 +133,7 @@ export function NoteRow({ note, onClick }: NoteRowProps) {
             </DropdownMenuItem>
           )}
 
-          {canClaimRefundNow && (
-            <DropdownMenuItem
-              onClick={handleClaimRefund}
-              className="cursor-pointer text-orange-400 hover:bg-orange-500/10 hover:text-orange-300 focus:bg-orange-500/10 focus:text-orange-300"
-            >
-              <RefreshCw className="h-4 w-4" />
-              Claim Refund
-            </DropdownMenuItem>
-          )}
-
-          {isIntentNote(note) && !canClaimRefundNow && (
+          {isIntent && (
             <DropdownMenuItem
               disabled
               className="cursor-not-allowed text-neutral-500"

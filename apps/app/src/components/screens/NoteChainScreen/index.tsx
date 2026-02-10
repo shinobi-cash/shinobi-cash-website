@@ -4,9 +4,15 @@
  */
 
 import { useRouter } from "next/navigation";
-import { getNoteLabel } from "@/utils/chainIcons";
 import type { NoteTree } from "@shinobi-cash/core/discovery";
-import { getSpendableLeaves } from "@shinobi-cash/core/discovery";
+import {
+  getSpendableLeaves,
+  isSpendableNote,
+  isIntentNote,
+  canWithdraw,
+  canRagequit,
+  getTotalSpendableBalance,
+} from "@shinobi-cash/core/discovery";
 import { formatEthAmount, formatUsdAmount } from "@/utils/formatters";
 import { Lock, Unlock } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
@@ -14,7 +20,6 @@ import { ScreenHeader } from "@/components/shared/ScreenHeader";
 import { ScreenLayout } from "@/components/layout/ScreenLayout";
 import { Section, Row } from "@/components/shared/Section";
 import { usePriceData } from "@/hooks/usePriceData";
-import { canWithdraw, canRagequit, getTotalSpendableBalance } from "@/utils/noteFiltering";
 import { WithdrawController } from "@/controllers/WithdrawController";
 import { RagequitController } from "@/controllers/RagequitController";
 import { HistoryTimeline } from "./HistoryTimeline";
@@ -123,51 +128,51 @@ export function NoteChainScreen({ noteTree, onBack }: NoteChainScreenProps) {
 
         {/* Status Section */}
         <Section title="Status">
-          <Row label="Note" value={getNoteLabel(displayNote.originChainId, displayNote.depositIndex)} />
-          <Row
-            label="Status"
-            value={
-              <span
-                className={`capitalize ${
-                  displayNote.status === "merged"
-                    ? "text-violet-400"
-                    : displayNote.status === "spent"
-                      ? "text-neutral-400"
-                      : "text-emerald-400"
-                }`}
-              >
-                {displayNote.status}
-              </span>
-            }
-          />
-          {displayNote.isCrossChain && displayNote.intentStatus && displayNote.intentStatus !== "filled" && (
+          <Row label="Serial" value={<span className="font-mono">{displayNote.serialNumber}</span>} />
+          {isSpendableNote(displayNote) && (
+            <>
+              <Row
+                label="Status"
+                value={
+                  <span
+                    className={`capitalize ${
+                      displayNote.status === "spent"
+                        ? "text-neutral-400"
+                        : "text-emerald-400"
+                    }`}
+                  >
+                    {displayNote.status}
+                  </span>
+                }
+              />
+              <Row
+                label="ASP Status"
+                value={
+                  <span
+                    className={`capitalize ${
+                      displayNote.aspStatus === "approved"
+                        ? "text-emerald-400"
+                        : displayNote.aspStatus === "pending"
+                          ? "text-blue-400"
+                          : "text-red-400"
+                    }`}
+                  >
+                    {displayNote.aspStatus}
+                  </span>
+                }
+              />
+            </>
+          )}
+          {isIntentNote(displayNote) && (
             <Row
               label="Intent Status"
               value={
-                <span
-                  className={`capitalize ${displayNote.intentStatus === "pending" ? "text-yellow-400" : "text-orange-400"}`}
-                >
-                  {displayNote.intentStatus}
+                <span className="capitalize text-yellow-400">
+                  Pending
                 </span>
               }
             />
           )}
-          <Row
-            label="ASP Status"
-            value={
-              <span
-                className={`capitalize ${
-                  displayNote.aspStatus === "approved"
-                    ? "text-emerald-400"
-                    : displayNote.aspStatus === "pending"
-                      ? "text-blue-400"
-                      : "text-red-400"
-                }`}
-              >
-                {displayNote.aspStatus}
-              </span>
-            }
-          />
         </Section>
 
         {/* History Section */}

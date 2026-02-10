@@ -1,6 +1,7 @@
 "use client";
 
 import type { Note } from "@shinobi-cash/core/discovery";
+import { isSpendableNote } from "@shinobi-cash/core/discovery";
 import { Loader2, Info } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";
@@ -11,7 +12,6 @@ import { usePriceData } from "@/hooks/usePriceData";
 import { formatUsdAmount, formatSmallEthAmount, formatEthAmount } from "@/utils/formatters";
 import { POOL_CHAIN } from "@shinobi-cash/constants";
 import { ShinobiCashNote, AssetChain } from "@/components/shared/AssetChain";
-import { getNoteLabel } from "@/utils/chainIcons";
 
 interface RagequitPreviewScreenProps {
   onBack: () => void;
@@ -129,27 +129,29 @@ export function RagequitPreviewScreen({
           value={
             <span className="flex items-center gap-2">
               <NoteAvatarStack notes={[note]} size="sm" />
-              <span className="text-neutral-300">{getNoteLabel(note.originChainId, note.depositIndex)}</span>
+              <span className="font-mono text-neutral-300">{note.serialNumber}</span>
             </span>
           }
         />
         <Row label="Chain" value={POOL_CHAIN.name} />
-        <Row
-          label="ASP Status"
-          value={
-            <span
-              className={`capitalize ${
-                note.aspStatus === "approved"
-                  ? "text-emerald-400"
-                  : note.aspStatus === "rejected"
-                    ? "text-rose-400"
-                    : "text-amber-400"
-              }`}
-            >
-              {note.aspStatus}
-            </span>
-          }
-        />
+        {isSpendableNote(note) && (
+          <Row
+            label="ASP Status"
+            value={
+              <span
+                className={`capitalize ${
+                  note.aspStatus === "approved"
+                    ? "text-emerald-400"
+                    : note.aspStatus === "rejected"
+                      ? "text-rose-400"
+                      : "text-amber-400"
+                }`}
+              >
+                {note.aspStatus}
+              </span>
+            }
+          />
+        )}
       </Section>
 
       {/* Gas Info */}

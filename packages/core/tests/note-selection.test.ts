@@ -32,7 +32,6 @@ function createMockNote(overrides: Partial<Note> = {}): Note {
     originTransactionHash: '0xtx',
     originChainId: '421614',
     aspStatus: 'approved',
-    isCrossChain: false,
     activityData: {},
     ...overrides,
   } as Note;

@@ -8,6 +8,7 @@
 import type { ActivityEntry } from "@/types/activity";
 import { AmountDisplay } from "@/components/shared/AmountDisplay";
 import { formatTimestamp } from "@/utils/formatters";
+import { getActivityStatusDotColor } from "@/utils/noteFiltering";
 
 /**
  * Get display label for activity type.
@@ -28,17 +29,10 @@ interface ActivityRowProps {
 }
 
 export function ActivityRow({ entry, onClick }: ActivityRowProps) {
-  const { note, displayAmount, type } = entry;
+  const { activity, displayAmount, type, displayTimestamp } = entry;
   const isDeposit = type === "deposit";
-  // Dot color based on ASP status only
-  const dotColor =
-    note.aspStatus === "approved"
-      ? "bg-emerald-500"
-      : note.aspStatus === "rejected"
-        ? "bg-rose-500"
-        : note.aspStatus === "pending"
-          ? "bg-amber-400"
-          : "bg-neutral-500";
+  // Use activity-based status dot color function
+  const dotColor = getActivityStatusDotColor(activity);
   const label = getActivityLabel(entry);
 
   return (
@@ -56,7 +50,7 @@ export function ActivityRow({ entry, onClick }: ActivityRowProps) {
             <span className="truncate text-sm font-medium text-white">{label}</span>
           </div>
           <div className="mt-0.5 pl-[18px] text-xs text-neutral-400">
-            {formatTimestamp(note.timestamp)}
+            {formatTimestamp(displayTimestamp)}
           </div>
         </div>
 

@@ -9,7 +9,7 @@ import type {
   NoteTree,
   SerializableNoteNode,
 } from './types.js';
-import { isTerminalNote } from './types.js';
+import { isTerminalNote, isSpendableNote, isIntentNote } from './types.js';
 
 // ============================================================================
 // Construction
@@ -49,7 +49,7 @@ export function addChild(
 ): NoteNode {
   if (parent.isTerminal) {
     throw new Error(
-      `Cannot add child to terminal node (status: ${parent.note.status}, noteType: ${parent.note.noteType})`,
+      `Cannot add child to terminal node (noteType: ${parent.note.noteType})`,
     );
   }
 
@@ -105,7 +105,7 @@ export function findNodeByOrderId(
   tree: NoteTree,
   orderId: string,
 ): NoteNode | null {
-  return findNode(tree, (node) => node.note.orderId === orderId);
+  return findNode(tree, (node) => isIntentNote(node.note) && node.note.orderId === orderId);
 }
 
 /**
@@ -131,7 +131,7 @@ export function getLeafNodes(tree: NoteTree): NoteNode[] {
 /**
  * Get all spendable leaf nodes.
  * A node is spendable if:
- * - It's a leaf (no children)
+ * - Note type is spendable (deposit, crosschainDeposit, change, refund)
  * - Status is 'unspent'
  * - Not terminal
  * - Has positive balance
@@ -140,6 +140,7 @@ export function getSpendableLeaves(tree: NoteTree): NoteNode[] {
   return getLeafNodes(tree).filter((node) => {
     const note = node.note;
     return (
+      isSpendableNote(note) &&
       note.status === 'unspent' &&
       !node.isTerminal &&
       BigInt(note.amount) > 0n
@@ -157,7 +158,7 @@ export function getLastSpendableLeaf(tree: NoteTree): NoteNode | null {
 
   // Sort by timestamp descending, return most recent
   return spendable.sort(
-    (a, b) => Number(BigInt(b.note.timestamp) - BigInt(a.note.timestamp)),
+    (a, b) => Number(BigInt(b.note.originTimestamp) - BigInt(a.note.originTimestamp)),
   )[0];
 }
 
@@ -262,8 +263,8 @@ export function selectWinnerChain(
     throw new Error('Cannot select winner: one or both trees have no spendable leaves');
   }
 
-  const timestampA = BigInt(leafA.note.timestamp);
-  const timestampB = BigInt(leafB.note.timestamp);
+  const timestampA = BigInt(leafA.note.originTimestamp);
+  const timestampB = BigInt(leafB.note.originTimestamp);
 
   // 1. Most recent timestamp wins
   if (timestampA !== timestampB) {

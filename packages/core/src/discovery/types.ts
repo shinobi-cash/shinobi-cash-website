@@ -3,21 +3,145 @@
  * Type definitions for Note Discovery v2
  */
 
-import type { ASPStatus, IntentStatus } from '@shinobi-cash/data';
+import type { ASPStatus, Activity, SerializedActivity } from '@shinobi-cash/data';
 
 // ============================================================================
 // Note Status
 // ============================================================================
 
-export type NoteStatus = 'unspent' | 'spent' | 'merged' | 'ragequit';
+export type NoteStatus = 'unspent' | 'spent';
+
+// ============================================================================
+// Serial Number
+// ============================================================================
+
+/**
+ * Chain ID to 3-letter code mapping for serial numbers.
+ */
+export const CHAIN_CODES: Record<string, string> = {
+  // Testnets
+  '421614': 'ARB', // Arbitrum Sepolia
+  '84532': 'BAS', // Base Sepolia
+  '11155111': 'ETH', // Sepolia
+  '11155420': 'OPT', // OP Sepolia
+  // Mainnets
+  '42161': 'ARB', // Arbitrum One
+  '8453': 'BAS', // Base
+  '1': 'ETH', // Ethereum
+  '10': 'OPT', // Optimism
+};
+
+/**
+ * 3-letter code to chain ID mapping (defaults to testnet).
+ * Use getChainIdFromCode() with network context for mainnet.
+ */
+export const CHAIN_IDS_TESTNET: Record<string, string> = {
+  ARB: '421614',
+  BAS: '84532',
+  ETH: '11155111',
+  OPT: '11155420',
+};
+
+export const CHAIN_IDS_MAINNET: Record<string, string> = {
+  ARB: '42161',
+  BAS: '8453',
+  ETH: '1',
+  OPT: '10',
+};
+
+/**
+ * Get 3-letter chain code from chain ID.
+ * Returns 'UNK' for unknown chains.
+ */
+export function getChainCode(chainId: string | number): string {
+  return CHAIN_CODES[chainId.toString()] || 'UNK';
+}
+
+/**
+ * Parsed serial number components.
+ */
+export interface ParsedSerialNumber {
+  chainCode: string;
+  depositIndex: number;
+  changeIndex: number;
+  isIntent: boolean;
+  refundIndex: number;
+}
+
+/**
+ * Generate a fixed-length serial number for a note.
+ *
+ * Format: {CHAIN}-{DDD}-{CC}-{I}-{RR} (15 chars)
+ * - CHAIN: 3-letter chain code (BAS, ARB, ETH, OPT)
+ * - DDD: 3-digit deposit index (001-999), 1-indexed
+ * - CC: 2-digit change index (00-99)
+ * - I: 1-digit intent flag (0 or 1)
+ * - RR: 2-digit refund index (00-99), 1-indexed when present
+ *
+ * @param chainId - The chain ID where the deposit originated
+ * @param depositIndex - The deposit index (0-indexed)
+ * @param changeIndex - The change index (0 for deposits)
+ * @param isIntent - Whether this is an intent note (deposit or withdrawal intent)
+ * @param refundIndex - The refund index (0-indexed), only for refund notes
+ */
+export function generateSerialNumber(
+  chainId: string | number,
+  depositIndex: number,
+  changeIndex: number,
+  isIntent: boolean = false,
+  refundIndex: number = -1,
+): string {
+  const chain = getChainCode(chainId);
+  const d = String(depositIndex + 1).padStart(3, '0');
+  const c = String(changeIndex).padStart(2, '0');
+  const i = isIntent ? '1' : '0';
+  const r = refundIndex >= 0 ? String(refundIndex + 1).padStart(2, '0') : '00';
+
+  return `${chain}-${d}-${c}-${i}-${r}`;
+}
+
+/**
+ * Parse a serial number into its components.
+ *
+ * @param serial - The serial number string (e.g., "BAS-001-01-0-00")
+ * @returns Parsed components or null if invalid format
+ */
+export function parseSerialNumber(serial: string): ParsedSerialNumber | null {
+  const match = serial.match(/^([A-Z]{3})-(\d{3})-(\d{2})-([01])-(\d{2})$/);
+  if (!match) return null;
+
+  const [, chainCode, d, c, i, r] = match;
+  return {
+    chainCode,
+    depositIndex: parseInt(d, 10) - 1, // Convert back to 0-indexed
+    changeIndex: parseInt(c, 10),
+    isIntent: i === '1',
+    refundIndex: parseInt(r, 10) - 1, // -1 if was "00", otherwise 0-indexed
+  };
+}
+
+/**
+ * Get chain ID from serial number.
+ *
+ * @param serial - The serial number string
+ * @param isMainnet - Whether to use mainnet chain IDs (default: false)
+ * @returns Chain ID string or null if invalid
+ */
+export function getChainIdFromSerial(serial: string, isMainnet: boolean = false): string | null {
+  const parsed = parseSerialNumber(serial);
+  if (!parsed) return null;
+
+  const lookup = isMainnet ? CHAIN_IDS_MAINNET : CHAIN_IDS_TESTNET;
+  return lookup[parsed.chainCode] || null;
+}
 
 // ============================================================================
 // Activity Metadata
 // ============================================================================
 
+/** Additional activity data stored with notes */
 export interface ActivityMetadata {
   originalAmount?: string;
-  /** The actual withdrawn amount from activity.amount (for withdrawals) */
   withdrawnAmount?: string;
   vettingFeeAmount?: string;
   relayFeeAmount?: string;
@@ -30,11 +154,9 @@ export interface ActivityMetadata {
   vettingFeeRecipient?: string;
   commitment?: string;
   spentNullifier?: string;
-  /** Second nullifier for Withdraw2 (2:1 JoinSplit) */
-  spentNullifier1?: string;
+  spentNullifier1?: string; // Withdraw2 second nullifier
   newCommitment?: string;
   isSponsored?: boolean;
-  /** Ragequit (public withdrawal) metadata */
   ragequitTxHash?: string;
   ragequitTimestamp?: string;
   ragequitBlockNumber?: string;
@@ -46,184 +168,189 @@ export interface ActivityMetadata {
 // Note Types
 // ============================================================================
 
+/** Common fields for all note types */
 interface BaseNote {
+  /** Serial number: {CHAIN}-{DDD}-{CC}-{I}-{RR} */
+  serialNumber: string;
   poolAddress: string;
   depositIndex: number;
   changeIndex: number;
   amount: string;
-  label?: string; // undefined for unfilled cross-chain deposit intents
-  status: NoteStatus;
-  // Blockchain metadata
-  blockNumber: string;
-  timestamp: string;
-  originTransactionHash: string;
-  /** Only set for cross-chain operations (different from originTransactionHash) */
-  destinationTransactionHash?: string;
+  /** Block number on origin chain */
+  originBlockNumber: string;
+  /** Timestamp on origin chain */
+  originTimestamp: string;
+  /** Chain where action was triggered */
   originChainId: string;
-  /** Only set for cross-chain operations (different from originChainId) */
-  destinationChainId?: string;
-  // Cross-chain
-  isCrossChain: boolean;
-  orderId?: string;
-  intentStatus?: IntentStatus;
-  fillDeadline?: string;
-  expires?: string;
-  // ASP
-  aspStatus: ASPStatus;
-  // Merge tracking (for 'merged' status)
-  mergedIntoDepositIndex?: number;
-  // Activity data
+  /** Transaction hash on origin chain */
+  originTransactionHash: string;
+  /** Additional activity metadata */
   activityData: ActivityMetadata;
-  // Discovery tracking - offset at which deposit was discovered
+  /** Offset where this note was discovered */
   discoveredAtOffset?: number;
 }
 
-/** Deposit note - the first note in a chain (changeIndex = 0) */
-export interface DepositNote extends BaseNote {
+/** Base interface for spendable notes (label and ASP status for withdrawal proofs) */
+interface SpendableNoteBase extends BaseNote {
+  /** Label assigned at deposit (required for withdrawal proofs) */
+  label: string;
+  /** ASP vetting status */
+  aspStatus: ASPStatus;
+  /** unspent or spent */
+  status: NoteStatus;
+}
+
+/** Same-chain deposit (spendable, changeIndex=0) */
+export interface DepositNote extends SpendableNoteBase {
   noteType: 'deposit';
   changeIndex: 0;
   precommitmentHash: string;
 }
 
-/** Change note - created from withdrawals (changeIndex > 0) */
-export interface ChangeNote extends BaseNote {
-  noteType: 'change';
-  changeIndex: number;
-  refundCommitment?: string;
-  /** For Withdraw2 winner: depositIndex of the note that was merged into this one */
-  mergedFromDepositIndex?: number;
-  /** For Withdraw2 winner: originChainId of the note that was merged into this one */
-  mergedFromOriginChainId?: string;
-  /** For Withdraw2 winner: amount contributed from the merged note */
-  mergedFromAmount?: string;
-  /** For Withdraw2 secondary (merged note): originChainId of the winner note it merged into */
-  mergedIntoOriginChainId?: string;
+/** Cross-chain deposit - escrow on origin, fill on pool chain (spendable, changeIndex=0) */
+export interface CrosschainDepositNote extends SpendableNoteBase {
+  noteType: 'crosschainDeposit';
+  changeIndex: 0;
+  precommitmentHash: string;
+  /** Pool chain where commitment was filled */
+  destinationChainId: string;
+  destinationTransactionHash: string;
+  destinationBlockNumber: string;
+  destinationTimestamp: string;
 }
 
-/** Refund note - created from failed cross-chain withdrawals */
-export interface RefundNote extends BaseNote {
-  noteType: 'refund';
-  changeIndex: number;
-  refundIndex: number;
+/** Same-chain withdrawal record (terminal, sibling of ChangeNote) */
+export interface WithdrawalNote extends BaseNote {
+  noteType: 'withdrawal';
+  /** The value withdrawn to recipient */
+  withdrawnAmount: string;
+  recipient: string;
+  /** Withdraw2 merge tracking: serialNumber -> amount */
+  mergedFrom: Record<string, string>;
+}
+
+/** Remaining balance after withdrawal (spendable, sibling of WithdrawalNote) */
+export interface ChangeNote extends SpendableNoteBase {
+  noteType: 'change';
+  /** Withdraw2 merge tracking: serialNumber -> amount */
+  mergedFrom: Record<string, string>;
+}
+
+/** Cross-chain withdrawal record (terminal, sibling of ChangeNote) */
+export interface CrosschainWithdrawalNote extends BaseNote {
+  noteType: 'crosschainWithdrawal';
+  /** The value withdrawn to recipient */
+  withdrawnAmount: string;
+  /** Destination chain where funds were delivered */
+  destinationChainId: string;
+  destinationTransactionHash: string;
+  destinationBlockNumber: string;
+  destinationTimestamp: string;
+  recipient: string;
+  /** Withdraw2 merge tracking: serialNumber -> amount */
+  mergedFrom: Record<string, string>;
+}
+
+/** Refunded cross-chain withdrawal (spendable, child of WithdrawalIntentNote) */
+export interface WithdrawalRefundedNote extends SpendableNoteBase {
+  noteType: 'withdrawalRefunded';
   refundCommitment: string;
 }
 
+/** Union of all spendable note types (with noteType for narrowing) */
+export type SpendableNote = DepositNote | CrosschainDepositNote | ChangeNote | WithdrawalRefundedNote;
+
+/** Public withdrawal record (terminal) */
+export interface RagequitNote extends BaseNote {
+  noteType: 'ragequit';
+  /** The value ragequit to recipient */
+  ragequitAmount: string;
+  recipient: string;
+}
+
+/** Withdraw2 loser chain record (terminal) */
+export interface MergedNote extends BaseNote {
+  noteType: 'merged';
+  /** The value contributed to the merge */
+  contributedAmount: string;
+  mergedIntoSerialNumber: string;
+}
+
+/** Refunded cross-chain deposit record (terminal, child of DepositIntentNote) */
+export interface DepositRefundedNote extends BaseNote {
+  noteType: 'depositRefunded';
+  /** The value that was refunded */
+  refundedAmount: string;
+}
+
 // ============================================================================
-// Intent Note Types (Split from PendingIntentNote)
+// Intent Notes (pending cross-chain operations)
 // ============================================================================
 
-/**
- * Base interface for intent notes (shared fields between deposit and withdrawal intents)
- */
-interface BaseIntentNote {
-  poolAddress: string;
-  depositIndex: number;
-  amount: string;
-  label?: string;
-  status: NoteStatus;
-  // Blockchain metadata
-  blockNumber: string;
-  timestamp: string;
-  originTransactionHash: string;
-  destinationTransactionHash: string;
-  originChainId: string;
+/** Common fields for intent notes */
+interface BaseIntentNote extends BaseNote {
+  /** Target chain for fill/delivery */
   destinationChainId: string;
-  // Cross-chain (always true for intent notes)
-  isCrossChain: true;
   orderId: string;
-  intentStatus: IntentStatus;
-  fillDeadline?: string;
-  expires?: string;
-  // ASP
-  aspStatus: ASPStatus;
-  // Activity data
-  activityData: ActivityMetadata;
-  // Discovery tracking
-  discoveredAtOffset?: number;
+  /** Solver must fill by this time */
+  fillDeadline: string;
+  /** Refund available after this time */
+  expires: string;
 }
 
 /**
- * Deposit intent note - pending cross-chain deposit awaiting solver fill.
- * First note in a chain, represents funds escrowed on ORIGIN chain.
- *
- * Lifecycle:
- * - Created when CROSSCHAIN_DEPOSIT_PENDING activity is discovered
- * - Filled: Reconciler creates DepositNote, this note marked spent
- * - Refunded: Funds return to user's wallet on origin chain (no RefundNote needed)
+ * Pending cross-chain deposit (escrowed on origin chain, changeIndex=0)
+ * → Filled: CrosschainDepositNote child
+ * → Refunded: DepositRefundedNote child
  */
 export interface DepositIntentNote extends BaseIntentNote {
   noteType: 'depositIntent';
-  /** Always 0 - first note in chain */
   changeIndex: 0;
-  /** Refund commitment for deposit intents (optional - may not be set) */
-  refundCommitment?: string;
 }
 
 /**
- * Withdrawal intent note - pending cross-chain withdrawal awaiting solver delivery.
- * Sibling of ChangeNote, represents funds escrowed on POOL chain.
- *
- * Lifecycle:
- * - Created when cross-chain withdrawal is initiated
- * - Filled: Solver delivers funds to recipient, this note marked spent
- * - Refunded: RefundNote created (spendable in pool)
+ * Pending cross-chain withdrawal (escrowed on pool chain, sibling of ChangeNote)
+ * → Filled: CrosschainWithdrawalNote child
+ * → Refunded: WithdrawalRefundedNote child (spendable)
  */
 export interface WithdrawalIntentNote extends BaseIntentNote {
   noteType: 'withdrawalIntent';
-  /** For compatibility with Note union - equals parentChangeIndex */
-  changeIndex: number;
-  /** The changeIndex of the spent note (for derivation path) */
-  parentChangeIndex: number;
-  /** Refund commitment for claiming refund if intent expires (required) */
+  /** Commitment for claiming refund */
   refundCommitment: string;
 }
 
-export type Note = DepositNote | ChangeNote | RefundNote | DepositIntentNote | WithdrawalIntentNote;
+export type Note = DepositNote | CrosschainDepositNote | WithdrawalNote | CrosschainWithdrawalNote | ChangeNote | WithdrawalRefundedNote | RagequitNote | MergedNote | DepositRefundedNote | DepositIntentNote | WithdrawalIntentNote;
 
 // ============================================================================
 // Note Tree Structure
 // ============================================================================
 
 /**
- * Tree node wrapper for notes with parent/child relationships.
+ * Tree node with parent/child relationships.
  *
- * Note Relationships:
- * - DepositNote → ChangeNote (state transition: withdrawal)
- * - DepositIntentNote → DepositNote (state transition: fill)
- * - ChangeNote → ChangeNote (state transition: subsequent withdrawal)
- * - Spent note → [ChangeNote, WithdrawalIntentNote] (siblings: branching)
- * - WithdrawalIntentNote → RefundNote (state transition: refund)
- * - RefundNote → ChangeNote (state transition: spend refund)
+ * Relationships:
+ * - Deposit/CrosschainDeposit → [ChangeNote, WithdrawalNote/CrosschainWithdrawalNote]
+ * - ChangeNote → [ChangeNote, WithdrawalNote/CrosschainWithdrawalNote]
+ * - DepositIntentNote → CrosschainDepositNote | DepositRefundedNote
+ * - WithdrawalIntentNote → CrosschainWithdrawalNote | WithdrawalRefundedNote
+ * - WithdrawalRefundedNote → ChangeNote
+ *
+ * Terminal (no children): WithdrawalNote, CrosschainWithdrawalNote,
+ * RagequitNote, MergedNote, DepositRefundedNote
  */
 export interface NoteNode {
-  /** The note data */
   note: Note;
-
-  /** Parent node reference (null for root/DepositNote/DepositIntentNote) */
   parent: NoteNode | null;
-
-  /** Child nodes (can have multiple for sibling branches) */
   children: NoteNode[];
-
-  /**
-   * Terminal flag - no children allowed.
-   * Set for: ragequit, merged, filled WithdrawalIntentNote, refunded DepositIntentNote
-   */
   isTerminal: boolean;
 }
 
-/**
- * A note tree rooted at a DepositNote or DepositIntentNote.
- * Represents all notes derived from a single deposit.
- */
+/** Tree rooted at DepositNote or DepositIntentNote */
 export interface NoteTree {
-  /** Root node (always DepositNote or DepositIntentNote) */
   root: NoteNode;
 }
 
-/**
- * Serializable format for tree persistence (no circular references).
- */
+/** Serializable tree node (no circular refs) */
 export interface SerializableNoteNode {
   note: Note;
   children: SerializableNoteNode[];
@@ -245,9 +372,9 @@ export function isWithdrawalIntentNote(note: Note): note is WithdrawalIntentNote
   return note.noteType === 'withdrawalIntent';
 }
 
-/** Check if a note is a RefundNote */
-export function isRefundNote(note: Note): note is RefundNote {
-  return note.noteType === 'refund';
+/** Check if a note is a WithdrawalRefundedNote */
+export function isWithdrawalRefundedNote(note: Note): note is WithdrawalRefundedNote {
+  return note.noteType === 'withdrawalRefunded';
 }
 
 /** Check if a note is a DepositNote */
@@ -255,36 +382,79 @@ export function isDepositNote(note: Note): note is DepositNote {
   return note.noteType === 'deposit';
 }
 
+/** Check if a note is a CrosschainDepositNote */
+export function isCrosschainDepositNote(note: Note): note is CrosschainDepositNote {
+  return note.noteType === 'crosschainDeposit';
+}
+
+/** Check if a note is a CrosschainWithdrawalNote */
+export function isCrosschainWithdrawalNote(note: Note): note is CrosschainWithdrawalNote {
+  return note.noteType === 'crosschainWithdrawal';
+}
+
+/** Check if a note is a WithdrawalNote */
+export function isWithdrawalNote(note: Note): note is WithdrawalNote {
+  return note.noteType === 'withdrawal';
+}
+
 /** Check if a note is a ChangeNote */
 export function isChangeNote(note: Note): note is ChangeNote {
   return note.noteType === 'change';
 }
 
-/**
- * Check if a note is terminal (no children allowed).
- * Terminal states:
- * - ragequit: public withdrawal, funds withdrawn
- * - merged: secondary chain in Withdraw2
- * - filled WithdrawalIntentNote: funds delivered to recipient
- * - refunded DepositIntentNote: funds returned to origin chain
- */
+/** Check if a note is a RagequitNote */
+export function isRagequitNote(note: Note): note is RagequitNote {
+  return note.noteType === 'ragequit';
+}
+
+/** Check if a note is a MergedNote */
+export function isMergedNote(note: Note): note is MergedNote {
+  return note.noteType === 'merged';
+}
+
+/** Check if a note is a DepositRefundedNote */
+export function isDepositRefundedNote(note: Note): note is DepositRefundedNote {
+  return note.noteType === 'depositRefunded';
+}
+
+/** Check if note is spendable (has label, aspStatus, status) */
+export function isSpendableNote(note: Note): note is DepositNote | CrosschainDepositNote | ChangeNote | WithdrawalRefundedNote {
+  return (
+    note.noteType === 'deposit' ||
+    note.noteType === 'crosschainDeposit' ||
+    note.noteType === 'change' ||
+    note.noteType === 'withdrawalRefunded'
+  );
+}
+
+/** Check if note is terminal (no children allowed) */
 export function isTerminalNote(note: Note): boolean {
-  if (note.status === 'ragequit' || note.status === 'merged') {
-    return true;
-  }
-  if (note.noteType === 'withdrawalIntent' && note.intentStatus === 'filled') {
-    return true;
-  }
-  if (note.noteType === 'depositIntent' && note.intentStatus === 'refunded') {
-    return true;
-  }
-  return false;
+  return (
+    note.noteType === 'ragequit' ||
+    note.noteType === 'merged' ||
+    note.noteType === 'withdrawal' ||
+    note.noteType === 'crosschainWithdrawal' ||
+    note.noteType === 'depositRefunded'
+  );
 }
 
 /** Check if a note is any intent note (deposit or withdrawal) */
 export function isIntentNote(note: Note): note is DepositIntentNote | WithdrawalIntentNote {
   return note.noteType === 'depositIntent' || note.noteType === 'withdrawalIntent';
 }
+
+/** Check if note is from a cross-chain operation */
+export function isCrossChainNote(note: Note): boolean {
+  return (
+    note.noteType === 'crosschainDeposit' ||
+    note.noteType === 'crosschainWithdrawal' ||
+    note.noteType === 'depositIntent' ||
+    note.noteType === 'withdrawalIntent' ||
+    note.noteType === 'withdrawalRefunded' ||
+    note.noteType === 'depositRefunded'
+  );
+}
+
 
 // ============================================================================
 // Nullifier Tracking
@@ -325,6 +495,8 @@ export interface DiscoveryState {
   nullifierMap: Map<string, NullifierInfo>;
   /** Next deposit index to scan per chain (keyed by chainId string) */
   nextDepositIndex: Map<string, number>;
+  /** Raw activities keyed by activity.id for display */
+  activities: Map<string, Activity>;
   /** Minimum offset to fetch from (earliest unspent note's discovery offset) */
   minOffset: number;
   /** Count of new filled deposits found in this sync (spendable) */
@@ -340,6 +512,8 @@ export interface SerializableDiscoveryState {
   nullifierMap: Array<{ hash: string; info: NullifierInfo }>;
   /** Next deposit index per chain (keyed by chainId string) */
   nextDepositIndex: Array<{ chainId: string; index: number }>;
+  /** Raw activities for display (serialized) */
+  activities: SerializedActivity[];
   minOffset: number;
   newFilledDepositsFound: number;
   newPendingDepositsFound: number;
@@ -354,6 +528,8 @@ export interface DiscoveryResult {
   trees: NoteTree[];
   /** Last used deposit index per chain (keyed by chainId string) */
   lastUsedIndexByChain: Map<string, number>;
+  /** Raw activities for display */
+  activities: Activity[];
   newNotesFound: number;
   minOffset: number;
 }
@@ -371,8 +547,6 @@ export interface DiscoveryProgress {
 // ============================================================================
 
 export interface DiscoveryPolicy {
-  /** Maximum deposit indices to scan per page */
-  maxDepositScan: number;
   /** Activities per page fetch */
   pageSize: number;
   /** Persist state every N pages */
@@ -380,7 +554,6 @@ export interface DiscoveryPolicy {
 }
 
 export const DEFAULT_DISCOVERY_POLICY: DiscoveryPolicy = {
-  maxDepositScan: 100,
   pageSize: 100,
   persistEveryPages: 1,
 };

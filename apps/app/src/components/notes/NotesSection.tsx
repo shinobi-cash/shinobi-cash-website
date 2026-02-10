@@ -118,14 +118,11 @@ export function NotesSection({ controller, onNoteTreeClick }: NotesSectionProps)
     // For spent trees, find the most recently spent leaf
     const leaves = getLeafNodes(tree);
     if (leaves.length > 0) {
-      // Sort by timestamp descending, considering ragequit timestamp
+      // Sort by timestamp descending
+      // RagequitNote is a terminal child with its own timestamp
       const sorted = [...leaves].sort((a, b) => {
-        const tsA = a.note.status === "ragequit" && a.note.activityData.ragequitTimestamp
-          ? Number(a.note.activityData.ragequitTimestamp)
-          : Number(a.note.timestamp);
-        const tsB = b.note.status === "ragequit" && b.note.activityData.ragequitTimestamp
-          ? Number(b.note.activityData.ragequitTimestamp)
-          : Number(b.note.timestamp);
+        const tsA = Number(a.note.originTimestamp);
+        const tsB = Number(b.note.originTimestamp);
         return tsB - tsA;
       });
       return sorted[0].note;

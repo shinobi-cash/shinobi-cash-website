@@ -8,7 +8,7 @@
 
 import type { Activity } from '@shinobi-cash/data';
 import type { NoteTree, NullifierInfo, ChainKey } from './types.js';
-import { makeChainKey } from './types.js';
+import { makeChainKey, isSpendableNote } from './types.js';
 import type { ActivityIndex } from './activity-indexer.js';
 import { deriveAndHashNullifier } from './nullifier-utils.js';
 import { derivedNoteCommitment } from '../withdrawal/index.js';
@@ -140,21 +140,20 @@ export function planTreeExtensions(
   const depositIndex = rootNote.depositIndex;
 
   // Simulate the tree state as we plan extensions
-  let currentChangeIndex = lastLeaf.note.changeIndex;
-  let currentAmount = BigInt(lastLeaf.note.amount);
-  let currentStatus = lastLeaf.note.status;
-  let currentNoteType = lastLeaf.note.noteType;
-  let currentLabel = lastLeaf.note.label;
+  // Note: getLastSpendableLeaf guarantees a spendable note
+  const lastNote = lastLeaf.note;
+  if (!isSpendableNote(lastNote)) {
+    throw new Error('Expected spendable note from getLastSpendableLeaf');
+  }
+  let currentChangeIndex = lastNote.changeIndex;
+  let currentAmount = BigInt(lastNote.amount);
+  let currentStatus = lastNote.status;
+  let currentNoteType = lastNote.noteType;
+  let currentLabel = lastNote.label;
 
   while (true) {
-    // Stop if note is not extendable
-    // Intent notes (both deposit and withdrawal) cannot be extended
-    if (
-      currentNoteType === 'depositIntent' ||
-      currentNoteType === 'withdrawalIntent' ||
-      currentStatus !== 'unspent' ||
-      currentAmount <= 0n
-    ) {
+    // Stop if note is not extendable (spent, merged, or zero amount)
+    if (currentStatus !== 'unspent' || currentAmount <= 0n) {
       break;
     }
 
@@ -245,10 +244,10 @@ export function planTreeExtensions(
             });
           }
         } else {
-          // We're secondary, chain terminates with a merged note
-          currentStatus = 'merged';
+          // We're secondary, chain terminates with a merged note (terminal, not spendable)
+          // Loop will break on next iteration due to status check
+          currentStatus = 'spent';
           currentAmount = 0n;
-          currentNoteType = 'change'; // Merged note is a ChangeNote (with status='merged')
         }
         continue;
       } else {
@@ -264,9 +263,9 @@ export function planTreeExtensions(
     // withdrawals, it will be detected in a subsequent sync pass after those withdrawals
     // are persisted.
     // Gate on noteType (ragequit only for deposit/change, not intent notes or refund)
-    // Also check label since derivedNoteCommitment requires it
+    // Also check that lastLeaf is a spendable note since derivedNoteCommitment requires it
     if (currentNoteType === 'deposit' || currentNoteType === 'change') {
-      if (lastLeaf && lastLeaf.note.label !== undefined) {
+      if (lastLeaf && isSpendableNote(lastLeaf.note)) {
         const commitment = derivedNoteCommitment(accountKey, lastLeaf.note).toString();
         const ragequit = activityIndex.ragequitByCommitment.get(commitment);
         if (ragequit) {
@@ -382,7 +381,7 @@ function planWithdraw2(
   }
 
   const otherLastLeaf = getLastSpendableLeaf(otherTree);
-  if (!otherLastLeaf || otherLastLeaf.note.status !== 'unspent') {
+  if (!otherLastLeaf || !isSpendableNote(otherLastLeaf.note) || otherLastLeaf.note.status !== 'unspent') {
     return null;
   }
 

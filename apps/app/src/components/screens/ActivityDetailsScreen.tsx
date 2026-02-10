@@ -2,10 +2,10 @@
  * Activity Details Screen Component
  *
  * Clean, focused view of activity details.
- * Uses status fields directly for concise display.
+ * Uses Activity fields directly for display.
  */
 
-import { ArrowRight, ChevronRight, Merge } from "lucide-react";
+import { ArrowRight, ChevronRight } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
 import { AmountDisplay } from "@/components/shared/AmountDisplay";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";
@@ -14,7 +14,6 @@ import { Section, Row } from "@/components/shared/Section";
 import { CopyableText } from "@/components/shared/CopyableText";
 import { ACTIVITY_TYPE_LABELS, type ActivityEntry } from "@/types/activity";
 import { getTxExplorerUrl, getChainName } from "@/config/chains";
-import { getNoteLabel } from "@/utils/chainIcons";
 import { formatEthAmount, formatTimestamp } from "@/utils/formatters";
 
 interface ActivityDetailsScreenProps {
@@ -30,40 +29,44 @@ export function ActivityDetailsScreen({
 }: ActivityDetailsScreenProps) {
   if (!entry) return null;
 
-  const { note, type, displayAmount, isCrossChain } = entry;
-  const { activityData } = note;
+  const { activity, type, displayAmount, isCrossChain, displayTimestamp } = entry;
 
-  const originChain = getChainName(note.originChainId);
-  // For same-chain operations, destinationChainId is undefined
-  const destChain = note.destinationChainId ? getChainName(note.destinationChainId) : originChain;
+  const originChainId = activity.originChainId.toString();
+  const originChain = getChainName(originChainId);
+  const destChainId = activity.destinationChainId?.toString() ?? originChainId;
+  const destChain = getChainName(destChainId);
 
   // Check if we have fees to show
   const fees = {
-    vetting: activityData.vettingFeeAmount,
-    relay: activityData.relayFeeAmount,
-    solver: activityData.solverFeeAmount,
+    vetting: activity.vettingFeeAmount?.toString(),
+    relay: activity.relayFeeAmount?.toString(),
+    solver: activity.solverFeeAmount?.toString(),
   };
   const hasFees = Object.values(fees).some((f) => f && BigInt(f) > BigInt(0));
 
+  // Check for pending intent status
+  const isPendingIntent = activity.intentStatus === "pending";
+
   return (
     <ScreenLayout
-      header={<ScreenHeader title={`${ACTIVITY_TYPE_LABELS[type]} Details`} onBack={onBack} />}
+      header={<ScreenHeader title={ACTIVITY_TYPE_LABELS[type]} onBack={onBack} />}
       containerClassName="flex-1 sm:flex-none sm:h-[600px] w-full"
       contentClassName="px-4 py-4 overflow-y-auto"
       footer={
-        <Button
-          onClick={() => onViewNoteChain?.(note.depositIndex)}
-          disabled={!onViewNoteChain}
-          className="h-12 w-full rounded-xl text-base font-semibold"
-          size="lg"
-        >
-          View Note Chain
-          <ChevronRight className="ml-2 h-4 w-4" />
-        </Button>
+        onViewNoteChain ? (
+          <Button
+            onClick={() => onViewNoteChain?.(0)} // TODO: Get deposit index from activity
+            className="h-12 w-full rounded-xl text-base font-semibold"
+            size="lg"
+          >
+            View Note Chain
+            <ChevronRight className="ml-2 h-4 w-4" />
+          </Button>
+        ) : undefined
       }
     >
       <div className="space-y-4">
-        {/* Amount & Status Card */}
+        {/* Amount Card */}
         <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
           <div className="text-center">
             <AmountDisplay
@@ -74,27 +77,18 @@ export function ActivityDetailsScreen({
               usdClassName="text-sm text-neutral-400 mt-1"
             />
           </div>
-
-          {/* Cross-chain badge */}
-          {isCrossChain && (
-            <div className="mt-3 flex justify-center">
-              <span className="inline-flex items-center gap-1 rounded-full bg-purple-500/10 px-2.5 py-1 text-xs font-medium text-purple-400">
-                {originChain} <ArrowRight className="h-3 w-3" /> {destChain}
-              </span>
-            </div>
-          )}
         </div>
 
         {/* Transaction Info */}
         <Section title="Transaction">
-          <Row label="Time" value={formatTimestamp(note.timestamp)} />
+          <Row label="Time" value={formatTimestamp(displayTimestamp)} />
           <Row
             label="Chain"
             value={
               isCrossChain ? (
                 <span className="flex items-center gap-1">
                   <a
-                    href={getTxExplorerUrl(note.originChainId, note.originTransactionHash)}
+                    href={getTxExplorerUrl(originChainId, activity.originTransactionHash)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-blue-400 hover:text-blue-300 hover:underline"
@@ -102,10 +96,9 @@ export function ActivityDetailsScreen({
                     {originChain}
                   </a>
                   <ArrowRight className="h-3 w-3 text-neutral-500" />
-                  {/* Only link destination if intent is filled (has different tx hash) */}
-                  {note.destinationTransactionHash && note.destinationTransactionHash !== note.originTransactionHash ? (
+                  {activity.destinationTransactionHash ? (
                     <a
-                      href={getTxExplorerUrl(note.destinationChainId!, note.destinationTransactionHash)}
+                      href={getTxExplorerUrl(destChainId, activity.destinationTransactionHash)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-blue-400 hover:text-blue-300 hover:underline"
@@ -118,7 +111,7 @@ export function ActivityDetailsScreen({
                 </span>
               ) : (
                 <a
-                  href={getTxExplorerUrl(note.originChainId, note.originTransactionHash)}
+                  href={getTxExplorerUrl(originChainId, activity.originTransactionHash)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-blue-400 hover:text-blue-300 hover:underline"
@@ -128,11 +121,11 @@ export function ActivityDetailsScreen({
               )
             }
           />
-          {type === "deposit" && activityData.user && (
-            <Row label="Depositor" value={<CopyableText text={activityData.user} />} />
+          {type === "deposit" && activity.user && (
+            <Row label="Depositor" value={<CopyableText text={activity.user} />} />
           )}
-          {type === "withdrawal" && activityData.recipient && (
-            <Row label="Recipient" value={<CopyableText text={activityData.recipient} />} />
+          {type === "withdrawal" && activity.recipient && (
+            <Row label="Recipient" value={<CopyableText text={activity.recipient} />} />
           )}
         </Section>
 
@@ -172,58 +165,34 @@ export function ActivityDetailsScreen({
           </Section>
         )}
 
-        {/* Note Info */}
-        <Section title="Note">
-          <Row label="Note" value={getNoteLabel(note.originChainId, note.depositIndex)} />
-          <Row
-            label="Index"
-            value={
-              <span className="font-mono text-neutral-400">
-                {note.depositIndex}-{note.changeIndex}
-              </span>
-            }
-          />
-          {/* Show merged note info for Withdraw2 */}
-          {"mergedFromDepositIndex" in note && note.mergedFromDepositIndex !== undefined && (
-            <Row
-              label="Merged With"
-              value={
-                <span className="flex items-center gap-1.5 text-violet-400">
-                  <Merge className="h-3 w-3" />
-                  {note.mergedFromOriginChainId
-                    ? getNoteLabel(note.mergedFromOriginChainId, note.mergedFromDepositIndex)
-                    : `Note #${note.mergedFromDepositIndex + 1}`}
-                </span>
-              }
-            />
-          )}
-          <Row label="Pool" value={<CopyableText text={note.poolAddress} />} />
-          {note.label && (!note.isCrossChain || note.intentStatus === "filled") && (
+        {/* Activity Info */}
+        <Section title="Activity">
+          <Row label="Type" value={<span className="capitalize">{activity.type.toLowerCase().replace(/_/g, " ")}</span>} />
+          <Row label="Pool" value={<CopyableText text={activity.poolId} />} />
+          {activity.label && (
             <Row
               label="Label"
-              value={<CopyableText text={note.label} truncateStart={10} truncateEnd={8} />}
+              value={<CopyableText text={activity.label.toString()} truncateStart={10} truncateEnd={8} />}
             />
           )}
-          {note.isCrossChain && note.intentStatus && note.intentStatus !== "filled" && (
+          {isPendingIntent && (
             <Row
               label="Intent Status"
               value={
-                <span
-                  className={`capitalize ${note.intentStatus === "pending" ? "text-yellow-400" : "text-orange-400"}`}
-                >
-                  {note.intentStatus}
+                <span className="capitalize text-yellow-400">
+                  Pending
                 </span>
               }
             />
           )}
-          {note.aspStatus !== "approved" && (
+          {activity.aspStatus !== "approved" && (
             <Row
               label="ASP Status"
               value={
                 <span
-                  className={`capitalize ${note.aspStatus === "pending" ? "text-blue-400" : "text-red-400"}`}
+                  className={`capitalize ${activity.aspStatus === "pending" ? "text-blue-400" : "text-red-400"}`}
                 >
-                  {note.aspStatus}
+                  {activity.aspStatus}
                 </span>
               }
             />

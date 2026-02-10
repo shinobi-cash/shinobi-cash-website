@@ -6,6 +6,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { scanForDeposits } from '../../src/discovery/deposit-scanner.js';
 import { buildActivityIndex } from '../../src/discovery/activity-indexer.js';
 import { deriveAndHashNullifier } from '../../src/discovery/nullifier-utils.js';
+import { isCrossChainNote } from '../../src/discovery/types.js';
 import {
   createMockDepositActivity,
   createMockCrossChainDepositActivity,
@@ -25,7 +26,7 @@ describe('deposit-scanner', () => {
   describe('scanForDeposits', () => {
     it('should return empty result for empty activity index', () => {
       const index = buildActivityIndex([]);
-      const result = scanForDeposits(index, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 10);
+      const result = scanForDeposits(index, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0);
 
       expect(result.newTrees).toHaveLength(0);
       expect(result.newNullifierEntries.size).toBe(0);
@@ -36,7 +37,7 @@ describe('deposit-scanner', () => {
     it('should find a single deposit at index 0', () => {
       const deposit = createMockDepositActivity(0, toEther(1));
       const index = buildActivityIndex([deposit]);
-      const result = scanForDeposits(index, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 10);
+      const result = scanForDeposits(index, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0);
 
       expect(result.newTrees).toHaveLength(1);
       expect(result.filledDepositsFound).toBe(1);
@@ -46,7 +47,7 @@ describe('deposit-scanner', () => {
     it('should create tree with correct deposit note at root', () => {
       const deposit = createMockDepositActivity(0, toEther(1));
       const index = buildActivityIndex([deposit]);
-      const result = scanForDeposits(index, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 10);
+      const result = scanForDeposits(index, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0);
 
       const tree = result.newTrees[0];
       const note = tree.root.note;
@@ -60,7 +61,7 @@ describe('deposit-scanner', () => {
     it('should add nullifier entry for each deposit', () => {
       const deposit = createMockDepositActivity(0, toEther(1));
       const index = buildActivityIndex([deposit]);
-      const result = scanForDeposits(index, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 10);
+      const result = scanForDeposits(index, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0);
 
       expect(result.newNullifierEntries.size).toBe(1);
 
@@ -76,7 +77,7 @@ describe('deposit-scanner', () => {
         createMockDepositActivity(2, toEther(3)),
       ];
       const index = buildActivityIndex(deposits);
-      const result = scanForDeposits(index, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 10);
+      const result = scanForDeposits(index, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0);
 
       expect(result.newTrees).toHaveLength(3);
       expect(result.filledDepositsFound).toBe(3);
@@ -92,7 +93,7 @@ describe('deposit-scanner', () => {
         createMockDepositActivity(3, toEther(4)), // Gap at index 2
       ];
       const index = buildActivityIndex(deposits);
-      const result = scanForDeposits(index, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 10);
+      const result = scanForDeposits(index, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0);
 
       // Should only find 0 and 1, stop at gap
       expect(result.newTrees).toHaveLength(2);
@@ -108,7 +109,7 @@ describe('deposit-scanner', () => {
       ];
       const index = buildActivityIndex(deposits);
       // Start from index 1
-      const result = scanForDeposits(index, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 1, 10);
+      const result = scanForDeposits(index, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 1);
 
       expect(result.newTrees).toHaveLength(2);
       expect(result.filledDepositsFound).toBe(2);
@@ -119,24 +120,10 @@ describe('deposit-scanner', () => {
       expect(result.newTrees[1].root.note.depositIndex).toBe(2);
     });
 
-    it('should respect maxScan limit', () => {
-      const deposits = [];
-      for (let i = 0; i < 20; i++) {
-        deposits.push(createMockDepositActivity(i, toEther(1)));
-      }
-      const index = buildActivityIndex(deposits);
-      // Scan max 5 indices
-      const result = scanForDeposits(index, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 5);
-
-      expect(result.newTrees).toHaveLength(5);
-      expect(result.filledDepositsFound).toBe(5);
-      expect(result.nextDepositIndex).toBe(5);
-    });
-
     it('should pass currentOffset to deposit note', () => {
       const deposit = createMockDepositActivity(0, toEther(1));
       const index = buildActivityIndex([deposit]);
-      const result = scanForDeposits(index, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 10, 42);
+      const result = scanForDeposits(index, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 42);
 
       const note = result.newTrees[0].root.note;
       expect(note.discoveredAtOffset).toBe(42);
@@ -145,11 +132,12 @@ describe('deposit-scanner', () => {
     it('should handle cross-chain deposits', () => {
       const deposit = createMockCrossChainDepositActivity(0, toEther(1));
       const index = buildActivityIndex([deposit]);
-      const result = scanForDeposits(index, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 10);
+      const result = scanForDeposits(index, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0);
 
       expect(result.newTrees).toHaveLength(1);
       const note = result.newTrees[0].root.note;
-      expect(note.isCrossChain).toBe(true);
+      expect(note.noteType).toBe('crosschainDeposit');
+      expect(isCrossChainNote(note)).toBe(true);
     });
 
     it('should not find deposits for different account key', () => {
@@ -157,7 +145,7 @@ describe('deposit-scanner', () => {
       const index = buildActivityIndex([deposit]);
       // Use different account key
       const differentKey = TEST_ACCOUNT_KEY + 1n;
-      const result = scanForDeposits(index, differentKey, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 10);
+      const result = scanForDeposits(index, differentKey, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0);
 
       expect(result.newTrees).toHaveLength(0);
       expect(result.filledDepositsFound).toBe(0);
@@ -168,7 +156,7 @@ describe('deposit-scanner', () => {
       const index = buildActivityIndex([deposit]);
       // Use different pool address
       const differentPool = '0x9999999999999999999999999999999999999999';
-      const result = scanForDeposits(index, TEST_ACCOUNT_KEY, differentPool, TEST_CHAIN_ID, 0, 10);
+      const result = scanForDeposits(index, TEST_ACCOUNT_KEY, differentPool, TEST_CHAIN_ID, 0);
 
       expect(result.newTrees).toHaveLength(0);
       expect(result.filledDepositsFound).toBe(0);
@@ -181,7 +169,7 @@ describe('deposit-scanner', () => {
         createMockDepositActivity(1, toEther(2)),
       ];
       const index1 = buildActivityIndex(deposits1);
-      const result1 = scanForDeposits(index1, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 10);
+      const result1 = scanForDeposits(index1, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0);
 
       expect(result1.nextDepositIndex).toBe(2);
 
@@ -192,7 +180,7 @@ describe('deposit-scanner', () => {
       ];
       const index2 = buildActivityIndex(deposits2);
       // Continue from where we left off
-      const result2 = scanForDeposits(index2, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, result1.nextDepositIndex, 10);
+      const result2 = scanForDeposits(index2, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, result1.nextDepositIndex);
 
       expect(result2.filledDepositsFound).toBe(2);
       expect(result2.nextDepositIndex).toBe(4);
@@ -203,7 +191,7 @@ describe('deposit-scanner', () => {
     it('should handle large deposit indices', () => {
       const deposit = createMockDepositActivity(1000, toEther(1));
       const index = buildActivityIndex([deposit]);
-      const result = scanForDeposits(index, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 1000, 10);
+      const result = scanForDeposits(index, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 1000);
 
       expect(result.newTrees).toHaveLength(1);
       expect(result.newTrees[0].root.note.depositIndex).toBe(1000);
@@ -217,7 +205,7 @@ describe('deposit-scanner', () => {
 
       // Scan with a different chainId - should not find the deposit
       const differentChainId = '84532'; // Base Sepolia
-      const result = scanForDeposits(index, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, differentChainId, 0, 10);
+      const result = scanForDeposits(index, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, differentChainId, 0);
 
       expect(result.newTrees).toHaveLength(0);
       expect(result.filledDepositsFound).toBe(0);
@@ -228,7 +216,7 @@ describe('deposit-scanner', () => {
       const index = buildActivityIndex([deposit]);
 
       // Scan with matching chainId - should find the deposit
-      const result = scanForDeposits(index, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 10);
+      const result = scanForDeposits(index, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0);
 
       expect(result.newTrees).toHaveLength(1);
       expect(result.filledDepositsFound).toBe(1);
@@ -238,7 +226,7 @@ describe('deposit-scanner', () => {
       it('should create DepositIntentNote for pending cross-chain deposit', () => {
         const deposit = createMockPendingCrossChainDepositActivity(0, toEther(1));
         const index = buildActivityIndex([deposit]);
-        const result = scanForDeposits(index, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 10);
+        const result = scanForDeposits(index, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0);
 
         expect(result.newTrees).toHaveLength(1);
         expect(result.pendingDepositsFound).toBe(1);
@@ -246,31 +234,32 @@ describe('deposit-scanner', () => {
         // Should create DepositIntentNote, not DepositNote
         const note = result.newTrees[0].root.note;
         expect(note.noteType).toBe('depositIntent');
-        expect(note.status).toBe('unspent');
-        expect(note.isCrossChain).toBe(true);
+        // Intent notes don't have status field - pending state is implicit in noteType
+        expect(isCrossChainNote(note)).toBe(true);
       });
 
       it('should NOT add nullifier entry for pending cross-chain deposit', () => {
         const deposit = createMockPendingCrossChainDepositActivity(0, toEther(1));
         const index = buildActivityIndex([deposit]);
-        const result = scanForDeposits(index, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 10);
+        const result = scanForDeposits(index, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0);
 
         // Pending deposits should not be added to nullifier map
         expect(result.newNullifierEntries.size).toBe(0);
       });
 
-      it('should create DepositNote for filled cross-chain deposit', () => {
+      it('should create CrosschainDepositNote for filled cross-chain deposit', () => {
         // Filled cross-chain deposit (intentStatus='filled')
         const deposit = createMockCrossChainDepositActivity(0, toEther(1), {
           intentStatus: 'filled',
         });
         const index = buildActivityIndex([deposit]);
-        const result = scanForDeposits(index, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 10);
+        const result = scanForDeposits(index, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0);
 
-        // Should create DepositNote for filled deposit
+        // Should create CrosschainDepositNote for filled cross-chain deposit
         const note = result.newTrees[0].root.note;
-        expect(note.noteType).toBe('deposit');
+        expect(note.noteType).toBe('crosschainDeposit');
         expect(note.status).toBe('unspent');
+        expect(isCrossChainNote(note)).toBe(true);
 
         // Should add nullifier entry for filled deposit
         expect(result.newNullifierEntries.size).toBe(1);
@@ -280,7 +269,7 @@ describe('deposit-scanner', () => {
         const deposit = createMockPendingCrossChainDepositActivity(0, toEther(1));
         const index = buildActivityIndex([deposit]);
         const currentOffset = 42;
-        const result = scanForDeposits(index, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 10, currentOffset);
+        const result = scanForDeposits(index, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, currentOffset);
 
         const note = result.newTrees[0].root.note;
         expect(note.discoveredAtOffset).toBe(42);

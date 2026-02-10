@@ -1,4 +1,4 @@
-import type { Note, NoteTree } from "@shinobi-cash/core/discovery";
+import type { NoteTree, NoteCategory } from "@shinobi-cash/core/discovery";
 
 export type NotesStatus = "idle" | "loading" | "error" | "empty" | "ready";
 
@@ -12,14 +12,6 @@ export interface NoteTreeView {
   tree: NoteTree;
   key: string;
 }
-
-/**
- * Note category for the 3-category model
- * - spendable: User can take action (withdraw or ragequit)
- * - pending: Waiting for something (solver, ASP approval)
- * - spent: Already used or refunded
- */
-export type NoteCategory = "spendable" | "pending" | "spent";
 
 /**
  * Filter type for note list tabs

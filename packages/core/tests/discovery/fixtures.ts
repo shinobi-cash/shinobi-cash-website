@@ -3,7 +3,8 @@
  */
 
 import type { Activity } from '@shinobi-cash/data';
-import type { Note, DepositNote, ChangeNote, DepositIntentNote, WithdrawalIntentNote, RefundNote, NoteTree } from '../../src/discovery/types.js';
+import type { Note, DepositNote, ChangeNote, DepositIntentNote, WithdrawalIntentNote, WithdrawalRefundedNote, RagequitNote, MergedNote, NoteTree } from '../../src/discovery/types.js';
+import { generateSerialNumber } from '../../src/discovery/types.js';
 import { deriveDepositPrecommitment, deriveAndHashNullifier } from '../../src/discovery/nullifier-utils.js';
 import { createNoteTree, addChild } from '../../src/discovery/tree-utils.js';
 
@@ -55,7 +56,8 @@ export function createMockCrossChainDepositActivity(
 ): Activity {
   return createMockDepositActivity(depositIndex, amount, {
     type: 'CROSSCHAIN_DEPOSIT',
-    destinationChainId: BigInt(84532), // Base Sepolia
+    destinationChainId: BigInt(84532), // Base Sepolia (pool chain)
+    destinationTransactionHash: `0xtx-fill-${depositIndex}`, // Fill tx on destination chain
     intentStatus: 'filled',
     orderId: `order-${depositIndex}`,
     ...overrides,
@@ -185,19 +187,17 @@ export function createMockDepositNote(
 
   return {
     noteType: 'deposit',
+    serialNumber: generateSerialNumber(TEST_CHAIN_ID, depositIndex, 0, false),
     poolAddress: TEST_POOL_ADDRESS,
     depositIndex,
     changeIndex: 0,
     amount: amount.toString(),
     label: (depositIndex + 1000).toString(),
     status: 'unspent',
-    blockNumber: (1000 + depositIndex).toString(),
-    timestamp: Date.now().toString(),
+    originBlockNumber: (1000 + depositIndex).toString(),
+    originTimestamp: Date.now().toString(),
+    originChainId: TEST_CHAIN_ID,
     originTransactionHash: `0xtx-deposit-${depositIndex}`,
-    destinationTransactionHash: `0xtx-deposit-${depositIndex}`,
-    originChainId: '421614',
-    destinationChainId: '421614',
-    isCrossChain: false,
     aspStatus: 'approved',
     precommitmentHash,
     activityData: {},
@@ -213,20 +213,19 @@ export function createMockChangeNote(
 ): ChangeNote {
   return {
     noteType: 'change',
+    serialNumber: generateSerialNumber(TEST_CHAIN_ID, depositIndex, changeIndex, false),
     poolAddress: TEST_POOL_ADDRESS,
     depositIndex,
     changeIndex,
     amount: amount.toString(),
     label: (depositIndex + 1000).toString(),
     status: 'unspent',
-    blockNumber: (2000 + depositIndex * 10 + changeIndex).toString(),
-    timestamp: Date.now().toString(),
+    originBlockNumber: (2000 + depositIndex * 10 + changeIndex).toString(),
+    originTimestamp: Date.now().toString(),
+    originChainId: TEST_CHAIN_ID,
     originTransactionHash: `0xtx-withdrawal-${depositIndex}-${changeIndex}`,
-    destinationTransactionHash: `0xtx-withdrawal-${depositIndex}-${changeIndex}`,
-    originChainId: '421614',
-    destinationChainId: '421614',
-    isCrossChain: false,
     aspStatus: 'approved',
+    mergedFrom: {},
     activityData: {},
     ...overrides,
   };
@@ -234,32 +233,26 @@ export function createMockChangeNote(
 
 export function createMockWithdrawalIntentNote(
   depositIndex: number,
-  parentChangeIndex: number,
+  changeIndex: number,
   amount: string | bigint,
   overrides: Partial<WithdrawalIntentNote> = {},
 ): WithdrawalIntentNote {
   return {
     noteType: 'withdrawalIntent',
+    serialNumber: generateSerialNumber(TEST_CHAIN_ID, depositIndex, changeIndex, true),
     poolAddress: TEST_POOL_ADDRESS,
     depositIndex,
-    changeIndex: parentChangeIndex, // For Note union compatibility
-    parentChangeIndex,
+    changeIndex,
     amount: amount.toString(),
-    label: (depositIndex + 1000).toString(),
-    status: 'unspent',
-    blockNumber: (2000 + depositIndex * 10 + parentChangeIndex).toString(),
-    timestamp: Date.now().toString(),
-    originTransactionHash: `0xtx-crosschain-${depositIndex}-${parentChangeIndex}`,
-    destinationTransactionHash: `0xtx-crosschain-${depositIndex}-${parentChangeIndex}`,
-    originChainId: '421614',
+    originBlockNumber: (2000 + depositIndex * 10 + changeIndex).toString(),
+    originTimestamp: Date.now().toString(),
+    originChainId: TEST_CHAIN_ID,
+    originTransactionHash: `0xtx-crosschain-${depositIndex}-${changeIndex}`,
     destinationChainId: '84532',
-    isCrossChain: true,
-    orderId: `order-${depositIndex}-${parentChangeIndex}`,
-    intentStatus: 'pending',
+    orderId: `order-${depositIndex}-${changeIndex}`,
     fillDeadline: (Math.floor(Date.now() / 1000) + 3600).toString(),
     expires: (Math.floor(Date.now() / 1000) + 86400).toString(),
-    aspStatus: 'approved',
-    refundCommitment: `0xrefund-${depositIndex}-${parentChangeIndex}`,
+    refundCommitment: `0xrefund-${depositIndex}-${changeIndex}`,
     activityData: {},
     ...overrides,
   };
@@ -270,54 +263,95 @@ export function createMockDepositIntentNote(
   amount: string | bigint,
   overrides: Partial<DepositIntentNote> = {},
 ): DepositIntentNote {
+  const chainId = '84532'; // Base Sepolia (origin)
   return {
     noteType: 'depositIntent',
+    serialNumber: generateSerialNumber(chainId, depositIndex, 0, true),
     poolAddress: TEST_POOL_ADDRESS,
     depositIndex,
     changeIndex: 0,
     amount: amount.toString(),
-    status: 'unspent',
-    blockNumber: (1000 + depositIndex).toString(),
-    timestamp: Date.now().toString(),
+    originBlockNumber: (1000 + depositIndex).toString(),
+    originTimestamp: Date.now().toString(),
+    originChainId: chainId,
     originTransactionHash: `0xtx-deposit-intent-${depositIndex}`,
-    destinationTransactionHash: `0xtx-deposit-intent-${depositIndex}`,
-    originChainId: '84532', // Base Sepolia (origin)
     destinationChainId: '421614', // Arbitrum Sepolia (pool chain)
-    isCrossChain: true,
     orderId: `order-deposit-${depositIndex}`,
-    intentStatus: 'pending',
     fillDeadline: (Math.floor(Date.now() / 1000) + 3600).toString(),
     expires: (Math.floor(Date.now() / 1000) + 86400).toString(),
-    aspStatus: 'pending',
     activityData: {},
     ...overrides,
   };
 }
 
-export function createMockRefundNote(
+export function createMockWithdrawalRefundedNote(
   depositIndex: number,
   changeIndex: number,
   amount: string | bigint,
-  overrides: Partial<RefundNote> = {},
-): RefundNote {
+  overrides: Partial<WithdrawalRefundedNote> = {},
+): WithdrawalRefundedNote {
   return {
-    noteType: 'refund',
+    noteType: 'withdrawalRefunded',
+    serialNumber: generateSerialNumber(TEST_CHAIN_ID, depositIndex, changeIndex, false),
     poolAddress: TEST_POOL_ADDRESS,
     depositIndex,
     changeIndex,
-    refundIndex: 0,
     amount: amount.toString(),
     label: (depositIndex + 1000).toString(),
     status: 'unspent',
-    blockNumber: (5000 + depositIndex * 10 + changeIndex).toString(),
-    timestamp: Date.now().toString(),
+    originBlockNumber: (5000 + depositIndex * 10 + changeIndex).toString(),
+    originTimestamp: Date.now().toString(),
+    originChainId: TEST_CHAIN_ID,
     originTransactionHash: `0xtx-refund-${depositIndex}-${changeIndex}`,
-    destinationTransactionHash: `0xtx-refund-${depositIndex}-${changeIndex}`,
-    originChainId: '421614',
-    destinationChainId: '421614',
-    isCrossChain: false,
     aspStatus: 'approved',
     refundCommitment: `0xrefund-${depositIndex}-${changeIndex}`,
+    activityData: {},
+    ...overrides,
+  };
+}
+
+export function createMockRagequitNote(
+  depositIndex: number,
+  changeIndex: number,
+  amount: string | bigint,
+  overrides: Partial<RagequitNote> = {},
+): RagequitNote {
+  return {
+    noteType: 'ragequit',
+    serialNumber: generateSerialNumber(TEST_CHAIN_ID, depositIndex, changeIndex, false),
+    poolAddress: TEST_POOL_ADDRESS,
+    depositIndex,
+    changeIndex,
+    amount: amount.toString(),
+    originBlockNumber: (4000 + depositIndex * 10 + changeIndex).toString(),
+    originTimestamp: Date.now().toString(),
+    originChainId: TEST_CHAIN_ID,
+    originTransactionHash: `0xtx-ragequit-${depositIndex}-${changeIndex}`,
+    recipient: TEST_USER_ADDRESS,
+    activityData: {},
+    ...overrides,
+  };
+}
+
+export function createMockMergedNote(
+  depositIndex: number,
+  changeIndex: number,
+  amount: string | bigint,
+  mergedIntoSerialNumber: string,
+  overrides: Partial<MergedNote> = {},
+): MergedNote {
+  return {
+    noteType: 'merged',
+    serialNumber: generateSerialNumber(TEST_CHAIN_ID, depositIndex, changeIndex, false),
+    poolAddress: TEST_POOL_ADDRESS,
+    depositIndex,
+    changeIndex,
+    amount: amount.toString(),
+    originBlockNumber: (3000 + depositIndex * 10 + changeIndex).toString(),
+    originTimestamp: Date.now().toString(),
+    originChainId: TEST_CHAIN_ID,
+    originTransactionHash: `0xtx-merged-${depositIndex}-${changeIndex}`,
+    mergedIntoSerialNumber,
     activityData: {},
     ...overrides,
   };

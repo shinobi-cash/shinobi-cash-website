@@ -6,7 +6,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { extendAllTrees } from '../../src/discovery/chain-extender.js';
 import { buildActivityIndex } from '../../src/discovery/activity-indexer.js';
 import { deriveAndHashNullifier } from '../../src/discovery/nullifier-utils.js';
-import type { NoteTree, NullifierInfo, ChangeNote, WithdrawalIntentNote, ChainKey } from '../../src/discovery/types.js';
+import type { NoteTree, NullifierInfo, ChangeNote, WithdrawalIntentNote, MergedNote, ChainKey, WithdrawalNote } from '../../src/discovery/types.js';
 import { makeChainKey } from '../../src/discovery/types.js';
 import {
   createMockNoteTree,
@@ -91,15 +91,23 @@ describe('chain-extender', () => {
         // Original note should be spent
         expect(updatedTree.root.note.status).toBe('spent');
 
-        // Should have one child (change note)
-        expect(updatedTree.root.children).toHaveLength(1);
+        // Should have two children: ChangeNote (spendable) + WithdrawalNote (terminal record)
+        expect(updatedTree.root.children).toHaveLength(2);
 
-        // Change note should be created
-        const changeNode = updatedTree.root.children[0];
-        expect(changeNode.note.noteType).toBe('change');
+        // Find the change note (spendable remaining balance)
+        const changeNode = updatedTree.root.children.find((c) => c.note.noteType === 'change')!;
+        expect(changeNode).toBeDefined();
         expect(changeNode.note.changeIndex).toBe(1);
         expect(changeNode.note.amount).toBe(toEther(0.7).toString());
         expect(changeNode.note.status).toBe('unspent');
+
+        // Find the withdrawal note (terminal record)
+        const withdrawalNode = updatedTree.root.children.find((c) => c.note.noteType === 'withdrawal')!;
+        expect(withdrawalNode).toBeDefined();
+        expect(withdrawalNode.note.amount).toBe('0'); // Terminal notes have no remaining balance
+        expect((withdrawalNode.note as WithdrawalNote).withdrawnAmount).toBe(toEther(0.3).toString()); // Withdrawn amount
+        // WithdrawalNote is terminal - no status field, just isTerminal flag
+        expect(withdrawalNode.isTerminal).toBe(true);
       });
 
       it('should update nullifier map after extension', () => {
@@ -160,7 +168,8 @@ describe('chain-extender', () => {
         const intentNode = updatedTree.root.children.find((c) => c.note.noteType === 'withdrawalIntent');
         expect(intentNode).toBeDefined();
         expect(intentNode!.note.amount).toBe(toEther(0.5).toString());
-        expect((intentNode!.note as WithdrawalIntentNote).intentStatus).toBe('pending');
+        // Intent notes track pending state by noteType, not by intentStatus field
+        expect((intentNode!.note as WithdrawalIntentNote).destinationChainId).toBe('84532');
       });
 
       it('should apply sequential withdrawals', () => {
@@ -183,15 +192,15 @@ describe('chain-extender', () => {
 
         const updatedTree = result.updatedTrees.get(chainKey)!;
 
-        // Root (deposit) → Change1 → Change2
+        // Root (deposit) → [Change1, Withdrawal1] → [Change2, Withdrawal2]
         expect(updatedTree.root.note.status).toBe('spent');
-        expect(updatedTree.root.children).toHaveLength(1);
+        expect(updatedTree.root.children).toHaveLength(2); // ChangeNote + WithdrawalNote
 
-        const change1 = updatedTree.root.children[0];
+        const change1 = updatedTree.root.children.find((c) => c.note.noteType === 'change')!;
         expect(change1.note.status).toBe('spent');
-        expect(change1.children).toHaveLength(1);
+        expect(change1.children).toHaveLength(2); // ChangeNote + WithdrawalNote
 
-        const change2 = change1.children[0];
+        const change2 = change1.children.find((c) => c.note.noteType === 'change')!;
         expect(change2.note.amount).toBe(toEther(0.5).toString());
         expect(change2.note.status).toBe('unspent');
       });
@@ -213,11 +222,17 @@ describe('chain-extender', () => {
         );
 
         const updatedTree = result.updatedTrees.get(chainKey)!;
-        expect(updatedTree.root.children).toHaveLength(1);
+        expect(updatedTree.root.children).toHaveLength(2); // ChangeNote + WithdrawalNote
 
-        const changeNote = updatedTree.root.children[0].note as ChangeNote;
+        const changeNode = updatedTree.root.children.find((c) => c.note.noteType === 'change')!;
+        const changeNote = changeNode.note as ChangeNote;
         expect(changeNote.amount).toBe('0');
         expect(changeNote.status).toBe('spent');
+
+        const withdrawalNode = updatedTree.root.children.find((c) => c.note.noteType === 'withdrawal')!;
+        expect(withdrawalNode.note.amount).toBe('0'); // Terminal notes have no remaining balance
+        expect((withdrawalNode.note as WithdrawalNote).withdrawnAmount).toBe(toEther(1).toString()); // Full withdrawal
+        expect(withdrawalNode.isTerminal).toBe(true);
 
         // No new nullifier when remaining is 0
         expect(result.updatedNullifierMap.size).toBe(0);
@@ -253,24 +268,32 @@ describe('chain-extender', () => {
           TEST_POOL_ADDRESS,
         );
 
-        // Primary tree (depositIndex 1 is larger) gets change note
+        // Primary tree (depositIndex 1 is larger) gets change note + withdrawal note
         const primaryTree = result.updatedTrees.get(chainKey1)!;
         expect(primaryTree.root.note.status).toBe('spent');
-        expect(primaryTree.root.children).toHaveLength(1);
+        expect(primaryTree.root.children).toHaveLength(2); // ChangeNote + WithdrawalNote
 
-        const primaryChange = primaryTree.root.children[0].note as ChangeNote;
+        const primaryChangeNode = primaryTree.root.children.find((c) => c.note.noteType === 'change')!;
+        const primaryChange = primaryChangeNode.note as ChangeNote;
         expect(primaryChange.amount).toBe(toEther(2.5).toString()); // 1 + 2 - 0.5
-        expect(primaryChange.mergedFromDepositIndex).toBe(0);
+        // mergedFrom is a map of serialNumber -> amount
+        expect(Object.keys(primaryChange.mergedFrom).length).toBe(1);
 
         // Secondary tree gets merged note
         const secondaryTree = result.updatedTrees.get(chainKey0)!;
         expect(secondaryTree.root.note.status).toBe('spent');
         expect(secondaryTree.root.children).toHaveLength(1);
 
-        const mergedNote = secondaryTree.root.children[0].note as ChangeNote;
+        const mergedNode = secondaryTree.root.children[0];
+        expect(mergedNode.note.noteType).toBe('merged');
+        const mergedNote = mergedNode.note as MergedNote;
+        // Terminal notes have no remaining balance
         expect(mergedNote.amount).toBe('0');
-        expect(mergedNote.status).toBe('merged');
-        expect(mergedNote.mergedIntoDepositIndex).toBe(1);
+        // MergedNote keeps original amount for record in contributedAmount
+        expect(mergedNote.contributedAmount).toBe(toEther(1).toString());
+        // MergedNote tracks which note it merged into via serialNumber
+        expect(mergedNote.mergedIntoSerialNumber).toBeDefined();
+        expect(mergedNode.isTerminal).toBe(true);
       });
 
       it('should update nullifier map for Withdraw2', () => {
@@ -338,9 +361,10 @@ describe('chain-extender', () => {
           TEST_POOL_ADDRESS,
         );
 
-        // Each tree should have exactly 1 child (not more)
-        expect(result.updatedTrees.get(chainKey0)!.root.children).toHaveLength(1);
-        expect(result.updatedTrees.get(chainKey1)!.root.children).toHaveLength(1);
+        // Secondary tree has 1 child (merged note only)
+        // Primary tree has 2 children (ChangeNote + WithdrawalNote)
+        expect(result.updatedTrees.get(chainKey0)!.root.children).toHaveLength(1); // Secondary = merged
+        expect(result.updatedTrees.get(chainKey1)!.root.children).toHaveLength(2); // Primary = change + withdrawal
       });
 
       it('should create WithdrawalIntentNote for cross-chain Withdraw2', () => {
@@ -362,7 +386,11 @@ describe('chain-extender', () => {
 
         const activity = createMockWithdraw2Activity(0, 0, 1, 0, toEther(0.5), {
           type: 'CROSSCHAIN_WITHDRAW2_PENDING',
-          intentStatus: 'pending',
+          destinationChainId: BigInt(84532),
+          refundCommitment: '0xrefund-withdraw2',
+          orderId: 'order-withdraw2',
+          fillDeadline: BigInt(Math.floor(Date.now() / 1000) + 3600),
+          expires: BigInt(Math.floor(Date.now() / 1000) + 86400),
         });
         const activityIndex = buildActivityIndex([activity]);
 
@@ -410,11 +438,17 @@ describe('chain-extender', () => {
 
         const updatedTree = result.updatedTrees.get(chainKey)!;
 
-        // Note should be marked as ragequit
-        expect(updatedTree.root.note.status).toBe('ragequit');
+        // Parent note should be marked as spent
+        expect(updatedTree.root.note.status).toBe('spent');
 
-        // Ragequit activity data should be stored
-        expect(updatedTree.root.note.activityData.ragequitTxHash).toBe(activity.originTransactionHash);
+        // Should have a RagequitNote child
+        expect(updatedTree.root.children).toHaveLength(1);
+        const ragequitNode = updatedTree.root.children[0];
+        expect(ragequitNode.note.noteType).toBe('ragequit');
+        expect(ragequitNode.isTerminal).toBe(true);
+
+        // RagequitNote should have originTransactionHash from the activity
+        expect(ragequitNode.note.originTransactionHash).toBe(activity.originTransactionHash);
 
         // Nullifier should be removed
         expect(result.updatedNullifierMap.has(nullifier)).toBe(false);
@@ -471,12 +505,12 @@ describe('chain-extender', () => {
           TEST_POOL_ADDRESS,
         );
 
-        // Both trees extended independently
-        expect(result.updatedTrees.get(chainKey0)!.root.children).toHaveLength(1);
-        expect(result.updatedTrees.get(chainKey1)!.root.children).toHaveLength(1);
+        // Both trees extended independently with 2 children each (ChangeNote + WithdrawalNote)
+        expect(result.updatedTrees.get(chainKey0)!.root.children).toHaveLength(2);
+        expect(result.updatedTrees.get(chainKey1)!.root.children).toHaveLength(2);
 
-        const change0 = result.updatedTrees.get(chainKey0)!.root.children[0].note as ChangeNote;
-        const change1 = result.updatedTrees.get(chainKey1)!.root.children[0].note as ChangeNote;
+        const change0 = result.updatedTrees.get(chainKey0)!.root.children.find((c) => c.note.noteType === 'change')!.note as ChangeNote;
+        const change1 = result.updatedTrees.get(chainKey1)!.root.children.find((c) => c.note.noteType === 'change')!.note as ChangeNote;
 
         expect(change0.amount).toBe(toEther(0.7).toString());
         expect(change1.amount).toBe(toEther(1.5).toString());
@@ -596,16 +630,16 @@ describe('chain-extender', () => {
         const updatedTree = result.updatedTrees.get(chainKey)!;
 
         // Should still correctly process in sequential order based on nullifier matching
-        // deposit → change1 → change2
+        // deposit → [change1, withdrawal1] → [change2, withdrawal2]
         expect(updatedTree.root.note.status).toBe('spent');
-        expect(updatedTree.root.children).toHaveLength(1);
+        expect(updatedTree.root.children).toHaveLength(2); // ChangeNote + WithdrawalNote
 
-        const change1 = updatedTree.root.children[0];
+        const change1 = updatedTree.root.children.find((c) => c.note.noteType === 'change')!;
         expect(change1.note.changeIndex).toBe(1);
         expect((change1.note as ChangeNote).amount).toBe(toEther(0.7).toString());
 
-        expect(change1.children).toHaveLength(1);
-        const change2 = change1.children[0];
+        expect(change1.children).toHaveLength(2); // ChangeNote + WithdrawalNote
+        const change2 = change1.children.find((c) => c.note.noteType === 'change')!;
         expect(change2.note.changeIndex).toBe(2);
         expect((change2.note as ChangeNote).amount).toBe(toEther(0.5).toString());
       });

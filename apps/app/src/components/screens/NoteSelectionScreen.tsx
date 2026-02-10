@@ -13,7 +13,6 @@ import { ScreenLayout } from "@/components/layout/ScreenLayout";
 import { AmountDisplay } from "@/components/shared/AmountDisplay";
 import { Button } from "@workspace/ui/components/button";
 import { NoteAvatarStack } from "@/components/shared/NoteAvatarGroup";
-import { getNoteLabel } from "@/utils/chainIcons";
 
 interface NoteSelectionScreenProps {
   availableNotes: Note[];
@@ -206,12 +205,12 @@ function NoteSelectionScreenImpl({
                           <span
                             className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ${dotColor}`}
                           />
-                          <span className="truncate text-sm font-medium text-white">
-                            {getNoteLabel(note.originChainId, note.depositIndex)}
+                          <span className="truncate text-sm font-medium font-mono text-white">
+                            {note.serialNumber}
                           </span>
                         </div>
                         <div className="mt-0.5 pl-[18px] text-xs text-neutral-400">
-                          {formatTimestamp(note.timestamp)}
+                          {formatTimestamp(note.originTimestamp)}
                         </div>
                       </div>
                     </div>

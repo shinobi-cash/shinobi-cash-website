@@ -31,6 +31,7 @@ import {
 } from "@/utils/withdrawalContract";
 import { fetchASPData, fetchStateTreeLeaves } from "@/utils/indexer";
 import { withdrawalProofGenerator } from "@/services/ProofGeneratorService";
+import type { SpendableNote } from "@shinobi-cash/core/discovery";
 import {
   deriveWithdrawalInputs,
   deriveCrosschainWithdrawalInputs,
@@ -175,19 +176,21 @@ export class WithdrawalEngine {
             BigInt(feeQuote.relayFeeBPS)
           );
 
+    // Cast note to SpendableNote - validation happens in validateWithdrawalRequest
+    const note = request.note as SpendableNote;
     const derivation =
       feeQuote.kind === "cross-chain"
         ? deriveCrosschainWithdrawalInputs(
-            request.note,
+            note,
             request.accountKey,
-            request.note.poolAddress,
+            note.poolAddress,
             poolScope,
             withdrawalData
           )
         : deriveWithdrawalInputs(
-            request.note,
+            note,
             request.accountKey,
-            request.note.poolAddress,
+            note.poolAddress,
             poolScope,
             withdrawalData
           );
@@ -206,10 +209,8 @@ export class WithdrawalEngine {
   }
 
   private async buildWitness(context: WithdrawalPipelineContext): Promise<WithdrawalWitness> {
-    const { note } = context.request;
-    if (note.label === undefined) {
-      throw new Error(`Cannot build witness for note without label (depositIndex: ${note.depositIndex})`);
-    }
+    // Cast to SpendableNote - validated in earlier steps
+    const note = context.request.note as SpendableNote;
 
     const poolAddress = note.poolAddress.toLowerCase();
 
@@ -321,23 +322,27 @@ export class WithdrawalEngine {
             BigInt(feeQuote.relayFeeBPS)
           );
 
+    // Cast notes to SpendableNote - validated in validateWithdraw2Request
+    const primaryNote = request.primaryNote as SpendableNote;
+    const secondaryNote = request.secondaryNote as SpendableNote;
+
     const labelSelector = request.labelSelector ?? 0;
     const derivation =
       feeQuote.kind === "cross-chain"
         ? deriveCrosschainWithdraw2Inputs(
-            request.primaryNote,
-            request.secondaryNote,
+            primaryNote,
+            secondaryNote,
             request.accountKey,
-            request.primaryNote.poolAddress,
+            primaryNote.poolAddress,
             poolScope,
             withdrawalData,
             labelSelector
           )
         : deriveWithdraw2Inputs(
-            request.primaryNote,
-            request.secondaryNote,
+            primaryNote,
+            secondaryNote,
             request.accountKey,
-            request.primaryNote.poolAddress,
+            primaryNote.poolAddress,
             poolScope,
             withdrawalData,
             labelSelector
@@ -357,13 +362,9 @@ export class WithdrawalEngine {
   }
 
   private async buildWithdraw2Witness(context: Withdraw2PipelineContext): Promise<Withdraw2Witness> {
-    const { primaryNote, secondaryNote } = context.request;
-    if (primaryNote.label === undefined) {
-      throw new Error(`Cannot build witness for primary note without label (depositIndex: ${primaryNote.depositIndex})`);
-    }
-    if (secondaryNote.label === undefined) {
-      throw new Error(`Cannot build witness for secondary note without label (depositIndex: ${secondaryNote.depositIndex})`);
-    }
+    // Cast notes to SpendableNote - validated in earlier steps
+    const primaryNote = context.request.primaryNote as SpendableNote;
+    const secondaryNote = context.request.secondaryNote as SpendableNote;
 
     const poolAddress = primaryNote.poolAddress.toLowerCase();
 
@@ -388,8 +389,8 @@ export class WithdrawalEngine {
       secondaryLabel: BigInt(secondaryNote.label),
     };
 
-    console.log("[Withdraw2] Primary note label:", primaryNote.label);
-    console.log("[Withdraw2] Secondary note label:", secondaryNote.label);
+    console.log("[Withdraw2] Primary note label:", circuitInputs.primaryLabel.toString());
+    console.log("[Withdraw2] Secondary note label:", circuitInputs.secondaryLabel.toString());
     console.log("[Withdraw2] Primary label in ASP:", aspTreeLeaves.includes(circuitInputs.primaryLabel));
     console.log("[Withdraw2] Secondary label in ASP:", aspTreeLeaves.includes(circuitInputs.secondaryLabel));
 

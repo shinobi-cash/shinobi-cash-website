@@ -29,19 +29,6 @@ export const CHAIN_NAME_MAP: Record<number, string> = {
   11155420: "OP Sepolia",
 };
 
-export const CHAIN_SHORT_NAME_MAP: Record<number, string> = {
-  // Mainnets
-  1: "ETH",
-  8453: "BASE",
-  10: "OP",
-  42161: "ARB",
-  // Testnets
-  421614: "ARB",
-  84532: "BASE",
-  11155111: "SEP",
-  11155420: "OP",
-};
-
 /**
  * Get chain icon path by chain ID
  */
@@ -54,23 +41,6 @@ export function getChainIcon(chainId: number): string {
  */
 export function getChainName(chainId: number): string {
   return CHAIN_NAME_MAP[chainId] || "Unknown";
-}
-
-/**
- * Get chain short name by chain ID (for compact labels)
- */
-export function getChainShortName(chainId: number | string): string {
-  const id = Number(chainId);
-  return CHAIN_SHORT_NAME_MAP[id] || `C${id}`;
-}
-
-/**
- * Generate a note label with chain prefix
- * Format: "ARB #1" or "BASE #2"
- */
-export function getNoteLabel(originChainId: number | string, depositIndex: number): string {
-  const chainShort = getChainShortName(originChainId);
-  return `${chainShort} #${depositIndex + 1}`;
 }
 
 const ASSET_ICON_MAP: Record<string, string> = {

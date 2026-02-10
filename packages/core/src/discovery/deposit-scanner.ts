@@ -4,10 +4,16 @@
  * Scans for user's deposits by matching precommitments
  */
 
+import {
+  isDepositActivity as isDepositActivityType,
+  isCrossChainDepositActivity,
+  isCrossChainDepositPendingActivity,
+  type Activity,
+} from '@shinobi-cash/data';
 import type { NoteTree, NullifierInfo } from './types.js';
 import type { ActivityIndex } from './activity-indexer.js';
 import { deriveDepositPrecommitment, deriveAndHashNullifier } from './nullifier-utils.js';
-import { createDepositNote, createDepositIntentNote } from './note-factory.js';
+import { createDepositNote, createCrosschainDepositNote, createDepositIntentNote } from './note-factory.js';
 import { createNoteTree } from './tree-utils.js';
 
 // ============================================================================
@@ -19,6 +25,8 @@ export interface ScanResult {
   newTrees: NoteTree[];
   /** Nullifier mappings for the new deposits */
   newNullifierEntries: Map<string, NullifierInfo>;
+  /** Raw activities that matched user's deposits */
+  matchedActivities: Activity[];
   /** Updated next deposit index to scan */
   nextDepositIndex: number;
   /** Number of filled deposits found (commitment in pool, spendable) */
@@ -32,29 +40,24 @@ export interface ScanResult {
 // ============================================================================
 
 /**
- * Scan for user's deposits in the current page of activities
+ * Scan for user's deposits in the activity index
  *
  * Algorithm:
- * 1. Pre-compute precommitments for [startIndex, startIndex + maxScan)
- * 2. Match against deposit activities in the page
- * 3. Sequential scanning - stop at first gap (ensures deterministic discovery)
+ * 1. Starting from startIndex, derive precommitment for each index
+ * 2. Look up in activity index
+ * 3. Stop at first gap (sequential property)
  *
  * IMPORTANT PROTOCOL ASSUMPTION:
- * This scanner assumes deposit indices are strictly sequential per origin chain.
+ * Deposit indices are strictly sequential per origin chain.
  * Scanning stops at the first gap, meaning:
  * - If indices 0, 1, 3 exist (gap at 2), only 0 and 1 are discovered
  * - Index 3+ will be discovered in subsequent syncs after index 2 appears
- *
- * This assumption requires:
- * - Activity pages are eventually complete (no permanent gaps)
- * - Reorgs/delayed indexing eventually resolve
  *
  * @param activityIndex - Pre-built activity lookup maps
  * @param accountKey - User's account key for derivation
  * @param poolAddress - Pool contract address
  * @param chainId - Origin chain ID for per-chain scanning
  * @param startIndex - First deposit index to scan
- * @param maxScan - Maximum indices to scan
  * @param currentOffset - Current page offset (for tracking discovery position)
  */
 export function scanForDeposits(
@@ -63,27 +66,19 @@ export function scanForDeposits(
   poolAddress: string,
   chainId: number | bigint | string,
   startIndex: number,
-  maxScan: number,
   currentOffset?: number,
 ): ScanResult {
   const result: ScanResult = {
     newTrees: [],
     newNullifierEntries: new Map(),
+    matchedActivities: [],
     nextDepositIndex: startIndex,
     filledDepositsFound: 0,
     pendingDepositsFound: 0,
   };
 
-  // Pre-compute precommitments for potential deposit indices
-  const precommitmentToIndex = new Map<string, number>();
-  for (let i = 0; i < maxScan; i++) {
-    const idx = startIndex + i;
-    const precommitment = deriveDepositPrecommitment(accountKey, poolAddress, chainId, idx);
-    precommitmentToIndex.set(precommitment, idx);
-  }
-
   // Sequential scanning - stop at first gap
-  for (let idx = startIndex; idx < startIndex + maxScan; idx++) {
+  for (let idx = startIndex; ; idx++) {
     // Derive precommitment for this index
     const precommitment = deriveDepositPrecommitment(accountKey, poolAddress, chainId, idx);
 
@@ -94,23 +89,31 @@ export function scanForDeposits(
       break;
     }
 
-    // Check if this is a pending cross-chain deposit (not yet filled)
-    const isPendingCrossChainDeposit =
-      activity.type === 'CROSSCHAIN_DEPOSIT_PENDING' && activity.intentStatus !== 'filled';
-
-    // Create appropriate note type as a tree
+    // Create appropriate note type based on activity type
     let tree: NoteTree;
-    if (isPendingCrossChainDeposit) {
+    let isPending = false;
+
+    if (isCrossChainDepositPendingActivity(activity)) {
       // Pending cross-chain deposit: create DepositIntentNote
       // Don't add to nullifier map yet (commitment not in pool)
       const depositIntent = createDepositIntentNote(activity, idx, poolAddress, currentOffset);
       tree = createNoteTree(depositIntent);
-    } else {
-      // Filled deposit (same-chain or cross-chain): create DepositNote
+      isPending = true;
+    } else if (isCrossChainDepositActivity(activity)) {
+      // Filled cross-chain deposit: create CrosschainDepositNote
+      const crosschainDeposit = createCrosschainDepositNote(activity, idx, poolAddress, currentOffset);
+      tree = createNoteTree(crosschainDeposit);
+    } else if (isDepositActivityType(activity)) {
+      // Same-chain deposit: create DepositNote
       const depositNote = createDepositNote(activity, idx, poolAddress, currentOffset);
       tree = createNoteTree(depositNote);
+    } else {
+      // Unknown deposit type - skip
+      continue;
+    }
 
-      // Add nullifier mapping for filled deposits (commitment is in pool)
+    // Add nullifier mapping for filled deposits (commitment is in pool)
+    if (!isPending) {
       const nullifierHash = deriveAndHashNullifier(accountKey, poolAddress, chainId, idx, 0);
       result.newNullifierEntries.set(nullifierHash, {
         originChainId: chainId.toString(),
@@ -121,8 +124,9 @@ export function scanForDeposits(
 
     // Add to results
     result.newTrees.push(tree);
+    result.matchedActivities.push(activity);
     result.nextDepositIndex = idx + 1;
-    if (isPendingCrossChainDeposit) {
+    if (isPending) {
       result.pendingDepositsFound++;
     } else {
       result.filledDepositsFound++;
