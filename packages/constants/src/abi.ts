@@ -18,7 +18,7 @@ export const EntrypointRelayAbi = [
       {
         name: '_withdrawal',
         type: 'tuple',
-        internalType: 'struct IShinobiCashEntrypoint.Withdrawal',
+        internalType: 'struct IPrivacyPool.Withdrawal',
         components: [
           { name: 'processooor', type: 'address', internalType: 'address' },
           { name: 'data', type: 'bytes', internalType: 'bytes' },
@@ -27,7 +27,7 @@ export const EntrypointRelayAbi = [
       {
         name: '_proof',
         type: 'tuple',
-        internalType: 'struct IShinobiCashEntrypoint.Groth16Proof',
+        internalType: 'struct ProofLib.WithdrawProof',
         components: [
           { name: 'pA', type: 'uint256[2]', internalType: 'uint256[2]' },
           { name: 'pB', type: 'uint256[2][2]', internalType: 'uint256[2][2]' },
@@ -53,7 +53,7 @@ export const EntrypointCrosschainWithdrawalAbi = [
       {
         name: '_withdrawal',
         type: 'tuple',
-        internalType: 'struct IShinobiCashEntrypoint.Withdrawal',
+        internalType: 'struct IPrivacyPool.Withdrawal',
         components: [
           { name: 'processooor', type: 'address', internalType: 'address' },
           { name: 'data', type: 'bytes', internalType: 'bytes' },
@@ -62,7 +62,7 @@ export const EntrypointCrosschainWithdrawalAbi = [
       {
         name: '_proof',
         type: 'tuple',
-        internalType: 'struct IShinobiCashEntrypoint.Groth16ProofCrosschain',
+        internalType: 'struct CrossChainProofLib.CrossChainWithdrawProof',
         components: [
           { name: 'pA', type: 'uint256[2]', internalType: 'uint256[2]' },
           { name: 'pB', type: 'uint256[2][2]', internalType: 'uint256[2][2]' },
@@ -117,7 +117,7 @@ export const EntrypointWithdraw2RelayAbi = [
       {
         name: '_proof',
         type: 'tuple',
-        internalType: 'struct Withdraw2SameChainProofLib.Withdraw2SameChainProof',
+        internalType: 'struct Withdraw2ProofLib.Withdraw2Proof',
         components: [
           { name: 'pA', type: 'uint256[2]', internalType: 'uint256[2]' },
           { name: 'pB', type: 'uint256[2][2]', internalType: 'uint256[2][2]' },
@@ -139,7 +139,7 @@ export const EntrypointWithdraw2RelayAbi = [
 export const EntrypointCrosschainWithdraw2Abi = [
   {
     type: 'function',
-    name: 'crosschainWithdrawal2',
+    name: 'crossChainWithdrawal2',
     inputs: [
       {
         name: '_withdrawal',
@@ -153,7 +153,7 @@ export const EntrypointCrosschainWithdraw2Abi = [
       {
         name: '_proof',
         type: 'tuple',
-        internalType: 'struct Withdraw2ProofLib.Withdraw2Proof',
+        internalType: 'struct CrossChainWithdraw2ProofLib.CrossChainWithdraw2Proof',
         components: [
           { name: 'pA', type: 'uint256[2]', internalType: 'uint256[2]' },
           { name: 'pB', type: 'uint256[2][2]', internalType: 'uint256[2][2]' },

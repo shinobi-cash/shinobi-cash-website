@@ -15,14 +15,12 @@ import {
   EntrypointCrosschainWithdraw2Abi,
   PoolRagequitAbi,
   SHINOBI_CASH_ENTRYPOINT,
-  SHINOBI_CASH_ETH_POOL,
 } from '@shinobi-cash/constants';
 import type {
   WithdrawalData,
   CrossChainWithdrawalData,
   ContractProof,
   ContractCrossChainProof,
-  ContractWithdraw2Proof,
   ContractWithdraw2SameChainProof,
   ContractCrosschainWithdraw2Proof,
   ContractRagequitProof,
@@ -286,14 +284,6 @@ export function formatWithdraw2CrossChainProofForContract(
   };
 }
 
-/** @deprecated Use formatWithdraw2SameChainProofForContract or formatWithdraw2CrossChainProofForContract */
-export function formatWithdraw2ProofForContract(
-  proof: SnarkJsProof,
-  publicSignals: string[],
-): ContractWithdraw2Proof {
-  return formatWithdraw2CrossChainProofForContract(proof, publicSignals);
-}
-
 export function encodeWithdraw2RelayCallData(
   withdrawalData: WithdrawalData,
   proof: ContractWithdraw2SameChainProof,
@@ -317,7 +307,7 @@ export function encodeCrossChainWithdraw2CallData(
 ): `0x${string}` {
   return encodeFunctionData({
     abi: EntrypointCrosschainWithdraw2Abi,
-    functionName: 'crosschainWithdrawal2',
+    functionName: 'crossChainWithdrawal2',
     args: [
       { processooor: withdrawalData.processooor, data: withdrawalData.data },
       { pA: proof.pA, pB: proof.pB, pC: proof.pC, pubSignals: proof.pubSignals },
