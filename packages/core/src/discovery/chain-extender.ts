@@ -24,6 +24,8 @@ import {
   isWithdraw2Activity,
   isCrossChainWithdrawalPendingActivity,
   isCrossChainWithdraw2PendingActivity,
+  isCrossChainWithdrawalActivity,
+  isCrossChainWithdraw2Activity,
   type RagequitActivity,
 } from '@shinobi-cash/data';
 import {
@@ -32,9 +34,12 @@ import {
   createWithdraw2ChangeNote,
   createMergedNote,
   createWithdrawalIntentNote,
+  createWithdrawalIntentNoteFromFilled,
+  createCrosschainWithdrawalNote,
   createRagequitNote,
   type ChangeActivity,
   type Withdraw2MergeActivity,
+  type FilledCrosschainWithdrawalActivity,
 } from './note-factory.js';
 import {
   planTreeExtensions,
@@ -194,6 +199,22 @@ function apply1x1Withdrawal(
     // The reconciler will add CrosschainWithdrawalNote or RefundNote as child when filled/refunded
     const withdrawalIntent = createWithdrawalIntentNote(parentNote, plan.activity, plan.parentChangeIndex);
     addChild(nodeToExtend, withdrawalIntent);
+  } else if (isCrossChainWithdrawalActivity(plan.activity)) {
+    // Cross-chain filled: indexer converted PENDING→FILLED, create intent + resolution together
+    const withdrawalIntent = createWithdrawalIntentNoteFromFilled(
+      parentNote,
+      plan.activity as FilledCrosschainWithdrawalActivity,
+      plan.parentChangeIndex,
+    );
+    const intentNode = addChild(nodeToExtend, withdrawalIntent);
+    // Add CrosschainWithdrawalNote as child of intent (already resolved)
+    const withdrawalRecord = createCrosschainWithdrawalNote(
+      withdrawalIntent,
+      plan.activity as FilledCrosschainWithdrawalActivity,
+      plan.parentChangeIndex,
+    );
+    const recordNode = addChild(intentNode, withdrawalRecord);
+    markTerminal(recordNode);
   } else if (isWithdrawalActivity(plan.activity)) {
     // Same-chain: create WithdrawalNote (terminal record)
     const withdrawalRecord = createWithdrawalNote(parentNote, plan.activity, plan.parentChangeIndex);
@@ -283,6 +304,26 @@ function applyWithdraw2(
       plan.primaryParentChangeIndex,
     );
     addChild(primaryNode, withdrawalIntent);
+  } else if (isCrossChainWithdraw2Activity(plan.activity)) {
+    // Cross-chain filled: indexer converted PENDING→FILLED, create intent + resolution together
+    const withdrawalIntent = createWithdrawalIntentNoteFromFilled(
+      primaryNote,
+      plan.activity as FilledCrosschainWithdrawalActivity,
+      plan.primaryParentChangeIndex,
+    );
+    const intentNode = addChild(primaryNode, withdrawalIntent);
+    // Add CrosschainWithdrawalNote as child of intent with mergedFrom
+    const mergedFrom = {
+      [secondaryNote.serialNumber]: secondaryNote.amount,
+    };
+    const withdrawalRecord = createCrosschainWithdrawalNote(
+      withdrawalIntent,
+      plan.activity as FilledCrosschainWithdrawalActivity,
+      plan.primaryParentChangeIndex,
+      mergedFrom,
+    );
+    const recordNode = addChild(intentNode, withdrawalRecord);
+    markTerminal(recordNode);
   } else if (isWithdraw2Activity(plan.activity)) {
     // Same-chain: create WithdrawalNote (terminal record)
     const withdrawalRecord = createWithdrawalNote(primaryNote, plan.activity, plan.primaryParentChangeIndex);

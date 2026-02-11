@@ -175,6 +175,7 @@ export function createCrosschainWithdrawalNote(
   parentNote: DepositNote | CrosschainDepositNote | ChangeNote | WithdrawalRefundedNote | WithdrawalIntentNote,
   activity: FilledCrosschainWithdrawalActivity,
   parentChangeIndex: number,
+  mergedFrom?: Record<string, string>,
 ): CrosschainWithdrawalNote {
   const originChainId = extractChainId(parentNote.serialNumber);
 
@@ -195,7 +196,7 @@ export function createCrosschainWithdrawalNote(
     destinationBlockNumber: activity.blockNumber.toString(),
     destinationTimestamp: activity.timestamp.toString(),
     recipient: activity.recipient,
-    mergedFrom: {},
+    mergedFrom: mergedFrom ?? {},
     activityData: buildActivityMetadata(activity),
   };
 }
@@ -348,6 +349,40 @@ export function createWithdrawalIntentNote(
     fillDeadline: activity.fillDeadline.toString(),
     expires: activity.expires.toString(),
     refundCommitment: activity.refundCommitment,
+    activityData: buildActivityMetadata(activity),
+  };
+}
+
+/**
+ * Create a WithdrawalIntentNote from a FILLED cross-chain activity.
+ * Used when user syncs after the intent was already filled - indexer converts PENDING→FILLED in place.
+ * The filled activity preserves all original PENDING fields (fillDeadline, expires, refundCommitment).
+ */
+export function createWithdrawalIntentNoteFromFilled(
+  parentNote: DepositNote | CrosschainDepositNote | ChangeNote | WithdrawalRefundedNote,
+  activity: FilledCrosschainWithdrawalActivity,
+  parentChangeIndex: number,
+): WithdrawalIntentNote {
+  const originChainId = extractChainId(parentNote.serialNumber);
+  const destinationChainId = activity.destinationChainId.toString();
+
+  return {
+    noteType: 'withdrawalIntent',
+    serialNumber: generateSerialNumber(originChainId, parentNote.depositIndex, parentChangeIndex, true),
+    poolAddress: parentNote.poolAddress,
+    depositIndex: parentNote.depositIndex,
+    changeIndex: parentChangeIndex,
+    amount: activity.amount.toString(),
+    originBlockNumber: activity.blockNumber.toString(),
+    originTimestamp: activity.timestamp.toString(),
+    originChainId: activity.originChainId.toString(),
+    originTransactionHash: activity.originTransactionHash,
+    destinationChainId,
+    orderId: activity.orderId,
+    // Filled activity preserves these fields from the original PENDING
+    fillDeadline: activity.fillDeadline?.toString() ?? '0',
+    expires: activity.expires?.toString() ?? '0',
+    refundCommitment: activity.refundCommitment ?? '',
     activityData: buildActivityMetadata(activity),
   };
 }

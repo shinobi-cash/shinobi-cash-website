@@ -171,8 +171,11 @@ export function planTreeExtensions(
       break;
     }
 
-    // Check for 1:1 withdrawal
-    const withdrawal = activityIndex.withdrawalsByNullifier.get(nullifierHash);
+    // Check for 1:1 withdrawal (same-chain, pending cross-chain, or filled cross-chain)
+    const withdrawal =
+      activityIndex.sameChainWithdrawalsByNullifier.get(nullifierHash) ??
+      activityIndex.pendingWithdrawalsByNullifier.get(nullifierHash) ??
+      activityIndex.filledWithdrawalsByNullifier.get(nullifierHash);
     if (withdrawal) {
       const plan = plan1x1Withdrawal(
         chainKey,
@@ -206,8 +209,11 @@ export function planTreeExtensions(
       continue;
     }
 
-    // Check for 2:1 Withdraw2
-    const withdraw2 = activityIndex.withdraw2ByNullifier.get(nullifierHash);
+    // Check for 2:1 Withdraw2 (same-chain, pending cross-chain, or filled cross-chain)
+    const withdraw2 =
+      activityIndex.sameChainWithdraw2ByNullifier.get(nullifierHash) ??
+      activityIndex.pendingWithdraw2ByNullifier.get(nullifierHash) ??
+      activityIndex.filledWithdraw2ByNullifier.get(nullifierHash);
     if (withdraw2) {
       const plan = planWithdraw2(
         tree,

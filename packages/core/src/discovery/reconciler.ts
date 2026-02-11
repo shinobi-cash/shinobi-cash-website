@@ -16,6 +16,7 @@ import type {
   DepositNote,
   DepositIntentNote,
   WithdrawalIntentNote,
+  ChangeNote,
   ChainKey,
   Note,
 } from './types.js';
@@ -261,10 +262,23 @@ function reconcileWithdrawalIntent(
     // Solver filled - create CrosschainWithdrawalNote
     // Use type guards to verify activity type
     if (isCrossChainWithdrawalActivity(activity) || isCrossChainWithdraw2Activity(activity)) {
+      // For cross-chain withdraw2, extract mergedFrom from sibling ChangeNote
+      let mergedFrom: Record<string, string> | undefined;
+      if (isCrossChainWithdraw2Activity(activity) && node.parent) {
+        const siblingChangeNote = node.parent.children.find(
+          (sibling): sibling is NoteNode & { note: ChangeNote } =>
+            sibling.note.noteType === 'change' && Object.keys(sibling.note.mergedFrom).length > 0,
+        );
+        if (siblingChangeNote) {
+          mergedFrom = siblingChangeNote.note.mergedFrom;
+        }
+      }
+
       const withdrawalRecord = createCrosschainWithdrawalNote(
         withdrawalIntent,
         activity,
         withdrawalIntent.changeIndex,
+        mergedFrom,
       );
       childrenToAdd.push({ parent: node, child: withdrawalRecord });
       return true;

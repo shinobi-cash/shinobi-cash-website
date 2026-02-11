@@ -226,16 +226,22 @@ function buildCrosschainWithdrawalEntry(
   withdrawal: CrosschainWithdrawalNote,
   parentIntent: WithdrawalIntentNote,
 ): TimelineEntry {
+  // Check for merge info (cross-chain withdraw2)
+  const mergedFromSerialNumbers = Object.keys(withdrawal.mergedFrom);
+  const hasMergedFrom = mergedFromSerialNumbers.length > 0;
+  const dotColor = hasMergedFrom ? "bg-violet-400" : "bg-rose-400";
+
   return {
     key: `crosschain-withdraw-${withdrawal.depositIndex}-${withdrawal.changeIndex}`,
     label: "Crosschain Withdrew",
     amount: BigInt(withdrawal.withdrawnAmount),
     prefix: "-",
-    dotColor: "bg-rose-400",
+    dotColor,
     txHash: withdrawal.destinationTransactionHash,
     txUrl: getTxExplorerUrl(withdrawal.destinationChainId, withdrawal.destinationTransactionHash),
     timestamp: withdrawal.destinationTimestamp,
     note: withdrawal,
+    mergedFromSerialNumber: mergedFromSerialNumbers[0],
     crossChainSteps: [
       {
         label: "Escrowed",
@@ -477,6 +483,11 @@ export function buildTimelineEntries(noteTree: NoteTree): TimelineEntry[] {
     }
   });
 
-  return entries;
+  // Sort entries by timestamp (oldest first for chronological history)
+  return entries.sort((a, b) => {
+    const timestampA = typeof a.timestamp === 'bigint' ? a.timestamp : BigInt(a.timestamp || '0');
+    const timestampB = typeof b.timestamp === 'bigint' ? b.timestamp : BigInt(b.timestamp || '0');
+    return timestampA < timestampB ? -1 : timestampA > timestampB ? 1 : 0;
+  });
 }
 

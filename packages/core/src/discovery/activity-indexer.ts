@@ -10,17 +10,25 @@ import type { Activity } from '@shinobi-cash/data';
 // ============================================================================
 
 export interface ActivityIndex {
-  /** 1:1 withdrawals indexed by spentNullifier */
-  withdrawalsByNullifier: Map<string, Activity>;
-  /** 2:1 Withdraw2 indexed by BOTH nullifiers (each maps to same activity) */
-  withdraw2ByNullifier: Map<string, Activity>;
+  /** Same-chain 1:1 withdrawals indexed by spentNullifier */
+  sameChainWithdrawalsByNullifier: Map<string, Activity>;
+  /** Pending cross-chain 1:1 withdrawals indexed by spentNullifier */
+  pendingWithdrawalsByNullifier: Map<string, Activity>;
+  /** Filled cross-chain 1:1 withdrawals indexed by spentNullifier (when synced after fill) */
+  filledWithdrawalsByNullifier: Map<string, Activity>;
+  /** Same-chain 2:1 Withdraw2 indexed by BOTH nullifiers */
+  sameChainWithdraw2ByNullifier: Map<string, Activity>;
+  /** Pending cross-chain 2:1 Withdraw2 indexed by BOTH nullifiers */
+  pendingWithdraw2ByNullifier: Map<string, Activity>;
+  /** Filled cross-chain 2:1 Withdraw2 indexed by BOTH nullifiers (when synced after fill) */
+  filledWithdraw2ByNullifier: Map<string, Activity>;
   /** Deposits indexed by precommitmentHash */
   depositsByPrecommitment: Map<string, Activity>;
   /** Ragequit indexed by commitment hash */
   ragequitByCommitment: Map<string, Activity>;
-  /** Cross-chain withdrawals indexed by orderId (for WithdrawalIntentNote resolution) */
+  /** Cross-chain withdrawals indexed by orderId (for reconciler - prefers filled) */
   withdrawalsByOrderId: Map<string, Activity>;
-  /** Cross-chain deposits indexed by orderId (for DepositIntentNote resolution) */
+  /** Cross-chain deposits indexed by orderId (for reconciler - prefers filled) */
   depositsByOrderId: Map<string, Activity>;
 }
 
@@ -56,6 +64,10 @@ export function isRagequitActivity(activity: Activity): boolean {
   return activity.type === 'RAGEQUIT';
 }
 
+function isPendingActivity(activity: Activity): boolean {
+  return activity.type.endsWith('_PENDING');
+}
+
 // ============================================================================
 // Index Builder
 // ============================================================================
@@ -66,8 +78,12 @@ export function isRagequitActivity(activity: Activity): boolean {
  */
 export function buildActivityIndex(activities: Activity[]): ActivityIndex {
   const index: ActivityIndex = {
-    withdrawalsByNullifier: new Map(),
-    withdraw2ByNullifier: new Map(),
+    sameChainWithdrawalsByNullifier: new Map(),
+    pendingWithdrawalsByNullifier: new Map(),
+    filledWithdrawalsByNullifier: new Map(),
+    sameChainWithdraw2ByNullifier: new Map(),
+    pendingWithdraw2ByNullifier: new Map(),
+    filledWithdraw2ByNullifier: new Map(),
     depositsByPrecommitment: new Map(),
     ragequitByCommitment: new Map(),
     withdrawalsByOrderId: new Map(),
@@ -80,21 +96,45 @@ export function buildActivityIndex(activities: Activity[]): ActivityIndex {
       index.depositsByPrecommitment.set(activity.precommitmentHash, activity);
     }
 
-    // Index cross-chain deposits by orderId (for DepositIntentNote resolution)
+    // Index cross-chain deposits by orderId (for reconciler)
+    // Filled/refunded overwrites pending (reconciler needs final status)
     if (isDepositActivity(activity) && activity.orderId) {
-      index.depositsByOrderId.set(activity.orderId, activity);
+      const existing = index.depositsByOrderId.get(activity.orderId);
+      if (!existing || isPendingActivity(existing)) {
+        index.depositsByOrderId.set(activity.orderId, activity);
+      }
     }
 
-    // Index 1:1 withdrawals by nullifier
+    // Index 1:1 withdrawals by nullifier into separate maps
     if (is1x1WithdrawalActivity(activity) && activity.spentNullifier) {
-      index.withdrawalsByNullifier.set(activity.spentNullifier, activity);
+      if (activity.type === 'WITHDRAWAL') {
+        index.sameChainWithdrawalsByNullifier.set(activity.spentNullifier, activity);
+      } else if (activity.type === 'CROSSCHAIN_WITHDRAWAL_PENDING') {
+        index.pendingWithdrawalsByNullifier.set(activity.spentNullifier, activity);
+      } else if (activity.type === 'CROSSCHAIN_WITHDRAWAL') {
+        // Filled cross-chain: indexer converted PENDING→FILLED, need to create intent+resolution
+        index.filledWithdrawalsByNullifier.set(activity.spentNullifier, activity);
+      }
     }
 
-    // Index 2:1 Withdraw2 by BOTH nullifiers
+    // Index 2:1 Withdraw2 by BOTH nullifiers into separate maps
     if (isWithdraw2Activity(activity) && activity.spentNullifier) {
-      index.withdraw2ByNullifier.set(activity.spentNullifier, activity);
-      if (activity.spentNullifier1) {
-        index.withdraw2ByNullifier.set(activity.spentNullifier1, activity);
+      if (activity.type === 'WITHDRAW2') {
+        index.sameChainWithdraw2ByNullifier.set(activity.spentNullifier, activity);
+        if (activity.spentNullifier1) {
+          index.sameChainWithdraw2ByNullifier.set(activity.spentNullifier1, activity);
+        }
+      } else if (activity.type === 'CROSSCHAIN_WITHDRAW2_PENDING') {
+        index.pendingWithdraw2ByNullifier.set(activity.spentNullifier, activity);
+        if (activity.spentNullifier1) {
+          index.pendingWithdraw2ByNullifier.set(activity.spentNullifier1, activity);
+        }
+      } else if (activity.type === 'CROSSCHAIN_WITHDRAW2') {
+        // Filled cross-chain: indexer converted PENDING→FILLED, need to create intent+resolution
+        index.filledWithdraw2ByNullifier.set(activity.spentNullifier, activity);
+        if (activity.spentNullifier1) {
+          index.filledWithdraw2ByNullifier.set(activity.spentNullifier1, activity);
+        }
       }
     }
 
@@ -103,12 +143,16 @@ export function buildActivityIndex(activities: Activity[]): ActivityIndex {
       index.ragequitByCommitment.set(activity.commitment, activity);
     }
 
-    // Index cross-chain withdrawals by orderId (for WithdrawalIntentNote resolution)
+    // Index cross-chain withdrawals by orderId (for reconciler)
+    // Filled/refunded overwrites pending (reconciler needs final status)
     if (
       (is1x1WithdrawalActivity(activity) || isWithdraw2Activity(activity)) &&
       activity.orderId
     ) {
-      index.withdrawalsByOrderId.set(activity.orderId, activity);
+      const existing = index.withdrawalsByOrderId.get(activity.orderId);
+      if (!existing || isPendingActivity(existing)) {
+        index.withdrawalsByOrderId.set(activity.orderId, activity);
+      }
     }
   }
 
