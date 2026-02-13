@@ -145,6 +145,24 @@ export function formatProofForContract(proof: SnarkJsProof, publicSignals: strin
   };
 }
 
+/**
+ * Format snarkjs cross-chain proof for Solidity verifier (13 signals)
+ *
+ * Public signals order:
+ * [0] newCommitmentHash - Output: new commitment after withdrawal
+ * [1] existingNullifierHash - Output: spent nullifier
+ * [2] refundCommitmentHash - Output: commitment for refund
+ * [3] relayFeeBPSOut - Output: relay fee in basis points
+ * [4] refundFeeBPSOut - Output: refund fee in basis points
+ * [5] withdrawnValue - Input: amount withdrawn
+ * [6] stateRoot - Input: merkle state root
+ * [7] stateTreeDepth - Input: state tree depth
+ * [8] ASPRoot - Input: ASP merkle root
+ * [9] ASPTreeDepth - Input: ASP tree depth
+ * [10] context - Input: binding context hash
+ * [11] relayFeeBPS - Input: relay fee (same as output)
+ * [12] refundFeeBPS - Input: refund fee (same as output)
+ */
 export function formatCrossChainProofForContract(
   proof: SnarkJsProof,
   publicSignals: string[],
@@ -157,15 +175,19 @@ export function formatCrossChainProofForContract(
     ],
     pC: [BigInt(proof.pi_c[0]), BigInt(proof.pi_c[1])],
     pubSignals: [
-      BigInt(publicSignals[0]),
-      BigInt(publicSignals[1]),
-      BigInt(publicSignals[2]),
-      BigInt(publicSignals[3]),
-      BigInt(publicSignals[4]),
-      BigInt(publicSignals[5]),
-      BigInt(publicSignals[6]),
-      BigInt(publicSignals[7]),
-      BigInt(publicSignals[8]),
+      BigInt(publicSignals[0]),  // newCommitmentHash
+      BigInt(publicSignals[1]),  // existingNullifierHash
+      BigInt(publicSignals[2]),  // refundCommitmentHash
+      BigInt(publicSignals[3]),  // relayFeeBPSOut
+      BigInt(publicSignals[4]),  // refundFeeBPSOut
+      BigInt(publicSignals[5]),  // withdrawnValue
+      BigInt(publicSignals[6]),  // stateRoot
+      BigInt(publicSignals[7]),  // stateTreeDepth
+      BigInt(publicSignals[8]),  // ASPRoot
+      BigInt(publicSignals[9]),  // ASPTreeDepth
+      BigInt(publicSignals[10]), // context
+      BigInt(publicSignals[11]), // relayFeeBPS
+      BigInt(publicSignals[12]), // refundFeeBPS
     ],
   };
 }
@@ -244,19 +266,23 @@ export function formatWithdraw2SameChainProofForContract(
 }
 
 /**
- * Format snarkjs proof for cross-chain Withdraw2 Solidity verifier (10 signals)
+ * Format snarkjs proof for cross-chain Withdraw2 Solidity verifier (14 signals)
  *
  * Public signals order:
  * [0] newCommitmentHash - Change output commitment
  * [1] nullifierHash0 - Primary input nullifier (spent)
  * [2] nullifierHash1 - Secondary input nullifier (spent)
  * [3] refundCommitmentHash - Cross-chain refund commitment
- * [4] withdrawnValue - Amount withdrawn
- * [5] stateRoot - State merkle root
- * [6] stateTreeDepth - State tree depth
- * [7] ASPRoot - ASP merkle root
- * [8] ASPTreeDepth - ASP tree depth
- * [9] context - Binding context hash
+ * [4] relayFeeBPSOut - Output: relay fee in basis points
+ * [5] refundFeeBPSOut - Output: refund fee in basis points
+ * [6] withdrawnValue - Amount withdrawn
+ * [7] stateRoot - State merkle root
+ * [8] stateTreeDepth - State tree depth
+ * [9] ASPRoot - ASP merkle root
+ * [10] ASPTreeDepth - ASP tree depth
+ * [11] context - Binding context hash
+ * [12] relayFeeBPS - Input: relay fee (same as output)
+ * [13] refundFeeBPS - Input: refund fee (same as output)
  */
 export function formatWithdraw2CrossChainProofForContract(
   proof: SnarkJsProof,
@@ -270,16 +296,20 @@ export function formatWithdraw2CrossChainProofForContract(
     ],
     pC: [BigInt(proof.pi_c[0]), BigInt(proof.pi_c[1])],
     pubSignals: [
-      BigInt(publicSignals[0]), // newCommitmentHash
-      BigInt(publicSignals[1]), // nullifierHash0
-      BigInt(publicSignals[2]), // nullifierHash1
-      BigInt(publicSignals[3]), // refundCommitmentHash
-      BigInt(publicSignals[4]), // withdrawnValue
-      BigInt(publicSignals[5]), // stateRoot
-      BigInt(publicSignals[6]), // stateTreeDepth
-      BigInt(publicSignals[7]), // ASPRoot
-      BigInt(publicSignals[8]), // ASPTreeDepth
-      BigInt(publicSignals[9]), // context
+      BigInt(publicSignals[0]),  // newCommitmentHash
+      BigInt(publicSignals[1]),  // nullifierHash0
+      BigInt(publicSignals[2]),  // nullifierHash1
+      BigInt(publicSignals[3]),  // refundCommitmentHash
+      BigInt(publicSignals[4]),  // relayFeeBPSOut
+      BigInt(publicSignals[5]),  // refundFeeBPSOut
+      BigInt(publicSignals[6]),  // withdrawnValue
+      BigInt(publicSignals[7]),  // stateRoot
+      BigInt(publicSignals[8]),  // stateTreeDepth
+      BigInt(publicSignals[9]),  // ASPRoot
+      BigInt(publicSignals[10]), // ASPTreeDepth
+      BigInt(publicSignals[11]), // context
+      BigInt(publicSignals[12]), // relayFeeBPS
+      BigInt(publicSignals[13]), // refundFeeBPS
     ],
   };
 }

@@ -14,6 +14,7 @@ import type {
 } from '../withdrawal/types.js';
 import type {
   WithdrawalIntent,
+  CrosschainWithdrawalIntent,
   WithdrawalCircuitWitness,
   CrosschainWithdrawalCircuitWitness,
   WithdrawalProofData,
@@ -21,6 +22,7 @@ import type {
   CircuitFileLoader,
   ProofGenerator,
   Withdraw2Intent,
+  CrosschainWithdraw2Intent,
   Withdraw2CircuitWitness,
   CrosschainWithdraw2CircuitWitness,
   RagequitCircuitWitness,
@@ -30,6 +32,7 @@ import type {
 // Re-export types
 export type {
   WithdrawalIntent,
+  CrosschainWithdrawalIntent,
   WithdrawalCircuitWitness,
   CrosschainWithdrawalCircuitWitness,
   WithdrawalProofData,
@@ -37,6 +40,7 @@ export type {
   CircuitFileLoader,
   ProofGenerator,
   Withdraw2Intent,
+  CrosschainWithdraw2Intent,
   Withdraw2CircuitWitness,
   CrosschainWithdraw2CircuitWitness,
   RagequitCircuitWitness,
@@ -121,7 +125,7 @@ export function buildCrosschainWithdrawalCircuitWitness(
   derivation: CrosschainWithdrawalDerivation,
   stateCommitments: bigint[],
   aspLabels: bigint[],
-  intent: WithdrawalIntent,
+  intent: CrosschainWithdrawalIntent,
 ): CrosschainWithdrawalCircuitWitness {
   const baseWitness = buildWithdrawalCircuitWitness(derivation, stateCommitments, aspLabels, intent);
 
@@ -129,6 +133,8 @@ export function buildCrosschainWithdrawalCircuitWitness(
     ...baseWitness,
     refundNullifier: derivation.refundNullifier.toString(),
     refundSecret: derivation.refundSecret.toString(),
+    relayFeeBPS: intent.relayFeeBPS.toString(),
+    refundFeeBPS: intent.refundFeeBPS.toString(),
   };
 }
 
@@ -227,13 +233,13 @@ export function buildWithdraw2CircuitWitness(
 
 /**
  * Build circuit witness for cross-chain Withdraw2 withdrawal
- * Includes refund commitment inputs for failure recovery
+ * Includes refund commitment inputs and fee inputs for failure recovery
  */
 export function buildCrosschainWithdraw2CircuitWitness(
   derivation: CrosschainWithdraw2Derivation,
   stateCommitments: bigint[],
   aspLabels: bigint[],
-  intent: Withdraw2Intent,
+  intent: CrosschainWithdraw2Intent,
 ): CrosschainWithdraw2CircuitWitness {
   const baseWitness = buildWithdraw2CircuitWitness(derivation, stateCommitments, aspLabels, intent);
 
@@ -241,6 +247,8 @@ export function buildCrosschainWithdraw2CircuitWitness(
     ...baseWitness,
     refundNullifier: derivation.refundNullifier.toString(),
     refundSecret: derivation.refundSecret.toString(),
+    relayFeeBPS: intent.relayFeeBPS.toString(),
+    refundFeeBPS: intent.refundFeeBPS.toString(),
   };
 }
 

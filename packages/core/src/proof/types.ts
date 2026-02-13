@@ -11,6 +11,11 @@ export interface WithdrawalIntent {
   label: bigint;
 }
 
+export interface CrosschainWithdrawalIntent extends WithdrawalIntent {
+  relayFeeBPS: bigint;
+  refundFeeBPS: bigint;
+}
+
 export interface WithdrawalCircuitWitness {
   withdrawnValue: string;
   stateRoot: string;
@@ -33,6 +38,8 @@ export interface WithdrawalCircuitWitness {
 export interface CrosschainWithdrawalCircuitWitness extends WithdrawalCircuitWitness {
   refundNullifier: string;
   refundSecret: string;
+  relayFeeBPS: string;
+  refundFeeBPS: string;
 }
 
 export interface WithdrawalProofData {
@@ -99,6 +106,11 @@ export interface Withdraw2Intent {
   secondaryLabel: bigint;
 }
 
+export interface CrosschainWithdraw2Intent extends Withdraw2Intent {
+  relayFeeBPS: bigint;
+  refundFeeBPS: bigint;
+}
+
 /**
  * Withdraw2 circuit witness (10 public signals, multiple private inputs)
  *
@@ -152,9 +164,11 @@ export interface Withdraw2CircuitWitness {
 }
 
 /**
- * Cross-chain Withdraw2 witness (includes refund commitment inputs)
+ * Cross-chain Withdraw2 witness (includes refund commitment inputs and fees)
  */
 export interface CrosschainWithdraw2CircuitWitness extends Withdraw2CircuitWitness {
   refundNullifier: string;
   refundSecret: string;
+  relayFeeBPS: string;
+  refundFeeBPS: string;
 }
