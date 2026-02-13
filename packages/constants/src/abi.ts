@@ -43,7 +43,12 @@ export const EntrypointRelayAbi = [
 ] as const;
 
 /**
- * ABI for cross-chain withdrawal
+ * ABI for cross-chain withdrawal (1:1)
+ * 13 public signals:
+ *   [0] newCommitmentHash, [1] existingNullifierHash, [2] refundCommitmentHash,
+ *   [3] relayFeeBPSOut, [4] refundFeeBPSOut, [5] withdrawnValue,
+ *   [6] stateRoot, [7] stateTreeDepth, [8] ASPRoot, [9] ASPTreeDepth,
+ *   [10] context, [11] relayFeeBPS, [12] refundFeeBPS
  */
 export const EntrypointCrosschainWithdrawalAbi = [
   {
@@ -62,12 +67,12 @@ export const EntrypointCrosschainWithdrawalAbi = [
       {
         name: '_proof',
         type: 'tuple',
-        internalType: 'struct CrossChainProofLib.CrossChainWithdrawProof',
+        internalType: 'struct CrosschainProofLib.CrosschainWithdrawProof',
         components: [
           { name: 'pA', type: 'uint256[2]', internalType: 'uint256[2]' },
           { name: 'pB', type: 'uint256[2][2]', internalType: 'uint256[2][2]' },
           { name: 'pC', type: 'uint256[2]', internalType: 'uint256[2]' },
-          { name: 'pubSignals', type: 'uint256[9]', internalType: 'uint256[9]' },
+          { name: 'pubSignals', type: 'uint256[13]', internalType: 'uint256[13]' },
         ],
       },
       { name: '_scope', type: 'uint256', internalType: 'uint256' },
@@ -134,7 +139,12 @@ export const EntrypointWithdraw2RelayAbi = [
 
 /**
  * ABI for cross-chain Withdraw2 (2:1 merge with refund commitment)
- * Uses 10 public signals (refundCommitmentHash included)
+ * 14 public signals:
+ *   [0] newCommitmentHash, [1] nullifierHash0, [2] nullifierHash1,
+ *   [3] refundCommitmentHash, [4] relayFeeBPSOut, [5] refundFeeBPSOut,
+ *   [6] withdrawnValue, [7] stateRoot, [8] stateTreeDepth,
+ *   [9] ASPRoot, [10] ASPTreeDepth, [11] context,
+ *   [12] relayFeeBPS, [13] refundFeeBPS
  */
 export const EntrypointCrosschainWithdraw2Abi = [
   {
@@ -153,12 +163,12 @@ export const EntrypointCrosschainWithdraw2Abi = [
       {
         name: '_proof',
         type: 'tuple',
-        internalType: 'struct CrossChainWithdraw2ProofLib.CrossChainWithdraw2Proof',
+        internalType: 'struct CrosschainWithdraw2ProofLib.CrosschainWithdraw2Proof',
         components: [
           { name: 'pA', type: 'uint256[2]', internalType: 'uint256[2]' },
           { name: 'pB', type: 'uint256[2][2]', internalType: 'uint256[2][2]' },
           { name: 'pC', type: 'uint256[2]', internalType: 'uint256[2]' },
-          { name: 'pubSignals', type: 'uint256[10]', internalType: 'uint256[10]' },
+          { name: 'pubSignals', type: 'uint256[14]', internalType: 'uint256[14]' },
         ],
       },
       { name: '_scope', type: 'uint256', internalType: 'uint256' },
@@ -217,15 +227,28 @@ export const PoolRagequitAbi = [
 // ============ CROSS-CHAIN DEPOSIT ABIs ============
 
 /**
- * ABI for cross-chain deposit with custom fee
+ * ABI for cross-chain deposit entrypoint
+ * - deposit: Uses default solver fee and deadlines
+ * - depositWithCustomParams: Allows custom solver fee and deadline configuration
  */
 export const CrosschainDepositEntrypointAbi = [
   {
     type: 'function',
-    name: 'depositWithCustomFee',
+    name: 'deposit',
+    inputs: [
+      { name: 'precommitment', type: 'uint256', internalType: 'uint256' },
+    ],
+    outputs: [],
+    stateMutability: 'payable',
+  },
+  {
+    type: 'function',
+    name: 'depositWithCustomParams',
     inputs: [
       { name: 'precommitment', type: 'uint256', internalType: 'uint256' },
       { name: 'customSolverFeeBPS', type: 'uint256', internalType: 'uint256' },
+      { name: 'customFillDeadline', type: 'uint32', internalType: 'uint32' },
+      { name: 'customExpiry', type: 'uint32', internalType: 'uint32' },
     ],
     outputs: [],
     stateMutability: 'payable',
