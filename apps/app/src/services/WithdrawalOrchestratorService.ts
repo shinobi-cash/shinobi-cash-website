@@ -10,6 +10,8 @@ import type {
   Withdraw2PipelineContext,
   Withdraw2Witness,
   Withdraw2Proof,
+  CrossChainWithdrawalCircuitInputs,
+  CrossChainWithdraw2CircuitInputs,
 } from "@/types/withdrawal";
 import { Errors } from "@/lib/errors/errors";
 import {
@@ -222,11 +224,20 @@ export class WithdrawalEngine {
     const stateTreeLeaves = stateTreeLeavesRaw.map((leaf) => BigInt(leaf.leafValue));
     const aspTreeLeaves = aspData.approvalList.map((label: string) => BigInt(label));
 
-    const circuitInputs = {
-      withdrawAmount: context.request.withdrawAmountWei,
-      noteAmount: BigInt(note.amount),
-      label: BigInt(note.label),
-    };
+    const circuitInputs =
+      context.kind === "cross-chain"
+        ? {
+            withdrawAmount: context.request.withdrawAmountWei,
+            noteAmount: BigInt(note.amount),
+            label: BigInt(note.label),
+            relayFeeBPS: BigInt(context.feeQuote.relayFeeBPS),
+            refundFeeBPS: BigInt(context.feeQuote.relayFeeBPS),
+          }
+        : {
+            withdrawAmount: context.request.withdrawAmountWei,
+            noteAmount: BigInt(note.amount),
+            label: BigInt(note.label),
+          };
 
     return { context, stateTreeLeaves, aspTreeLeaves, circuitInputs };
   }
@@ -235,11 +246,13 @@ export class WithdrawalEngine {
     const { context, stateTreeLeaves, aspTreeLeaves, circuitInputs } = witness;
 
     if (context.kind === "cross-chain") {
+      // Type guard: cross-chain circuitInputs must have fee fields
+      const crossChainInputs = circuitInputs as CrossChainWithdrawalCircuitInputs;
       const circuitWitness = buildCrosschainWithdrawalCircuitWitness(
         context.derivation as Parameters<typeof buildCrosschainWithdrawalCircuitWitness>[0],
         stateTreeLeaves,
         aspTreeLeaves,
-        circuitInputs
+        crossChainInputs
       );
       const proofData =
         await withdrawalProofGenerator.generateCrosschainWithdrawalProof(circuitWitness);
@@ -381,13 +394,24 @@ export class WithdrawalEngine {
     console.log("[Withdraw2] State tree leaves count:", stateTreeLeaves.length);
     console.log("[Withdraw2] ASP approved labels count:", aspTreeLeaves.length);
 
-    const circuitInputs = {
-      withdrawAmount: context.request.withdrawAmountWei,
-      primaryNoteAmount: BigInt(primaryNote.amount),
-      primaryLabel: BigInt(primaryNote.label),
-      secondaryNoteAmount: BigInt(secondaryNote.amount),
-      secondaryLabel: BigInt(secondaryNote.label),
-    };
+    const circuitInputs =
+      context.kind === "cross-chain"
+        ? {
+            withdrawAmount: context.request.withdrawAmountWei,
+            primaryNoteAmount: BigInt(primaryNote.amount),
+            primaryLabel: BigInt(primaryNote.label),
+            secondaryNoteAmount: BigInt(secondaryNote.amount),
+            secondaryLabel: BigInt(secondaryNote.label),
+            relayFeeBPS: BigInt(context.feeQuote.relayFeeBPS),
+            refundFeeBPS: BigInt(context.feeQuote.relayFeeBPS),
+          }
+        : {
+            withdrawAmount: context.request.withdrawAmountWei,
+            primaryNoteAmount: BigInt(primaryNote.amount),
+            primaryLabel: BigInt(primaryNote.label),
+            secondaryNoteAmount: BigInt(secondaryNote.amount),
+            secondaryLabel: BigInt(secondaryNote.label),
+          };
 
     console.log("[Withdraw2] Primary note label:", circuitInputs.primaryLabel.toString());
     console.log("[Withdraw2] Secondary note label:", circuitInputs.secondaryLabel.toString());
@@ -404,12 +428,14 @@ export class WithdrawalEngine {
 
     try {
       if (context.kind === "cross-chain") {
+        // Type guard: cross-chain circuitInputs must have fee fields
+        const crossChainInputs = circuitInputs as CrossChainWithdraw2CircuitInputs;
         console.log("[Withdraw2] Building cross-chain circuit witness...");
         const circuitWitness = buildCrosschainWithdraw2CircuitWitness(
           context.derivation as Parameters<typeof buildCrosschainWithdraw2CircuitWitness>[0],
           stateTreeLeaves,
           aspTreeLeaves,
-          circuitInputs
+          crossChainInputs
         );
         console.log("[Withdraw2] Circuit witness built, generating proof...");
         const proofData =

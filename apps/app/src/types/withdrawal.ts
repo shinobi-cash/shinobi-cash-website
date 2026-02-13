@@ -77,15 +77,24 @@ export interface WithdrawalPipelineContext {
   withdrawalData: readonly [`0x${string}`, `0x${string}`];
 }
 
+/** Circuit inputs for same-chain withdrawal */
+export interface SameChainWithdrawalCircuitInputs {
+  withdrawAmount: bigint;
+  noteAmount: bigint;
+  label: bigint;
+}
+
+/** Circuit inputs for cross-chain withdrawal (includes fee fields) */
+export interface CrossChainWithdrawalCircuitInputs extends SameChainWithdrawalCircuitInputs {
+  relayFeeBPS: bigint;
+  refundFeeBPS: bigint;
+}
+
 export interface WithdrawalWitness {
   context: WithdrawalPipelineContext;
   stateTreeLeaves: bigint[];
   aspTreeLeaves: bigint[];
-  circuitInputs: {
-    withdrawAmount: bigint;
-    noteAmount: bigint;
-    label: bigint;
-  };
+  circuitInputs: SameChainWithdrawalCircuitInputs | CrossChainWithdrawalCircuitInputs;
 }
 
 export interface WithdrawalProof {
@@ -165,17 +174,26 @@ export interface Withdraw2PipelineContext {
   withdrawalData: readonly [`0x${string}`, `0x${string}`];
 }
 
+/** Circuit inputs for same-chain withdraw2 */
+export interface SameChainWithdraw2CircuitInputs {
+  withdrawAmount: bigint;
+  primaryNoteAmount: bigint;
+  primaryLabel: bigint;
+  secondaryNoteAmount: bigint;
+  secondaryLabel: bigint;
+}
+
+/** Circuit inputs for cross-chain withdraw2 (includes fee fields) */
+export interface CrossChainWithdraw2CircuitInputs extends SameChainWithdraw2CircuitInputs {
+  relayFeeBPS: bigint;
+  refundFeeBPS: bigint;
+}
+
 export interface Withdraw2Witness {
   context: Withdraw2PipelineContext;
   stateTreeLeaves: bigint[];
   aspTreeLeaves: bigint[];
-  circuitInputs: {
-    withdrawAmount: bigint;
-    primaryNoteAmount: bigint;
-    primaryLabel: bigint;
-    secondaryNoteAmount: bigint;
-    secondaryLabel: bigint;
-  };
+  circuitInputs: SameChainWithdraw2CircuitInputs | CrossChainWithdraw2CircuitInputs;
 }
 
 export interface Withdraw2Proof {
