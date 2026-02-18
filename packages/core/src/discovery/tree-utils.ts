@@ -84,18 +84,30 @@ export function findNode(
 
 /**
  * Find a node by depositIndex and changeIndex.
+ *
+ * When multiple nodes have the same position (e.g., depositIntent and its
+ * crosschainDeposit child both at changeIndex=0), this returns the DEEPEST
+ * matching node. This ensures we find the actual spendable note rather than
+ * an intent note that has been filled.
  */
 export function findNodeByPosition(
   tree: NoteTree,
   depositIndex: number,
   changeIndex: number,
 ): NoteNode | null {
-  return findNode(
-    tree,
-    (node) =>
-      node.note.depositIndex === depositIndex &&
-      node.note.changeIndex === changeIndex,
-  );
+  let deepestMatch: NoteNode | null = null;
+
+  function dfs(node: NoteNode): void {
+    if (node.note.depositIndex === depositIndex && node.note.changeIndex === changeIndex) {
+      deepestMatch = node;
+    }
+    for (const child of node.children) {
+      dfs(child);
+    }
+  }
+
+  dfs(tree.root);
+  return deepestMatch;
 }
 
 /**

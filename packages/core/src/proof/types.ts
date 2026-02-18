@@ -63,6 +63,19 @@ export interface ProofGenerator {
   generateRagequitProof?(witness: RagequitCircuitWitness): Promise<RagequitProofData>;
 }
 
+// ============ PRECOMPUTED ASP PROOF ============
+
+/**
+ * Precomputed ASP merkle proof from IPFS (v2.1 format)
+ * Used to skip client-side ASP tree building
+ */
+export interface PrecomputedASPProof {
+  aspRoot: string;
+  treeDepth: number;
+  siblings: string[];
+  index: number;
+}
+
 // ============ RAGEQUIT TYPES ============
 
 /**

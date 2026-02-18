@@ -99,7 +99,6 @@ export function createCrossChainWithdrawalData(
   recipientAddress: string,
   destinationChainId: number,
   feeRecipient: string,
-  relayFeeBPS: bigint,
   solverFeeBPS: bigint,
 ): readonly [`0x${string}`, `0x${string}`] {
   const encodedDestination = (BigInt(destinationChainId) << BigInt(224)) | BigInt(recipientAddress);
@@ -109,13 +108,11 @@ export function createCrossChainWithdrawalData(
     encodeAbiParameters(
       [
         { type: 'address', name: 'feeRecipient' },
-        { type: 'uint256', name: 'relayFeeBPS' },
         { type: 'uint256', name: 'solverFeeBPS' },
         { type: 'bytes32', name: 'encodedDestination' },
       ],
       [
         feeRecipient as `0x${string}`,
-        relayFeeBPS,
         solverFeeBPS,
         `0x${encodedDestination.toString(16).padStart(64, '0')}`,
       ],

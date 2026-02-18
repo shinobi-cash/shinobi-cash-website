@@ -70,7 +70,6 @@ function hasActionableBalance(note: Note): boolean {
  *
  * 1. **Spendable** - Can take action NOW
  *    - ASP approved → Private Withdraw or Ragequit
- *    - ASP rejected → Ragequit only
  *    - WithdrawalRefundedNote (unspent) → Can be withdrawn
  *
  * 2. **Pending** - Waiting for something
@@ -123,26 +122,45 @@ export function getNoteCategoryWithContext(node: NoteNode): NoteCategory {
 }
 
 /**
- * Get tree category based on all leaf nodes.
- * A tree is:
- * - "spendable" if any leaf is spendable
- * - "pending" if any leaf is pending (and none are spendable)
- * - "spent" if all leaves are spent
+ * Get all categories present in a tree's leaf nodes.
+ * A tree can have multiple categories if it has leaves of different types.
+ * For example, after a partial crosschain withdrawal:
+ * - ChangeNote (spendable) + WithdrawalIntentNote (pending)
  */
-export function getTreeCategory(tree: NoteTree): NoteCategory {
+export function getTreeCategories(tree: NoteTree): Set<NoteCategory> {
   const leaves = getLeafNodes(tree);
-
-  let hasSpendable = false;
-  let hasPending = false;
+  const categories = new Set<NoteCategory>();
 
   for (const leaf of leaves) {
     const category = getNoteCategoryWithContext(leaf);
-    if (category === 'spendable') hasSpendable = true;
-    if (category === 'pending') hasPending = true;
+    categories.add(category);
   }
 
-  if (hasSpendable) return 'spendable';
-  if (hasPending) return 'pending';
+  return categories;
+}
+
+/**
+ * Check if a tree matches a specific category.
+ * Returns true if ANY leaf in the tree has the given category.
+ */
+export function treeMatchesCategory(tree: NoteTree, category: NoteCategory): boolean {
+  return getTreeCategories(tree).has(category);
+}
+
+/**
+ * Get tree category based on all leaf nodes.
+ * Returns the "primary" category for display purposes:
+ * - "spendable" if any leaf is spendable
+ * - "pending" if any leaf is pending (and none are spendable)
+ * - "spent" if all leaves are spent
+ *
+ * @deprecated Use getTreeCategories() or treeMatchesCategory() for filtering
+ */
+export function getTreeCategory(tree: NoteTree): NoteCategory {
+  const categories = getTreeCategories(tree);
+
+  if (categories.has('spendable')) return 'spendable';
+  if (categories.has('pending')) return 'pending';
   return 'spent';
 }
 
@@ -172,29 +190,34 @@ export function canRagequit(note: Note): boolean {
 
 /**
  * Filter note trees by category.
+ * Returns trees that have ANY leaf matching the given category.
+ * A tree can appear in multiple categories (e.g., both spendable and pending).
  */
 export function filterNoteTrees(trees: NoteTree[], filter: NoteCategory): NoteTree[] {
-  return trees.filter((tree) => getTreeCategory(tree) === filter);
+  return trees.filter((tree) => treeMatchesCategory(tree, filter));
 }
 
 /**
  * Get counts for each category.
+ * A tree can be counted in multiple categories if it has leaves of different types.
+ * For example, a tree with both a spendable ChangeNote and pending WithdrawalIntentNote
+ * will be counted in both spendable and pending.
  */
 export function getNoteTreeCounts(trees: NoteTree[]): {
   spendable: number;
   pending: number;
   spent: number;
 } {
-  return trees.reduce(
-    (counts, tree) => {
-      const category = getTreeCategory(tree);
-      if (category === 'spendable') counts.spendable++;
-      else if (category === 'pending') counts.pending++;
-      else counts.spent++;
-      return counts;
-    },
-    { spendable: 0, pending: 0, spent: 0 },
-  );
+  const counts = { spendable: 0, pending: 0, spent: 0 };
+
+  for (const tree of trees) {
+    const categories = getTreeCategories(tree);
+    if (categories.has('spendable')) counts.spendable++;
+    if (categories.has('pending')) counts.pending++;
+    if (categories.has('spent')) counts.spent++;
+  }
+
+  return counts;
 }
 
 /**
@@ -262,7 +285,7 @@ export function getTotalSpendableBalanceByCategory(tree: NoteTree): bigint {
 
 /**
  * Get notes that can be withdrawn privately (ASP approved only).
- * This is a subset of spendable notes - excludes ASP rejected/pending.
+ * This is a subset of spendable notes - excludes ASP pending.
  */
 export function getWithdrawableNotes(trees: NoteTree[]): Note[] {
   return getSpendableNotes(trees).filter(canWithdraw);

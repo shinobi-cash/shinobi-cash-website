@@ -11,6 +11,9 @@ import {
   createMockDepositActivity,
   createMockCrossChainDepositActivity,
   createMockCrossChainWithdrawalActivity,
+  createMockCrossChainWithdrawalFillActivity,
+  createMockCrossChainWithdrawalRefundActivity,
+  createMockCrossChainDepositRefundActivity,
   createMockDepositNote,
   createMockChangeNote,
   createMockWithdrawalIntentNote,
@@ -80,8 +83,6 @@ describe('reconciler', () => {
           orderId: 'asp-test-order',
           originChainId: '84532',
           destinationChainId: TEST_CHAIN_ID,
-          intentStatus: 'filled',
-          status: 'spent',
         });
         const tree = createNoteTree(depositIntent);
 
@@ -104,9 +105,7 @@ describe('reconciler', () => {
           originTimestamp: '1234567890',
           destinationChainId: TEST_CHAIN_ID,
           destinationTransactionHash: '0xdest-tx',
-          destinationBlockNumber: '100',
           destinationTimestamp: '1234567900',
-          blockNumber: '100',
           precommitmentHash, // Must match activity - derived using same function
           activityData: {},
         };
@@ -118,7 +117,7 @@ describe('reconciler', () => {
         // Activity with approved ASP status
         const activity = createMockCrossChainDepositActivity(0, toEther(1), {
           aspStatus: 'approved',
-          label: BigInt(99999),
+          label: '99999',
         });
 
         reconcileTrees(trees, [activity]);
@@ -135,8 +134,6 @@ describe('reconciler', () => {
           orderId: 'asp-propagate-order',
           originChainId: '84532',
           destinationChainId: TEST_CHAIN_ID,
-          intentStatus: 'filled',
-          status: 'spent',
         });
         const tree = createNoteTree(depositIntent);
 
@@ -159,9 +156,7 @@ describe('reconciler', () => {
           originTimestamp: '1234567890',
           destinationChainId: TEST_CHAIN_ID,
           destinationTransactionHash: '0xdest-tx',
-          destinationBlockNumber: '100',
           destinationTimestamp: '1234567900',
-          blockNumber: '100',
           precommitmentHash, // Must match activity - derived using same function
           activityData: {},
         };
@@ -198,7 +193,7 @@ describe('reconciler', () => {
 
         // Activity should be included in matchedActivities for storage
         expect(result.matchedActivities).toHaveLength(1);
-        expect(result.matchedActivities[0].id).toBe(activity.id);
+        expect(result.matchedActivities[0].txHash).toBe(activity.txHash);
         expect(result.matchedActivities[0].aspStatus).toBe('approved');
       });
 
@@ -207,8 +202,6 @@ describe('reconciler', () => {
           orderId: 'asp-activity-test',
           originChainId: '84532',
           destinationChainId: TEST_CHAIN_ID,
-          intentStatus: 'filled',
-          status: 'spent',
         });
         const tree = createNoteTree(depositIntent);
 
@@ -229,9 +222,7 @@ describe('reconciler', () => {
           originTimestamp: '1234567890',
           destinationChainId: TEST_CHAIN_ID,
           destinationTransactionHash: '0xdest-tx',
-          destinationBlockNumber: '100',
           destinationTimestamp: '1234567900',
-          blockNumber: '100',
           precommitmentHash,
           activityData: {},
         };
@@ -262,7 +253,7 @@ describe('reconciler', () => {
         const chainKey = makeChainKey(TEST_CHAIN_ID, 0);
         const trees = new Map<ChainKey, NoteTree>([[chainKey, tree]]);
 
-        const activity = createMockDepositActivity(0, toEther(1), { label: BigInt(12345) });
+        const activity = createMockDepositActivity(0, toEther(1), { label: '12345' });
 
         reconcileTrees(trees, [activity]);
 
@@ -277,7 +268,7 @@ describe('reconciler', () => {
         const chainKey = makeChainKey(TEST_CHAIN_ID, 0);
         const trees = new Map<ChainKey, NoteTree>([[chainKey, tree]]);
 
-        const activity = createMockDepositActivity(0, toEther(1), { label: BigInt(12345) });
+        const activity = createMockDepositActivity(0, toEther(1), { label: '12345' });
 
         reconcileTrees(trees, [activity]);
 
@@ -292,7 +283,7 @@ describe('reconciler', () => {
         const trees = new Map<ChainKey, NoteTree>([[chainKey, tree]]);
 
         // Different label value triggers update
-        const activity = createMockDepositActivity(0, toEther(1), { label: BigInt(99999) });
+        const activity = createMockDepositActivity(0, toEther(1), { label: '99999' });
 
         reconcileTrees(trees, [activity]);
 
@@ -301,10 +292,9 @@ describe('reconciler', () => {
     });
 
     describe('early exit when nothing changed', () => {
-      it('should skip update when asp, intent, and label are all unchanged', () => {
+      it('should skip update when asp and label are all unchanged', () => {
         const depositNote = createMockDepositNote(0, toEther(1), {
           aspStatus: 'approved',
-          intentStatus: undefined,
           label: undefined,
         });
         const tree = createNoteTree(depositNote);
@@ -313,7 +303,6 @@ describe('reconciler', () => {
 
         const activity = createMockDepositActivity(0, toEther(1), {
           aspStatus: 'approved',
-          intentStatus: undefined,
           label: undefined,
         });
 
@@ -374,7 +363,7 @@ describe('reconciler', () => {
       const depositNote = createMockDepositNote(0, toEther(1), { status: 'spent' });
       const changeNote = createMockChangeNote(0, 1, toEther(0), { status: 'spent' });
       const withdrawalIntent = createMockWithdrawalIntentNote(0, 0, toEther(0.5), {
-        orderId: 'order-123',
+        orderId: 'order-withdraw-0-0',
       });
 
       const tree = createNoteTree(depositNote);
@@ -383,13 +372,11 @@ describe('reconciler', () => {
       const chainKey = makeChainKey(TEST_CHAIN_ID, 0);
       const trees = new Map<ChainKey, NoteTree>([[chainKey, tree]]);
 
-      const activity = createMockCrossChainWithdrawalActivity(0, 0, toEther(0.5), {
-        orderId: 'order-123',
-        intentStatus: 'filled',
-        type: 'CROSSCHAIN_WITHDRAWAL',
-        destinationTransactionHash: '0xfill-tx',
+      // Use fill activity type for filled intents
+      const fillActivity = createMockCrossChainWithdrawalFillActivity(0, 0, toEther(0.5), {
+        orderId: 'order-withdraw-0-0',
       });
-      const activityIndex = buildActivityIndex([activity]);
+      const activityIndex = buildActivityIndex([fillActivity]);
 
       reconcileTrees(trees, [], activityIndex);
 
@@ -405,8 +392,8 @@ describe('reconciler', () => {
       const depositNote = createMockDepositNote(0, toEther(1), { status: 'spent', label: 'my-label', aspStatus: 'approved' });
       const changeNote = createMockChangeNote(0, 1, toEther(0), { status: 'spent' });
       const withdrawalIntent = createMockWithdrawalIntentNote(0, 0, toEther(0.5), {
-        orderId: 'order-456',
-        refundCommitment: '0xrefund-commitment',
+        orderId: 'order-withdraw-0-0',
+        refundCommitment: '0xrefund-0-0',
       });
 
       const tree = createNoteTree(depositNote);
@@ -415,11 +402,12 @@ describe('reconciler', () => {
       const chainKey = makeChainKey(TEST_CHAIN_ID, 0);
       const trees = new Map<ChainKey, NoteTree>([[chainKey, tree]]);
 
-      const activity = createMockCrossChainWithdrawalActivity(0, 0, toEther(0.5), {
-        orderId: 'order-456',
-        intentStatus: 'refunded',
+      // Use refund activity type for refunded intents
+      const refundActivity = createMockCrossChainWithdrawalRefundActivity(0, 0, toEther(0.5), {
+        orderId: 'order-withdraw-0-0',
+        refundCommitment: '0xrefund-0-0',
       });
-      const activityIndex = buildActivityIndex([activity]);
+      const activityIndex = buildActivityIndex([refundActivity]);
 
       reconcileTrees(trees, [], activityIndex);
 
@@ -440,7 +428,8 @@ describe('reconciler', () => {
       const depositNote = createMockDepositNote(0, toEther(1), { status: 'spent' });
       const changeNote = createMockChangeNote(0, 1, toEther(0), { status: 'spent' });
       const withdrawalIntent = createMockWithdrawalIntentNote(0, 0, toEther(0.5), {
-        orderId: 'order-789',
+        orderId: 'order-withdraw-0-0',
+        refundCommitment: '0xrefund-0-0',
       });
 
       const tree = createNoteTree(depositNote);
@@ -449,11 +438,12 @@ describe('reconciler', () => {
       const chainKey = makeChainKey(TEST_CHAIN_ID, 0);
       const trees = new Map<ChainKey, NoteTree>([[chainKey, tree]]);
 
-      const activity = createMockCrossChainWithdrawalActivity(0, 0, toEther(0.5), {
-        orderId: 'order-789',
-        intentStatus: 'refunded',
+      // Use refund activity type for refunded intents
+      const refundActivity = createMockCrossChainWithdrawalRefundActivity(0, 0, toEther(0.5), {
+        orderId: 'order-withdraw-0-0',
+        refundCommitment: '0xrefund-0-0',
       });
-      const activityIndex = buildActivityIndex([activity]);
+      const activityIndex = buildActivityIndex([refundActivity]);
 
       // First reconcile
       reconcileTrees(trees, [], activityIndex);
@@ -531,19 +521,15 @@ describe('reconciler', () => {
       const chainKey = makeChainKey(TEST_CHAIN_ID, 0);
       const trees = new Map<ChainKey, NoteTree>([[chainKey, tree]]);
 
-      const activities = [
-        createMockCrossChainWithdrawalActivity(0, 0, toEther(0.5), {
-          orderId: 'order-A',
-          intentStatus: 'filled',
-          type: 'CROSSCHAIN_WITHDRAWAL',
-          destinationTransactionHash: '0xfill-tx-A',
-        }),
-        createMockCrossChainWithdrawalActivity(0, 1, toEther(0.3), {
-          orderId: 'order-B',
-          intentStatus: 'refunded',
-        }),
-      ];
-      const activityIndex = buildActivityIndex(activities);
+      // Use fill and refund activities
+      const fillActivityA = createMockCrossChainWithdrawalFillActivity(0, 0, toEther(0.5), {
+        orderId: 'order-A',
+      });
+      const refundActivityB = createMockCrossChainWithdrawalRefundActivity(0, 1, toEther(0.3), {
+        orderId: 'order-B',
+        refundCommitment: '0xrefund-B',
+      });
+      const activityIndex = buildActivityIndex([fillActivityA, refundActivityB]);
 
       reconcileTrees(trees, [], activityIndex);
 
@@ -563,7 +549,7 @@ describe('reconciler', () => {
     describe('deposit intent reconciliation', () => {
       it('should create CrosschainDepositNote when deposit intent is filled', () => {
         const depositIntent = createMockDepositIntentNote(0, toEther(1), {
-          orderId: 'deposit-order-123',
+          orderId: 'order-pending-0',
           originChainId: '84532',
           destinationChainId: '421614',
         });
@@ -571,11 +557,11 @@ describe('reconciler', () => {
         const chainKey = makeChainKey('84532', 0);
         const trees = new Map<ChainKey, NoteTree>([[chainKey, tree]]);
 
-        const activity = createMockCrossChainDepositActivity(0, toEther(1), {
-          orderId: 'deposit-order-123',
-          intentStatus: 'filled',
+        // Use fill activity type for filled deposit intents
+        const fillActivity = createMockCrossChainDepositActivity(0, toEther(1), {
+          orderId: 'order-pending-0',
         });
-        const activityIndex = buildActivityIndex([activity]);
+        const activityIndex = buildActivityIndex([fillActivity]);
 
         const result = reconcileTrees(trees, [], activityIndex);
 
@@ -595,17 +581,17 @@ describe('reconciler', () => {
 
       it('should create DepositRefundedNote when deposit refunded', () => {
         const depositIntent = createMockDepositIntentNote(0, toEther(1), {
-          orderId: 'deposit-order-456',
+          orderId: 'order-pending-0',
         });
         const tree = createNoteTree(depositIntent);
         const chainKey = makeChainKey('84532', 0);
         const trees = new Map<ChainKey, NoteTree>([[chainKey, tree]]);
 
-        const activity = createMockCrossChainDepositActivity(0, toEther(1), {
-          orderId: 'deposit-order-456',
-          intentStatus: 'refunded',
+        // Use refund activity type for refunded deposit intents
+        const refundActivity = createMockCrossChainDepositRefundActivity(0, {
+          orderId: 'order-pending-0',
         });
-        const activityIndex = buildActivityIndex([activity]);
+        const activityIndex = buildActivityIndex([refundActivity]);
 
         const result = reconcileTrees(trees, [], activityIndex);
 
@@ -621,17 +607,17 @@ describe('reconciler', () => {
 
       it('should not create duplicate child notes (idempotency)', () => {
         const depositIntent = createMockDepositIntentNote(0, toEther(1), {
-          orderId: 'deposit-order-idempotent',
+          orderId: 'order-pending-0',
         });
         const tree = createNoteTree(depositIntent);
         const chainKey = makeChainKey('84532', 0);
         const trees = new Map<ChainKey, NoteTree>([[chainKey, tree]]);
 
-        const activity = createMockCrossChainDepositActivity(0, toEther(1), {
-          orderId: 'deposit-order-idempotent',
-          intentStatus: 'filled',
+        // Use fill activity type
+        const fillActivity = createMockCrossChainDepositActivity(0, toEther(1), {
+          orderId: 'order-pending-0',
         });
-        const activityIndex = buildActivityIndex([activity]);
+        const activityIndex = buildActivityIndex([fillActivity]);
 
         // First reconcile
         reconcileTrees(trees, [], activityIndex);
@@ -644,7 +630,7 @@ describe('reconciler', () => {
 
       it('should skip if already resolved (has children)', () => {
         const depositIntent = createMockDepositIntentNote(0, toEther(1), {
-          orderId: 'deposit-order-unchanged',
+          orderId: 'order-pending-0',
         });
         const tree = createNoteTree(depositIntent);
         // Manually add a child to simulate already-resolved intent
@@ -653,11 +639,11 @@ describe('reconciler', () => {
         const chainKey = makeChainKey('84532', 0);
         const trees = new Map<ChainKey, NoteTree>([[chainKey, tree]]);
 
-        const activity = createMockCrossChainDepositActivity(0, toEther(1), {
-          orderId: 'deposit-order-unchanged',
-          intentStatus: 'filled',
+        // Use fill activity type
+        const fillActivity = createMockCrossChainDepositActivity(0, toEther(1), {
+          orderId: 'order-pending-0',
         });
-        const activityIndex = buildActivityIndex([activity]);
+        const activityIndex = buildActivityIndex([fillActivity]);
 
         const result = reconcileTrees(trees, [], activityIndex);
 
@@ -672,7 +658,7 @@ describe('reconciler', () => {
         const depositNote = createMockDepositNote(0, toEther(1), { status: 'spent' });
         const changeNote = createMockChangeNote(0, 1, toEther(0.5));
         const withdrawalIntent = createMockWithdrawalIntentNote(0, 0, toEther(0.5), {
-          orderId: 'withdrawal-order-filled',
+          orderId: 'order-withdraw-0-0',
         });
 
         const tree = createNoteTree(depositNote);
@@ -681,13 +667,11 @@ describe('reconciler', () => {
         const chainKey = makeChainKey(TEST_CHAIN_ID, 0);
         const trees = new Map<ChainKey, NoteTree>([[chainKey, tree]]);
 
-        const activity = createMockCrossChainWithdrawalActivity(0, 0, toEther(0.5), {
-          orderId: 'withdrawal-order-filled',
-          intentStatus: 'filled',
-          type: 'CROSSCHAIN_WITHDRAWAL',
-          destinationTransactionHash: '0xfill-tx',
+        // Use fill activity type
+        const fillActivity = createMockCrossChainWithdrawalFillActivity(0, 0, toEther(0.5), {
+          orderId: 'order-withdraw-0-0',
         });
-        const activityIndex = buildActivityIndex([activity]);
+        const activityIndex = buildActivityIndex([fillActivity]);
 
         reconcileTrees(trees, [], activityIndex);
 
@@ -702,8 +686,8 @@ describe('reconciler', () => {
         const depositNote = createMockDepositNote(0, toEther(1), { status: 'spent', label: 'my-label', aspStatus: 'approved' });
         const changeNote = createMockChangeNote(0, 1, toEther(0.5));
         const withdrawalIntent = createMockWithdrawalIntentNote(0, 0, toEther(0.5), {
-          orderId: 'withdrawal-order-refunded',
-          refundCommitment: '0xrefund-commitment-123',
+          orderId: 'order-withdraw-0-0',
+          refundCommitment: '0xrefund-0-0',
         });
 
         const tree = createNoteTree(depositNote);
@@ -712,11 +696,12 @@ describe('reconciler', () => {
         const chainKey = makeChainKey(TEST_CHAIN_ID, 0);
         const trees = new Map<ChainKey, NoteTree>([[chainKey, tree]]);
 
-        const activity = createMockCrossChainWithdrawalActivity(0, 0, toEther(0.5), {
-          orderId: 'withdrawal-order-refunded',
-          intentStatus: 'refunded',
+        // Use refund activity type
+        const refundActivity = createMockCrossChainWithdrawalRefundActivity(0, 0, toEther(0.5), {
+          orderId: 'order-withdraw-0-0',
+          refundCommitment: '0xrefund-0-0',
         });
-        const activityIndex = buildActivityIndex([activity]);
+        const activityIndex = buildActivityIndex([refundActivity]);
 
         reconcileTrees(trees, [], activityIndex);
 
@@ -731,17 +716,17 @@ describe('reconciler', () => {
 
       it('should handle deposit intent refund', () => {
         const depositIntent = createMockDepositIntentNote(0, toEther(1), {
-          orderId: 'deposit-order-refunded',
+          orderId: 'order-pending-0',
         });
         const tree = createNoteTree(depositIntent);
         const chainKey = makeChainKey('84532', 0);
         const trees = new Map<ChainKey, NoteTree>([[chainKey, tree]]);
 
-        const activity = createMockCrossChainDepositActivity(0, toEther(1), {
-          orderId: 'deposit-order-refunded',
-          intentStatus: 'refunded',
+        // Use refund activity type
+        const refundActivity = createMockCrossChainDepositRefundActivity(0, {
+          orderId: 'order-pending-0',
         });
-        const activityIndex = buildActivityIndex([activity]);
+        const activityIndex = buildActivityIndex([refundActivity]);
 
         reconcileTrees(trees, [], activityIndex);
 

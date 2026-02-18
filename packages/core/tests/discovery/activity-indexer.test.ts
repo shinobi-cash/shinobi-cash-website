@@ -3,12 +3,14 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import type { Activity } from '@shinobi-cash/data';
+import type { ActivityItem } from '@shinobi-cash/data';
 import {
   buildActivityIndex,
   isDepositActivity,
-  is1x1WithdrawalActivity,
-  isWithdraw2Activity,
+  isSameChainWithdrawal,
+  isSameChainWithdraw2,
+  isCrosschainWithdrawIntent,
+  isCrosschainWithdraw2Intent,
   isRagequitActivity,
 } from '../../src/discovery/activity-indexer.js';
 import {
@@ -17,6 +19,7 @@ import {
   createMock1x1WithdrawalActivity,
   createMockCrossChainWithdrawalActivity,
   createMockWithdraw2Activity,
+  createMockCrossChainWithdraw2Activity,
   createMockRagequitActivity,
   resetActivityCounter,
   TEST_POOL_ADDRESS,
@@ -35,91 +38,72 @@ describe('activity-indexer', () => {
       expect(isDepositActivity(activity)).toBe(true);
     });
 
-    it('should return true for CROSSCHAIN_DEPOSIT type', () => {
+    it('should return true for CROSSCHAIN_DEPOSIT_FILL type', () => {
       const activity = createMockCrossChainDepositActivity(0, '1000000000000000000');
       expect(isDepositActivity(activity)).toBe(true);
     });
 
-    it('should return true for CROSSCHAIN_DEPOSIT_PENDING type', () => {
-      const activity = createMockDepositActivity(0, '1000000000000000000', {
-        type: 'CROSSCHAIN_DEPOSIT_PENDING',
-      });
-      expect(isDepositActivity(activity)).toBe(true);
-    });
-
-    it('should return false for WITHDRAWAL type', () => {
+    it('should return false for WITHDRAW type', () => {
       const activity = createMock1x1WithdrawalActivity(0, 0, '500000000000000000');
-      expect(isDepositActivity(activity)).toBe(false);
-    });
-
-    it('should return false for WITHDRAW2 type', () => {
-      const activity = createMockWithdraw2Activity(0, 0, 1, 0, '500000000000000000');
-      expect(isDepositActivity(activity)).toBe(false);
-    });
-
-    it('should return false for RAGEQUIT type', () => {
-      const activity = createMockRagequitActivity(0, 0, '0xcommitment');
       expect(isDepositActivity(activity)).toBe(false);
     });
   });
 
-  describe('is1x1WithdrawalActivity', () => {
-    it('should return true for WITHDRAWAL type', () => {
+  describe('isSameChainWithdrawal', () => {
+    it('should return true for WITHDRAW type', () => {
       const activity = createMock1x1WithdrawalActivity(0, 0, '500000000000000000');
-      expect(is1x1WithdrawalActivity(activity)).toBe(true);
+      expect(isSameChainWithdrawal(activity)).toBe(true);
     });
 
-    it('should return true for CROSSCHAIN_WITHDRAWAL type', () => {
-      const activity = createMock1x1WithdrawalActivity(0, 0, '500000000000000000', {
-        type: 'CROSSCHAIN_WITHDRAWAL',
-      });
-      expect(is1x1WithdrawalActivity(activity)).toBe(true);
-    });
-
-    it('should return true for CROSSCHAIN_WITHDRAWAL_PENDING type', () => {
+    it('should return false for CROSSCHAIN_WITHDRAW_INTENT type', () => {
       const activity = createMockCrossChainWithdrawalActivity(0, 0, '500000000000000000');
-      expect(is1x1WithdrawalActivity(activity)).toBe(true);
+      expect(isSameChainWithdrawal(activity)).toBe(false);
     });
 
     it('should return false for DEPOSIT type', () => {
       const activity = createMockDepositActivity(0, '1000000000000000000');
-      expect(is1x1WithdrawalActivity(activity)).toBe(false);
-    });
-
-    it('should return false for WITHDRAW2 type', () => {
-      const activity = createMockWithdraw2Activity(0, 0, 1, 0, '500000000000000000');
-      expect(is1x1WithdrawalActivity(activity)).toBe(false);
+      expect(isSameChainWithdrawal(activity)).toBe(false);
     });
   });
 
-  describe('isWithdraw2Activity', () => {
-    it('should return true for WITHDRAW2 type', () => {
+  describe('isSameChainWithdraw2', () => {
+    it('should return true for WITHDRAW_2 type', () => {
       const activity = createMockWithdraw2Activity(0, 0, 1, 0, '500000000000000000');
-      expect(isWithdraw2Activity(activity)).toBe(true);
+      expect(isSameChainWithdraw2(activity)).toBe(true);
     });
 
-    it('should return true for CROSSCHAIN_WITHDRAW2 type', () => {
-      const activity = createMockWithdraw2Activity(0, 0, 1, 0, '500000000000000000', {
-        type: 'CROSSCHAIN_WITHDRAW2',
-      });
-      expect(isWithdraw2Activity(activity)).toBe(true);
+    it('should return false for CROSSCHAIN_WITHDRAW_2_INTENT type', () => {
+      const activity = createMockCrossChainWithdraw2Activity(0, 0, 1, 0, '500000000000000000');
+      expect(isSameChainWithdraw2(activity)).toBe(false);
     });
 
-    it('should return true for CROSSCHAIN_WITHDRAW2_PENDING type', () => {
-      const activity = createMockWithdraw2Activity(0, 0, 1, 0, '500000000000000000', {
-        type: 'CROSSCHAIN_WITHDRAW2_PENDING',
-      });
-      expect(isWithdraw2Activity(activity)).toBe(true);
-    });
-
-    it('should return false for WITHDRAWAL type', () => {
+    it('should return false for WITHDRAW type', () => {
       const activity = createMock1x1WithdrawalActivity(0, 0, '500000000000000000');
-      expect(isWithdraw2Activity(activity)).toBe(false);
+      expect(isSameChainWithdraw2(activity)).toBe(false);
+    });
+  });
+
+  describe('isCrosschainWithdrawIntent', () => {
+    it('should return true for CROSSCHAIN_WITHDRAW_INTENT type', () => {
+      const activity = createMockCrossChainWithdrawalActivity(0, 0, '500000000000000000');
+      expect(isCrosschainWithdrawIntent(activity)).toBe(true);
     });
 
-    it('should return false for DEPOSIT type', () => {
-      const activity = createMockDepositActivity(0, '1000000000000000000');
-      expect(isWithdraw2Activity(activity)).toBe(false);
+    it('should return false for WITHDRAW type', () => {
+      const activity = createMock1x1WithdrawalActivity(0, 0, '500000000000000000');
+      expect(isCrosschainWithdrawIntent(activity)).toBe(false);
+    });
+  });
+
+  describe('isCrosschainWithdraw2Intent', () => {
+    it('should return true for CROSSCHAIN_WITHDRAW_2_INTENT type', () => {
+      const activity = createMockCrossChainWithdraw2Activity(0, 0, 1, 0, '500000000000000000');
+      expect(isCrosschainWithdraw2Intent(activity)).toBe(true);
+    });
+
+    it('should return false for WITHDRAW_2 type', () => {
+      const activity = createMockWithdraw2Activity(0, 0, 1, 0, '500000000000000000');
+      expect(isCrosschainWithdraw2Intent(activity)).toBe(false);
     });
   });
 
@@ -133,11 +117,6 @@ describe('activity-indexer', () => {
       const activity = createMockDepositActivity(0, '1000000000000000000');
       expect(isRagequitActivity(activity)).toBe(false);
     });
-
-    it('should return false for WITHDRAWAL type', () => {
-      const activity = createMock1x1WithdrawalActivity(0, 0, '500000000000000000');
-      expect(isRagequitActivity(activity)).toBe(false);
-    });
   });
 
   describe('buildActivityIndex', () => {
@@ -145,27 +124,28 @@ describe('activity-indexer', () => {
       const index = buildActivityIndex([]);
 
       expect(index.depositsByPrecommitment.size).toBe(0);
-      expect(index.withdrawalsByNullifier.size).toBe(0);
-      expect(index.withdraw2ByNullifier.size).toBe(0);
+      expect(index.sameChainWithdrawalsByNullifier.size).toBe(0);
+      expect(index.sameChainWithdraw2ByNullifier.size).toBe(0);
+      expect(index.crosschainWithdrawIntentsByNullifier.size).toBe(0);
+      expect(index.crosschainWithdraw2IntentsByNullifier.size).toBe(0);
       expect(index.ragequitByCommitment.size).toBe(0);
-      expect(index.withdrawalsByOrderId.size).toBe(0);
     });
 
     describe('deposit indexing', () => {
-      it('should index deposits by precommitmentHash', () => {
+      it('should index deposits by precommitment', () => {
         const deposit = createMockDepositActivity(0, '1000000000000000000');
         const index = buildActivityIndex([deposit]);
 
         expect(index.depositsByPrecommitment.size).toBe(1);
-        expect(index.depositsByPrecommitment.get(deposit.precommitmentHash!)).toBe(deposit);
+        expect(index.depositsByPrecommitment.get(deposit.precommitment)).toBe(deposit);
       });
 
-      it('should index cross-chain deposits', () => {
+      it('should index cross-chain deposit fills', () => {
         const deposit = createMockCrossChainDepositActivity(0, '1000000000000000000');
         const index = buildActivityIndex([deposit]);
 
         expect(index.depositsByPrecommitment.size).toBe(1);
-        expect(index.depositsByPrecommitment.get(deposit.precommitmentHash!)).toBe(deposit);
+        expect(index.depositsByPrecommitment.get(deposit.precommitment)).toBe(deposit);
       });
 
       it('should index multiple deposits', () => {
@@ -174,57 +154,34 @@ describe('activity-indexer', () => {
         const index = buildActivityIndex([deposit0, deposit1]);
 
         expect(index.depositsByPrecommitment.size).toBe(2);
-        expect(index.depositsByPrecommitment.get(deposit0.precommitmentHash!)).toBe(deposit0);
-        expect(index.depositsByPrecommitment.get(deposit1.precommitmentHash!)).toBe(deposit1);
-      });
-
-      it('should skip deposits without precommitmentHash', () => {
-        const deposit = createMockDepositActivity(0, '1000000000000000000');
-        deposit.precommitmentHash = undefined;
-        const index = buildActivityIndex([deposit]);
-
-        expect(index.depositsByPrecommitment.size).toBe(0);
+        expect(index.depositsByPrecommitment.get(deposit0.precommitment)).toBe(deposit0);
+        expect(index.depositsByPrecommitment.get(deposit1.precommitment)).toBe(deposit1);
       });
     });
 
     describe('1:1 withdrawal indexing', () => {
-      it('should index 1:1 withdrawals by nullifier', () => {
+      it('should index same-chain withdrawals by nullifier', () => {
         const withdrawal = createMock1x1WithdrawalActivity(0, 0, '500000000000000000');
         const index = buildActivityIndex([withdrawal]);
 
-        expect(index.withdrawalsByNullifier.size).toBe(1);
-        expect(index.withdrawalsByNullifier.get(withdrawal.spentNullifier!)).toBe(withdrawal);
+        expect(index.sameChainWithdrawalsByNullifier.size).toBe(1);
+        expect(index.sameChainWithdrawalsByNullifier.get(withdrawal.spentNullifiers[0])).toBe(withdrawal);
       });
 
-      it('should index cross-chain withdrawals', () => {
+      it('should index cross-chain withdrawal intents by nullifier', () => {
         const withdrawal = createMockCrossChainWithdrawalActivity(0, 0, '500000000000000000');
         const index = buildActivityIndex([withdrawal]);
 
-        expect(index.withdrawalsByNullifier.size).toBe(1);
-        expect(index.withdrawalsByNullifier.get(withdrawal.spentNullifier!)).toBe(withdrawal);
+        expect(index.crosschainWithdrawIntentsByNullifier.size).toBe(1);
+        expect(index.crosschainWithdrawIntentsByNullifier.get(withdrawal.spentNullifiers[0])).toBe(withdrawal);
       });
 
-      it('should index cross-chain withdrawals by orderId', () => {
+      it('should index cross-chain withdrawal intents by orderId', () => {
         const withdrawal = createMockCrossChainWithdrawalActivity(0, 0, '500000000000000000');
         const index = buildActivityIndex([withdrawal]);
 
-        expect(index.withdrawalsByOrderId.size).toBe(1);
-        expect(index.withdrawalsByOrderId.get(withdrawal.orderId!)).toBe(withdrawal);
-      });
-
-      it('should not index regular withdrawals without orderId', () => {
-        const withdrawal = createMock1x1WithdrawalActivity(0, 0, '500000000000000000');
-        const index = buildActivityIndex([withdrawal]);
-
-        expect(index.withdrawalsByOrderId.size).toBe(0);
-      });
-
-      it('should skip withdrawals without spentNullifier', () => {
-        const withdrawal = createMock1x1WithdrawalActivity(0, 0, '500000000000000000');
-        withdrawal.spentNullifier = undefined;
-        const index = buildActivityIndex([withdrawal]);
-
-        expect(index.withdrawalsByNullifier.size).toBe(0);
+        expect(index.withdrawalFillsByOrderId.size).toBe(0); // Intent, not fill
+        expect(index.withdrawalRefundsByOrderId.size).toBe(0);
       });
     });
 
@@ -233,37 +190,18 @@ describe('activity-indexer', () => {
         const withdraw2 = createMockWithdraw2Activity(0, 0, 1, 0, '500000000000000000');
         const index = buildActivityIndex([withdraw2]);
 
-        expect(index.withdraw2ByNullifier.size).toBe(2);
-        expect(index.withdraw2ByNullifier.get(withdraw2.spentNullifier!)).toBe(withdraw2);
-        expect(index.withdraw2ByNullifier.get(withdraw2.spentNullifier1!)).toBe(withdraw2);
+        expect(index.sameChainWithdraw2ByNullifier.size).toBe(2);
+        expect(index.sameChainWithdraw2ByNullifier.get(withdraw2.spentNullifiers[0])).toBe(withdraw2);
+        expect(index.sameChainWithdraw2ByNullifier.get(withdraw2.spentNullifiers[1])).toBe(withdraw2);
       });
 
-      it('should index cross-chain Withdraw2 by orderId', () => {
-        const withdraw2 = createMockWithdraw2Activity(0, 0, 1, 0, '500000000000000000', {
-          type: 'CROSSCHAIN_WITHDRAW2',
-          orderId: 'order-withdraw2',
-        });
+      it('should index cross-chain Withdraw2 intents by both nullifiers', () => {
+        const withdraw2 = createMockCrossChainWithdraw2Activity(0, 0, 1, 0, '500000000000000000');
         const index = buildActivityIndex([withdraw2]);
 
-        expect(index.withdrawalsByOrderId.size).toBe(1);
-        expect(index.withdrawalsByOrderId.get('order-withdraw2')).toBe(withdraw2);
-      });
-
-      it('should skip Withdraw2 without spentNullifier', () => {
-        const withdraw2 = createMockWithdraw2Activity(0, 0, 1, 0, '500000000000000000');
-        withdraw2.spentNullifier = undefined;
-        const index = buildActivityIndex([withdraw2]);
-
-        expect(index.withdraw2ByNullifier.size).toBe(0);
-      });
-
-      it('should handle Withdraw2 with only first nullifier', () => {
-        const withdraw2 = createMockWithdraw2Activity(0, 0, 1, 0, '500000000000000000');
-        withdraw2.spentNullifier1 = undefined;
-        const index = buildActivityIndex([withdraw2]);
-
-        expect(index.withdraw2ByNullifier.size).toBe(1);
-        expect(index.withdraw2ByNullifier.get(withdraw2.spentNullifier!)).toBe(withdraw2);
+        expect(index.crosschainWithdraw2IntentsByNullifier.size).toBe(2);
+        expect(index.crosschainWithdraw2IntentsByNullifier.get(withdraw2.spentNullifiers[0])).toBe(withdraw2);
+        expect(index.crosschainWithdraw2IntentsByNullifier.get(withdraw2.spentNullifiers[1])).toBe(withdraw2);
       });
     });
 
@@ -274,14 +212,6 @@ describe('activity-indexer', () => {
 
         expect(index.ragequitByCommitment.size).toBe(1);
         expect(index.ragequitByCommitment.get('0xcommitment123')).toBe(ragequit);
-      });
-
-      it('should skip ragequit without commitment', () => {
-        const ragequit = createMockRagequitActivity(0, 0, '0xcommitment');
-        ragequit.commitment = undefined;
-        const index = buildActivityIndex([ragequit]);
-
-        expect(index.ragequitByCommitment.size).toBe(0);
       });
     });
 
@@ -295,8 +225,8 @@ describe('activity-indexer', () => {
         const index = buildActivityIndex([deposit, withdrawal, withdraw2, ragequit]);
 
         expect(index.depositsByPrecommitment.size).toBe(1);
-        expect(index.withdrawalsByNullifier.size).toBe(1);
-        expect(index.withdraw2ByNullifier.size).toBe(2);
+        expect(index.sameChainWithdrawalsByNullifier.size).toBe(1);
+        expect(index.sameChainWithdraw2ByNullifier.size).toBe(2);
         expect(index.ragequitByCommitment.size).toBe(1);
       });
 
@@ -309,19 +239,19 @@ describe('activity-indexer', () => {
         const index2 = buildActivityIndex([withdrawal, deposit]);
 
         expect(index1.depositsByPrecommitment.size).toBe(index2.depositsByPrecommitment.size);
-        expect(index1.withdrawalsByNullifier.size).toBe(index2.withdrawalsByNullifier.size);
+        expect(index1.sameChainWithdrawalsByNullifier.size).toBe(index2.sameChainWithdrawalsByNullifier.size);
       });
 
       it('should handle duplicate activities (last one wins)', () => {
-        const deposit1 = createMockDepositActivity(0, '1000000000000000000', { id: 'first' });
-        const deposit2 = createMockDepositActivity(0, '2000000000000000000', { id: 'second' });
-        // Same precommitmentHash since same depositIndex
+        const deposit1 = createMockDepositActivity(0, '1000000000000000000');
+        const deposit2 = createMockDepositActivity(0, '2000000000000000000');
+        // Same precommitment since same depositIndex
 
         const index = buildActivityIndex([deposit1, deposit2]);
 
         expect(index.depositsByPrecommitment.size).toBe(1);
-        const indexed = index.depositsByPrecommitment.get(deposit1.precommitmentHash!);
-        expect(indexed?.id).toBe('second'); // Last one wins
+        const indexed = index.depositsByPrecommitment.get(deposit1.precommitment);
+        expect(indexed?.txHash).toBe(deposit2.txHash); // Last one wins
       });
     });
   });

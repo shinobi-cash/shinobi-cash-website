@@ -5,10 +5,10 @@
  */
 
 import {
-  isDepositActivity as isDepositActivityType,
-  isCrossChainDepositActivity,
-  isCrossChainDepositPendingActivity,
-  type Activity,
+  type ActivityItem,
+  isDeposit,
+  isCrosschainDepositFill,
+  isCrosschainDepositIntent,
 } from '@shinobi-cash/data';
 import type { NoteTree, NullifierInfo } from './types.js';
 import type { ActivityIndex } from './activity-indexer.js';
@@ -26,7 +26,7 @@ export interface ScanResult {
   /** Nullifier mappings for the new deposits */
   newNullifierEntries: Map<string, NullifierInfo>;
   /** Raw activities that matched user's deposits */
-  matchedActivities: Activity[];
+  matchedActivities: ActivityItem[];
   /** Updated next deposit index to scan */
   nextDepositIndex: number;
   /** Number of filled deposits found (commitment in pool, spendable) */
@@ -93,17 +93,18 @@ export function scanForDeposits(
     let tree: NoteTree;
     let isPending = false;
 
-    if (isCrossChainDepositPendingActivity(activity)) {
-      // Pending cross-chain deposit: create DepositIntentNote
+    if (isCrosschainDepositIntent(activity)) {
+      // Cross-chain deposit intent: create DepositIntentNote
       // Don't add to nullifier map yet (commitment not in pool)
       const depositIntent = createDepositIntentNote(activity, idx, poolAddress, currentOffset);
       tree = createNoteTree(depositIntent);
       isPending = true;
-    } else if (isCrossChainDepositActivity(activity)) {
+    } else if (isCrosschainDepositFill(activity)) {
       // Filled cross-chain deposit: create CrosschainDepositNote
-      const crosschainDeposit = createCrosschainDepositNote(activity, idx, poolAddress, currentOffset);
+      // Pass chainId as originChainId since we're scanning for deposits from this chain
+      const crosschainDeposit = createCrosschainDepositNote(activity, idx, poolAddress, currentOffset, chainId.toString());
       tree = createNoteTree(crosschainDeposit);
-    } else if (isDepositActivityType(activity)) {
+    } else if (isDeposit(activity)) {
       // Same-chain deposit: create DepositNote
       const depositNote = createDepositNote(activity, idx, poolAddress, currentOffset);
       tree = createNoteTree(depositNote);

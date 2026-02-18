@@ -248,10 +248,8 @@ describe('deposit-scanner', () => {
       });
 
       it('should create CrosschainDepositNote for filled cross-chain deposit', () => {
-        // Filled cross-chain deposit (intentStatus='filled')
-        const deposit = createMockCrossChainDepositActivity(0, toEther(1), {
-          intentStatus: 'filled',
-        });
+        // Filled cross-chain deposit (CROSSCHAIN_DEPOSIT_FILL type)
+        const deposit = createMockCrossChainDepositActivity(0, toEther(1));
         const index = buildActivityIndex([deposit]);
         const result = scanForDeposits(index, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0);
 

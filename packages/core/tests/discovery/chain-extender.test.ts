@@ -14,6 +14,7 @@ import {
   createMock1x1WithdrawalActivity,
   createMockCrossChainWithdrawalActivity,
   createMockWithdraw2Activity,
+  createMockCrossChainWithdraw2Activity,
   createMockRagequitActivity,
   resetActivityCounter,
   TEST_POOL_ADDRESS,
@@ -168,8 +169,9 @@ describe('chain-extender', () => {
         const intentNode = updatedTree.root.children.find((c) => c.note.noteType === 'withdrawalIntent');
         expect(intentNode).toBeDefined();
         expect(intentNode!.note.amount).toBe(toEther(0.5).toString());
-        // Intent notes track pending state by noteType, not by intentStatus field
-        expect((intentNode!.note as WithdrawalIntentNote).destinationChainId).toBe('84532');
+        // Note: CrosschainWithdrawIntentActivity doesn't have destinationChainId
+        // The factory defaults to originChainId
+        expect((intentNode!.note as WithdrawalIntentNote).destinationChainId).toBe(TEST_CHAIN_ID);
       });
 
       it('should apply sequential withdrawals', () => {
@@ -384,13 +386,10 @@ describe('chain-extender', () => {
           [nullifier1, { originChainId: TEST_CHAIN_ID.toString(), depositIndex: 1, changeIndex: 0 }],
         ]);
 
-        const activity = createMockWithdraw2Activity(0, 0, 1, 0, toEther(0.5), {
-          type: 'CROSSCHAIN_WITHDRAW2_PENDING',
-          destinationChainId: BigInt(84532),
+        // Use the correct cross-chain Withdraw2 intent activity type
+        const activity = createMockCrossChainWithdraw2Activity(0, 0, 1, 0, toEther(0.5), {
           refundCommitment: '0xrefund-withdraw2',
           orderId: 'order-withdraw2',
-          fillDeadline: BigInt(Math.floor(Date.now() / 1000) + 3600),
-          expires: BigInt(Math.floor(Date.now() / 1000) + 86400),
         });
         const activityIndex = buildActivityIndex([activity]);
 
@@ -447,8 +446,8 @@ describe('chain-extender', () => {
         expect(ragequitNode.note.noteType).toBe('ragequit');
         expect(ragequitNode.isTerminal).toBe(true);
 
-        // RagequitNote should have originTransactionHash from the activity
-        expect(ragequitNode.note.originTransactionHash).toBe(activity.originTransactionHash);
+        // RagequitNote should have originTransactionHash from the activity (txHash in data-v2)
+        expect(ragequitNode.note.originTransactionHash).toBe(activity.txHash);
 
         // Nullifier should be removed
         expect(result.updatedNullifierMap.has(nullifier)).toBe(false);

@@ -17,6 +17,7 @@ import type {
   DiscoveryOptions,
   DiscoveryPolicy,
   NoteTree,
+  Note,
   ActivityFetcher,
   PersistenceCallbacks,
   SerializableDiscoveryState,
@@ -88,7 +89,10 @@ export type { NoteCategory, ActivityType } from './note-queries.js';
 export {
   // Category determination
   getNoteCategory,
+  getNoteCategoryWithContext,
   getTreeCategory,
+  getTreeCategories,
+  treeMatchesCategory,
   // Action availability
   canWithdraw,
   canRagequit,
@@ -134,11 +138,8 @@ export type {
   ChainKey,
 } from './types.js';
 
-// Re-export Activity type for consumers
-export type { Activity, SerializedActivity } from '@shinobi-cash/data';
-
-// Import serialization utilities
-import { serializeActivity, deserializeActivity } from '@shinobi-cash/data';
+// Re-export ActivityItem type for consumers
+export type { ActivityItem } from '@shinobi-cash/data';
 
 // For persistence callback implementation
 export { makeChainKey } from './types.js';
@@ -242,7 +243,7 @@ export class NoteDiscovery {
 
   private processPage(
     state: DiscoveryState,
-    activities: import('@shinobi-cash/data').Activity[],
+    activities: import('@shinobi-cash/data').ActivityItem[],
     accountKey: bigint,
     poolAddress: string,
     policy: DiscoveryPolicy,
@@ -253,8 +254,8 @@ export class NoteDiscovery {
     // Phase 1: Discover new deposits
     const chainIds = new Set<string>();
     for (const activity of activities) {
-      if (activity.type === 'DEPOSIT' || activity.type === 'CROSSCHAIN_DEPOSIT' || activity.type === 'CROSSCHAIN_DEPOSIT_PENDING') {
-        chainIds.add(activity.originChainId.toString());
+      if (activity.type === 'DEPOSIT' || activity.type === 'CROSSCHAIN_DEPOSIT_FILL' || activity.type === 'CROSSCHAIN_DEPOSIT_INTENT') {
+        chainIds.add(activity.chainId);
       }
     }
 
@@ -272,7 +273,7 @@ export class NoteDiscovery {
       }
       // Store matched deposit activities
       for (const activity of scanResult.matchedActivities) {
-        state.activities.set(activity.id, activity);
+        state.activities.set(activity.txHash, activity);
       }
       state.nextDepositIndex.set(chainId, scanResult.nextDepositIndex);
       state.newFilledDepositsFound += scanResult.filledDepositsFound;
@@ -292,7 +293,7 @@ export class NoteDiscovery {
     }
     // Store matched reconciliation activities (filled/refunded intents)
     for (const activity of reconcileResult.matchedActivities) {
-      state.activities.set(activity.id, activity);
+      state.activities.set(activity.txHash, activity);
     }
 
     // Phase 3: Extend trees with withdrawals
@@ -301,7 +302,7 @@ export class NoteDiscovery {
     state.nullifierMap = extensionResult.updatedNullifierMap;
     // Store matched withdrawal/ragequit activities
     for (const activity of extensionResult.matchedActivities) {
-      state.activities.set(activity.id, activity);
+      state.activities.set(activity.txHash, activity);
     }
 
     return state;
@@ -389,6 +390,7 @@ export function rebuildNullifierMap(
 }
 
 function serializeDiscoveryState(state: DiscoveryState): SerializableDiscoveryState {
+  // data-v2 activities are already string-based, no serialization needed
   return {
     trees: Array.from(state.trees.entries()).map(([chainKey, tree]) => ({
       chainKey,
@@ -396,7 +398,7 @@ function serializeDiscoveryState(state: DiscoveryState): SerializableDiscoverySt
     })),
     nullifierMap: Array.from(state.nullifierMap.entries()).map(([hash, info]) => ({ hash, info })),
     nextDepositIndex: Array.from(state.nextDepositIndex.entries()).map(([chainId, index]) => ({ chainId, index })),
-    activities: Array.from(state.activities.values()).map(serializeActivity),
+    activities: Array.from(state.activities.values()),
     minOffset: state.minOffset,
     newFilledDepositsFound: state.newFilledDepositsFound,
     newPendingDepositsFound: state.newPendingDepositsFound,
@@ -404,9 +406,8 @@ function serializeDiscoveryState(state: DiscoveryState): SerializableDiscoverySt
 }
 
 function deserializeDiscoveryState(serialized: SerializableDiscoveryState): DiscoveryState {
-  // Deserialize activities and build map keyed by activity.id
-  const activitiesArray = (serialized.activities ?? []).map(deserializeActivity);
-  const activities = new Map(activitiesArray.map((a) => [a.id, a]));
+  // data-v2 activities are already string-based, build map keyed by txHash
+  const activities = new Map((serialized.activities ?? []).map((a) => [a.txHash, a]));
 
   return {
     trees: new Map(serialized.trees.map((t) => [t.chainKey, deserializeTree(t.tree)])),

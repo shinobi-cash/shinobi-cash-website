@@ -5,15 +5,15 @@
 
 import type {
   DepositActivity,
-  CrossChainDepositActivity,
-  WithdrawalActivity,
+  CrosschainDepositFillActivity,
+  WithdrawActivity,
   Withdraw2Activity,
-  CrossChainWithdrawalActivity,
-  CrossChainWithdraw2Activity,
-  CrossChainDepositPendingActivity,
-  CrossChainWithdrawalPendingActivity,
-  CrossChainWithdraw2PendingActivity,
+  CrosschainDepositIntentActivity,
+  CrosschainWithdrawIntentActivity,
+  CrosschainWithdraw2IntentActivity,
+  CrosschainWithdrawalFillActivity,
   RagequitActivity,
+  ASPStatus,
 } from '@shinobi-cash/data';
 import type {
   DepositNote,
@@ -50,24 +50,23 @@ function extractChainId(serialNumber: string): string {
 
 /** Activities that can create a ChangeNote */
 export type ChangeActivity =
-  | WithdrawalActivity
+  | WithdrawActivity
   | Withdraw2Activity
-  | CrossChainWithdrawalActivity
-  | CrossChainWithdraw2Activity
-  | CrossChainWithdrawalPendingActivity
-  | CrossChainWithdraw2PendingActivity;
+  | CrosschainWithdrawIntentActivity
+  | CrosschainWithdraw2IntentActivity;
 
-/** Activities that can create a WithdrawalNote */
-export type SameChainWithdrawalActivity = WithdrawalActivity | Withdraw2Activity;
+/** Activities that can create a WithdrawalNote (same-chain only) */
+export type SameChainWithdrawalActivity = WithdrawActivity | Withdraw2Activity;
 
-/** Activities that can create a CrosschainWithdrawalNote */
-export type FilledCrosschainWithdrawalActivity = CrossChainWithdrawalActivity | CrossChainWithdraw2Activity;
-
-/** Activities that can create a WithdrawalIntentNote */
-export type PendingCrosschainWithdrawalActivity = CrossChainWithdrawalPendingActivity | CrossChainWithdraw2PendingActivity;
+/** Activities that can create a WithdrawalIntentNote (cross-chain pending) */
+export type PendingCrosschainWithdrawalActivity =
+  | CrosschainWithdrawIntentActivity
+  | CrosschainWithdraw2IntentActivity;
 
 /** Activities that can create a MergedNote (2:1 Withdraw2) */
-export type Withdraw2MergeActivity = Withdraw2Activity | CrossChainWithdraw2Activity | CrossChainWithdraw2PendingActivity;
+export type Withdraw2MergeActivity =
+  | Withdraw2Activity
+  | CrosschainWithdraw2IntentActivity;
 
 // ============================================================================
 // Deposit Note Creation
@@ -80,7 +79,7 @@ export function createDepositNote(
   poolAddress: string,
   discoveredAtOffset?: number,
 ): DepositNote {
-  const originChainId = activity.originChainId.toString();
+  const originChainId = activity.chainId;
 
   return {
     noteType: 'deposit',
@@ -88,49 +87,56 @@ export function createDepositNote(
     poolAddress,
     depositIndex,
     changeIndex: 0,
-    amount: activity.amount.toString(),
+    amount: activity.amount,
     label: activity.label,
-    aspStatus: activity.aspStatus,
+    aspStatus: activity.aspStatus ?? 'pending',
     status: 'unspent',
-    originBlockNumber: activity.blockNumber.toString(),
-    originTimestamp: activity.timestamp.toString(),
+    originTimestamp: activity.timestamp,
     originChainId,
-    originTransactionHash: activity.originTransactionHash,
-    precommitmentHash: activity.precommitmentHash,
+    originTransactionHash: activity.txHash,
+    precommitmentHash: activity.precommitment,
     activityData: buildActivityMetadata(activity),
     discoveredAtOffset,
   };
 }
 
-/** Create a CrosschainDepositNote from a filled cross-chain deposit activity */
+/**
+ * Create a CrosschainDepositNote from a filled cross-chain deposit activity
+ *
+ * Note: In data-v2, the fill activity only has destination (pool chain) info.
+ * The originChainId comes from either:
+ * - The scanner's chainId parameter (when discovering fills directly)
+ * - The depositIntent.originChainId (when reconciling an intent with its fill)
+ */
 export function createCrosschainDepositNote(
-  activity: CrossChainDepositActivity,
+  activity: CrosschainDepositFillActivity,
   depositIndex: number,
   poolAddress: string,
   discoveredAtOffset?: number,
+  originChainId?: string,
 ): CrosschainDepositNote {
-  const originChainId = activity.originChainId.toString();
-  const destinationChainId = activity.destinationChainId.toString();
+  // Fill activity's chainId is the destination (pool chain)
+  const destinationChainId = activity.chainId;
+  // Origin comes from parameter or defaults to destination (fallback)
+  const origin = originChainId ?? destinationChainId;
 
   return {
     noteType: 'crosschainDeposit',
-    serialNumber: generateSerialNumber(originChainId, depositIndex, 0, false),
+    serialNumber: generateSerialNumber(origin, depositIndex, 0, false),
     poolAddress,
     depositIndex,
     changeIndex: 0,
-    amount: activity.amount.toString(),
+    amount: activity.amount,
     label: activity.label,
-    aspStatus: activity.aspStatus,
+    aspStatus: activity.aspStatus ?? 'pending',
     status: 'unspent',
-    originBlockNumber: activity.blockNumber.toString(),
-    originTimestamp: activity.timestamp.toString(),
-    originChainId,
-    originTransactionHash: activity.originTransactionHash,
+    originTimestamp: activity.timestamp,
+    originChainId: origin,
+    originTransactionHash: activity.txHash, // Fill's txHash (intent txHash not available in fill)
     destinationChainId,
-    destinationTransactionHash: activity.destinationTransactionHash,
-    destinationBlockNumber: activity.blockNumber.toString(),
-    destinationTimestamp: activity.timestamp.toString(),
-    precommitmentHash: activity.precommitmentHash,
+    destinationTransactionHash: activity.txHash,
+    destinationTimestamp: activity.timestamp,
+    precommitmentHash: activity.precommitment,
     activityData: buildActivityMetadata(activity),
     discoveredAtOffset,
   };
@@ -155,11 +161,10 @@ export function createWithdrawalNote(
     depositIndex: parentNote.depositIndex,
     changeIndex: parentChangeIndex,
     amount: '0', // Terminal notes have no remaining balance
-    withdrawnAmount: activity.amount.toString(),
-    originBlockNumber: activity.blockNumber.toString(),
-    originTimestamp: activity.timestamp.toString(),
-    originChainId: activity.originChainId.toString(),
-    originTransactionHash: activity.originTransactionHash,
+    withdrawnAmount: activity.amount,
+    originTimestamp: activity.timestamp,
+    originChainId: activity.chainId,
+    originTransactionHash: activity.txHash,
     recipient: activity.recipient,
     mergedFrom: {},
     activityData: buildActivityMetadata(activity),
@@ -170,10 +175,15 @@ export function createWithdrawalNote(
 // Cross-chain Withdrawal Note Creation - Terminal
 // ============================================================================
 
-/** Create a CrosschainWithdrawalNote (terminal record of filled cross-chain withdrawal) */
+/**
+ * Create a CrosschainWithdrawalNote (terminal record of filled cross-chain withdrawal)
+ *
+ * Called from reconciler when a WithdrawalIntentNote gets filled.
+ * Origin info comes from the parent intent note, fill info comes from the activity.
+ */
 export function createCrosschainWithdrawalNote(
-  parentNote: DepositNote | CrosschainDepositNote | ChangeNote | WithdrawalRefundedNote | WithdrawalIntentNote,
-  activity: FilledCrosschainWithdrawalActivity,
+  parentNote: WithdrawalIntentNote,
+  activity: CrosschainWithdrawalFillActivity,
   parentChangeIndex: number,
   mergedFrom?: Record<string, string>,
 ): CrosschainWithdrawalNote {
@@ -186,15 +196,13 @@ export function createCrosschainWithdrawalNote(
     depositIndex: parentNote.depositIndex,
     changeIndex: parentChangeIndex,
     amount: '0', // Terminal notes have no remaining balance
-    withdrawnAmount: activity.amount.toString(),
-    originBlockNumber: activity.blockNumber.toString(),
-    originTimestamp: activity.timestamp.toString(),
-    originChainId: activity.originChainId.toString(),
-    originTransactionHash: activity.originTransactionHash,
-    destinationChainId: activity.destinationChainId.toString(),
-    destinationTransactionHash: activity.destinationTransactionHash,
-    destinationBlockNumber: activity.blockNumber.toString(),
-    destinationTimestamp: activity.timestamp.toString(),
+    withdrawnAmount: parentNote.amount, // Use intent's amount (fill doesn't have withdrawn amount)
+    originTimestamp: parentNote.originTimestamp,
+    originChainId: parentNote.originChainId,
+    originTransactionHash: parentNote.originTransactionHash,
+    destinationChainId: activity.chainId, // Fill happens on destination chain
+    destinationTransactionHash: activity.txHash,
+    destinationTimestamp: activity.timestamp,
     recipient: activity.recipient,
     mergedFrom: mergedFrom ?? {},
     activityData: buildActivityMetadata(activity),
@@ -224,10 +232,9 @@ export function createChangeNote(
     label: parentNote.label,
     aspStatus: parentNote.aspStatus,
     status: remaining > 0n ? 'unspent' : 'spent',
-    originBlockNumber: activity.blockNumber.toString(),
-    originTimestamp: activity.timestamp.toString(),
-    originChainId: activity.originChainId.toString(),
-    originTransactionHash: activity.originTransactionHash,
+    originTimestamp: activity.timestamp,
+    originChainId,
+    originTransactionHash: activity.txHash,
     mergedFrom: {},
     activityData: buildActivityMetadata(activity),
   };
@@ -258,10 +265,9 @@ export function createWithdraw2ChangeNote(
     label: winnerNote.label,
     aspStatus: winnerNote.aspStatus,
     status: remaining > 0n ? 'unspent' : 'spent',
-    originBlockNumber: activity.blockNumber.toString(),
-    originTimestamp: activity.timestamp.toString(),
-    originChainId: activity.originChainId.toString(),
-    originTransactionHash: activity.originTransactionHash,
+    originTimestamp: activity.timestamp,
+    originChainId,
+    originTransactionHash: activity.txHash,
     mergedFrom: { [mergedFromSerialNumber]: mergedFromAmount.toString() },
     activityData: buildWithdraw2ActivityMetadata(activity),
   };
@@ -285,10 +291,9 @@ export function createMergedNote(
     changeIndex: loserNote.changeIndex,
     amount: '0', // Terminal notes have no remaining balance
     contributedAmount: loserNote.amount,
-    originBlockNumber: activity.blockNumber.toString(),
-    originTimestamp: activity.timestamp.toString(),
-    originChainId: activity.originChainId.toString(),
-    originTransactionHash: activity.originTransactionHash,
+    originTimestamp: activity.timestamp,
+    originChainId: activity.chainId,
+    originTransactionHash: activity.txHash,
     mergedIntoSerialNumber,
     activityData: buildWithdraw2ActivityMetadata(activity),
   };
@@ -311,10 +316,9 @@ export function createRagequitNote(
     changeIndex: parentNote.changeIndex,
     amount: '0', // Terminal notes have no remaining balance
     ragequitAmount: parentNote.amount,
-    originBlockNumber: activity.blockNumber.toString(),
-    originTimestamp: activity.timestamp.toString(),
-    originChainId: activity.originChainId.toString(),
-    originTransactionHash: activity.originTransactionHash,
+    originTimestamp: activity.timestamp,
+    originChainId: activity.chainId,
+    originTransactionHash: activity.txHash,
     recipient: activity.user,
     activityData: buildActivityMetadata(activity),
   };
@@ -331,7 +335,9 @@ export function createWithdrawalIntentNote(
   parentChangeIndex: number,
 ): WithdrawalIntentNote {
   const originChainId = extractChainId(parentNote.serialNumber);
-  const destinationChainId = activity.destinationChainId.toString();
+  // Intent activity doesn't have destinationChainId - use recipient's chain from solver info
+  // For now, default to origin since we don't have destination info in the intent
+  const destinationChainId = originChainId;
 
   return {
     noteType: 'withdrawalIntent',
@@ -339,63 +345,30 @@ export function createWithdrawalIntentNote(
     poolAddress: parentNote.poolAddress,
     depositIndex: parentNote.depositIndex,
     changeIndex: parentChangeIndex,
-    amount: activity.amount.toString(),
-    originBlockNumber: activity.blockNumber.toString(),
-    originTimestamp: activity.timestamp.toString(),
-    originChainId: activity.originChainId.toString(),
-    originTransactionHash: activity.originTransactionHash,
+    amount: activity.amount,
+    originTimestamp: activity.timestamp,
+    originChainId: activity.chainId,
+    originTransactionHash: activity.txHash,
     destinationChainId,
     orderId: activity.orderId,
-    fillDeadline: activity.fillDeadline.toString(),
-    expires: activity.expires.toString(),
+    fillDeadline: activity.timestamp, // TODO: Intent activity should have fillDeadline
+    expires: activity.timestamp, // TODO: Intent activity should have expires
     refundCommitment: activity.refundCommitment,
     activityData: buildActivityMetadata(activity),
-  };
-}
-
-/**
- * Create a WithdrawalIntentNote from a FILLED cross-chain activity.
- * Used when user syncs after the intent was already filled - indexer converts PENDING→FILLED in place.
- * The filled activity preserves all original PENDING fields (fillDeadline, expires, refundCommitment).
- */
-export function createWithdrawalIntentNoteFromFilled(
-  parentNote: DepositNote | CrosschainDepositNote | ChangeNote | WithdrawalRefundedNote,
-  activity: FilledCrosschainWithdrawalActivity,
-  parentChangeIndex: number,
-): WithdrawalIntentNote {
-  const originChainId = extractChainId(parentNote.serialNumber);
-  const destinationChainId = activity.destinationChainId.toString();
-
-  return {
-    noteType: 'withdrawalIntent',
-    serialNumber: generateSerialNumber(originChainId, parentNote.depositIndex, parentChangeIndex, true),
-    poolAddress: parentNote.poolAddress,
-    depositIndex: parentNote.depositIndex,
-    changeIndex: parentChangeIndex,
-    amount: activity.amount.toString(),
-    originBlockNumber: activity.blockNumber.toString(),
-    originTimestamp: activity.timestamp.toString(),
-    originChainId: activity.originChainId.toString(),
-    originTransactionHash: activity.originTransactionHash,
-    destinationChainId,
-    orderId: activity.orderId,
-    // Filled activity preserves these fields from the original PENDING
-    fillDeadline: activity.fillDeadline?.toString() ?? '0',
-    expires: activity.expires?.toString() ?? '0',
-    refundCommitment: activity.refundCommitment ?? '',
-    activityData: buildActivityMetadata(activity),
+    // Track merge type for reconciler to know if this is 2:1
+    mergeType: activity.type === 'CROSSCHAIN_WITHDRAW_2_INTENT' ? '2:1' : '1:1',
   };
 }
 
 /** Create a DepositIntentNote (pending cross-chain deposit) */
 export function createDepositIntentNote(
-  activity: CrossChainDepositPendingActivity,
+  activity: CrosschainDepositIntentActivity,
   depositIndex: number,
   poolAddress: string,
   discoveredAtOffset?: number,
 ): DepositIntentNote {
-  const originChainId = activity.originChainId.toString();
-  const destinationChainId = activity.destinationChainId.toString();
+  const originChainId = activity.chainId;
+  const destinationChainId = activity.destinationChainId;
 
   return {
     noteType: 'depositIntent',
@@ -403,15 +376,14 @@ export function createDepositIntentNote(
     poolAddress,
     depositIndex,
     changeIndex: 0,
-    amount: activity.amount.toString(),
-    originBlockNumber: activity.blockNumber.toString(),
-    originTimestamp: activity.timestamp.toString(),
+    amount: activity.amount,
+    originTimestamp: activity.timestamp,
     originChainId,
-    originTransactionHash: activity.originTransactionHash,
+    originTransactionHash: activity.txHash,
     destinationChainId,
     orderId: activity.orderId,
-    fillDeadline: activity.fillDeadline.toString(),
-    expires: activity.expires.toString(),
+    fillDeadline: activity.timestamp, // TODO: Get from /v2/intents endpoint
+    expires: activity.timestamp, // TODO: Get from /v2/intents endpoint
     activityData: buildActivityMetadata(activity),
     discoveredAtOffset,
   };
@@ -425,7 +397,7 @@ export function createDepositIntentNote(
 export function createWithdrawalRefundedNote(
   withdrawalIntent: WithdrawalIntentNote,
   label: string,
-  aspStatus: 'pending' | 'approved' | 'rejected',
+  aspStatus: ASPStatus,
 ): WithdrawalRefundedNote {
   const originChainId = extractChainId(withdrawalIntent.serialNumber);
 
@@ -444,7 +416,6 @@ export function createWithdrawalRefundedNote(
     label,
     aspStatus,
     status: 'unspent',
-    originBlockNumber: withdrawalIntent.originBlockNumber,
     originTimestamp: withdrawalIntent.originTimestamp,
     originChainId: withdrawalIntent.originChainId,
     originTransactionHash: withdrawalIntent.originTransactionHash,
@@ -465,7 +436,6 @@ export function createDepositRefundedNote(
     changeIndex: depositIntent.changeIndex,
     amount: '0', // Terminal notes have no remaining balance
     refundedAmount: depositIntent.amount,
-    originBlockNumber: depositIntent.originBlockNumber,
     originTimestamp: depositIntent.originTimestamp,
     originChainId: depositIntent.originChainId,
     originTransactionHash: depositIntent.originTransactionHash,
@@ -477,62 +447,65 @@ export function createDepositRefundedNote(
 // Helpers
 // ============================================================================
 
+/**
+ * Build ActivityMetadata from an activity item.
+ * data-v2 uses string types, so no conversion needed.
+ */
 function buildActivityMetadata(activity: {
-  originalAmount?: bigint;
-  amount?: bigint | null;
-  vettingFeeAmount?: bigint;
-  relayFeeAmount?: bigint;
-  solverFeeAmount?: bigint;
-  paymasterFeeRefund?: bigint;
+  originalAmount?: string;
+  amount?: string;
+  withdrawnValue?: string;
+  vettingFeeAmount?: string;
+  relayFee?: string;
+  solverFee?: string;
   user?: string;
   recipient?: string;
   relayer?: string;
   solver?: string;
   vettingFeeRecipient?: string;
   commitment?: string;
-  spentNullifier?: string;
+  spentNullifiers?: readonly string[];
   newCommitment?: string;
-  isSponsored?: boolean;
 }): ActivityMetadata {
   return {
-    originalAmount: activity.originalAmount?.toString(),
-    withdrawnAmount: activity.amount?.toString(),
-    vettingFeeAmount: activity.vettingFeeAmount?.toString(),
-    relayFeeAmount: activity.relayFeeAmount?.toString(),
-    solverFeeAmount: activity.solverFeeAmount?.toString(),
-    paymasterFeeRefund: activity.paymasterFeeRefund?.toString(),
+    originalAmount: activity.originalAmount,
+    withdrawnAmount: activity.withdrawnValue ?? activity.amount,
+    vettingFeeAmount: activity.vettingFeeAmount,
+    relayFeeAmount: activity.relayFee,
+    solverFeeAmount: activity.solverFee,
     user: activity.user,
-    recipient: activity.recipient ?? undefined,
-    relayer: activity.relayer ?? undefined,
-    solver: activity.solver ?? undefined,
-    vettingFeeRecipient: activity.vettingFeeRecipient ?? undefined,
-    commitment: activity.commitment ?? undefined,
-    spentNullifier: activity.spentNullifier ?? undefined,
-    newCommitment: activity.newCommitment ?? undefined,
-    isSponsored: activity.isSponsored ?? undefined,
+    recipient: activity.recipient,
+    relayer: activity.relayer,
+    solver: activity.solver,
+    vettingFeeRecipient: activity.vettingFeeRecipient,
+    commitment: activity.commitment,
+    spentNullifier: activity.spentNullifiers?.[0],
+    newCommitment: activity.newCommitment,
   };
 }
 
+/**
+ * Build ActivityMetadata for Withdraw2 activities.
+ * Includes both nullifiers from the spentNullifiers array.
+ */
 function buildWithdraw2ActivityMetadata(activity: {
-  originalAmount?: bigint;
-  amount?: bigint | null;
-  vettingFeeAmount?: bigint;
-  relayFeeAmount?: bigint;
-  solverFeeAmount?: bigint;
-  paymasterFeeRefund?: bigint;
+  originalAmount?: string;
+  amount?: string;
+  withdrawnValue?: string;
+  vettingFeeAmount?: string;
+  relayFee?: string;
+  solverFee?: string;
   user?: string;
   recipient?: string;
   relayer?: string;
   solver?: string;
   vettingFeeRecipient?: string;
   commitment?: string;
-  spentNullifier?: string;
-  spentNullifier1?: string;
+  spentNullifiers?: readonly string[];
   newCommitment?: string;
-  isSponsored?: boolean;
 }): ActivityMetadata {
   return {
     ...buildActivityMetadata(activity),
-    spentNullifier1: activity.spentNullifier1 ?? undefined,
+    spentNullifier1: activity.spentNullifiers?.[1],
   };
 }

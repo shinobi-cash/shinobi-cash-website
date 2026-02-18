@@ -6,10 +6,22 @@
  * All functions in this file are read-only - no mutations allowed.
  */
 
-import type { Activity } from '@shinobi-cash/data';
+import type {
+  ActivityItem,
+  WithdrawActivity,
+  Withdraw2Activity,
+  CrosschainWithdrawIntentActivity,
+  CrosschainWithdraw2IntentActivity,
+} from '@shinobi-cash/data';
 import type { NoteTree, NullifierInfo, ChainKey } from './types.js';
 import { makeChainKey, isSpendableNote } from './types.js';
 import type { ActivityIndex } from './activity-indexer.js';
+import {
+  isSameChainWithdrawal,
+  isCrosschainWithdrawIntent,
+  isSameChainWithdraw2,
+  isCrosschainWithdraw2Intent,
+} from './activity-indexer.js';
 import { deriveAndHashNullifier } from './nullifier-utils.js';
 import { derivedNoteCommitment } from '../withdrawal/index.js';
 import { getLastSpendableLeaf } from './tree-utils.js';
@@ -29,7 +41,7 @@ export interface Planned1x1Extension {
   depositIndex: number;
   parentChangeIndex: number;
   newChangeIndex: number;
-  activity: Activity;
+  activity: ActivityItem;
   withdrawn: bigint;
   remaining: bigint;
   oldNullifierHash: string;
@@ -53,7 +65,7 @@ export interface PlannedWithdraw2Extension {
   secondaryDepositIndex: number;
   secondaryChangeIndex: number;
   secondaryNewChangeIndex: number;
-  activity: Activity;
+  activity: ActivityItem;
   combinedValue: bigint;
   withdrawn: bigint;
   remaining: bigint;
@@ -72,7 +84,7 @@ export interface PlannedRagequitExtension {
   originChainId: string;
   depositIndex: number;
   changeIndex: number;
-  activity: Activity;
+  activity: ActivityItem;
   nullifierHash: string;
 }
 
@@ -171,11 +183,10 @@ export function planTreeExtensions(
       break;
     }
 
-    // Check for 1:1 withdrawal (same-chain, pending cross-chain, or filled cross-chain)
+    // Check for 1:1 withdrawal (same-chain or cross-chain intent)
     const withdrawal =
       activityIndex.sameChainWithdrawalsByNullifier.get(nullifierHash) ??
-      activityIndex.pendingWithdrawalsByNullifier.get(nullifierHash) ??
-      activityIndex.filledWithdrawalsByNullifier.get(nullifierHash);
+      activityIndex.crosschainWithdrawIntentsByNullifier.get(nullifierHash);
     if (withdrawal) {
       const plan = plan1x1Withdrawal(
         chainKey,
@@ -209,11 +220,10 @@ export function planTreeExtensions(
       continue;
     }
 
-    // Check for 2:1 Withdraw2 (same-chain, pending cross-chain, or filled cross-chain)
+    // Check for 2:1 Withdraw2 (same-chain or cross-chain intent)
     const withdraw2 =
       activityIndex.sameChainWithdraw2ByNullifier.get(nullifierHash) ??
-      activityIndex.pendingWithdraw2ByNullifier.get(nullifierHash) ??
-      activityIndex.filledWithdraw2ByNullifier.get(nullifierHash);
+      activityIndex.crosschainWithdraw2IntentsByNullifier.get(nullifierHash);
     if (withdraw2) {
       const plan = planWithdraw2(
         tree,
@@ -310,19 +320,20 @@ function plan1x1Withdrawal(
   depositIndex: number,
   currentChangeIndex: number,
   currentAmount: bigint,
-  activity: Activity,
+  activity: WithdrawActivity | CrosschainWithdrawIntentActivity,
   oldNullifierHash: string,
   accountKey: bigint,
   poolAddress: string,
 ): Planned1x1Extension {
-  const withdrawn = BigInt(activity.amount || 0);
+  // Use withdrawnValue (the actual value spent from the note in the circuit)
+  // NOT amount (the recipient amount after fees)
+  const withdrawnValue = activity.withdrawnValue;
+  const withdrawn = BigInt(withdrawnValue || 0);
   const remaining = currentAmount - withdrawn;
   const newChangeIndex = currentChangeIndex + 1;
 
-  const isCrossChainPending =
-    (activity.type === 'CROSSCHAIN_WITHDRAWAL_PENDING' ||
-      activity.type === 'CROSSCHAIN_WITHDRAW2_PENDING') &&
-    activity.intentStatus === 'pending';
+  // Cross-chain intents are pending by definition (waiting for fill)
+  const isCrossChainIntent = isCrosschainWithdrawIntent(activity);
 
   const newNullifierHash =
     remaining > 0n
@@ -341,7 +352,7 @@ function plan1x1Withdrawal(
     remaining,
     oldNullifierHash,
     newNullifierHash,
-    createPendingIntent: isCrossChainPending && withdrawn > 0n,
+    createPendingIntent: isCrossChainIntent && withdrawn > 0n,
   };
 }
 
@@ -355,7 +366,7 @@ function planWithdraw2(
   currentDepositIndex: number,
   currentChangeIndex: number,
   currentAmount: bigint,
-  activity: Activity,
+  activity: Withdraw2Activity | CrosschainWithdraw2IntentActivity,
   currentNullifierHash: string,
   allTrees: Map<ChainKey, NoteTree>,
   nullifierMap: Map<string, NullifierInfo>,
@@ -363,9 +374,14 @@ function planWithdraw2(
   accountKey: bigint,
   poolAddress: string,
 ): PlannedWithdraw2Extension | null {
-  // Determine which nullifier is ours
-  const isNullifier0 = activity.spentNullifier === currentNullifierHash;
-  const otherNullifierHash = isNullifier0 ? activity.spentNullifier1! : activity.spentNullifier!;
+  // Get nullifiers array from activity
+  if (!('spentNullifiers' in activity) || !activity.spentNullifiers || activity.spentNullifiers.length < 2) {
+    return null;
+  }
+
+  const nullifiers = activity.spentNullifiers;
+  const isNullifier0 = nullifiers[0] === currentNullifierHash;
+  const otherNullifierHash = isNullifier0 ? nullifiers[1] : nullifiers[0];
 
   // Skip if other nullifier already consumed
   if (ctx.consumedNullifiers.has(otherNullifierHash)) {
@@ -411,13 +427,16 @@ function planWithdraw2(
   const secondaryAmount = isPrimaryChain ? BigInt(otherLastLeaf.note.amount) : currentAmount;
 
   const combinedValue = primaryAmount + secondaryAmount;
-  const withdrawn = BigInt(activity.amount || 0);
+  // Use withdrawnValue (the actual value spent from the note in the circuit)
+  // NOT amount (the recipient amount after fees)
+  const withdrawnValue = activity.withdrawnValue;
+  const withdrawn = BigInt(withdrawnValue || 0);
   const remaining = combinedValue - withdrawn;
   const primaryNewChangeIndex = primaryChangeIndex + 1;
   const secondaryNewChangeIndex = secondaryChangeIndex + 1;
 
-  const isCrossChainPending =
-    activity.type === 'CROSSCHAIN_WITHDRAW2_PENDING' && activity.intentStatus === 'pending';
+  // Cross-chain 2:1 intents are pending by definition (waiting for fill)
+  const isCrossChainIntent = isCrosschainWithdraw2Intent(activity);
 
   const primaryNewNullifierHash =
     remaining > 0n
@@ -443,6 +462,6 @@ function planWithdraw2(
     primaryOldNullifierHash: isPrimaryChain ? currentNullifierHash : otherNullifierHash,
     secondaryOldNullifierHash: isPrimaryChain ? otherNullifierHash : currentNullifierHash,
     primaryNewNullifierHash,
-    createPendingIntent: isCrossChainPending && withdrawn > 0n,
+    createPendingIntent: isCrossChainIntent && withdrawn > 0n,
   };
 }

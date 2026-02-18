@@ -3,7 +3,7 @@
  * Type definitions for Note Discovery v2
  */
 
-import type { ASPStatus, Activity, SerializedActivity } from '@shinobi-cash/data';
+import type { ASPStatus, ActivityItem } from '@shinobi-cash/data';
 
 // ============================================================================
 // Note Status
@@ -176,8 +176,6 @@ interface BaseNote {
   depositIndex: number;
   changeIndex: number;
   amount: string;
-  /** Block number on origin chain */
-  originBlockNumber: string;
   /** Timestamp on origin chain */
   originTimestamp: string;
   /** Chain where action was triggered */
@@ -215,7 +213,6 @@ export interface CrosschainDepositNote extends SpendableNoteBase {
   /** Pool chain where commitment was filled */
   destinationChainId: string;
   destinationTransactionHash: string;
-  destinationBlockNumber: string;
   destinationTimestamp: string;
 }
 
@@ -244,7 +241,6 @@ export interface CrosschainWithdrawalNote extends BaseNote {
   /** Destination chain where funds were delivered */
   destinationChainId: string;
   destinationTransactionHash: string;
-  destinationBlockNumber: string;
   destinationTimestamp: string;
   recipient: string;
   /** Withdraw2 merge tracking: serialNumber -> amount */
@@ -317,6 +313,8 @@ export interface WithdrawalIntentNote extends BaseIntentNote {
   noteType: 'withdrawalIntent';
   /** Commitment for claiming refund */
   refundCommitment: string;
+  /** Merge type: '1:1' for single input, '2:1' for Withdraw2 */
+  mergeType?: '1:1' | '2:1';
 }
 
 export type Note = DepositNote | CrosschainDepositNote | WithdrawalNote | CrosschainWithdrawalNote | ChangeNote | WithdrawalRefundedNote | RagequitNote | MergedNote | DepositRefundedNote | DepositIntentNote | WithdrawalIntentNote;
@@ -495,8 +493,8 @@ export interface DiscoveryState {
   nullifierMap: Map<string, NullifierInfo>;
   /** Next deposit index to scan per chain (keyed by chainId string) */
   nextDepositIndex: Map<string, number>;
-  /** Raw activities keyed by activity.id for display */
-  activities: Map<string, Activity>;
+  /** Raw activities keyed by txHash for display */
+  activities: Map<string, ActivityItem>;
   /** Minimum offset to fetch from (earliest unspent note's discovery offset) */
   minOffset: number;
   /** Count of new filled deposits found in this sync (spendable) */
@@ -512,8 +510,8 @@ export interface SerializableDiscoveryState {
   nullifierMap: Array<{ hash: string; info: NullifierInfo }>;
   /** Next deposit index per chain (keyed by chainId string) */
   nextDepositIndex: Array<{ chainId: string; index: number }>;
-  /** Raw activities for display (serialized) */
-  activities: SerializedActivity[];
+  /** Raw activities for display (already string-based, no serialization needed) */
+  activities: ActivityItem[];
   minOffset: number;
   newFilledDepositsFound: number;
   newPendingDepositsFound: number;
@@ -529,7 +527,7 @@ export interface DiscoveryResult {
   /** Last used deposit index per chain (keyed by chainId string) */
   lastUsedIndexByChain: Map<string, number>;
   /** Raw activities for display */
-  activities: Activity[];
+  activities: ActivityItem[];
   newNotesFound: number;
   minOffset: number;
 }
@@ -571,7 +569,7 @@ export interface DiscoveryOptions {
 // ============================================================================
 
 export interface ActivityPage {
-  items: import('@shinobi-cash/data').Activity[];
+  items: ActivityItem[];
   pageInfo: { hasNextPage: boolean; hasPreviousPage: boolean };
 }
 
