@@ -1,6 +1,10 @@
 import { proxy } from "valtio";
 import type { NoteTree, DiscoveryProgress, Note, ActivityItem } from "@shinobi-cash/core/discovery";
-import { getSpendableNotes, getWithdrawableNotes, getNoteTreeCounts } from "@shinobi-cash/core/discovery";
+import {
+  getSpendableNotes,
+  getWithdrawableNotes,
+  getNoteTreeCounts,
+} from "@shinobi-cash/core/discovery";
 import { notesRepo } from "@/lib/storage/repositories/NotesRepository";
 import { fetchActivities } from "@/utils/indexer";
 import { createStateMachine } from "@/utils/stateMachine";
@@ -256,7 +260,9 @@ export const NotesDiscoveryController = {
       );
 
       if (cached && cached.trees) {
-        log.debug(`Loaded ${cached.trees.length} cached note trees, ${cached.activities.length} activities`);
+        log.debug(
+          `Loaded ${cached.trees.length} cached note trees, ${cached.activities.length} activities`
+        );
         state.noteTrees = cached.trees;
         state.activities = cached.activities;
       }
@@ -325,7 +331,9 @@ export const NotesDiscoveryController = {
 
       // Only update if this is still the current run
       if (runId === discoveryId) {
-        log.debug(`Discovery complete: ${result.trees.length} note trees, ${result.activities.length} activities`);
+        log.debug(
+          `Discovery complete: ${result.trees.length} note trees, ${result.activities.length} activities`
+        );
         state.noteTrees = result.trees;
         state.activities = result.activities;
         state.progress = null;

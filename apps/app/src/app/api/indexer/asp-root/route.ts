@@ -16,7 +16,10 @@ export async function GET() {
   } catch (error) {
     console.error("[API] asp-root error:", error);
     return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : "Failed to fetch ASP root" },
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to fetch ASP root",
+      },
       { status: 500 }
     );
   }

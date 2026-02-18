@@ -8,7 +8,11 @@ import { NoteRow } from "./NoteRow";
 import { type NotesScreenControllerAPI } from "@/hooks/useNotesScreen";
 import { NOTE_FILTER_LABELS, type NoteFilter } from "@/types/notes";
 import type { NoteTree } from "@shinobi-cash/core/discovery";
-import { getSpendableLeaves, getLeafNodes, getNoteCategoryWithContext } from "@shinobi-cash/core/discovery";
+import {
+  getSpendableLeaves,
+  getLeafNodes,
+  getNoteCategoryWithContext,
+} from "@shinobi-cash/core/discovery";
 
 interface NotesSectionProps {
   controller: NotesScreenControllerAPI;
@@ -121,18 +125,14 @@ export function NotesSection({ controller, onNoteTreeClick }: NotesSectionProps)
     }
 
     if (filter === "pending") {
-      const pendingLeaf = leaves.find(
-        (leaf) => getNoteCategoryWithContext(leaf) === "pending"
-      );
+      const pendingLeaf = leaves.find((leaf) => getNoteCategoryWithContext(leaf) === "pending");
       if (pendingLeaf) {
         return pendingLeaf.note;
       }
     }
 
     if (filter === "spent") {
-      const spentLeaves = leaves.filter(
-        (leaf) => getNoteCategoryWithContext(leaf) === "spent"
-      );
+      const spentLeaves = leaves.filter((leaf) => getNoteCategoryWithContext(leaf) === "spent");
       if (spentLeaves.length > 0) {
         // Sort by timestamp descending (most recent first)
         const sorted = [...spentLeaves].sort((a, b) => {

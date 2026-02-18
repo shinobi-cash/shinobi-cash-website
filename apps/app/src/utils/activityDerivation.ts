@@ -71,9 +71,7 @@ function createActivityEntry(activity: ActivityItem): ActivityEntry {
  * Derive activity entries from raw activities.
  * Activities are already sorted by timestamp descending from discovery.
  */
-export function deriveActivitiesFromRawActivities(
-  activities: ActivityItem[]
-): ActivityEntry[] {
+export function deriveActivitiesFromRawActivities(activities: ActivityItem[]): ActivityEntry[] {
   return activities.map(createActivityEntry);
 }
 

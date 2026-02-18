@@ -6,7 +6,7 @@
  * These represent core domain logic for the 3-category model.
  */
 
-import type { Note, NoteTree, NoteNode } from './types.js';
+import type { Note, NoteTree, NoteNode } from "./types.js";
 import {
   isIntentNote,
   isMergedNote,
@@ -15,8 +15,8 @@ import {
   isCrosschainWithdrawalNote,
   isSpendableNote,
   isDepositRefundedNote,
-} from './types.js';
-import { getLeafNodes, getSpendableLeaves } from './tree-utils.js';
+} from "./types.js";
+import { getLeafNodes, getSpendableLeaves } from "./tree-utils.js";
 
 // ============================================================================
 // Types
@@ -28,13 +28,13 @@ import { getLeafNodes, getSpendableLeaves } from './tree-utils.js';
  * - pending: Waiting for something (solver fill, ASP approval)
  * - spent: Already used, no action possible
  */
-export type NoteCategory = 'spendable' | 'pending' | 'spent';
+export type NoteCategory = "spendable" | "pending" | "spent";
 
 /**
  * Activity type derived from note type.
  * Used for activity feed display and filtering.
  */
-export type ActivityType = 'deposit' | 'withdrawal' | 'refund' | 'ragequit';
+export type ActivityType = "deposit" | "withdrawal" | "refund" | "ragequit";
 
 // ============================================================================
 // Helpers
@@ -56,7 +56,7 @@ function hasActionableBalance(note: Note): boolean {
   if (isIntentNote(note)) return false;
   if (isTerminalNote(note)) return false;
   if (!isSpendableNote(note)) return false;
-  return note.status === 'unspent' && BigInt(note.amount) > 0n;
+  return note.status === "unspent" && BigInt(note.amount) > 0n;
 }
 
 // ============================================================================
@@ -84,20 +84,20 @@ function hasActionableBalance(note: Note): boolean {
  */
 export function getNoteCategory(note: Note): NoteCategory {
   // Intent notes: treat as pending (tree context needed for accurate status)
-  if (isIntentNote(note)) return 'pending';
+  if (isIntentNote(note)) return "pending";
 
   // Terminal notes are always spent
-  if (isTerminalNote(note)) return 'spent';
+  if (isTerminalNote(note)) return "spent";
 
   // Spendable notes: check status and aspStatus
   if (isSpendableNote(note)) {
-    if (note.status === 'spent') return 'spent';
-    if (BigInt(note.amount) <= 0n) return 'spent';
-    if (note.aspStatus === 'pending') return 'pending';
-    return 'spendable';
+    if (note.status === "spent") return "spent";
+    if (BigInt(note.amount) <= 0n) return "spent";
+    if (note.aspStatus === "pending") return "pending";
+    return "spendable";
   }
 
-  return 'spent';
+  return "spent";
 }
 
 /**
@@ -111,10 +111,10 @@ export function getNoteCategoryWithContext(node: NoteNode): NoteCategory {
   if (isIntentNote(note)) {
     // If intent has children, it's been resolved (filled or refunded) → spent
     if (node.children.length > 0) {
-      return 'spent';
+      return "spent";
     }
     // No children = still pending
-    return 'pending';
+    return "pending";
   }
 
   // For other notes, use the basic category function
@@ -159,9 +159,9 @@ export function treeMatchesCategory(tree: NoteTree, category: NoteCategory): boo
 export function getTreeCategory(tree: NoteTree): NoteCategory {
   const categories = getTreeCategories(tree);
 
-  if (categories.has('spendable')) return 'spendable';
-  if (categories.has('pending')) return 'pending';
-  return 'spent';
+  if (categories.has("spendable")) return "spendable";
+  if (categories.has("pending")) return "pending";
+  return "spent";
 }
 
 // ============================================================================
@@ -173,7 +173,7 @@ export function getTreeCategory(tree: NoteTree): NoteCategory {
  * Requires: ASP approved + has balance + unspent
  */
 export function canWithdraw(note: Note): boolean {
-  return hasActionableBalance(note) && isSpendableNote(note) && note.aspStatus === 'approved';
+  return hasActionableBalance(note) && isSpendableNote(note) && note.aspStatus === "approved";
 }
 
 /**
@@ -212,9 +212,9 @@ export function getNoteTreeCounts(trees: NoteTree[]): {
 
   for (const tree of trees) {
     const categories = getTreeCategories(tree);
-    if (categories.has('spendable')) counts.spendable++;
-    if (categories.has('pending')) counts.pending++;
-    if (categories.has('spent')) counts.spent++;
+    if (categories.has("spendable")) counts.spendable++;
+    if (categories.has("pending")) counts.pending++;
+    if (categories.has("spent")) counts.spent++;
   }
 
   return counts;
@@ -228,7 +228,7 @@ export function getNoteTreeCounts(trees: NoteTree[]): {
 function getMostRecentTimestamp(tree: NoteTree): number {
   const category = getTreeCategory(tree);
 
-  if (category === 'spent') {
+  if (category === "spent") {
     // For spent trees, find the most recent leaf timestamp
     const leaves = getLeafNodes(tree);
     let maxTimestamp = Number(tree.root.note.originTimestamp);
@@ -264,7 +264,9 @@ export function sortTreesByTimestamp(trees: NoteTree[]): NoteTree[] {
  */
 export function getSpendableNotesFromTree(tree: NoteTree): Note[] {
   const spendableLeaves = getSpendableLeaves(tree);
-  return spendableLeaves.map((node) => node.note).filter((note) => getNoteCategory(note) === 'spendable');
+  return spendableLeaves
+    .map((node) => node.note)
+    .filter((note) => getNoteCategory(note) === "spendable");
 }
 
 /**
@@ -290,4 +292,3 @@ export function getTotalSpendableBalanceByCategory(tree: NoteTree): bigint {
 export function getWithdrawableNotes(trees: NoteTree[]): Note[] {
   return getSpendableNotes(trees).filter(canWithdraw);
 }
-

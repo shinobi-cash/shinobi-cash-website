@@ -17,7 +17,12 @@ import {
 
 /** Check if note is a terminal note (no further actions possible) */
 function isTerminalNote(note: Note): boolean {
-  return isMergedNote(note) || isRagequitNote(note) || isWithdrawalNote(note) || isCrosschainWithdrawalNote(note);
+  return (
+    isMergedNote(note) ||
+    isRagequitNote(note) ||
+    isWithdrawalNote(note) ||
+    isCrosschainWithdrawalNote(note)
+  );
 }
 
 /**
@@ -51,23 +56,26 @@ export function getActivityStatusDotColor(activity: ActivityItem): string {
   const { type } = activity;
 
   // Pending cross-chain operations (intent types - awaiting solver)
-  if (type === "CROSSCHAIN_DEPOSIT_INTENT" ||
-      type === "CROSSCHAIN_WITHDRAW_INTENT" ||
-      type === "CROSSCHAIN_WITHDRAW_2_INTENT") {
+  if (
+    type === "CROSSCHAIN_DEPOSIT_INTENT" ||
+    type === "CROSSCHAIN_WITHDRAW_INTENT" ||
+    type === "CROSSCHAIN_WITHDRAW_2_INTENT"
+  ) {
     return "bg-amber-400";
   }
 
   // Refunded operations
-  if (type === "CROSSCHAIN_DEPOSIT_REFUND" ||
-      type === "CROSSCHAIN_WITHDRAWAL_REFUND") {
+  if (type === "CROSSCHAIN_DEPOSIT_REFUND" || type === "CROSSCHAIN_WITHDRAWAL_REFUND") {
     return "bg-orange-400";
   }
 
   // Completed withdrawals and ragequits are always gray (terminal)
-  if (type === "WITHDRAW" ||
-      type === "WITHDRAW_2" ||
-      type === "CROSSCHAIN_WITHDRAWAL_FILL" ||
-      type === "RAGEQUIT") {
+  if (
+    type === "WITHDRAW" ||
+    type === "WITHDRAW_2" ||
+    type === "CROSSCHAIN_WITHDRAWAL_FILL" ||
+    type === "RAGEQUIT"
+  ) {
     return "bg-neutral-500";
   }
 

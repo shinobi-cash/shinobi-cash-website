@@ -12,33 +12,33 @@
  */
 export const EntrypointRelayAbi = [
   {
-    type: 'function',
-    name: 'relay',
+    type: "function",
+    name: "relay",
     inputs: [
       {
-        name: '_withdrawal',
-        type: 'tuple',
-        internalType: 'struct IPrivacyPool.Withdrawal',
+        name: "_withdrawal",
+        type: "tuple",
+        internalType: "struct IPrivacyPool.Withdrawal",
         components: [
-          { name: 'processooor', type: 'address', internalType: 'address' },
-          { name: 'data', type: 'bytes', internalType: 'bytes' },
+          { name: "processooor", type: "address", internalType: "address" },
+          { name: "data", type: "bytes", internalType: "bytes" },
         ],
       },
       {
-        name: '_proof',
-        type: 'tuple',
-        internalType: 'struct ProofLib.WithdrawProof',
+        name: "_proof",
+        type: "tuple",
+        internalType: "struct ProofLib.WithdrawProof",
         components: [
-          { name: 'pA', type: 'uint256[2]', internalType: 'uint256[2]' },
-          { name: 'pB', type: 'uint256[2][2]', internalType: 'uint256[2][2]' },
-          { name: 'pC', type: 'uint256[2]', internalType: 'uint256[2]' },
-          { name: 'pubSignals', type: 'uint256[8]', internalType: 'uint256[8]' },
+          { name: "pA", type: "uint256[2]", internalType: "uint256[2]" },
+          { name: "pB", type: "uint256[2][2]", internalType: "uint256[2][2]" },
+          { name: "pC", type: "uint256[2]", internalType: "uint256[2]" },
+          { name: "pubSignals", type: "uint256[8]", internalType: "uint256[8]" },
         ],
       },
-      { name: '_scope', type: 'uint256', internalType: 'uint256' },
+      { name: "_scope", type: "uint256", internalType: "uint256" },
     ],
     outputs: [],
-    stateMutability: 'nonpayable',
+    stateMutability: "nonpayable",
   },
 ] as const;
 
@@ -52,33 +52,33 @@ export const EntrypointRelayAbi = [
  */
 export const EntrypointCrosschainWithdrawalAbi = [
   {
-    type: 'function',
-    name: 'crosschainWithdrawal',
+    type: "function",
+    name: "crosschainWithdrawal",
     inputs: [
       {
-        name: '_withdrawal',
-        type: 'tuple',
-        internalType: 'struct IPrivacyPool.Withdrawal',
+        name: "_withdrawal",
+        type: "tuple",
+        internalType: "struct IPrivacyPool.Withdrawal",
         components: [
-          { name: 'processooor', type: 'address', internalType: 'address' },
-          { name: 'data', type: 'bytes', internalType: 'bytes' },
+          { name: "processooor", type: "address", internalType: "address" },
+          { name: "data", type: "bytes", internalType: "bytes" },
         ],
       },
       {
-        name: '_proof',
-        type: 'tuple',
-        internalType: 'struct CrosschainProofLib.CrosschainWithdrawProof',
+        name: "_proof",
+        type: "tuple",
+        internalType: "struct CrosschainProofLib.CrosschainWithdrawProof",
         components: [
-          { name: 'pA', type: 'uint256[2]', internalType: 'uint256[2]' },
-          { name: 'pB', type: 'uint256[2][2]', internalType: 'uint256[2][2]' },
-          { name: 'pC', type: 'uint256[2]', internalType: 'uint256[2]' },
-          { name: 'pubSignals', type: 'uint256[13]', internalType: 'uint256[13]' },
+          { name: "pA", type: "uint256[2]", internalType: "uint256[2]" },
+          { name: "pB", type: "uint256[2][2]", internalType: "uint256[2][2]" },
+          { name: "pC", type: "uint256[2]", internalType: "uint256[2]" },
+          { name: "pubSignals", type: "uint256[13]", internalType: "uint256[13]" },
         ],
       },
-      { name: '_scope', type: 'uint256', internalType: 'uint256' },
+      { name: "_scope", type: "uint256", internalType: "uint256" },
     ],
     outputs: [],
-    stateMutability: 'nonpayable',
+    stateMutability: "nonpayable",
   },
 ] as const;
 
@@ -87,15 +87,11 @@ export const EntrypointCrosschainWithdrawalAbi = [
  */
 export const EntrypointDepositAbi = [
   {
-    type: 'function',
-    name: 'deposit',
-    inputs: [
-      { name: '_precommitment', type: 'uint256', internalType: 'uint256' },
-    ],
-    outputs: [
-      { name: '_commitment', type: 'uint256', internalType: 'uint256' },
-    ],
-    stateMutability: 'payable',
+    type: "function",
+    name: "deposit",
+    inputs: [{ name: "_precommitment", type: "uint256", internalType: "uint256" }],
+    outputs: [{ name: "_commitment", type: "uint256", internalType: "uint256" }],
+    stateMutability: "payable",
   },
 ] as const;
 
@@ -107,33 +103,33 @@ export const EntrypointDepositAbi = [
  */
 export const EntrypointWithdraw2RelayAbi = [
   {
-    type: 'function',
-    name: 'relay2',
+    type: "function",
+    name: "relay2",
     inputs: [
       {
-        name: '_withdrawal',
-        type: 'tuple',
-        internalType: 'struct IPrivacyPool.Withdrawal',
+        name: "_withdrawal",
+        type: "tuple",
+        internalType: "struct IPrivacyPool.Withdrawal",
         components: [
-          { name: 'processooor', type: 'address', internalType: 'address' },
-          { name: 'data', type: 'bytes', internalType: 'bytes' },
+          { name: "processooor", type: "address", internalType: "address" },
+          { name: "data", type: "bytes", internalType: "bytes" },
         ],
       },
       {
-        name: '_proof',
-        type: 'tuple',
-        internalType: 'struct Withdraw2ProofLib.Withdraw2Proof',
+        name: "_proof",
+        type: "tuple",
+        internalType: "struct Withdraw2ProofLib.Withdraw2Proof",
         components: [
-          { name: 'pA', type: 'uint256[2]', internalType: 'uint256[2]' },
-          { name: 'pB', type: 'uint256[2][2]', internalType: 'uint256[2][2]' },
-          { name: 'pC', type: 'uint256[2]', internalType: 'uint256[2]' },
-          { name: 'pubSignals', type: 'uint256[9]', internalType: 'uint256[9]' },
+          { name: "pA", type: "uint256[2]", internalType: "uint256[2]" },
+          { name: "pB", type: "uint256[2][2]", internalType: "uint256[2][2]" },
+          { name: "pC", type: "uint256[2]", internalType: "uint256[2]" },
+          { name: "pubSignals", type: "uint256[9]", internalType: "uint256[9]" },
         ],
       },
-      { name: '_scope', type: 'uint256', internalType: 'uint256' },
+      { name: "_scope", type: "uint256", internalType: "uint256" },
     ],
     outputs: [],
-    stateMutability: 'nonpayable',
+    stateMutability: "nonpayable",
   },
 ] as const;
 
@@ -148,33 +144,33 @@ export const EntrypointWithdraw2RelayAbi = [
  */
 export const EntrypointCrosschainWithdraw2Abi = [
   {
-    type: 'function',
-    name: 'crossChainWithdrawal2',
+    type: "function",
+    name: "crossChainWithdrawal2",
     inputs: [
       {
-        name: '_withdrawal',
-        type: 'tuple',
-        internalType: 'struct IPrivacyPool.Withdrawal',
+        name: "_withdrawal",
+        type: "tuple",
+        internalType: "struct IPrivacyPool.Withdrawal",
         components: [
-          { name: 'processooor', type: 'address', internalType: 'address' },
-          { name: 'data', type: 'bytes', internalType: 'bytes' },
+          { name: "processooor", type: "address", internalType: "address" },
+          { name: "data", type: "bytes", internalType: "bytes" },
         ],
       },
       {
-        name: '_proof',
-        type: 'tuple',
-        internalType: 'struct CrosschainWithdraw2ProofLib.CrosschainWithdraw2Proof',
+        name: "_proof",
+        type: "tuple",
+        internalType: "struct CrosschainWithdraw2ProofLib.CrosschainWithdraw2Proof",
         components: [
-          { name: 'pA', type: 'uint256[2]', internalType: 'uint256[2]' },
-          { name: 'pB', type: 'uint256[2][2]', internalType: 'uint256[2][2]' },
-          { name: 'pC', type: 'uint256[2]', internalType: 'uint256[2]' },
-          { name: 'pubSignals', type: 'uint256[14]', internalType: 'uint256[14]' },
+          { name: "pA", type: "uint256[2]", internalType: "uint256[2]" },
+          { name: "pB", type: "uint256[2][2]", internalType: "uint256[2][2]" },
+          { name: "pC", type: "uint256[2]", internalType: "uint256[2]" },
+          { name: "pubSignals", type: "uint256[14]", internalType: "uint256[14]" },
         ],
       },
-      { name: '_scope', type: 'uint256', internalType: 'uint256' },
+      { name: "_scope", type: "uint256", internalType: "uint256" },
     ],
     outputs: [],
-    stateMutability: 'nonpayable',
+    stateMutability: "nonpayable",
   },
 ] as const;
 
@@ -185,13 +181,11 @@ export const EntrypointCrosschainWithdraw2Abi = [
  */
 export const PoolScopeAbi = [
   {
-    type: 'function',
-    name: 'SCOPE',
+    type: "function",
+    name: "SCOPE",
     inputs: [],
-    outputs: [
-      { name: '', type: 'uint256', internalType: 'uint256' },
-    ],
-    stateMutability: 'view',
+    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    stateMutability: "view",
   },
 ] as const;
 
@@ -204,23 +198,23 @@ export const PoolScopeAbi = [
  */
 export const PoolRagequitAbi = [
   {
-    type: 'function',
-    name: 'ragequit',
+    type: "function",
+    name: "ragequit",
     inputs: [
       {
-        name: '_proof',
-        type: 'tuple',
-        internalType: 'struct ProofLib.RagequitProof',
+        name: "_proof",
+        type: "tuple",
+        internalType: "struct ProofLib.RagequitProof",
         components: [
-          { name: 'pA', type: 'uint256[2]', internalType: 'uint256[2]' },
-          { name: 'pB', type: 'uint256[2][2]', internalType: 'uint256[2][2]' },
-          { name: 'pC', type: 'uint256[2]', internalType: 'uint256[2]' },
-          { name: 'pubSignals', type: 'uint256[4]', internalType: 'uint256[4]' },
+          { name: "pA", type: "uint256[2]", internalType: "uint256[2]" },
+          { name: "pB", type: "uint256[2][2]", internalType: "uint256[2][2]" },
+          { name: "pC", type: "uint256[2]", internalType: "uint256[2]" },
+          { name: "pubSignals", type: "uint256[4]", internalType: "uint256[4]" },
         ],
       },
     ],
     outputs: [],
-    stateMutability: 'nonpayable',
+    stateMutability: "nonpayable",
   },
 ] as const;
 
@@ -233,25 +227,23 @@ export const PoolRagequitAbi = [
  */
 export const CrosschainDepositEntrypointAbi = [
   {
-    type: 'function',
-    name: 'deposit',
-    inputs: [
-      { name: 'precommitment', type: 'uint256', internalType: 'uint256' },
-    ],
+    type: "function",
+    name: "deposit",
+    inputs: [{ name: "precommitment", type: "uint256", internalType: "uint256" }],
     outputs: [],
-    stateMutability: 'payable',
+    stateMutability: "payable",
   },
   {
-    type: 'function',
-    name: 'depositWithCustomParams',
+    type: "function",
+    name: "depositWithCustomParams",
     inputs: [
-      { name: 'precommitment', type: 'uint256', internalType: 'uint256' },
-      { name: 'customSolverFeeBPS', type: 'uint256', internalType: 'uint256' },
-      { name: 'customFillDeadline', type: 'uint32', internalType: 'uint32' },
-      { name: 'customExpiry', type: 'uint32', internalType: 'uint32' },
+      { name: "precommitment", type: "uint256", internalType: "uint256" },
+      { name: "customSolverFeeBPS", type: "uint256", internalType: "uint256" },
+      { name: "customFillDeadline", type: "uint32", internalType: "uint32" },
+      { name: "customExpiry", type: "uint32", internalType: "uint32" },
     ],
     outputs: [],
-    stateMutability: 'payable',
+    stateMutability: "payable",
   },
 ] as const;
 
@@ -260,31 +252,31 @@ export const CrosschainDepositEntrypointAbi = [
  */
 export const CrosschainDepositConfigAbi = [
   {
-    type: 'function',
-    name: 'defaultSolverFeeBPS',
+    type: "function",
+    name: "defaultSolverFeeBPS",
     inputs: [],
-    outputs: [{ name: '', type: 'uint256', internalType: 'uint256' }],
-    stateMutability: 'view',
+    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    stateMutability: "view",
   },
   {
-    type: 'function',
-    name: 'defaultFillDeadline',
+    type: "function",
+    name: "defaultFillDeadline",
     inputs: [],
-    outputs: [{ name: '', type: 'uint32', internalType: 'uint32' }],
-    stateMutability: 'view',
+    outputs: [{ name: "", type: "uint32", internalType: "uint32" }],
+    stateMutability: "view",
   },
   {
-    type: 'function',
-    name: 'defaultExpiry',
+    type: "function",
+    name: "defaultExpiry",
     inputs: [],
-    outputs: [{ name: '', type: 'uint32', internalType: 'uint32' }],
-    stateMutability: 'view',
+    outputs: [{ name: "", type: "uint32", internalType: "uint32" }],
+    stateMutability: "view",
   },
   {
-    type: 'function',
-    name: 'maxSolverFeeBPS',
+    type: "function",
+    name: "maxSolverFeeBPS",
     inputs: [],
-    outputs: [{ name: '', type: 'uint256', internalType: 'uint256' }],
-    stateMutability: 'view',
+    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    stateMutability: "view",
   },
 ] as const;

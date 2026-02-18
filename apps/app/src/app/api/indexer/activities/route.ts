@@ -7,10 +7,7 @@ export async function GET(request: Request) {
     const limit = Number(searchParams.get("limit") || 100);
     const offset = Number(searchParams.get("offset") || 0);
 
-    const response = await indexerClient.activity.fetch(
-      {},
-      { limit, offset }
-    );
+    const response = await indexerClient.activity.fetch({}, { limit, offset });
 
     return NextResponse.json(
       {
@@ -32,7 +29,10 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error("[API] activities error:", error);
     return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : "Failed to fetch activities" },
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to fetch activities",
+      },
       { status: 500 }
     );
   }

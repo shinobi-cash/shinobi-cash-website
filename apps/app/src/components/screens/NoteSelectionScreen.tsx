@@ -126,11 +126,7 @@ function NoteSelectionScreenImpl({
         isMultiSelectMode && selectedNotes.length > 0 ? (
           <div className="flex gap-2 p-4">
             {onClearSelection && (
-              <Button
-                variant="outline"
-                onClick={onClearSelection}
-                className="flex-1"
-              >
+              <Button variant="outline" onClick={onClearSelection} className="flex-1">
                 Clear
               </Button>
             )}
@@ -182,13 +178,13 @@ function NoteSelectionScreenImpl({
                     selected
                       ? "bg-emerald-500/10"
                       : disabled
-                        ? "opacity-50 cursor-not-allowed"
-                        : "hover:bg-white/[0.04] cursor-pointer"
+                        ? "cursor-not-allowed opacity-50"
+                        : "cursor-pointer hover:bg-white/[0.04]"
                   }`}
                 >
                   <div className="flex items-center justify-between gap-4">
                     {/* Left: Checkbox + Status dot + Label + Timestamp */}
-                    <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex min-w-0 items-center gap-3">
                       {/* Checkbox indicator for multi-select */}
                       {isMultiSelectMode && (
                         <div className="shrink-0">
@@ -205,7 +201,7 @@ function NoteSelectionScreenImpl({
                           <span
                             className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ${dotColor}`}
                           />
-                          <span className="truncate text-sm font-medium font-mono text-white">
+                          <span className="truncate font-mono text-sm font-medium text-white">
                             {note.serialNumber}
                           </span>
                         </div>

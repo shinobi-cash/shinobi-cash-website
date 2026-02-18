@@ -128,7 +128,10 @@ export function NoteChainScreen({ noteTree, onBack }: NoteChainScreenProps) {
 
         {/* Status Section */}
         <Section title="Status">
-          <Row label="Serial" value={<span className="font-mono">{displayNote.serialNumber}</span>} />
+          <Row
+            label="Serial"
+            value={<span className="font-mono">{displayNote.serialNumber}</span>}
+          />
           {isSpendableNote(displayNote) && (
             <>
               <Row
@@ -136,9 +139,7 @@ export function NoteChainScreen({ noteTree, onBack }: NoteChainScreenProps) {
                 value={
                   <span
                     className={`capitalize ${
-                      displayNote.status === "spent"
-                        ? "text-neutral-400"
-                        : "text-emerald-400"
+                      displayNote.status === "spent" ? "text-neutral-400" : "text-emerald-400"
                     }`}
                   >
                     {displayNote.status}
@@ -166,11 +167,7 @@ export function NoteChainScreen({ noteTree, onBack }: NoteChainScreenProps) {
           {isIntentNote(displayNote) && (
             <Row
               label="Intent Status"
-              value={
-                <span className="capitalize text-yellow-400">
-                  Pending
-                </span>
-              }
+              value={<span className="capitalize text-yellow-400">Pending</span>}
             />
           )}
         </Section>

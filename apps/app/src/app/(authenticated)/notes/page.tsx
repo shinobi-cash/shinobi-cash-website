@@ -43,10 +43,7 @@ export default function NotesPage() {
   // Show note tree details screen
   if (controller.selectedNoteTree) {
     return (
-      <NoteChainScreen
-        noteTree={controller.selectedNoteTree}
-        onBack={controller.clearSelection}
-      />
+      <NoteChainScreen noteTree={controller.selectedNoteTree} onBack={controller.clearSelection} />
     );
   }
 

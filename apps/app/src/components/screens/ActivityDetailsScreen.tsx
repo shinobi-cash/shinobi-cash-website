@@ -224,7 +224,12 @@ export function ActivityDetailsScreen({
 
         {/* Activity Info */}
         <Section title="Activity">
-          <Row label="Type" value={<span className="capitalize">{activity.type.toLowerCase().replace(/_/g, " ")}</span>} />
+          <Row
+            label="Type"
+            value={
+              <span className="capitalize">{activity.type.toLowerCase().replace(/_/g, " ")}</span>
+            }
+          />
           <Row label="Pool" value={<CopyableText text={activity.pool} />} />
           {label && (
             <Row
@@ -235,21 +240,13 @@ export function ActivityDetailsScreen({
           {isPending && (
             <Row
               label="Intent Status"
-              value={
-                <span className="capitalize text-yellow-400">
-                  Pending
-                </span>
-              }
+              value={<span className="capitalize text-yellow-400">Pending</span>}
             />
           )}
           {aspStatus && aspStatus !== "approved" && (
             <Row
               label="ASP Status"
-              value={
-                <span className="capitalize text-blue-400">
-                  {aspStatus}
-                </span>
-              }
+              value={<span className="capitalize text-blue-400">{aspStatus}</span>}
             />
           )}
         </Section>

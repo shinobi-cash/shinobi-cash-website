@@ -1,4 +1,9 @@
-import type { FeeQuote, WithdrawalRequest, Withdraw2Request, WithdrawalKind } from "@/types/withdrawal";
+import type {
+  FeeQuote,
+  WithdrawalRequest,
+  Withdraw2Request,
+  WithdrawalKind,
+} from "@/types/withdrawal";
 import {
   SAME_CHAIN_GAS_LIMITS,
   CROSS_CHAIN_GAS_LIMITS,
@@ -151,7 +156,8 @@ export async function quoteWithdraw2Fees(
   };
 
   // Use withdraw2-specific gas limits (higher due to 2-input proof verification)
-  const gasLimits = kind === "cross-chain" ? WITHDRAW2_CROSS_CHAIN_GAS_LIMITS : WITHDRAW2_SAME_CHAIN_GAS_LIMITS;
+  const gasLimits =
+    kind === "cross-chain" ? WITHDRAW2_CROSS_CHAIN_GAS_LIMITS : WITHDRAW2_SAME_CHAIN_GAS_LIMITS;
   const totalGas = calculateTotalGas(gasLimits);
   const estimatedGasCostWei = totalGas * gasPrice.maxFeePerGas;
   const relayFeeBPS = calculateRelayFeeBPS(

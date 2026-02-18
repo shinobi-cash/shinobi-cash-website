@@ -9,7 +9,7 @@ import type {
   Withdraw2Activity,
   CrosschainWithdrawIntentActivity,
   CrosschainWithdraw2IntentActivity,
-} from '@shinobi-cash/data';
+} from "@shinobi-cash/data";
 
 // ============================================================================
 // Activity Index Type
@@ -44,69 +44,73 @@ export interface ActivityIndex {
 
 /** Check if activity is a deposit (same-chain or cross-chain fill) */
 export function isDepositActivity(activity: ActivityItem): boolean {
-  return activity.type === 'DEPOSIT' || activity.type === 'CROSSCHAIN_DEPOSIT_FILL';
+  return activity.type === "DEPOSIT" || activity.type === "CROSSCHAIN_DEPOSIT_FILL";
 }
 
 /** Check if activity is a cross-chain deposit intent */
 export function isCrosschainDepositIntent(activity: ActivityItem): boolean {
-  return activity.type === 'CROSSCHAIN_DEPOSIT_INTENT';
+  return activity.type === "CROSSCHAIN_DEPOSIT_INTENT";
 }
 
 /** Check if activity is a same-chain 1:1 withdrawal */
 export function isSameChainWithdrawal(activity: ActivityItem): activity is WithdrawActivity {
-  return activity.type === 'WITHDRAW';
+  return activity.type === "WITHDRAW";
 }
 
 /** Check if activity is a cross-chain 1:1 withdrawal intent */
-export function isCrosschainWithdrawIntent(activity: ActivityItem): activity is CrosschainWithdrawIntentActivity {
-  return activity.type === 'CROSSCHAIN_WITHDRAW_INTENT';
+export function isCrosschainWithdrawIntent(
+  activity: ActivityItem
+): activity is CrosschainWithdrawIntentActivity {
+  return activity.type === "CROSSCHAIN_WITHDRAW_INTENT";
 }
 
 /** Check if activity is a same-chain 2:1 withdrawal */
 export function isSameChainWithdraw2(activity: ActivityItem): activity is Withdraw2Activity {
-  return activity.type === 'WITHDRAW_2';
+  return activity.type === "WITHDRAW_2";
 }
 
 /** Check if activity is a cross-chain 2:1 withdrawal intent */
-export function isCrosschainWithdraw2Intent(activity: ActivityItem): activity is CrosschainWithdraw2IntentActivity {
-  return activity.type === 'CROSSCHAIN_WITHDRAW_2_INTENT';
+export function isCrosschainWithdraw2Intent(
+  activity: ActivityItem
+): activity is CrosschainWithdraw2IntentActivity {
+  return activity.type === "CROSSCHAIN_WITHDRAW_2_INTENT";
 }
 
 /** Check if activity is any 1:1 withdrawal (same-chain or cross-chain intent) */
 export function is1x1WithdrawalActivity(activity: ActivityItem): boolean {
-  return activity.type === 'WITHDRAW' || activity.type === 'CROSSCHAIN_WITHDRAW_INTENT';
+  return activity.type === "WITHDRAW" || activity.type === "CROSSCHAIN_WITHDRAW_INTENT";
 }
 
 /** Check if activity is any 2:1 withdrawal (same-chain or cross-chain intent) */
 export function isWithdraw2Activity(activity: ActivityItem): boolean {
-  return activity.type === 'WITHDRAW_2' || activity.type === 'CROSSCHAIN_WITHDRAW_2_INTENT';
+  return activity.type === "WITHDRAW_2" || activity.type === "CROSSCHAIN_WITHDRAW_2_INTENT";
 }
 
 /** Check if activity is a cross-chain withdrawal fill */
 export function isCrosschainWithdrawalFill(activity: ActivityItem): boolean {
-  return activity.type === 'CROSSCHAIN_WITHDRAWAL_FILL';
+  return activity.type === "CROSSCHAIN_WITHDRAWAL_FILL";
 }
 
 /** Check if activity is a cross-chain withdrawal refund */
 export function isCrosschainWithdrawalRefund(activity: ActivityItem): boolean {
-  return activity.type === 'CROSSCHAIN_WITHDRAWAL_REFUND';
+  return activity.type === "CROSSCHAIN_WITHDRAWAL_REFUND";
 }
 
 /** Check if activity is a cross-chain deposit refund */
 export function isCrosschainDepositRefund(activity: ActivityItem): boolean {
-  return activity.type === 'CROSSCHAIN_DEPOSIT_REFUND';
+  return activity.type === "CROSSCHAIN_DEPOSIT_REFUND";
 }
 
 /** Check if activity is a ragequit */
 export function isRagequitActivity(activity: ActivityItem): boolean {
-  return activity.type === 'RAGEQUIT';
+  return activity.type === "RAGEQUIT";
 }
 
 /** Check if activity has spentNullifiers (withdrawal activities on pool chain) */
 function hasSpentNullifiers(
   activity: ActivityItem
 ): activity is ActivityItem & { spentNullifiers: string[] } {
-  return 'spentNullifiers' in activity && Array.isArray(activity.spentNullifiers);
+  return "spentNullifiers" in activity && Array.isArray(activity.spentNullifiers);
 }
 
 // ============================================================================
@@ -133,21 +137,25 @@ export function buildActivityIndex(activities: ActivityItem[]): ActivityIndex {
 
   for (const activity of activities) {
     // Index deposits by precommitment (includes same-chain deposits, cross-chain fills, and cross-chain intents)
-    if (isDepositActivity(activity) && 'precommitment' in activity && activity.precommitment) {
+    if (isDepositActivity(activity) && "precommitment" in activity && activity.precommitment) {
       index.depositsByPrecommitment.set(activity.precommitment, activity);
     }
     // Also index deposit intents (pending cross-chain deposits)
-    if (isCrosschainDepositIntent(activity) && 'precommitment' in activity && activity.precommitment) {
+    if (
+      isCrosschainDepositIntent(activity) &&
+      "precommitment" in activity &&
+      activity.precommitment
+    ) {
       index.depositsByPrecommitment.set(activity.precommitment, activity);
     }
 
     // Index cross-chain deposit fills by orderId (for reconciler)
-    if (activity.type === 'CROSSCHAIN_DEPOSIT_FILL' && 'orderId' in activity && activity.orderId) {
+    if (activity.type === "CROSSCHAIN_DEPOSIT_FILL" && "orderId" in activity && activity.orderId) {
       index.depositFillsByOrderId.set(activity.orderId, activity);
     }
 
     // Index cross-chain deposit refunds by orderId (for reconciler)
-    if (isCrosschainDepositRefund(activity) && 'orderId' in activity && activity.orderId) {
+    if (isCrosschainDepositRefund(activity) && "orderId" in activity && activity.orderId) {
       index.depositRefundsByOrderId.set(activity.orderId, activity);
     }
 
@@ -190,17 +198,17 @@ export function buildActivityIndex(activities: ActivityItem[]): ActivityIndex {
     }
 
     // Index cross-chain withdrawal fills by orderId (for reconciler)
-    if (isCrosschainWithdrawalFill(activity) && 'orderId' in activity && activity.orderId) {
+    if (isCrosschainWithdrawalFill(activity) && "orderId" in activity && activity.orderId) {
       index.withdrawalFillsByOrderId.set(activity.orderId, activity);
     }
 
     // Index cross-chain withdrawal refunds by orderId (for reconciler)
-    if (isCrosschainWithdrawalRefund(activity) && 'orderId' in activity && activity.orderId) {
+    if (isCrosschainWithdrawalRefund(activity) && "orderId" in activity && activity.orderId) {
       index.withdrawalRefundsByOrderId.set(activity.orderId, activity);
     }
 
     // Index ragequit by commitment hash
-    if (isRagequitActivity(activity) && 'commitment' in activity && activity.commitment) {
+    if (isRagequitActivity(activity) && "commitment" in activity && activity.commitment) {
       index.ragequitByCommitment.set(activity.commitment, activity);
     }
   }

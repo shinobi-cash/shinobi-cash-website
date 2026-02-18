@@ -6,7 +6,12 @@
 
 import { proxy } from "valtio";
 import type { NoteTree } from "@shinobi-cash/core/discovery";
-import { getSpendableLeaves, filterNoteTrees, sortTreesByTimestamp, canWithdraw } from "@shinobi-cash/core/discovery";
+import {
+  getSpendableLeaves,
+  filterNoteTrees,
+  sortTreesByTimestamp,
+  canWithdraw,
+} from "@shinobi-cash/core/discovery";
 import { NoteTreeView, NoteFilter } from "@/types/notes";
 
 /**
@@ -32,20 +37,14 @@ export const NotesScreenSelectors = {
   /**
    * Get filtered note trees based on active filter
    */
-  getFilteredNoteTrees(
-    trees: NoteTree[],
-    filter: NoteFilter
-  ): NoteTree[] {
+  getFilteredNoteTrees(trees: NoteTree[], filter: NoteFilter): NoteTree[] {
     return filterNoteTrees(trees, filter);
   },
 
   /**
    * Get sorted + filtered view models for UI rendering
    */
-  getFilteredNoteViews(
-    trees: NoteTree[],
-    filter: NoteFilter
-  ): NoteTreeView[] {
+  getFilteredNoteViews(trees: NoteTree[], filter: NoteFilter): NoteTreeView[] {
     const filtered = filterNoteTrees(trees, filter);
     const sorted = sortTreesByTimestamp(filtered);
 

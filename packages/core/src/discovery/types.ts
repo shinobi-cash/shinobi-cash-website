@@ -3,13 +3,13 @@
  * Type definitions for Note Discovery v2
  */
 
-import type { ASPStatus, ActivityItem } from '@shinobi-cash/data';
+import type { ASPStatus, ActivityItem } from "@shinobi-cash/data";
 
 // ============================================================================
 // Note Status
 // ============================================================================
 
-export type NoteStatus = 'unspent' | 'spent';
+export type NoteStatus = "unspent" | "spent";
 
 // ============================================================================
 // Serial Number
@@ -20,15 +20,15 @@ export type NoteStatus = 'unspent' | 'spent';
  */
 export const CHAIN_CODES: Record<string, string> = {
   // Testnets
-  '421614': 'ARB', // Arbitrum Sepolia
-  '84532': 'BAS', // Base Sepolia
-  '11155111': 'ETH', // Sepolia
-  '11155420': 'OPT', // OP Sepolia
+  "421614": "ARB", // Arbitrum Sepolia
+  "84532": "BAS", // Base Sepolia
+  "11155111": "ETH", // Sepolia
+  "11155420": "OPT", // OP Sepolia
   // Mainnets
-  '42161': 'ARB', // Arbitrum One
-  '8453': 'BAS', // Base
-  '1': 'ETH', // Ethereum
-  '10': 'OPT', // Optimism
+  "42161": "ARB", // Arbitrum One
+  "8453": "BAS", // Base
+  "1": "ETH", // Ethereum
+  "10": "OPT", // Optimism
 };
 
 /**
@@ -36,17 +36,17 @@ export const CHAIN_CODES: Record<string, string> = {
  * Use getChainIdFromCode() with network context for mainnet.
  */
 export const CHAIN_IDS_TESTNET: Record<string, string> = {
-  ARB: '421614',
-  BAS: '84532',
-  ETH: '11155111',
-  OPT: '11155420',
+  ARB: "421614",
+  BAS: "84532",
+  ETH: "11155111",
+  OPT: "11155420",
 };
 
 export const CHAIN_IDS_MAINNET: Record<string, string> = {
-  ARB: '42161',
-  BAS: '8453',
-  ETH: '1',
-  OPT: '10',
+  ARB: "42161",
+  BAS: "8453",
+  ETH: "1",
+  OPT: "10",
 };
 
 /**
@@ -54,7 +54,7 @@ export const CHAIN_IDS_MAINNET: Record<string, string> = {
  * Returns 'UNK' for unknown chains.
  */
 export function getChainCode(chainId: string | number): string {
-  return CHAIN_CODES[chainId.toString()] || 'UNK';
+  return CHAIN_CODES[chainId.toString()] || "UNK";
 }
 
 /**
@@ -89,13 +89,13 @@ export function generateSerialNumber(
   depositIndex: number,
   changeIndex: number,
   isIntent: boolean = false,
-  refundIndex: number = -1,
+  refundIndex: number = -1
 ): string {
   const chain = getChainCode(chainId);
-  const d = String(depositIndex + 1).padStart(3, '0');
-  const c = String(changeIndex).padStart(2, '0');
-  const i = isIntent ? '1' : '0';
-  const r = refundIndex >= 0 ? String(refundIndex + 1).padStart(2, '0') : '00';
+  const d = String(depositIndex + 1).padStart(3, "0");
+  const c = String(changeIndex).padStart(2, "0");
+  const i = isIntent ? "1" : "0";
+  const r = refundIndex >= 0 ? String(refundIndex + 1).padStart(2, "0") : "00";
 
   return `${chain}-${d}-${c}-${i}-${r}`;
 }
@@ -115,7 +115,7 @@ export function parseSerialNumber(serial: string): ParsedSerialNumber | null {
     chainCode,
     depositIndex: parseInt(d, 10) - 1, // Convert back to 0-indexed
     changeIndex: parseInt(c, 10),
-    isIntent: i === '1',
+    isIntent: i === "1",
     refundIndex: parseInt(r, 10) - 1, // -1 if was "00", otherwise 0-indexed
   };
 }
@@ -200,14 +200,14 @@ interface SpendableNoteBase extends BaseNote {
 
 /** Same-chain deposit (spendable, changeIndex=0) */
 export interface DepositNote extends SpendableNoteBase {
-  noteType: 'deposit';
+  noteType: "deposit";
   changeIndex: 0;
   precommitmentHash: string;
 }
 
 /** Cross-chain deposit - escrow on origin, fill on pool chain (spendable, changeIndex=0) */
 export interface CrosschainDepositNote extends SpendableNoteBase {
-  noteType: 'crosschainDeposit';
+  noteType: "crosschainDeposit";
   changeIndex: 0;
   precommitmentHash: string;
   /** Pool chain where commitment was filled */
@@ -218,7 +218,7 @@ export interface CrosschainDepositNote extends SpendableNoteBase {
 
 /** Same-chain withdrawal record (terminal, sibling of ChangeNote) */
 export interface WithdrawalNote extends BaseNote {
-  noteType: 'withdrawal';
+  noteType: "withdrawal";
   /** The value withdrawn to recipient */
   withdrawnAmount: string;
   recipient: string;
@@ -228,14 +228,14 @@ export interface WithdrawalNote extends BaseNote {
 
 /** Remaining balance after withdrawal (spendable, sibling of WithdrawalNote) */
 export interface ChangeNote extends SpendableNoteBase {
-  noteType: 'change';
+  noteType: "change";
   /** Withdraw2 merge tracking: serialNumber -> amount */
   mergedFrom: Record<string, string>;
 }
 
 /** Cross-chain withdrawal record (terminal, sibling of ChangeNote) */
 export interface CrosschainWithdrawalNote extends BaseNote {
-  noteType: 'crosschainWithdrawal';
+  noteType: "crosschainWithdrawal";
   /** The value withdrawn to recipient */
   withdrawnAmount: string;
   /** Destination chain where funds were delivered */
@@ -249,16 +249,20 @@ export interface CrosschainWithdrawalNote extends BaseNote {
 
 /** Refunded cross-chain withdrawal (spendable, child of WithdrawalIntentNote) */
 export interface WithdrawalRefundedNote extends SpendableNoteBase {
-  noteType: 'withdrawalRefunded';
+  noteType: "withdrawalRefunded";
   refundCommitment: string;
 }
 
 /** Union of all spendable note types (with noteType for narrowing) */
-export type SpendableNote = DepositNote | CrosschainDepositNote | ChangeNote | WithdrawalRefundedNote;
+export type SpendableNote =
+  | DepositNote
+  | CrosschainDepositNote
+  | ChangeNote
+  | WithdrawalRefundedNote;
 
 /** Public withdrawal record (terminal) */
 export interface RagequitNote extends BaseNote {
-  noteType: 'ragequit';
+  noteType: "ragequit";
   /** The value ragequit to recipient */
   ragequitAmount: string;
   recipient: string;
@@ -266,7 +270,7 @@ export interface RagequitNote extends BaseNote {
 
 /** Withdraw2 loser chain record (terminal) */
 export interface MergedNote extends BaseNote {
-  noteType: 'merged';
+  noteType: "merged";
   /** The value contributed to the merge */
   contributedAmount: string;
   mergedIntoSerialNumber: string;
@@ -274,7 +278,7 @@ export interface MergedNote extends BaseNote {
 
 /** Refunded cross-chain deposit record (terminal, child of DepositIntentNote) */
 export interface DepositRefundedNote extends BaseNote {
-  noteType: 'depositRefunded';
+  noteType: "depositRefunded";
   /** The value that was refunded */
   refundedAmount: string;
 }
@@ -300,7 +304,7 @@ interface BaseIntentNote extends BaseNote {
  * → Refunded: DepositRefundedNote child
  */
 export interface DepositIntentNote extends BaseIntentNote {
-  noteType: 'depositIntent';
+  noteType: "depositIntent";
   changeIndex: 0;
 }
 
@@ -310,14 +314,25 @@ export interface DepositIntentNote extends BaseIntentNote {
  * → Refunded: WithdrawalRefundedNote child (spendable)
  */
 export interface WithdrawalIntentNote extends BaseIntentNote {
-  noteType: 'withdrawalIntent';
+  noteType: "withdrawalIntent";
   /** Commitment for claiming refund */
   refundCommitment: string;
   /** Merge type: '1:1' for single input, '2:1' for Withdraw2 */
-  mergeType?: '1:1' | '2:1';
+  mergeType?: "1:1" | "2:1";
 }
 
-export type Note = DepositNote | CrosschainDepositNote | WithdrawalNote | CrosschainWithdrawalNote | ChangeNote | WithdrawalRefundedNote | RagequitNote | MergedNote | DepositRefundedNote | DepositIntentNote | WithdrawalIntentNote;
+export type Note =
+  | DepositNote
+  | CrosschainDepositNote
+  | WithdrawalNote
+  | CrosschainWithdrawalNote
+  | ChangeNote
+  | WithdrawalRefundedNote
+  | RagequitNote
+  | MergedNote
+  | DepositRefundedNote
+  | DepositIntentNote
+  | WithdrawalIntentNote;
 
 // ============================================================================
 // Note Tree Structure
@@ -355,104 +370,104 @@ export interface SerializableNoteNode {
   isTerminal: boolean;
 }
 
-
 // ============================================================================
 // Type Guards
 // ============================================================================
 
 /** Check if a note is a DepositIntentNote */
 export function isDepositIntentNote(note: Note): note is DepositIntentNote {
-  return note.noteType === 'depositIntent';
+  return note.noteType === "depositIntent";
 }
 
 /** Check if a note is a WithdrawalIntentNote */
 export function isWithdrawalIntentNote(note: Note): note is WithdrawalIntentNote {
-  return note.noteType === 'withdrawalIntent';
+  return note.noteType === "withdrawalIntent";
 }
 
 /** Check if a note is a WithdrawalRefundedNote */
 export function isWithdrawalRefundedNote(note: Note): note is WithdrawalRefundedNote {
-  return note.noteType === 'withdrawalRefunded';
+  return note.noteType === "withdrawalRefunded";
 }
 
 /** Check if a note is a DepositNote */
 export function isDepositNote(note: Note): note is DepositNote {
-  return note.noteType === 'deposit';
+  return note.noteType === "deposit";
 }
 
 /** Check if a note is a CrosschainDepositNote */
 export function isCrosschainDepositNote(note: Note): note is CrosschainDepositNote {
-  return note.noteType === 'crosschainDeposit';
+  return note.noteType === "crosschainDeposit";
 }
 
 /** Check if a note is a CrosschainWithdrawalNote */
 export function isCrosschainWithdrawalNote(note: Note): note is CrosschainWithdrawalNote {
-  return note.noteType === 'crosschainWithdrawal';
+  return note.noteType === "crosschainWithdrawal";
 }
 
 /** Check if a note is a WithdrawalNote */
 export function isWithdrawalNote(note: Note): note is WithdrawalNote {
-  return note.noteType === 'withdrawal';
+  return note.noteType === "withdrawal";
 }
 
 /** Check if a note is a ChangeNote */
 export function isChangeNote(note: Note): note is ChangeNote {
-  return note.noteType === 'change';
+  return note.noteType === "change";
 }
 
 /** Check if a note is a RagequitNote */
 export function isRagequitNote(note: Note): note is RagequitNote {
-  return note.noteType === 'ragequit';
+  return note.noteType === "ragequit";
 }
 
 /** Check if a note is a MergedNote */
 export function isMergedNote(note: Note): note is MergedNote {
-  return note.noteType === 'merged';
+  return note.noteType === "merged";
 }
 
 /** Check if a note is a DepositRefundedNote */
 export function isDepositRefundedNote(note: Note): note is DepositRefundedNote {
-  return note.noteType === 'depositRefunded';
+  return note.noteType === "depositRefunded";
 }
 
 /** Check if note is spendable (has label, aspStatus, status) */
-export function isSpendableNote(note: Note): note is DepositNote | CrosschainDepositNote | ChangeNote | WithdrawalRefundedNote {
+export function isSpendableNote(
+  note: Note
+): note is DepositNote | CrosschainDepositNote | ChangeNote | WithdrawalRefundedNote {
   return (
-    note.noteType === 'deposit' ||
-    note.noteType === 'crosschainDeposit' ||
-    note.noteType === 'change' ||
-    note.noteType === 'withdrawalRefunded'
+    note.noteType === "deposit" ||
+    note.noteType === "crosschainDeposit" ||
+    note.noteType === "change" ||
+    note.noteType === "withdrawalRefunded"
   );
 }
 
 /** Check if note is terminal (no children allowed) */
 export function isTerminalNote(note: Note): boolean {
   return (
-    note.noteType === 'ragequit' ||
-    note.noteType === 'merged' ||
-    note.noteType === 'withdrawal' ||
-    note.noteType === 'crosschainWithdrawal' ||
-    note.noteType === 'depositRefunded'
+    note.noteType === "ragequit" ||
+    note.noteType === "merged" ||
+    note.noteType === "withdrawal" ||
+    note.noteType === "crosschainWithdrawal" ||
+    note.noteType === "depositRefunded"
   );
 }
 
 /** Check if a note is any intent note (deposit or withdrawal) */
 export function isIntentNote(note: Note): note is DepositIntentNote | WithdrawalIntentNote {
-  return note.noteType === 'depositIntent' || note.noteType === 'withdrawalIntent';
+  return note.noteType === "depositIntent" || note.noteType === "withdrawalIntent";
 }
 
 /** Check if note is from a cross-chain operation */
 export function isCrossChainNote(note: Note): boolean {
   return (
-    note.noteType === 'crosschainDeposit' ||
-    note.noteType === 'crosschainWithdrawal' ||
-    note.noteType === 'depositIntent' ||
-    note.noteType === 'withdrawalIntent' ||
-    note.noteType === 'withdrawalRefunded' ||
-    note.noteType === 'depositRefunded'
+    note.noteType === "crosschainDeposit" ||
+    note.noteType === "crosschainWithdrawal" ||
+    note.noteType === "depositIntent" ||
+    note.noteType === "withdrawalIntent" ||
+    note.noteType === "withdrawalRefunded" ||
+    note.noteType === "depositRefunded"
   );
 }
-
 
 // ============================================================================
 // Nullifier Tracking
@@ -476,13 +491,16 @@ export interface NullifierInfo {
 export type ChainKey = string;
 
 /** Create a chain key from originChainId and depositIndex */
-export function makeChainKey(originChainId: string | number | bigint, depositIndex: number): ChainKey {
+export function makeChainKey(
+  originChainId: string | number | bigint,
+  depositIndex: number
+): ChainKey {
   return `${originChainId}:${depositIndex}`;
 }
 
 /** Parse a chain key back to its components */
 export function parseChainKey(key: ChainKey): { originChainId: string; depositIndex: number } {
-  const [originChainId, depositIndexStr] = key.split(':');
+  const [originChainId, depositIndexStr] = key.split(":");
   return { originChainId, depositIndex: parseInt(depositIndexStr, 10) };
 }
 
@@ -577,10 +595,14 @@ export type ActivityFetcher = (
   poolAddress: string,
   limit: number,
   offset?: number,
-  orderDirection?: 'asc' | 'desc',
+  orderDirection?: "asc" | "desc"
 ) => Promise<ActivityPage>;
 
 export interface PersistenceCallbacks {
   loadState: (publicKey: string, poolAddress: string) => Promise<SerializableDiscoveryState | null>;
-  saveState: (publicKey: string, poolAddress: string, state: SerializableDiscoveryState) => Promise<void>;
+  saveState: (
+    publicKey: string,
+    poolAddress: string,
+    state: SerializableDiscoveryState
+  ) => Promise<void>;
 }

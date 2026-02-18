@@ -106,22 +106,21 @@ function buildCrosschainDepositSteps(deposit: CrosschainDepositNote): CrossChain
  */
 function buildDepositIntentEntry(
   intent: DepositIntentNote,
-  filledDeposit?: CrosschainDepositNote,
+  filledDeposit?: CrosschainDepositNote
 ): TimelineEntry {
   // Check if filled by looking for child deposit note
   const isFilled = filledDeposit !== undefined;
   // For display, show the filled deposit note if available
   const displayNote = filledDeposit ?? intent;
 
-  const txHash = isFilled && filledDeposit
-    ? filledDeposit.destinationTransactionHash
-    : intent.originTransactionHash;
-  const txChainId = isFilled && filledDeposit
-    ? filledDeposit.destinationChainId
-    : intent.originChainId;
-  const timestamp = isFilled && filledDeposit
-    ? filledDeposit.destinationTimestamp
-    : intent.originTimestamp;
+  const txHash =
+    isFilled && filledDeposit
+      ? filledDeposit.destinationTransactionHash
+      : intent.originTransactionHash;
+  const txChainId =
+    isFilled && filledDeposit ? filledDeposit.destinationChainId : intent.originChainId;
+  const timestamp =
+    isFilled && filledDeposit ? filledDeposit.destinationTimestamp : intent.originTimestamp;
 
   return {
     key: `deposit-${intent.depositIndex}`,
@@ -143,7 +142,7 @@ function buildDepositIntentEntry(
  */
 function buildDepositIntentSteps(
   intent: DepositIntentNote,
-  filledDeposit?: CrosschainDepositNote,
+  filledDeposit?: CrosschainDepositNote
 ): CrossChainStep[] {
   const isFilled = filledDeposit !== undefined;
 
@@ -162,7 +161,10 @@ function buildDepositIntentSteps(
     steps.push({
       label: "Filled",
       txHash: filledDeposit.destinationTransactionHash,
-      txUrl: getTxExplorerUrl(filledDeposit.destinationChainId, filledDeposit.destinationTransactionHash),
+      txUrl: getTxExplorerUrl(
+        filledDeposit.destinationChainId,
+        filledDeposit.destinationTransactionHash
+      ),
       chainName: getChainName(filledDeposit.destinationChainId),
       timestamp: filledDeposit.destinationTimestamp,
       dotColor: "bg-emerald-400",
@@ -180,7 +182,6 @@ function buildDepositIntentSteps(
 
   return steps;
 }
-
 
 /**
  * Build entry for a pending WithdrawalIntentNote
@@ -224,7 +225,7 @@ function buildPendingIntentEntry(intent: WithdrawalIntentNote): TimelineEntry {
  */
 function buildCrosschainWithdrawalEntry(
   withdrawal: CrosschainWithdrawalNote,
-  parentIntent: WithdrawalIntentNote,
+  parentIntent: WithdrawalIntentNote
 ): TimelineEntry {
   // Check for merge info (cross-chain withdraw2)
   const mergedFromSerialNumbers = Object.keys(withdrawal.mergedFrom);
@@ -254,7 +255,10 @@ function buildCrosschainWithdrawalEntry(
       {
         label: "Delivered",
         txHash: withdrawal.destinationTransactionHash,
-        txUrl: getTxExplorerUrl(withdrawal.destinationChainId, withdrawal.destinationTransactionHash),
+        txUrl: getTxExplorerUrl(
+          withdrawal.destinationChainId,
+          withdrawal.destinationTransactionHash
+        ),
         chainName: getChainName(withdrawal.destinationChainId),
         timestamp: withdrawal.destinationTimestamp,
         dotColor: "bg-emerald-400",
@@ -285,10 +289,7 @@ function buildRefundEntry(refund: WithdrawalRefundedNote): TimelineEntry {
  * Shows the withdrawal amount for same-chain withdrawals.
  * Cross-chain withdrawals are displayed via WithdrawalIntentNote/CrosschainWithdrawalNote.
  */
-function buildChangeEntry(
-  change: ChangeNote,
-  parentNote: Note,
-): TimelineEntry {
+function buildChangeEntry(change: ChangeNote, parentNote: Note): TimelineEntry {
   // Calculate withdrawn amount
   const withdrawnAmount = change.activityData.withdrawnAmount
     ? BigInt(change.activityData.withdrawnAmount)
@@ -388,9 +389,7 @@ export function buildTimelineEntries(noteTree: NoteTree): TimelineEntry[] {
       if (isDepositIntentNote(note)) {
         // Cross-chain deposit (pending or filled)
         // Look for CrosschainDepositNote child if filled
-        const filledDepositNode = node.children.find(
-          (c) => isCrosschainDepositNote(c.note)
-        );
+        const filledDepositNode = node.children.find((c) => isCrosschainDepositNote(c.note));
         const filledDeposit = filledDepositNode?.note as CrosschainDepositNote | undefined;
         entries.push(buildDepositIntentEntry(note, filledDeposit));
       } else if (isCrosschainDepositNote(note)) {
@@ -408,7 +407,10 @@ export function buildTimelineEntries(noteTree: NoteTree): TimelineEntry[] {
     }
 
     // Skip deposit children of DepositIntentNote (handled above)
-    if ((isDepositNote(note) || isCrosschainDepositNote(note)) && isDepositIntentNote(node.parent.note)) {
+    if (
+      (isDepositNote(note) || isCrosschainDepositNote(note)) &&
+      isDepositIntentNote(node.parent.note)
+    ) {
       return;
     }
 
@@ -421,7 +423,8 @@ export function buildTimelineEntries(noteTree: NoteTree): TimelineEntry[] {
         // Skip - CrosschainWithdrawalNote child will display the finalized withdrawal
       } else if (hasRefund) {
         // Show refund entry
-        const refundNote = node.children.find((c) => isWithdrawalRefundedNote(c.note))?.note as WithdrawalRefundedNote;
+        const refundNote = node.children.find((c) => isWithdrawalRefundedNote(c.note))
+          ?.note as WithdrawalRefundedNote;
         entries.push(buildRefundEntry(refundNote));
       } else {
         // Pending cross-chain withdrawal
@@ -485,9 +488,8 @@ export function buildTimelineEntries(noteTree: NoteTree): TimelineEntry[] {
 
   // Sort entries by timestamp (oldest first for chronological history)
   return entries.sort((a, b) => {
-    const timestampA = typeof a.timestamp === 'bigint' ? a.timestamp : BigInt(a.timestamp || '0');
-    const timestampB = typeof b.timestamp === 'bigint' ? b.timestamp : BigInt(b.timestamp || '0');
+    const timestampA = typeof a.timestamp === "bigint" ? a.timestamp : BigInt(a.timestamp || "0");
+    const timestampB = typeof b.timestamp === "bigint" ? b.timestamp : BigInt(b.timestamp || "0");
     return timestampA < timestampB ? -1 : timestampA > timestampB ? 1 : 0;
   });
 }
-

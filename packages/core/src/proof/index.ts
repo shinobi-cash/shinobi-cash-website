@@ -3,15 +3,15 @@
  */
 
 // @ts-ignore - snarkjs doesn't have type declarations
-import * as snarkjs from 'snarkjs';
-import { LeanIMT } from '@zk-kit/lean-imt';
-import { poseidon2 } from 'poseidon-lite/poseidon2';
+import * as snarkjs from "snarkjs";
+import { LeanIMT } from "@zk-kit/lean-imt";
+import { poseidon2 } from "poseidon-lite/poseidon2";
 import type {
   WithdrawalDerivation,
   CrosschainWithdrawalDerivation,
   Withdraw2Derivation,
   CrosschainWithdraw2Derivation,
-} from '../withdrawal/types.js';
+} from "../withdrawal/types.js";
 import type {
   WithdrawalIntent,
   CrosschainWithdrawalIntent,
@@ -28,7 +28,7 @@ import type {
   RagequitCircuitWitness,
   RagequitProofData,
   PrecomputedASPProof,
-} from './types.js';
+} from "./types.js";
 
 // Re-export types
 export type {
@@ -47,7 +47,7 @@ export type {
   RagequitCircuitWitness,
   RagequitProofData,
   PrecomputedASPProof,
-} from './types.js';
+} from "./types.js";
 
 const MAX_TREE_DEPTH = 32;
 
@@ -83,7 +83,7 @@ export function buildWithdrawalCircuitWitness(
   derivation: WithdrawalDerivation,
   stateCommitments: bigint[],
   aspLabels: bigint[],
-  intent: WithdrawalIntent,
+  intent: WithdrawalIntent
 ): WithdrawalCircuitWitness {
   const { withdrawAmount, noteAmount, label } = intent;
 
@@ -127,9 +127,14 @@ export function buildCrosschainWithdrawalCircuitWitness(
   derivation: CrosschainWithdrawalDerivation,
   stateCommitments: bigint[],
   aspLabels: bigint[],
-  intent: CrosschainWithdrawalIntent,
+  intent: CrosschainWithdrawalIntent
 ): CrosschainWithdrawalCircuitWitness {
-  const baseWitness = buildWithdrawalCircuitWitness(derivation, stateCommitments, aspLabels, intent);
+  const baseWitness = buildWithdrawalCircuitWitness(
+    derivation,
+    stateCommitments,
+    aspLabels,
+    intent
+  );
 
   return {
     ...baseWitness,
@@ -155,7 +160,7 @@ export function buildWithdrawalCircuitWitnessWithProof(
   derivation: WithdrawalDerivation,
   stateCommitments: bigint[],
   aspProof: PrecomputedASPProof,
-  intent: WithdrawalIntent,
+  intent: WithdrawalIntent
 ): WithdrawalCircuitWitness {
   const { withdrawAmount, noteAmount } = intent;
 
@@ -202,9 +207,14 @@ export function buildCrosschainWithdrawalCircuitWitnessWithProof(
   derivation: CrosschainWithdrawalDerivation,
   stateCommitments: bigint[],
   aspProof: PrecomputedASPProof,
-  intent: CrosschainWithdrawalIntent,
+  intent: CrosschainWithdrawalIntent
 ): CrosschainWithdrawalCircuitWitness {
-  const baseWitness = buildWithdrawalCircuitWitnessWithProof(derivation, stateCommitments, aspProof, intent);
+  const baseWitness = buildWithdrawalCircuitWitnessWithProof(
+    derivation,
+    stateCommitments,
+    aspProof,
+    intent
+  );
 
   return {
     ...baseWitness,
@@ -229,7 +239,7 @@ export function buildWithdraw2CircuitWitness(
   derivation: Withdraw2Derivation,
   stateCommitments: bigint[],
   aspLabels: bigint[],
-  intent: Withdraw2Intent,
+  intent: Withdraw2Intent
 ): Withdraw2CircuitWitness {
   const { withdrawAmount, primaryNoteAmount, primaryLabel, secondaryNoteAmount, secondaryLabel } =
     intent;
@@ -243,7 +253,7 @@ export function buildWithdraw2CircuitWitness(
 
   if (primaryStateIndex === -1) {
     throw new Error(
-      `Primary commitment ${derivation.primary.existingCommitment} not found in state tree`,
+      `Primary commitment ${derivation.primary.existingCommitment} not found in state tree`
     );
   }
   if (primaryASPIndex === -1) {
@@ -257,7 +267,7 @@ export function buildWithdraw2CircuitWitness(
 
   if (secondaryStateIndex === -1) {
     throw new Error(
-      `Secondary commitment ${derivation.secondary.existingCommitment} not found in state tree`,
+      `Secondary commitment ${derivation.secondary.existingCommitment} not found in state tree`
     );
   }
   if (secondaryASPIndex === -1) {
@@ -316,7 +326,7 @@ export function buildCrosschainWithdraw2CircuitWitness(
   derivation: CrosschainWithdraw2Derivation,
   stateCommitments: bigint[],
   aspLabels: bigint[],
-  intent: CrosschainWithdraw2Intent,
+  intent: CrosschainWithdraw2Intent
 ): CrosschainWithdraw2CircuitWitness {
   const baseWitness = buildWithdraw2CircuitWitness(derivation, stateCommitments, aspLabels, intent);
 
@@ -346,9 +356,10 @@ export function buildWithdraw2CircuitWitnessWithProof(
   stateCommitments: bigint[],
   primaryASPProof: PrecomputedASPProof,
   secondaryASPProof: PrecomputedASPProof,
-  intent: Withdraw2Intent,
+  intent: Withdraw2Intent
 ): Withdraw2CircuitWitness {
-  const { withdrawAmount, primaryNoteAmount, primaryLabel, secondaryNoteAmount, secondaryLabel } = intent;
+  const { withdrawAmount, primaryNoteAmount, primaryLabel, secondaryNoteAmount, secondaryLabel } =
+    intent;
 
   // Build only state tree
   const hash = (a: bigint, b: bigint) => poseidon2([a, b]);
@@ -362,14 +373,18 @@ export function buildWithdraw2CircuitWitnessWithProof(
   const primaryStateIndex = stateCommitments.indexOf(primaryCommitmentBigInt);
 
   if (primaryStateIndex === -1) {
-    throw new Error(`Primary commitment ${derivation.primary.existingCommitment} not found in state tree`);
+    throw new Error(
+      `Primary commitment ${derivation.primary.existingCommitment} not found in state tree`
+    );
   }
 
   const secondaryCommitmentBigInt = BigInt(derivation.secondary.existingCommitment);
   const secondaryStateIndex = stateCommitments.indexOf(secondaryCommitmentBigInt);
 
   if (secondaryStateIndex === -1) {
-    throw new Error(`Secondary commitment ${derivation.secondary.existingCommitment} not found in state tree`);
+    throw new Error(
+      `Secondary commitment ${derivation.secondary.existingCommitment} not found in state tree`
+    );
   }
 
   // Generate state tree proofs
@@ -378,7 +393,7 @@ export function buildWithdraw2CircuitWitnessWithProof(
 
   // Verify ASP roots match (both proofs should be against same ASP root)
   if (primaryASPProof.aspRoot !== secondaryASPProof.aspRoot) {
-    throw new Error('ASP root mismatch between primary and secondary proofs');
+    throw new Error("ASP root mismatch between primary and secondary proofs");
   }
 
   return {
@@ -397,7 +412,9 @@ export function buildWithdraw2CircuitWitnessWithProof(
     existingSecret0: derivation.primary.existingSecret.toString(),
     stateSiblings0: padArray(primaryStateProof.siblings, MAX_TREE_DEPTH).map((s) => s.toString()),
     stateIndex0: Object.is(primaryStateProof.index, Number.NaN) ? 0 : primaryStateProof.index,
-    ASPSiblings0: padArray(primaryASPProof.siblings.map(BigInt), MAX_TREE_DEPTH).map((s) => s.toString()),
+    ASPSiblings0: padArray(primaryASPProof.siblings.map(BigInt), MAX_TREE_DEPTH).map((s) =>
+      s.toString()
+    ),
     ASPIndex0: primaryASPProof.index,
 
     // Secondary input (input1)
@@ -407,7 +424,9 @@ export function buildWithdraw2CircuitWitnessWithProof(
     existingSecret1: derivation.secondary.existingSecret.toString(),
     stateSiblings1: padArray(secondaryStateProof.siblings, MAX_TREE_DEPTH).map((s) => s.toString()),
     stateIndex1: Object.is(secondaryStateProof.index, Number.NaN) ? 0 : secondaryStateProof.index,
-    ASPSiblings1: padArray(secondaryASPProof.siblings.map(BigInt), MAX_TREE_DEPTH).map((s) => s.toString()),
+    ASPSiblings1: padArray(secondaryASPProof.siblings.map(BigInt), MAX_TREE_DEPTH).map((s) =>
+      s.toString()
+    ),
     ASPIndex1: secondaryASPProof.index,
 
     // Output (change note)
@@ -427,7 +446,7 @@ export function buildCrosschainWithdraw2CircuitWitnessWithProof(
   stateCommitments: bigint[],
   primaryASPProof: PrecomputedASPProof,
   secondaryASPProof: PrecomputedASPProof,
-  intent: CrosschainWithdraw2Intent,
+  intent: CrosschainWithdraw2Intent
 ): CrosschainWithdraw2CircuitWitness {
   const baseWitness = buildWithdraw2CircuitWitnessWithProof(
     derivation,
@@ -487,7 +506,7 @@ export function createProofGenerator(config: ProofGeneratorConfig): ProofGenerat
 
   async function ensureWithdraw2Files(): Promise<CircuitFiles> {
     if (!config.withdraw2Loader) {
-      throw new Error('Withdraw2 circuit loader not configured');
+      throw new Error("Withdraw2 circuit loader not configured");
     }
     if (!withdraw2Files) {
       withdraw2Files = await config.withdraw2Loader();
@@ -497,7 +516,7 @@ export function createProofGenerator(config: ProofGeneratorConfig): ProofGenerat
 
   async function ensureCrosschainWithdraw2Files(): Promise<CircuitFiles> {
     if (!config.crosschainWithdraw2Loader) {
-      throw new Error('Cross-chain Withdraw2 circuit loader not configured');
+      throw new Error("Cross-chain Withdraw2 circuit loader not configured");
     }
     if (!crosschainWithdraw2Files) {
       crosschainWithdraw2Files = await config.crosschainWithdraw2Loader();
@@ -507,7 +526,7 @@ export function createProofGenerator(config: ProofGeneratorConfig): ProofGenerat
 
   async function ensureRagequitFiles(): Promise<CircuitFiles> {
     if (!config.ragequitLoader) {
-      throw new Error('Ragequit circuit loader not configured');
+      throw new Error("Ragequit circuit loader not configured");
     }
     if (!ragequitFiles) {
       ragequitFiles = await config.ragequitLoader();
@@ -522,31 +541,31 @@ export function createProofGenerator(config: ProofGeneratorConfig): ProofGenerat
       const { proof, publicSignals } = await snarkjs.groth16.fullProve(
         witness,
         files.wasmFile,
-        files.zkeyFile,
+        files.zkeyFile
       );
 
       const isValid = await snarkjs.groth16.verify(files.vkeyData, publicSignals, proof);
       if (!isValid) {
-        throw new Error('Generated proof failed verification');
+        throw new Error("Generated proof failed verification");
       }
 
       return { proof, publicSignals };
     },
 
     async generateCrosschainWithdrawalProof(
-      witness: CrosschainWithdrawalCircuitWitness,
+      witness: CrosschainWithdrawalCircuitWitness
     ): Promise<WithdrawalProofData> {
       const files = await ensureCrosschainFiles();
 
       const { proof, publicSignals } = await snarkjs.groth16.fullProve(
         witness,
         files.wasmFile,
-        files.zkeyFile,
+        files.zkeyFile
       );
 
       const isValid = await snarkjs.groth16.verify(files.vkeyData, publicSignals, proof);
       if (!isValid) {
-        throw new Error('Generated proof failed verification');
+        throw new Error("Generated proof failed verification");
       }
 
       return { proof, publicSignals };
@@ -558,31 +577,31 @@ export function createProofGenerator(config: ProofGeneratorConfig): ProofGenerat
       const { proof, publicSignals } = await snarkjs.groth16.fullProve(
         witness,
         files.wasmFile,
-        files.zkeyFile,
+        files.zkeyFile
       );
 
       const isValid = await snarkjs.groth16.verify(files.vkeyData, publicSignals, proof);
       if (!isValid) {
-        throw new Error('Generated proof failed verification');
+        throw new Error("Generated proof failed verification");
       }
 
       return { proof, publicSignals };
     },
 
     async generateCrosschainWithdraw2Proof(
-      witness: CrosschainWithdraw2CircuitWitness,
+      witness: CrosschainWithdraw2CircuitWitness
     ): Promise<WithdrawalProofData> {
       const files = await ensureCrosschainWithdraw2Files();
 
       const { proof, publicSignals } = await snarkjs.groth16.fullProve(
         witness,
         files.wasmFile,
-        files.zkeyFile,
+        files.zkeyFile
       );
 
       const isValid = await snarkjs.groth16.verify(files.vkeyData, publicSignals, proof);
       if (!isValid) {
-        throw new Error('Generated proof failed verification');
+        throw new Error("Generated proof failed verification");
       }
 
       return { proof, publicSignals };
@@ -594,12 +613,12 @@ export function createProofGenerator(config: ProofGeneratorConfig): ProofGenerat
       const { proof, publicSignals } = await snarkjs.groth16.fullProve(
         witness,
         files.wasmFile,
-        files.zkeyFile,
+        files.zkeyFile
       );
 
       const isValid = await snarkjs.groth16.verify(files.vkeyData, publicSignals, proof);
       if (!isValid) {
-        throw new Error('Generated ragequit proof failed verification');
+        throw new Error("Generated ragequit proof failed verification");
       }
 
       return { proof, publicSignals };

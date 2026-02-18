@@ -13,7 +13,11 @@ import {
   notesStorageAdapter,
   sharedEncryptionService,
 } from "@/lib/storage/adapters/IndexedDBStore";
-import { resolveDepositRoute, buildDepositCallParams, type DepositSettings } from "@/utils/depositRoute";
+import {
+  resolveDepositRoute,
+  buildDepositCallParams,
+  type DepositSettings,
+} from "@/utils/depositRoute";
 
 const GAS_BUFFER = BigInt(120);
 const DIVISOR = BigInt(100);

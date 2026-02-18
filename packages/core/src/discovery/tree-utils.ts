@@ -3,13 +3,8 @@
  * Tree utilities for NoteTree operations
  */
 
-import type {
-  Note,
-  NoteNode,
-  NoteTree,
-  SerializableNoteNode,
-} from './types.js';
-import { isTerminalNote, isSpendableNote, isIntentNote } from './types.js';
+import type { Note, NoteNode, NoteTree, SerializableNoteNode } from "./types.js";
+import { isTerminalNote, isSpendableNote, isIntentNote } from "./types.js";
 
 // ============================================================================
 // Construction
@@ -42,15 +37,9 @@ export function createNoteNode(note: Note, parent: NoteNode | null): NoteNode {
  *
  * @throws Error if parent is terminal (ragequit, merged)
  */
-export function addChild(
-  parent: NoteNode,
-  childNote: Note,
-  isTerminal: boolean = false,
-): NoteNode {
+export function addChild(parent: NoteNode, childNote: Note, isTerminal: boolean = false): NoteNode {
   if (parent.isTerminal) {
-    throw new Error(
-      `Cannot add child to terminal node (noteType: ${parent.note.noteType})`,
-    );
+    throw new Error(`Cannot add child to terminal node (noteType: ${parent.note.noteType})`);
   }
 
   const child = createNoteNode(childNote, parent);
@@ -67,10 +56,7 @@ export function addChild(
  * Find a node in the tree matching the predicate.
  * Uses depth-first search.
  */
-export function findNode(
-  tree: NoteTree,
-  predicate: (node: NoteNode) => boolean,
-): NoteNode | null {
+export function findNode(tree: NoteTree, predicate: (node: NoteNode) => boolean): NoteNode | null {
   function dfs(node: NoteNode): NoteNode | null {
     if (predicate(node)) return node;
     for (const child of node.children) {
@@ -93,7 +79,7 @@ export function findNode(
 export function findNodeByPosition(
   tree: NoteTree,
   depositIndex: number,
-  changeIndex: number,
+  changeIndex: number
 ): NoteNode | null {
   let deepestMatch: NoteNode | null = null;
 
@@ -113,10 +99,7 @@ export function findNodeByPosition(
 /**
  * Find a node by orderId (for intent notes).
  */
-export function findNodeByOrderId(
-  tree: NoteTree,
-  orderId: string,
-): NoteNode | null {
+export function findNodeByOrderId(tree: NoteTree, orderId: string): NoteNode | null {
   return findNode(tree, (node) => isIntentNote(node.note) && node.note.orderId === orderId);
 }
 
@@ -153,7 +136,7 @@ export function getSpendableLeaves(tree: NoteTree): NoteNode[] {
     const note = node.note;
     return (
       isSpendableNote(note) &&
-      note.status === 'unspent' &&
+      note.status === "unspent" &&
       !node.isTerminal &&
       BigInt(note.amount) > 0n
     );
@@ -169,8 +152,8 @@ export function getLastSpendableLeaf(tree: NoteTree): NoteNode | null {
   if (spendable.length === 0) return null;
 
   // Sort by timestamp descending, return most recent
-  return spendable.sort(
-    (a, b) => Number(BigInt(b.note.originTimestamp) - BigInt(a.note.originTimestamp)),
+  return spendable.sort((a, b) =>
+    Number(BigInt(b.note.originTimestamp) - BigInt(a.note.originTimestamp))
   )[0];
 }
 
@@ -178,10 +161,7 @@ export function getLastSpendableLeaf(tree: NoteTree): NoteNode | null {
  * Get total spendable balance across all spendable leaves.
  */
 export function getTotalSpendableBalance(tree: NoteTree): bigint {
-  return getSpendableLeaves(tree).reduce(
-    (sum, node) => sum + BigInt(node.note.amount),
-    0n,
-  );
+  return getSpendableLeaves(tree).reduce((sum, node) => sum + BigInt(node.note.amount), 0n);
 }
 
 /**
@@ -189,7 +169,7 @@ export function getTotalSpendableBalance(tree: NoteTree): bigint {
  */
 export function traverseTree(
   tree: NoteTree,
-  callback: (node: NoteNode, depth: number) => void,
+  callback: (node: NoteNode, depth: number) => void
 ): void {
   function dfs(node: NoteNode, depth: number): void {
     callback(node, depth);
@@ -233,10 +213,7 @@ export function serializeTree(tree: NoteTree): SerializableNoteNode {
  * Deserialize a SerializableNoteNode back to a NoteTree.
  */
 export function deserializeTree(serialized: SerializableNoteNode): NoteTree {
-  function deserializeNode(
-    data: SerializableNoteNode,
-    parent: NoteNode | null,
-  ): NoteNode {
+  function deserializeNode(data: SerializableNoteNode, parent: NoteNode | null): NoteNode {
     const node: NoteNode = {
       note: data.note,
       parent,
@@ -266,13 +243,13 @@ export function deserializeTree(serialized: SerializableNoteNode): NoteTree {
  */
 export function selectWinnerChain(
   treeA: NoteTree,
-  treeB: NoteTree,
+  treeB: NoteTree
 ): { winner: NoteTree; loser: NoteTree } {
   const leafA = getLastSpendableLeaf(treeA);
   const leafB = getLastSpendableLeaf(treeB);
 
   if (!leafA || !leafB) {
-    throw new Error('Cannot select winner: one or both trees have no spendable leaves');
+    throw new Error("Cannot select winner: one or both trees have no spendable leaves");
   }
 
   const timestampA = BigInt(leafA.note.originTimestamp);

@@ -186,7 +186,10 @@ export class NotesRepository {
   ): Promise<DiscoveryResult> {
     // Create sync engine with persistence callbacks
     const engine = new NoteDiscovery(fetchActivities, {
-      loadState: async (pubKey: string, pool: string): Promise<SerializableDiscoveryState | null> => {
+      loadState: async (
+        pubKey: string,
+        pool: string
+      ): Promise<SerializableDiscoveryState | null> => {
         const cached = await this.getCachedData(pubKey, pool);
         if (!cached) return null;
 

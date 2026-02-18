@@ -63,7 +63,8 @@ export function RagequitPreviewScreen({
             Your identity will be visible on-chain, linking your deposit address to this withdrawal.
             {hasMergeHistory && (
               <span className="mt-1 block">
-                This note includes merged funds from previous withdrawals, which will also be linked to your identity.
+                This note includes merged funds from previous withdrawals, which will also be linked
+                to your identity.
               </span>
             )}
           </p>
@@ -140,9 +141,7 @@ export function RagequitPreviewScreen({
             value={
               <span
                 className={`capitalize ${
-                  note.aspStatus === "approved"
-                    ? "text-emerald-400"
-                    : "text-amber-400"
+                  note.aspStatus === "approved" ? "text-emerald-400" : "text-amber-400"
                 }`}
               >
                 {note.aspStatus}
@@ -154,14 +153,8 @@ export function RagequitPreviewScreen({
 
       {/* Gas Info */}
       <Section title="Gas">
-        <Row
-          label="Paid by"
-          value={<span className="text-neutral-300">You (wallet)</span>}
-        />
-        <Row
-          label="Estimated"
-          value={<span className="text-neutral-400">~0.001 ETH</span>}
-        />
+        <Row label="Paid by" value={<span className="text-neutral-300">You (wallet)</span>} />
+        <Row label="Estimated" value={<span className="text-neutral-400">~0.001 ETH</span>} />
       </Section>
     </ScreenLayout>
   );

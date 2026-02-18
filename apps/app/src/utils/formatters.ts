@@ -174,11 +174,12 @@ export function formatSmallEthAmount(amount: string | number, significantDigits 
 export function formatDisplayAmount(amount: string | number | bigint | null | undefined): string {
   if (amount === null || amount === undefined) return "0";
 
-  const num = typeof amount === "bigint"
-    ? parseFloat(formatEther(amount))
-    : typeof amount === "string"
-      ? parseFloat(amount)
-      : amount;
+  const num =
+    typeof amount === "bigint"
+      ? parseFloat(formatEther(amount))
+      : typeof amount === "string"
+        ? parseFloat(amount)
+        : amount;
 
   if (isNaN(num) || num === 0) return "0";
 

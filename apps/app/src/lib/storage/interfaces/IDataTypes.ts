@@ -3,7 +3,11 @@
  */
 
 import type { WalletAccountId } from "@shinobi-cash/core/auth";
-import type { SerializableNoteNode, NullifierInfo, ActivityItem } from "@shinobi-cash/core/discovery";
+import type {
+  SerializableNoteNode,
+  NullifierInfo,
+  ActivityItem,
+} from "@shinobi-cash/core/discovery";
 
 /**
  * Account Metadata - This is stored in IndexedDB account store

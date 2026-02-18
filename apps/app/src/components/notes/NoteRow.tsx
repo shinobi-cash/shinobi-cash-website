@@ -69,7 +69,9 @@ export function NoteRow({ note, onClick }: NoteRowProps) {
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <span className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ${dotColor}`} />
-              <span className="truncate text-sm font-medium font-mono text-white">{note.serialNumber}</span>
+              <span className="truncate font-mono text-sm font-medium text-white">
+                {note.serialNumber}
+              </span>
             </div>
             <div className="mt-0.5 pl-[18px] text-xs text-neutral-400">
               {intentStatusText ? (
@@ -134,10 +136,7 @@ export function NoteRow({ note, onClick }: NoteRowProps) {
           )}
 
           {isIntent && (
-            <DropdownMenuItem
-              disabled
-              className="cursor-not-allowed text-neutral-500"
-            >
+            <DropdownMenuItem disabled className="cursor-not-allowed text-neutral-500">
               <Clock className="h-4 w-4" />
               Awaiting Delivery
             </DropdownMenuItem>

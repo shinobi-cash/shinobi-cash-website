@@ -11,7 +11,7 @@ import {
   PoolScopeAbi,
   CrosschainDepositEntrypointAbi,
 } from "../abi.js";
-import { arbitrumSepolia, baseSepolia, type Chain } from 'viem/chains';
+import { arbitrumSepolia, baseSepolia, type Chain } from "viem/chains";
 import { SUPPORTED_CROSSCHAIN } from "../network";
 
 // ============ WITHDRAWAL CONSTANTS ============
@@ -185,10 +185,10 @@ export const CROSSCHAIN_DEPOSIT_TIMING = {
  * These should match the typical contract configuration
  */
 export const CROSSCHAIN_DEPOSIT_FALLBACK = {
-  SOLVER_FEE_BPS: 500,         // 5%
+  SOLVER_FEE_BPS: 500, // 5%
   FILL_DEADLINE_SECONDS: 1800, // 30 min
-  EXPIRY_SECONDS: 86400,       // 24 hours
-  MAX_SOLVER_FEE_BPS: 1000,    // 10%
+  EXPIRY_SECONDS: 86400, // 24 hours
+  MAX_SOLVER_FEE_BPS: 1000, // 10%
 } as const;
 
 // ============ INDEXER CONSTANTS ============
@@ -223,7 +223,7 @@ type CrossChainContracts = {
  */
 export const SHINOBI_CASH_ENTRYPOINT: ContractConfig = {
   chain: arbitrumSepolia as Chain,
-  address: '0xf781d31CAb54d0328306c4932d89899f8c15B203',
+  address: "0xf781d31CAb54d0328306c4932d89899f8c15B203",
   blockNumber: 242335319,
   abi: [...EntrypointRelayAbi, ...EntrypointDepositAbi],
 };
@@ -234,7 +234,7 @@ export const SHINOBI_CASH_ENTRYPOINT: ContractConfig = {
  */
 export const SHINOBI_CASH_ETH_POOL: ContractConfig = {
   chain: arbitrumSepolia as Chain,
-  address: '0x1302AfF4D37ee07E734eEEBbf1ee1fcA161da0E2',
+  address: "0x1302AfF4D37ee07E734eEEBbf1ee1fcA161da0E2",
   blockNumber: 242336710,
   abi: PoolScopeAbi,
 };
@@ -246,7 +246,7 @@ export const SHINOBI_CASH_WITHDRAWAL_INPUT_SETTLER: ContractConfig = {
   chain: arbitrumSepolia as Chain,
   address: "0x5545250d53a775FE5026d0214f1112cF0a1f860c",
   blockNumber: 242337484,
-  abi: []
+  abi: [],
 };
 
 /**
@@ -256,7 +256,7 @@ export const SHINOBI_CASH_DEPOSIT_OUTPUT_SETTLER: ContractConfig = {
   chain: arbitrumSepolia as Chain,
   address: "0xfC946DEea21A908d5BE63e3D87B5C01fbBd81F89",
   blockNumber: 242337488,
-  abi: []
+  abi: [],
 };
 
 /**
@@ -264,9 +264,9 @@ export const SHINOBI_CASH_DEPOSIT_OUTPUT_SETTLER: ContractConfig = {
  */
 export const SHINOBI_CASH_RELAY_WITHDRAWAL_PAYMASTER: ContractConfig = {
   chain: arbitrumSepolia as Chain,
-  address: '0x06941357284A00872F2793b0b011637201E45D09',
+  address: "0x06941357284A00872F2793b0b011637201E45D09",
   blockNumber: 242337843,
-  abi: []
+  abi: [],
 };
 
 /**
@@ -274,9 +274,9 @@ export const SHINOBI_CASH_RELAY_WITHDRAWAL_PAYMASTER: ContractConfig = {
  */
 export const SHINOBI_CASH_CROSSCHAIN_WITHDRAWAL_PAYMASTER: ContractConfig = {
   chain: arbitrumSepolia as Chain,
-  address: '0x28b40f5C306757d20453469560abc4D290c195c3',
+  address: "0x28b40f5C306757d20453469560abc4D290c195c3",
   blockNumber: 242337855,
-  abi: []
+  abi: [],
 };
 
 /**
@@ -284,9 +284,9 @@ export const SHINOBI_CASH_CROSSCHAIN_WITHDRAWAL_PAYMASTER: ContractConfig = {
  */
 export const SHINOBI_CASH_WITHDRAW2_PAYMASTER: ContractConfig = {
   chain: arbitrumSepolia as Chain,
-  address: '0xbE252B2DADd5d5698C9cab53cA5D1aA2021833BF',
+  address: "0xbE252B2DADd5d5698C9cab53cA5D1aA2021833BF",
   blockNumber: 242337874,
-  abi: []
+  abi: [],
 };
 
 /**
@@ -294,9 +294,9 @@ export const SHINOBI_CASH_WITHDRAW2_PAYMASTER: ContractConfig = {
  */
 export const SHINOBI_CASH_CROSSCHAIN_WITHDRAW2_PAYMASTER: ContractConfig = {
   chain: arbitrumSepolia as Chain,
-  address: '0x59a57E3A56AcE015100f2Ab98E2a506ebBbFB639',
+  address: "0x59a57E3A56AcE015100f2Ab98E2a506ebBbFB639",
   blockNumber: 242337889,
-  abi: []
+  abi: [],
 };
 
 /**
@@ -304,46 +304,46 @@ export const SHINOBI_CASH_CROSSCHAIN_WITHDRAW2_PAYMASTER: ContractConfig = {
  */
 export const SHINOBI_CASH_HYPERLANE_ORACLE: ContractConfig = {
   chain: arbitrumSepolia as Chain,
-  address: '0xA6AC0c7e4eDAa246FEEd8dfA3bEd8981E56aB5F5',
+  address: "0xA6AC0c7e4eDAa246FEEd8dfA3bEd8981E56aB5F5",
   blockNumber: 242337475,
-  abi: []
+  abi: [],
 };
 
 // ============ VERIFIER CONTRACTS (Arbitrum Sepolia) ============
 
 export const WITHDRAWAL_VERIFIER: ContractConfig = {
   chain: arbitrumSepolia as Chain,
-  address: '0x1A6ffA02c307A1856D5ffA9432545012eb929aad',
+  address: "0x1A6ffA02c307A1856D5ffA9432545012eb929aad",
   blockNumber: 0,
-  abi: []
+  abi: [],
 };
 
 export const COMMITMENT_VERIFIER: ContractConfig = {
   chain: arbitrumSepolia as Chain,
-  address: '0x020507eAb83152E19c5B8A3234385d4423Ed3185',
+  address: "0x020507eAb83152E19c5B8A3234385d4423Ed3185",
   blockNumber: 0,
-  abi: []
+  abi: [],
 };
 
 export const CROSSCHAIN_WITHDRAWAL_VERIFIER: ContractConfig = {
   chain: arbitrumSepolia as Chain,
-  address: '0x353Ed8B5165484fe1Fd47993D8602F0ae7fB36A2',
+  address: "0x353Ed8B5165484fe1Fd47993D8602F0ae7fB36A2",
   blockNumber: 242335162,
-  abi: []
+  abi: [],
 };
 
 export const WITHDRAW2_VERIFIER: ContractConfig = {
   chain: arbitrumSepolia as Chain,
-  address: '0x11Ce8937b38487CDeec8C5c4a08792b58dCd41d6',
+  address: "0x11Ce8937b38487CDeec8C5c4a08792b58dCd41d6",
   blockNumber: 0,
-  abi: []
+  abi: [],
 };
 
 export const CROSSCHAIN_WITHDRAW2_VERIFIER: ContractConfig = {
   chain: arbitrumSepolia as Chain,
-  address: '0x72Ab15FD8753EAC898db9A9C2f85eeEFE099dF5d',
+  address: "0x72Ab15FD8753EAC898db9A9C2f85eeEFE099dF5d",
   blockNumber: 242335168,
-  abi: []
+  abi: [],
 };
 
 // ============ CROSSCHAIN CONTRACTS (Base Sepolia) ============
@@ -356,27 +356,27 @@ export const SHINOBI_CASH_CROSSCHAIN_CONTRACTS = {
   84532: {
     DEPOSIT_ENTRYPOINT: {
       chain: baseSepolia as Chain,
-      address: '0x28664c5F7B58b55B6751E4FE36262D6D162935Ff',
+      address: "0x28664c5F7B58b55B6751E4FE36262D6D162935Ff",
       blockNumber: 37618769,
-      abi: CrosschainDepositEntrypointAbi
+      abi: CrosschainDepositEntrypointAbi,
     },
     WITHDRAWAL_OUTPUT_SETTLER: {
       chain: baseSepolia as Chain,
       address: "0x61Aa62652Aa729B6042aA1c3c42744Ce68FD917E",
       blockNumber: 37618769,
-      abi: []
+      abi: [],
     },
     DEPOSIT_INPUT_SETTLER: {
       chain: baseSepolia as Chain,
-      address: '0xCd5F713fe2E2637Af5019754EbeBc7623fa60dBd',
+      address: "0xCd5F713fe2E2637Af5019754EbeBc7623fa60dBd",
       blockNumber: 37618769,
-      abi: []
+      abi: [],
     },
     DEPOSIT_FILL_ORACLE: {
       chain: baseSepolia as Chain,
-      address: '0x87Aeb83FaAFCF2949C7acfcC9765DD4F49109D1B',
+      address: "0x87Aeb83FaAFCF2949C7acfcC9765DD4F49109D1B",
       blockNumber: 37618769,
-      abi: []
+      abi: [],
     },
-  }
-} as const satisfies Record<typeof SUPPORTED_CROSSCHAIN[number]['id'], CrossChainContracts>;
+  },
+} as const satisfies Record<(typeof SUPPORTED_CROSSCHAIN)[number]["id"], CrossChainContracts>;

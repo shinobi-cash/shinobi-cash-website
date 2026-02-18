@@ -137,7 +137,7 @@ export async function executeWithdrawalUserOperation(
     const receipt = await smartAccountClient.waitForUserOperationReceipt({ hash: userOpHash });
 
     if (!receipt.success) {
-      throw new Error(`UserOperation execution failed: ${receipt.reason || 'unknown reason'}`);
+      throw new Error(`UserOperation execution failed: ${receipt.reason || "unknown reason"}`);
     }
 
     return receipt.receipt.transactionHash;

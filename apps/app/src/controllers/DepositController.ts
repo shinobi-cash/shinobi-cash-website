@@ -2,7 +2,12 @@ import { proxy } from "valtio";
 import { depositService, type CashNoteData, type GasEstimate } from "@/utils/deposit";
 import { isDepositSupported } from "@/utils/depositRoute";
 import { createStateMachine } from "@/utils/stateMachine";
-import { FEE_CONFIG, POOL_CHAIN, MIN_AMOUNT_CONFIG, CROSSCHAIN_DEPOSIT_FALLBACK } from "@shinobi-cash/constants";
+import {
+  FEE_CONFIG,
+  POOL_CHAIN,
+  MIN_AMOUNT_CONFIG,
+  CROSSCHAIN_DEPOSIT_FALLBACK,
+} from "@shinobi-cash/constants";
 import { parseEther } from "viem";
 import { calculateDepositFeeBreakdown } from "@/utils/depositFees";
 import type { PublicClient, WalletClient } from "viem";
@@ -254,9 +259,7 @@ export const DepositController = {
 
     const amounts = calculateDepositFeeBreakdown(amount, FEE_CONFIG.VETTING_FEE_BPS);
     const isCrossChain = wallet.chainId !== POOL_CHAIN.id;
-    const solverFee = isCrossChain
-      ? (parseFloat(amount) * state.solverFeeBPS) / 10_000
-      : 0;
+    const solverFee = isCrossChain ? (parseFloat(amount) * state.solverFeeBPS) / 10_000 : 0;
 
     const preparedAmounts = { ...amounts, solverFee };
     state.lastPreparedAmounts = preparedAmounts;
@@ -376,10 +379,7 @@ export const DepositController = {
     }
 
     try {
-      const defaults = await fetchCrosschainDepositDefaults(
-        wallet.chainId,
-        wallet.publicClient
-      );
+      const defaults = await fetchCrosschainDepositDefaults(wallet.chainId, wallet.publicClient);
       state.contractDefaults = defaults;
 
       // Reset to fetched defaults

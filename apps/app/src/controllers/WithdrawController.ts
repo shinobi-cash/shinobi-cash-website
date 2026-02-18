@@ -1,10 +1,7 @@
 import { proxy } from "valtio";
 import { parseEther, formatEther, isAddress } from "viem/utils";
 import type { Note } from "@shinobi-cash/core/discovery";
-import {
-  selectNotesForWithdrawal,
-  type WithdrawalSelection,
-} from "@shinobi-cash/core/withdrawal";
+import { selectNotesForWithdrawal, type WithdrawalSelection } from "@shinobi-cash/core/withdrawal";
 import type { FeeQuote, WithdrawalRequest, Withdraw2Request } from "@/types/withdrawal";
 import { POOL_CHAIN, FEE_CONFIG } from "@shinobi-cash/constants";
 import { AuthController } from "@/controllers/AuthController";
@@ -248,7 +245,11 @@ export const WithdrawController = {
       return;
     }
     // Don't add duplicate
-    if (state.selectedNotes.some((n) => n.depositIndex === note.depositIndex && n.changeIndex === note.changeIndex)) {
+    if (
+      state.selectedNotes.some(
+        (n) => n.depositIndex === note.depositIndex && n.changeIndex === note.changeIndex
+      )
+    ) {
       return;
     }
     state.selectedNotes = [...state.selectedNotes, note];
@@ -286,7 +287,10 @@ export const WithdrawController = {
 
   setMax(): void {
     if (state.selectedNotes.length === 0) return;
-    const totalAmountWei = state.selectedNotes.reduce((sum, note) => sum + BigInt(note.amount), BigInt(0));
+    const totalAmountWei = state.selectedNotes.reduce(
+      (sum, note) => sum + BigInt(note.amount),
+      BigInt(0)
+    );
     state.amount = formatEther(totalAmountWei);
     state.lastError = null;
     this._updateSelection();

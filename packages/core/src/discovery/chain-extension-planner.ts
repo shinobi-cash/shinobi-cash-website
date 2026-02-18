@@ -12,19 +12,19 @@ import type {
   Withdraw2Activity,
   CrosschainWithdrawIntentActivity,
   CrosschainWithdraw2IntentActivity,
-} from '@shinobi-cash/data';
-import type { NoteTree, NullifierInfo, ChainKey } from './types.js';
-import { makeChainKey, isSpendableNote } from './types.js';
-import type { ActivityIndex } from './activity-indexer.js';
+} from "@shinobi-cash/data";
+import type { NoteTree, NullifierInfo, ChainKey } from "./types.js";
+import { makeChainKey, isSpendableNote } from "./types.js";
+import type { ActivityIndex } from "./activity-indexer.js";
 import {
   isSameChainWithdrawal,
   isCrosschainWithdrawIntent,
   isSameChainWithdraw2,
   isCrosschainWithdraw2Intent,
-} from './activity-indexer.js';
-import { deriveAndHashNullifier } from './nullifier-utils.js';
-import { derivedNoteCommitment } from '../withdrawal/index.js';
-import { getLastSpendableLeaf } from './tree-utils.js';
+} from "./activity-indexer.js";
+import { deriveAndHashNullifier } from "./nullifier-utils.js";
+import { derivedNoteCommitment } from "../withdrawal/index.js";
+import { getLastSpendableLeaf } from "./tree-utils.js";
 
 // ============================================================================
 // Planned Extension Types
@@ -35,7 +35,7 @@ import { getLastSpendableLeaf } from './tree-utils.js';
  * All values computed, ready to apply
  */
 export interface Planned1x1Extension {
-  kind: 'withdraw1x1';
+  kind: "withdraw1x1";
   chainKey: ChainKey;
   originChainId: string;
   depositIndex: number;
@@ -54,7 +54,7 @@ export interface Planned1x1Extension {
  * Represents the merge of two chains
  */
 export interface PlannedWithdraw2Extension {
-  kind: 'withdraw2';
+  kind: "withdraw2";
   primaryChainKey: ChainKey;
   primaryOriginChainId: string;
   primaryDepositIndex: number;
@@ -79,7 +79,7 @@ export interface PlannedWithdraw2Extension {
  * A planned ragequit (public withdrawal)
  */
 export interface PlannedRagequitExtension {
-  kind: 'ragequit';
+  kind: "ragequit";
   chainKey: ChainKey;
   originChainId: string;
   depositIndex: number;
@@ -134,7 +134,7 @@ export function planTreeExtensions(
   nullifierMap: Map<string, NullifierInfo>,
   activityIndex: ActivityIndex,
   accountKey: bigint,
-  poolAddress: string,
+  poolAddress: string
 ): PlannedExtension[] {
   const plans: PlannedExtension[] = [];
   const ctx = createPlanningContext();
@@ -155,7 +155,7 @@ export function planTreeExtensions(
   // Note: getLastSpendableLeaf guarantees a spendable note
   const lastNote = lastLeaf.note;
   if (!isSpendableNote(lastNote)) {
-    throw new Error('Expected spendable note from getLastSpendableLeaf');
+    throw new Error("Expected spendable note from getLastSpendableLeaf");
   }
   let currentChangeIndex = lastNote.changeIndex;
   let currentAmount = BigInt(lastNote.amount);
@@ -165,7 +165,7 @@ export function planTreeExtensions(
 
   while (true) {
     // Stop if note is not extendable (spent, merged, or zero amount)
-    if (currentStatus !== 'unspent' || currentAmount <= 0n) {
+    if (currentStatus !== "unspent" || currentAmount <= 0n) {
       break;
     }
 
@@ -175,7 +175,7 @@ export function planTreeExtensions(
       poolAddress,
       originChainId,
       depositIndex,
-      currentChangeIndex,
+      currentChangeIndex
     );
 
     // Skip if already planned for consumption
@@ -197,7 +197,7 @@ export function planTreeExtensions(
         withdrawal,
         nullifierHash,
         accountKey,
-        poolAddress,
+        poolAddress
       );
       plans.push(plan);
 
@@ -205,8 +205,8 @@ export function planTreeExtensions(
       ctx.consumedNullifiers.add(nullifierHash);
       currentChangeIndex = plan.newChangeIndex;
       currentAmount = plan.remaining;
-      currentStatus = plan.remaining > 0n ? 'unspent' : 'spent';
-      currentNoteType = 'change'; // After withdrawal, tip is always a ChangeNote
+      currentStatus = plan.remaining > 0n ? "unspent" : "spent";
+      currentNoteType = "change"; // After withdrawal, tip is always a ChangeNote
       // Label propagates from parent to change notes
       // (currentLabel stays the same - inherited from parent)
 
@@ -238,7 +238,7 @@ export function planTreeExtensions(
         nullifierMap,
         ctx,
         accountKey,
-        poolAddress,
+        poolAddress
       );
 
       if (plan) {
@@ -250,8 +250,8 @@ export function planTreeExtensions(
         if (chainKey === plan.primaryChainKey) {
           currentChangeIndex = plan.primaryNewChangeIndex;
           currentAmount = plan.remaining;
-          currentStatus = plan.remaining > 0n ? 'unspent' : 'spent';
-          currentNoteType = 'change'; // After Withdraw2, primary tip is a ChangeNote
+          currentStatus = plan.remaining > 0n ? "unspent" : "spent";
+          currentNoteType = "change"; // After Withdraw2, primary tip is a ChangeNote
           if (plan.primaryNewNullifierHash) {
             ctx.plannedNullifiers.set(plan.primaryNewNullifierHash, {
               originChainId: plan.primaryOriginChainId,
@@ -262,7 +262,7 @@ export function planTreeExtensions(
         } else {
           // We're secondary, chain terminates with a merged note (terminal, not spendable)
           // Loop will break on next iteration due to status check
-          currentStatus = 'spent';
+          currentStatus = "spent";
           currentAmount = 0n;
         }
         continue;
@@ -280,13 +280,13 @@ export function planTreeExtensions(
     // are persisted.
     // Gate on noteType (ragequit only for deposit/change, not intent notes or refund)
     // Also check that lastLeaf is a spendable note since derivedNoteCommitment requires it
-    if (currentNoteType === 'deposit' || currentNoteType === 'change') {
+    if (currentNoteType === "deposit" || currentNoteType === "change") {
       if (lastLeaf && isSpendableNote(lastLeaf.note)) {
         const commitment = derivedNoteCommitment(accountKey, lastLeaf.note).toString();
         const ragequit = activityIndex.ragequitByCommitment.get(commitment);
         if (ragequit) {
           plans.push({
-            kind: 'ragequit',
+            kind: "ragequit",
             chainKey,
             originChainId,
             depositIndex,
@@ -323,7 +323,7 @@ function plan1x1Withdrawal(
   activity: WithdrawActivity | CrosschainWithdrawIntentActivity,
   oldNullifierHash: string,
   accountKey: bigint,
-  poolAddress: string,
+  poolAddress: string
 ): Planned1x1Extension {
   // Use withdrawnValue (the actual value spent from the note in the circuit)
   // NOT amount (the recipient amount after fees)
@@ -341,7 +341,7 @@ function plan1x1Withdrawal(
       : null;
 
   return {
-    kind: 'withdraw1x1',
+    kind: "withdraw1x1",
     chainKey,
     originChainId,
     depositIndex,
@@ -372,10 +372,14 @@ function planWithdraw2(
   nullifierMap: Map<string, NullifierInfo>,
   ctx: PlanningContext,
   accountKey: bigint,
-  poolAddress: string,
+  poolAddress: string
 ): PlannedWithdraw2Extension | null {
   // Get nullifiers array from activity
-  if (!('spentNullifiers' in activity) || !activity.spentNullifiers || activity.spentNullifiers.length < 2) {
+  if (
+    !("spentNullifiers" in activity) ||
+    !activity.spentNullifiers ||
+    activity.spentNullifiers.length < 2
+  ) {
     return null;
   }
 
@@ -391,7 +395,8 @@ function planWithdraw2(
   // Find the other chain - check plannedNullifiers first for virtually extended chains,
   // then fall back to persisted nullifierMap. This allows Withdraw2 to work when one
   // chain was virtually extended earlier in the same planning pass.
-  const otherInfo = ctx.plannedNullifiers.get(otherNullifierHash) ?? nullifierMap.get(otherNullifierHash);
+  const otherInfo =
+    ctx.plannedNullifiers.get(otherNullifierHash) ?? nullifierMap.get(otherNullifierHash);
   if (!otherInfo) {
     return null;
   }
@@ -403,7 +408,11 @@ function planWithdraw2(
   }
 
   const otherLastLeaf = getLastSpendableLeaf(otherTree);
-  if (!otherLastLeaf || !isSpendableNote(otherLastLeaf.note) || otherLastLeaf.note.status !== 'unspent') {
+  if (
+    !otherLastLeaf ||
+    !isSpendableNote(otherLastLeaf.note) ||
+    otherLastLeaf.note.status !== "unspent"
+  ) {
     return null;
   }
 
@@ -440,11 +449,17 @@ function planWithdraw2(
 
   const primaryNewNullifierHash =
     remaining > 0n
-      ? deriveAndHashNullifier(accountKey, poolAddress, primaryOriginChainId, primaryDepositIndex, primaryNewChangeIndex)
+      ? deriveAndHashNullifier(
+          accountKey,
+          poolAddress,
+          primaryOriginChainId,
+          primaryDepositIndex,
+          primaryNewChangeIndex
+        )
       : null;
 
   return {
-    kind: 'withdraw2',
+    kind: "withdraw2",
     primaryChainKey,
     primaryOriginChainId,
     primaryDepositIndex,

@@ -3,7 +3,7 @@
  */
 
 // @ts-ignore - snarkjs doesn't have type declarations
-import type * as snarkjs from 'snarkjs';
+import type * as snarkjs from "snarkjs";
 
 export interface WithdrawalIntent {
   withdrawAmount: bigint;
@@ -57,9 +57,13 @@ export type CircuitFileLoader = () => Promise<CircuitFiles>;
 
 export interface ProofGenerator {
   generateWithdrawalProof(witness: WithdrawalCircuitWitness): Promise<WithdrawalProofData>;
-  generateCrosschainWithdrawalProof(witness: CrosschainWithdrawalCircuitWitness): Promise<WithdrawalProofData>;
+  generateCrosschainWithdrawalProof(
+    witness: CrosschainWithdrawalCircuitWitness
+  ): Promise<WithdrawalProofData>;
   generateWithdraw2Proof(witness: Withdraw2CircuitWitness): Promise<WithdrawalProofData>;
-  generateCrosschainWithdraw2Proof(witness: CrosschainWithdraw2CircuitWitness): Promise<WithdrawalProofData>;
+  generateCrosschainWithdraw2Proof(
+    witness: CrosschainWithdraw2CircuitWitness
+  ): Promise<WithdrawalProofData>;
   generateRagequitProof?(witness: RagequitCircuitWitness): Promise<RagequitProofData>;
 }
 

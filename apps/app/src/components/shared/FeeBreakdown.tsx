@@ -101,7 +101,9 @@ export function FeeBreakdown({
           </div>
           {isCrossChain && solverFee !== undefined && solverFee > 0 && (
             <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Solver Fee ({FEE_CONFIG.DEFAULT_SOLVER_FEE_BPS / 100}%)</span>
+              <span className="text-muted-foreground">
+                Solver Fee ({FEE_CONFIG.DEFAULT_SOLVER_FEE_BPS / 100}%)
+              </span>
               <span className="text-orange-400">{renderFeeValue(solverFee, solverFeeUsd)}</span>
             </div>
           )}

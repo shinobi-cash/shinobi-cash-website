@@ -21,6 +21,8 @@
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/",
+    "format": "prettier --write src/",
+    "format:check": "prettier --check src/",
     "test": "vitest",
     "clean": "rm -rf dist rollup-dist",
     "analyze": "rollup -c rollup.analyze.mjs && open rollup-dist/bundle-analysis.html"
@@ -36,6 +38,7 @@
     "@rollup/plugin-node-resolve": "^15.3.0",
     "@rollup/plugin-typescript": "^12.1.1",
     "eslint": "^9.17.0",
+    "prettier": "^3.4.2",
     "rollup": "^4.28.1",
     "rollup-plugin-visualizer": "^5.12.0",
     "tsup": "^8.3.5",

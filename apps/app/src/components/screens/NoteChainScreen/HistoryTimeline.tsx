@@ -137,4 +137,3 @@ function EntryLabel({ label, mergeLabel }: { label: string; mergeLabel: string |
   }
   return <span className="text-sm font-medium text-white">{label}</span>;
 }
-

@@ -144,18 +144,18 @@ export function validateWithdraw2Request(request: Withdraw2Request): void {
 
   // Validate notes are from the same pool
   if (request.primaryNote.poolAddress !== request.secondaryNote.poolAddress) {
-    throw new WithdrawalValidationError(
-      "Both notes must be from the same pool",
-      "POOL_MISMATCH",
-      {
-        primaryPool: request.primaryNote.poolAddress,
-        secondaryPool: request.secondaryNote.poolAddress,
-      }
-    );
+    throw new WithdrawalValidationError("Both notes must be from the same pool", "POOL_MISMATCH", {
+      primaryPool: request.primaryNote.poolAddress,
+      secondaryPool: request.secondaryNote.poolAddress,
+    });
   }
 
   // Validate labelSelector
-  if (request.labelSelector !== undefined && request.labelSelector !== 0 && request.labelSelector !== 1) {
+  if (
+    request.labelSelector !== undefined &&
+    request.labelSelector !== 0 &&
+    request.labelSelector !== 1
+  ) {
     throw new WithdrawalValidationError("Label selector must be 0 or 1", "INVALID_LABEL_SELECTOR", {
       labelSelector: request.labelSelector,
     });

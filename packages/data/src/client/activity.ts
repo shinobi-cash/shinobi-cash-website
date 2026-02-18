@@ -1,4 +1,9 @@
-import type { ActivityItem, ActivityDetailResponse, PaginatedResponse, PaginationOptions } from "../types";
+import type {
+  ActivityItem,
+  ActivityDetailResponse,
+  PaginatedResponse,
+  PaginationOptions,
+} from "../types";
 import { PaginatedIterator } from "../pagination/iterator";
 
 interface ActivityClientConfig {

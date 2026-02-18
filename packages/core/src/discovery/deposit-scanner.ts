@@ -9,12 +9,16 @@ import {
   isDeposit,
   isCrosschainDepositFill,
   isCrosschainDepositIntent,
-} from '@shinobi-cash/data';
-import type { NoteTree, NullifierInfo } from './types.js';
-import type { ActivityIndex } from './activity-indexer.js';
-import { deriveDepositPrecommitment, deriveAndHashNullifier } from './nullifier-utils.js';
-import { createDepositNote, createCrosschainDepositNote, createDepositIntentNote } from './note-factory.js';
-import { createNoteTree } from './tree-utils.js';
+} from "@shinobi-cash/data";
+import type { NoteTree, NullifierInfo } from "./types.js";
+import type { ActivityIndex } from "./activity-indexer.js";
+import { deriveDepositPrecommitment, deriveAndHashNullifier } from "./nullifier-utils.js";
+import {
+  createDepositNote,
+  createCrosschainDepositNote,
+  createDepositIntentNote,
+} from "./note-factory.js";
+import { createNoteTree } from "./tree-utils.js";
 
 // ============================================================================
 // Scan Result Type
@@ -66,7 +70,7 @@ export function scanForDeposits(
   poolAddress: string,
   chainId: number | bigint | string,
   startIndex: number,
-  currentOffset?: number,
+  currentOffset?: number
 ): ScanResult {
   const result: ScanResult = {
     newTrees: [],
@@ -102,7 +106,13 @@ export function scanForDeposits(
     } else if (isCrosschainDepositFill(activity)) {
       // Filled cross-chain deposit: create CrosschainDepositNote
       // Pass chainId as originChainId since we're scanning for deposits from this chain
-      const crosschainDeposit = createCrosschainDepositNote(activity, idx, poolAddress, currentOffset, chainId.toString());
+      const crosschainDeposit = createCrosschainDepositNote(
+        activity,
+        idx,
+        poolAddress,
+        currentOffset,
+        chainId.toString()
+      );
       tree = createNoteTree(crosschainDeposit);
     } else if (isDeposit(activity)) {
       // Same-chain deposit: create DepositNote

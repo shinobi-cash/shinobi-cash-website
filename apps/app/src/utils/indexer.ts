@@ -24,11 +24,7 @@ function assertAuthenticated() {
  * Used by web workers which can't access main thread auth state
  * Worker lifecycle is managed by AppRuntime (only runs when authenticated)
  */
-async function fetchActivitiesInternal(
-  poolAddress?: string,
-  limit = 100,
-  offset?: number
-) {
+async function fetchActivitiesInternal(poolAddress?: string, limit = 100, offset?: number) {
   const params = new URLSearchParams();
   if (poolAddress) params.set("pool", poolAddress);
   params.set("limit", String(limit));
@@ -44,11 +40,7 @@ async function fetchActivitiesInternal(
   return result.data;
 }
 
-export async function fetchActivities(
-  poolAddress?: string,
-  limit = 100,
-  offset?: number
-) {
+export async function fetchActivities(poolAddress?: string, limit = 100, offset?: number) {
   assertAuthenticated();
   try {
     return await fetchActivitiesInternal(poolAddress, limit, offset);

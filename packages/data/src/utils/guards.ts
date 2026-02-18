@@ -26,20 +26,23 @@ export const isDeposit = (activity: ActivityItem): activity is DepositActivity =
 /**
  * Check if activity is a crosschain deposit fill
  */
-export const isCrosschainDepositFill = (activity: ActivityItem): activity is CrosschainDepositFillActivity =>
-  activity.type === "CROSSCHAIN_DEPOSIT_FILL";
+export const isCrosschainDepositFill = (
+  activity: ActivityItem
+): activity is CrosschainDepositFillActivity => activity.type === "CROSSCHAIN_DEPOSIT_FILL";
 
 /**
  * Check if activity is a crosschain deposit intent
  */
-export const isCrosschainDepositIntent = (activity: ActivityItem): activity is CrosschainDepositIntentActivity =>
-  activity.type === "CROSSCHAIN_DEPOSIT_INTENT";
+export const isCrosschainDepositIntent = (
+  activity: ActivityItem
+): activity is CrosschainDepositIntentActivity => activity.type === "CROSSCHAIN_DEPOSIT_INTENT";
 
 /**
  * Check if activity is a crosschain deposit refund
  */
-export const isCrosschainDepositRefund = (activity: ActivityItem): activity is CrosschainDepositRefundActivity =>
-  activity.type === "CROSSCHAIN_DEPOSIT_REFUND";
+export const isCrosschainDepositRefund = (
+  activity: ActivityItem
+): activity is CrosschainDepositRefundActivity => activity.type === "CROSSCHAIN_DEPOSIT_REFUND";
 
 /**
  * Check if activity is a same-chain 1:1 withdrawal
@@ -56,25 +59,31 @@ export const isWithdraw2 = (activity: ActivityItem): activity is Withdraw2Activi
 /**
  * Check if activity is a crosschain 1:1 withdrawal intent
  */
-export const isCrosschainWithdrawIntent = (activity: ActivityItem): activity is CrosschainWithdrawIntentActivity =>
-  activity.type === "CROSSCHAIN_WITHDRAW_INTENT";
+export const isCrosschainWithdrawIntent = (
+  activity: ActivityItem
+): activity is CrosschainWithdrawIntentActivity => activity.type === "CROSSCHAIN_WITHDRAW_INTENT";
 
 /**
  * Check if activity is a crosschain 2:1 withdrawal intent
  */
-export const isCrosschainWithdraw2Intent = (activity: ActivityItem): activity is CrosschainWithdraw2IntentActivity =>
+export const isCrosschainWithdraw2Intent = (
+  activity: ActivityItem
+): activity is CrosschainWithdraw2IntentActivity =>
   activity.type === "CROSSCHAIN_WITHDRAW_2_INTENT";
 
 /**
  * Check if activity is a crosschain withdrawal fill
  */
-export const isCrosschainWithdrawalFill = (activity: ActivityItem): activity is CrosschainWithdrawalFillActivity =>
-  activity.type === "CROSSCHAIN_WITHDRAWAL_FILL";
+export const isCrosschainWithdrawalFill = (
+  activity: ActivityItem
+): activity is CrosschainWithdrawalFillActivity => activity.type === "CROSSCHAIN_WITHDRAWAL_FILL";
 
 /**
  * Check if activity is a crosschain withdrawal refund
  */
-export const isCrosschainWithdrawalRefund = (activity: ActivityItem): activity is CrosschainWithdrawalRefundActivity =>
+export const isCrosschainWithdrawalRefund = (
+  activity: ActivityItem
+): activity is CrosschainWithdrawalRefundActivity =>
   activity.type === "CROSSCHAIN_WITHDRAWAL_REFUND";
 
 /**
@@ -90,19 +99,25 @@ export const isRagequit = (activity: ActivityItem): activity is RagequitActivity
 /**
  * Check if activity is any withdrawal (same-chain 1:1 or 2:1)
  */
-export const isWithdrawal = (activity: ActivityItem): activity is WithdrawActivity | Withdraw2Activity =>
+export const isWithdrawal = (
+  activity: ActivityItem
+): activity is WithdrawActivity | Withdraw2Activity =>
   activity.type === "WITHDRAW" || activity.type === "WITHDRAW_2";
 
 /**
  * Check if activity is any deposit (same-chain or crosschain fill)
  */
-export const isAnyDeposit = (activity: ActivityItem): activity is DepositActivity | CrosschainDepositFillActivity =>
+export const isAnyDeposit = (
+  activity: ActivityItem
+): activity is DepositActivity | CrosschainDepositFillActivity =>
   activity.type === "DEPOSIT" || activity.type === "CROSSCHAIN_DEPOSIT_FILL";
 
 /**
  * Check if activity is a cross-chain intent
  */
-export const isIntent = (activity: ActivityItem): activity is
+export const isIntent = (
+  activity: ActivityItem
+): activity is
   | CrosschainDepositIntentActivity
   | CrosschainWithdrawIntentActivity
   | CrosschainWithdraw2IntentActivity =>
@@ -113,17 +128,17 @@ export const isIntent = (activity: ActivityItem): activity is
 /**
  * Check if activity is a cross-chain fill
  */
-export const isFill = (activity: ActivityItem): activity is
-  | CrosschainDepositFillActivity
-  | CrosschainWithdrawalFillActivity =>
+export const isFill = (
+  activity: ActivityItem
+): activity is CrosschainDepositFillActivity | CrosschainWithdrawalFillActivity =>
   activity.type === "CROSSCHAIN_DEPOSIT_FILL" || activity.type === "CROSSCHAIN_WITHDRAWAL_FILL";
 
 /**
  * Check if activity is a refund
  */
-export const isRefund = (activity: ActivityItem): activity is
-  | CrosschainDepositRefundActivity
-  | CrosschainWithdrawalRefundActivity =>
+export const isRefund = (
+  activity: ActivityItem
+): activity is CrosschainDepositRefundActivity | CrosschainWithdrawalRefundActivity =>
   activity.type === "CROSSCHAIN_DEPOSIT_REFUND" || activity.type === "CROSSCHAIN_WITHDRAWAL_REFUND";
 
 /**
@@ -135,11 +150,9 @@ export const isCrossChain = (activity: ActivityItem): boolean =>
 /**
  * Check if activity is same-chain only
  */
-export const isSameChain = (activity: ActivityItem): activity is
-  | DepositActivity
-  | WithdrawActivity
-  | Withdraw2Activity
-  | RagequitActivity =>
+export const isSameChain = (
+  activity: ActivityItem
+): activity is DepositActivity | WithdrawActivity | Withdraw2Activity | RagequitActivity =>
   activity.type === "DEPOSIT" ||
   activity.type === "WITHDRAW" ||
   activity.type === "WITHDRAW_2" ||
@@ -148,7 +161,9 @@ export const isSameChain = (activity: ActivityItem): activity is
 /**
  * Check if activity is any cross-chain withdrawal (intent, fill, or refund)
  */
-export const isAnyCrosschainWithdrawal = (activity: ActivityItem): activity is
+export const isAnyCrosschainWithdrawal = (
+  activity: ActivityItem
+): activity is
   | CrosschainWithdrawIntentActivity
   | CrosschainWithdraw2IntentActivity
   | CrosschainWithdrawalFillActivity

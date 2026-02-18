@@ -21,10 +21,7 @@ import {
   validateWithdraw2Context,
 } from "@/utils/withdrawalInvariants";
 import { quoteFees, quoteWithdraw2Fees as quoteWithdraw2FeesUtil } from "@/utils/withdrawalFees";
-import {
-  prepareUserOperation,
-  prepareWithdraw2UserOperation,
-} from "@/utils/withdrawalTransaction";
+import { prepareUserOperation, prepareWithdraw2UserOperation } from "@/utils/withdrawalTransaction";
 import {
   createWithdrawalData,
   createCrossChainWithdrawalData,
@@ -149,7 +146,11 @@ export class WithdrawalEngine {
       throw Errors.withdrawal.precondition("Withdrawal not prepared");
     }
     const { smartAccountClient, userOperation, gasLimits } = this.state.preparedUserOp;
-    const transactionHash = await executeWithdrawalUserOperation(smartAccountClient, userOperation, gasLimits);
+    const transactionHash = await executeWithdrawalUserOperation(
+      smartAccountClient,
+      userOperation,
+      gasLimits
+    );
     const result: ExecutionResult = { transactionHash, success: true };
     this.state.executionResult = result;
     this.state.phase = "executed";
@@ -372,7 +373,9 @@ export class WithdrawalEngine {
     return context;
   }
 
-  private async buildWithdraw2Witness(context: Withdraw2PipelineContext): Promise<Withdraw2Witness> {
+  private async buildWithdraw2Witness(
+    context: Withdraw2PipelineContext
+  ): Promise<Withdraw2Witness> {
     // Cast notes to SpendableNote - validated in earlier steps
     const primaryNote = context.request.primaryNote as SpendableNote;
     const secondaryNote = context.request.secondaryNote as SpendableNote;

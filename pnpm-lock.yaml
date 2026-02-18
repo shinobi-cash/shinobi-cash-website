@@ -291,6 +291,9 @@ importers:
       eslint:
         specifier: ^9.17.0
         version: 9.39.2(jiti@2.6.1)
+      prettier:
+        specifier: ^3.4.2
+        version: 3.7.4
       rollup:
         specifier: ^4.28.1
         version: 4.55.2
@@ -349,6 +352,9 @@ importers:
       eslint:
         specifier: ^9.17.0
         version: 9.39.2(jiti@2.6.1)
+      prettier:
+        specifier: ^3.4.2
+        version: 3.7.4
       rollup:
         specifier: ^4.28.1
         version: 4.55.2
