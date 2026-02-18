@@ -1,18 +1,8 @@
-import type { IntentTimelineEvent, IntentPhase } from "@shinobi-cash/data";
+import type { IntentPhase } from "@shinobi-cash/data";
+import type { IntentTimelineEvent } from "@/controllers/IntentExplorerController";
 import { formatTimestamp, formatHash } from "@/utils/formatters";
 import { getChainName, getTxExplorerUrl } from "@/config/chains";
 import { Check, Clock, AlertCircle } from "lucide-react";
-
-/**
- * Get the chain ID where a timeline event happened
- * FILLED phase happens on destination chain, all others on origin chain
- */
-function getEventChainId(event: IntentTimelineEvent): bigint | undefined {
-  if (event.phase === "FILLED") {
-    return event.destinationChainId;
-  }
-  return event.originChainId;
-}
 
 interface Props {
   events: IntentTimelineEvent[];
@@ -127,25 +117,20 @@ export function IntentTimeline({ events, currentPhase }: Props) {
                 {getPhaseDescription(phase, event)}
               </p>
 
-              {event && (() => {
-                const eventChainId = getEventChainId(event);
-                return (
-                  <div className="mt-2 flex items-center justify-between text-xs">
-                    {eventChainId && (
-                      <a
-                        href={getTxExplorerUrl(Number(eventChainId), event.txHash)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-neutral-300 transition-colors hover:text-orange-400"
-                      >
-                        {getChainName(Number(eventChainId))}
-                        <span className="text-neutral-500">↗</span>
-                      </a>
-                    )}
-                    <span className="text-neutral-400">{formatTimestamp(event.timestamp)}</span>
-                  </div>
-                );
-              })()}
+              {event && (
+                <div className="mt-2 flex items-center justify-between text-xs">
+                  <a
+                    href={getTxExplorerUrl(Number(event.chainId), event.txHash)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-neutral-300 transition-colors hover:text-orange-400"
+                  >
+                    {getChainName(Number(event.chainId))}
+                    <span className="text-neutral-500">↗</span>
+                  </a>
+                  <span className="text-neutral-400">{formatTimestamp(event.timestamp)}</span>
+                </div>
+              )}
             </div>
           </div>
         );

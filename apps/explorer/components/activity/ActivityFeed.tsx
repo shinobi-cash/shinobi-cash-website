@@ -44,10 +44,10 @@ export function ActivityFeed() {
           )}
 
           {state.activities.map((activity) => {
-            const isSelected = activity.id === state.selectedActivity?.id;
+            const isSelected = activity.txHash === state.selectedTxHash;
             return (
               <button
-                key={activity.id}
+                key={activity.txHash}
                 onClick={() => ActivityExplorerController.selectActivity(activity)}
                 className={`w-full text-left transition ${
                   isSelected

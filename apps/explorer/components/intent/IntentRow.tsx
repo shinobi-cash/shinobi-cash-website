@@ -39,7 +39,7 @@ export function IntentRow({ intent }: Props) {
           {originChain} → {destChain}
         </span>
         <span className="text-neutral-400">
-          {formatTimestamp(intent.timestamp)}
+          {formatTimestamp(intent.escrowTimestamp)}
         </span>
       </div>
     </div>

@@ -1,20 +1,26 @@
 import { proxy } from "valtio";
-import type { Activity, PaginatedResponse } from "@shinobi-cash/data";
-import { fetchActivities } from "@/services/data/indexerService";
+import type { ActivityItem, TimelineEvent, PaginatedResponse } from "@shinobi-cash/data";
+import { fetchActivities, fetchActivityDetails } from "@/services/data/indexerService";
 import { SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
 
 const PAGE_SIZE = 15;
 
 interface ActivityExplorerState {
   // List state
-  activities: Activity[];
+  activities: ActivityItem[];
   page: number;
   hasNextPage: boolean;
   isLoadingList: boolean;
   listError: string | null;
 
-  // Selection state
-  selectedActivity: Activity | null;
+  // Selection state (from list)
+  selectedTxHash: string | null;
+
+  // Detail state (fetched by txHash)
+  selectedActivity: ActivityItem | null;
+  selectedTimeline: TimelineEvent[] | null;
+  isLoadingDetails: boolean;
+  detailsError: string | null;
 
   // Config
   poolId: string;
@@ -27,7 +33,11 @@ const initialState: ActivityExplorerState = {
   isLoadingList: false,
   listError: null,
 
+  selectedTxHash: null,
   selectedActivity: null,
+  selectedTimeline: null,
+  isLoadingDetails: false,
+  detailsError: null,
 
   poolId: SHINOBI_CASH_ETH_POOL.address,
 };
@@ -61,14 +71,14 @@ export const ActivityExplorerController = {
 
     try {
       const offset = state.page * PAGE_SIZE;
-      const result: PaginatedResponse<Activity> = await fetchActivities(
+      const result: PaginatedResponse<ActivityItem> = await fetchActivities(
         state.poolId,
         PAGE_SIZE,
         offset,
         "desc"
       );
-      state.activities = result.items;
-      state.hasNextPage = result.pageInfo?.hasNextPage ?? false;
+      state.activities = result.data;
+      state.hasNextPage = result.pagination.hasMore;
     } catch (error) {
       state.listError = error instanceof Error ? error.message : "Failed to fetch activities";
     } finally {
@@ -93,19 +103,41 @@ export const ActivityExplorerController = {
     }
   },
 
-  // Selection
-  selectActivity(activity: Activity): void {
-    state.selectedActivity = activity;
+  // Selection - fetch full details by txHash
+  async selectActivity(activity: ActivityItem): Promise<void> {
+    state.selectedTxHash = activity.txHash;
+    state.isLoadingDetails = true;
+    state.detailsError = null;
+    state.selectedActivity = null;
+    state.selectedTimeline = null;
+
+    try {
+      const result = await fetchActivityDetails(activity.txHash);
+      if (result) {
+        state.selectedActivity = result.activity;
+        state.selectedTimeline = result.timeline;
+      } else {
+        state.detailsError = "Activity not found";
+      }
+    } catch (error) {
+      state.detailsError = error instanceof Error ? error.message : "Failed to fetch activity details";
+    } finally {
+      state.isLoadingDetails = false;
+    }
   },
 
   clearSelection(): void {
+    state.selectedTxHash = null;
     state.selectedActivity = null;
+    state.selectedTimeline = null;
+    state.detailsError = null;
   },
 
   // Pool selection
   setPoolId(poolId: string): void {
     state.poolId = poolId;
     state.page = 0;
+    this.clearSelection();
     this.fetchActivities();
   },
 
