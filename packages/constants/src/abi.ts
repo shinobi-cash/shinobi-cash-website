@@ -254,3 +254,37 @@ export const CrosschainDepositEntrypointAbi = [
     stateMutability: 'payable',
   },
 ] as const;
+
+/**
+ * ABI for reading crosschain deposit entrypoint configuration
+ */
+export const CrosschainDepositConfigAbi = [
+  {
+    type: 'function',
+    name: 'defaultSolverFeeBPS',
+    inputs: [],
+    outputs: [{ name: '', type: 'uint256', internalType: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'defaultFillDeadline',
+    inputs: [],
+    outputs: [{ name: '', type: 'uint32', internalType: 'uint32' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'defaultExpiry',
+    inputs: [],
+    outputs: [{ name: '', type: 'uint32', internalType: 'uint32' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'maxSolverFeeBPS',
+    inputs: [],
+    outputs: [{ name: '', type: 'uint256', internalType: 'uint256' }],
+    stateMutability: 'view',
+  },
+] as const;

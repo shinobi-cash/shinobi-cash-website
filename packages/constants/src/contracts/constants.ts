@@ -74,7 +74,7 @@ export const SAME_CHAIN_GAS_LIMITS = {
   VERIFICATION_GAS_LIMIT: BigInt(200000),
 
   /** Pre-verification gas overhead */
-  PRE_VERIFICATION_GAS: BigInt(168000),
+  PRE_VERIFICATION_GAS: BigInt(200000),
 
   /** Gas for paymaster verification */
   PAYMASTER_VERIFICATION_GAS_LIMIT: BigInt(450000),
@@ -97,7 +97,7 @@ export const CROSS_CHAIN_GAS_LIMITS = {
   VERIFICATION_GAS_LIMIT: BigInt(200000),
 
   /** Pre-verification gas overhead (same as same-chain) */
-  PRE_VERIFICATION_GAS: BigInt(168000),
+  PRE_VERIFICATION_GAS: BigInt(200000),
 
   /** Gas for paymaster verification (+25%) */
   PAYMASTER_VERIFICATION_GAS_LIMIT: BigInt(500000), // 400000 * 1.25
@@ -178,6 +178,17 @@ export const INTENT_TIMING = {
 export const CROSSCHAIN_DEPOSIT_TIMING = {
   FILL_DEADLINE_SECONDS: INTENT_TIMING.FILL_DEADLINE_SECONDS,
   EXPIRY_SECONDS: INTENT_TIMING.EXPIRY_SECONDS,
+} as const;
+
+/**
+ * Fallback defaults for crosschain deposit (used before contract fetch)
+ * These should match the typical contract configuration
+ */
+export const CROSSCHAIN_DEPOSIT_FALLBACK = {
+  SOLVER_FEE_BPS: 500,         // 5%
+  FILL_DEADLINE_SECONDS: 1800, // 30 min
+  EXPIRY_SECONDS: 86400,       // 24 hours
+  MAX_SOLVER_FEE_BPS: 1000,    // 10%
 } as const;
 
 // ============ INDEXER CONSTANTS ============

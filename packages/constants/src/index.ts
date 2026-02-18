@@ -11,6 +11,7 @@ export {
   PoolScopeAbi,
   PoolRagequitAbi,
   CrosschainDepositEntrypointAbi,
+  CrosschainDepositConfigAbi,
   EntrypointWithdraw2RelayAbi,
   EntrypointCrosschainWithdraw2Abi,
 } from './abi.js';
