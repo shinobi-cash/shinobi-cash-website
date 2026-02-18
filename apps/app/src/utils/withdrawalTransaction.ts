@@ -68,7 +68,7 @@ export async function prepareWithdraw2UserOperation(
 
   const isCrossChain = context.kind === "cross-chain";
 
-  // Format proof based on withdrawal type (9 signals for same-chain, 14 for cross-chain)
+  // Format proof based on withdrawal type (9 signals for same-chain, 12 for cross-chain)
   const callData = isCrossChain
     ? encodeCrossChainWithdraw2CallData(
         withdrawalData,

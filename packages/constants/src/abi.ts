@@ -44,11 +44,11 @@ export const EntrypointRelayAbi = [
 
 /**
  * ABI for cross-chain withdrawal (1:1)
- * 13 public signals:
+ * 11 public signals:
  *   [0] newCommitmentHash, [1] existingNullifierHash, [2] refundCommitmentHash,
  *   [3] relayFeeBPSOut, [4] refundFeeBPSOut, [5] withdrawnValue,
  *   [6] stateRoot, [7] stateTreeDepth, [8] ASPRoot, [9] ASPTreeDepth,
- *   [10] context, [11] relayFeeBPS, [12] refundFeeBPS
+ *   [10] context
  */
 export const EntrypointCrosschainWithdrawalAbi = [
   {
@@ -72,7 +72,7 @@ export const EntrypointCrosschainWithdrawalAbi = [
           { name: "pA", type: "uint256[2]", internalType: "uint256[2]" },
           { name: "pB", type: "uint256[2][2]", internalType: "uint256[2][2]" },
           { name: "pC", type: "uint256[2]", internalType: "uint256[2]" },
-          { name: "pubSignals", type: "uint256[13]", internalType: "uint256[13]" },
+          { name: "pubSignals", type: "uint256[11]", internalType: "uint256[11]" },
         ],
       },
       { name: "_scope", type: "uint256", internalType: "uint256" },
@@ -135,12 +135,11 @@ export const EntrypointWithdraw2RelayAbi = [
 
 /**
  * ABI for cross-chain Withdraw2 (2:1 merge with refund commitment)
- * 14 public signals:
+ * 12 public signals:
  *   [0] newCommitmentHash, [1] nullifierHash0, [2] nullifierHash1,
  *   [3] refundCommitmentHash, [4] relayFeeBPSOut, [5] refundFeeBPSOut,
  *   [6] withdrawnValue, [7] stateRoot, [8] stateTreeDepth,
- *   [9] ASPRoot, [10] ASPTreeDepth, [11] context,
- *   [12] relayFeeBPS, [13] refundFeeBPS
+ *   [9] ASPRoot, [10] ASPTreeDepth, [11] context
  */
 export const EntrypointCrosschainWithdraw2Abi = [
   {
@@ -164,7 +163,7 @@ export const EntrypointCrosschainWithdraw2Abi = [
           { name: "pA", type: "uint256[2]", internalType: "uint256[2]" },
           { name: "pB", type: "uint256[2][2]", internalType: "uint256[2][2]" },
           { name: "pC", type: "uint256[2]", internalType: "uint256[2]" },
-          { name: "pubSignals", type: "uint256[14]", internalType: "uint256[14]" },
+          { name: "pubSignals", type: "uint256[12]", internalType: "uint256[12]" },
         ],
       },
       { name: "_scope", type: "uint256", internalType: "uint256" },

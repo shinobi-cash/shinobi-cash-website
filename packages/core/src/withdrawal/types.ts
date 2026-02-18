@@ -21,7 +21,7 @@ export interface ContractProof {
 }
 
 /**
- * Cross-chain contract-ready proof (13 signals)
+ * Cross-chain contract-ready proof (11 signals)
  *
  * Public signals order:
  * [0] newCommitmentHash - Output: new commitment after withdrawal
@@ -35,16 +35,12 @@ export interface ContractProof {
  * [8] ASPRoot - Input: ASP merkle root
  * [9] ASPTreeDepth - Input: ASP tree depth
  * [10] context - Input: binding context hash
- * [11] relayFeeBPS - Input: relay fee (same as output)
- * [12] refundFeeBPS - Input: refund fee (same as output)
  */
 export interface ContractCrossChainProof {
   pA: [bigint, bigint];
   pB: [[bigint, bigint], [bigint, bigint]];
   pC: [bigint, bigint];
   pubSignals: [
-    bigint,
-    bigint,
     bigint,
     bigint,
     bigint,
@@ -106,7 +102,7 @@ export interface ContractWithdraw2SameChainProof {
 }
 
 /**
- * Cross-chain Withdraw2 contract-ready proof (14 signals)
+ * Cross-chain Withdraw2 contract-ready proof (12 signals)
  *
  * Public signals order:
  * [0] newCommitmentHash - Change output commitment
@@ -121,16 +117,12 @@ export interface ContractWithdraw2SameChainProof {
  * [9] ASPRoot - ASP merkle root
  * [10] ASPTreeDepth - ASP tree depth
  * [11] context - Binding context hash
- * [12] relayFeeBPS - Input: relay fee (same as output)
- * [13] refundFeeBPS - Input: refund fee (same as output)
  */
 export interface ContractCrosschainWithdraw2Proof {
   pA: [bigint, bigint];
   pB: [[bigint, bigint], [bigint, bigint]];
   pC: [bigint, bigint];
   pubSignals: [
-    bigint,
-    bigint,
     bigint,
     bigint,
     bigint,

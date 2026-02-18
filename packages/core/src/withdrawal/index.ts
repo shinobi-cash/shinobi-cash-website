@@ -151,7 +151,7 @@ export function formatProofForContract(
 }
 
 /**
- * Format snarkjs cross-chain proof for Solidity verifier (13 signals)
+ * Format snarkjs cross-chain proof for Solidity verifier (11 signals)
  *
  * Public signals order:
  * [0] newCommitmentHash - Output: new commitment after withdrawal
@@ -165,8 +165,6 @@ export function formatProofForContract(
  * [8] ASPRoot - Input: ASP merkle root
  * [9] ASPTreeDepth - Input: ASP tree depth
  * [10] context - Input: binding context hash
- * [11] relayFeeBPS - Input: relay fee (same as output)
- * [12] refundFeeBPS - Input: refund fee (same as output)
  */
 export function formatCrossChainProofForContract(
   proof: SnarkJsProof,
@@ -191,8 +189,6 @@ export function formatCrossChainProofForContract(
       BigInt(publicSignals[8]), // ASPRoot
       BigInt(publicSignals[9]), // ASPTreeDepth
       BigInt(publicSignals[10]), // context
-      BigInt(publicSignals[11]), // relayFeeBPS
-      BigInt(publicSignals[12]), // refundFeeBPS
     ],
   };
 }
@@ -271,7 +267,7 @@ export function formatWithdraw2SameChainProofForContract(
 }
 
 /**
- * Format snarkjs proof for cross-chain Withdraw2 Solidity verifier (14 signals)
+ * Format snarkjs proof for cross-chain Withdraw2 Solidity verifier (12 signals)
  *
  * Public signals order:
  * [0] newCommitmentHash - Change output commitment
@@ -286,8 +282,6 @@ export function formatWithdraw2SameChainProofForContract(
  * [9] ASPRoot - ASP merkle root
  * [10] ASPTreeDepth - ASP tree depth
  * [11] context - Binding context hash
- * [12] relayFeeBPS - Input: relay fee (same as output)
- * [13] refundFeeBPS - Input: refund fee (same as output)
  */
 export function formatWithdraw2CrossChainProofForContract(
   proof: SnarkJsProof,
@@ -313,8 +307,6 @@ export function formatWithdraw2CrossChainProofForContract(
       BigInt(publicSignals[9]), // ASPRoot
       BigInt(publicSignals[10]), // ASPTreeDepth
       BigInt(publicSignals[11]), // context
-      BigInt(publicSignals[12]), // relayFeeBPS
-      BigInt(publicSignals[13]), // refundFeeBPS
     ],
   };
 }
