@@ -1,7 +1,10 @@
 "use client";
 
 import { useSnapshot } from "valtio";
-import { ActivityExplorerController, ActivityExplorerSelectors } from "@/controllers/ActivityExplorerController";
+import {
+  ActivityExplorerController,
+  ActivityExplorerSelectors,
+} from "@/controllers/ActivityExplorerController";
 import { ActivityRow } from "./ActivityRow";
 import { ActivityRowSkeleton } from "./ActivityRowSkeleton";
 import { ActivityFilters } from "./ActivityFilters";
@@ -15,7 +18,7 @@ export function ActivityFeed() {
 
   return (
     <section className="bg-white/2 flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-white/10">
-      <div className="shrink-0 flex items-center justify-between gap-4 border-b border-white/10 px-5 py-4">
+      <div className="flex shrink-0 items-center justify-between gap-4 border-b border-white/10 px-5 py-4">
         <h2 className="text-sm font-medium text-white">Pool Activity</h2>
         <ActivityFilters
           poolId={state.poolId}
@@ -25,9 +28,8 @@ export function ActivityFeed() {
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="divide-y divide-white/5">
-          {state.isLoadingList && Array.from({ length: 8 }).map((_, i) => (
-            <ActivityRowSkeleton key={i} />
-          ))}
+          {state.isLoadingList &&
+            Array.from({ length: 8 }).map((_, i) => <ActivityRowSkeleton key={i} />)}
 
           {!state.isLoadingList && state.listError && (
             <div className="p-6 text-center">
@@ -63,11 +65,11 @@ export function ActivityFeed() {
       </div>
 
       {/* Pagination */}
-      <div className="shrink-0 flex items-center justify-between border-t border-white/10 px-5 py-3">
+      <div className="flex shrink-0 items-center justify-between border-t border-white/10 px-5 py-3">
         <button
           onClick={() => ActivityExplorerController.previousPage()}
           disabled={!canGoPrevious}
-          className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium text-neutral-400 transition hover:bg-white/5 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-neutral-400"
+          className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium text-neutral-400 transition hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-neutral-400"
         >
           <ChevronLeft className="h-4 w-4" />
           Previous
@@ -76,7 +78,7 @@ export function ActivityFeed() {
         <button
           onClick={() => ActivityExplorerController.nextPage()}
           disabled={!canGoNext}
-          className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium text-neutral-400 transition hover:bg-white/5 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-neutral-400"
+          className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium text-neutral-400 transition hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-neutral-400"
         >
           Next
           <ChevronRight className="h-4 w-4" />

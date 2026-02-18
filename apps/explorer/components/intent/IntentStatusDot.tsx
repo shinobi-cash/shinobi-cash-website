@@ -8,7 +8,5 @@ interface Props {
 export function IntentStatusDot({ phase }: Props) {
   const colors = PHASE_COLORS[phase];
 
-  return (
-    <div className={`h-2 w-2 rounded-full ${colors.dot} ring-2 ${colors.ring}`} />
-  );
+  return <div className={`h-2 w-2 rounded-full ${colors.dot} ring-2 ${colors.ring}`} />;
 }

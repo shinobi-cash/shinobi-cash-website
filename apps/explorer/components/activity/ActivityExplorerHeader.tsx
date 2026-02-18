@@ -27,10 +27,7 @@ export function ActivityExplorerHeader() {
           >
             Stats
           </Link>
-          <Link
-            href="/activity"
-            className="text-xs font-medium text-white sm:text-sm"
-          >
+          <Link href="/activity" className="text-xs font-medium text-white sm:text-sm">
             Activity
           </Link>
           <Link

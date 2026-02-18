@@ -120,7 +120,8 @@ export const ActivityExplorerController = {
         state.detailsError = "Activity not found";
       }
     } catch (error) {
-      state.detailsError = error instanceof Error ? error.message : "Failed to fetch activity details";
+      state.detailsError =
+        error instanceof Error ? error.message : "Failed to fetch activity details";
     } finally {
       state.isLoadingDetails = false;
     }

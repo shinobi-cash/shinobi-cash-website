@@ -7,10 +7,7 @@ export async function GET(request: Request) {
     const poolId = searchParams.get("poolId");
 
     if (!poolId) {
-      return NextResponse.json(
-        { success: false, error: "poolId is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: "poolId is required" }, { status: 400 });
     }
 
     const limit = Number(searchParams.get("limit") || 1000);
@@ -29,7 +26,10 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error("[API] state-tree error:", error);
     return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : "Failed to fetch state tree" },
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to fetch state tree",
+      },
       { status: 500 }
     );
   }

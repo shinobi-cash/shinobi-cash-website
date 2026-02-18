@@ -5,7 +5,12 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const intentType = searchParams.get("intentType") as "DEPOSIT" | "WITHDRAWAL" | undefined;
-    const phase = searchParams.get("phase") as "ESCROWED" | "FILLED" | "FINALIZED" | "REFUNDED" | undefined;
+    const phase = searchParams.get("phase") as
+      | "ESCROWED"
+      | "FILLED"
+      | "FINALIZED"
+      | "REFUNDED"
+      | undefined;
     const limit = Number(searchParams.get("limit") || 100);
     const offset = Number(searchParams.get("offset") || 0);
 

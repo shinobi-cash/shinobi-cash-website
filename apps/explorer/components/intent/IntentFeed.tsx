@@ -1,7 +1,10 @@
 "use client";
 
 import { useSnapshot } from "valtio";
-import { IntentExplorerController, IntentExplorerSelectors } from "@/controllers/IntentExplorerController";
+import {
+  IntentExplorerController,
+  IntentExplorerSelectors,
+} from "@/controllers/IntentExplorerController";
 import { IntentRow } from "./IntentRow";
 import { IntentRowSkeleton } from "./IntentRowSkeleton";
 import { IntentFilters } from "./IntentFilters";
@@ -18,7 +21,7 @@ export function IntentFeed() {
 
   return (
     <section className="bg-white/2 flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-white/10">
-      <div className="shrink-0 flex items-center justify-between gap-4 border-b border-white/10 px-5 py-4">
+      <div className="flex shrink-0 items-center justify-between gap-4 border-b border-white/10 px-5 py-4">
         <h2 className="text-sm font-medium text-white">Intents</h2>
         <IntentFilters
           intentType={state.filters.intentType}
@@ -28,7 +31,9 @@ export function IntentFeed() {
           onIntentTypeChange={(v) => IntentExplorerController.setFilter("intentType", v)}
           onPhaseChange={(v) => IntentExplorerController.setFilter("phase", v)}
           onOriginChainIdChange={(v) => IntentExplorerController.setFilter("originChainId", v)}
-          onDestinationChainIdChange={(v) => IntentExplorerController.setFilter("destinationChainId", v)}
+          onDestinationChainIdChange={(v) =>
+            IntentExplorerController.setFilter("destinationChainId", v)
+          }
         />
       </div>
 
@@ -52,9 +57,8 @@ export function IntentFeed() {
           {/* Normal list mode */}
           {!state.isSearching && !searchNotFound && (
             <>
-              {state.isLoadingList && Array.from({ length: 8 }).map((_, i) => (
-                <IntentRowSkeleton key={i} />
-              ))}
+              {state.isLoadingList &&
+                Array.from({ length: 8 }).map((_, i) => <IntentRowSkeleton key={i} />)}
 
               {!state.isLoadingList && state.listError && (
                 <div className="p-6 text-center">
@@ -66,7 +70,9 @@ export function IntentFeed() {
               {!state.isLoadingList && !state.listError && intents.length === 0 && (
                 <div className="p-6 text-center">
                   <p className="text-sm text-neutral-400">No intents found</p>
-                  <p className="mt-1 text-xs text-neutral-500">Try adjusting filters or wait for new intents</p>
+                  <p className="mt-1 text-xs text-neutral-500">
+                    Try adjusting filters or wait for new intents
+                  </p>
                 </div>
               )}
 
@@ -93,11 +99,11 @@ export function IntentFeed() {
 
       {/* Pagination - hide in search mode */}
       {!isInSearchMode && (
-        <div className="shrink-0 flex items-center justify-between border-t border-white/10 px-5 py-3">
+        <div className="flex shrink-0 items-center justify-between border-t border-white/10 px-5 py-3">
           <button
             onClick={() => IntentExplorerController.previousPage()}
             disabled={!canGoPrevious}
-            className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium text-neutral-400 transition hover:bg-white/5 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-neutral-400"
+            className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium text-neutral-400 transition hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-neutral-400"
           >
             <ChevronLeft className="h-4 w-4" />
             Previous
@@ -106,7 +112,7 @@ export function IntentFeed() {
           <button
             onClick={() => IntentExplorerController.nextPage()}
             disabled={!canGoNext}
-            className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium text-neutral-400 transition hover:bg-white/5 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-neutral-400"
+            className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium text-neutral-400 transition hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-neutral-400"
           >
             Next
             <ChevronRight className="h-4 w-4" />

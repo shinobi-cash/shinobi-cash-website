@@ -37,7 +37,7 @@ export function CopyableText({ value, displayValue, className = "" }: CopyableTe
     >
       {displayValue ?? value}
       {copied && (
-        <span className="absolute -top-6 left-1/2 -translate-x-1/2 rounded bg-neutral-800 px-2 py-1 text-xs text-white whitespace-nowrap">
+        <span className="absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-neutral-800 px-2 py-1 text-xs text-white">
           Copied!
         </span>
       )}

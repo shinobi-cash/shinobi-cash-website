@@ -13,7 +13,15 @@ interface Props {
 const PHASE_ORDER: IntentPhase[] = ["ESCROWED", "FILLED", "FINALIZED"];
 const REFUND_PHASE: IntentPhase = "REFUNDED";
 
-function PhaseIcon({ phase, isActive, isCompleted }: { phase: IntentPhase; isActive: boolean; isCompleted: boolean }) {
+function PhaseIcon({
+  phase,
+  isActive,
+  isCompleted,
+}: {
+  phase: IntentPhase;
+  isActive: boolean;
+  isCompleted: boolean;
+}) {
   if (phase === REFUND_PHASE) {
     return (
       <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500/20 text-red-400">
@@ -75,9 +83,7 @@ export function IntentTimeline({ events, currentPhase }: Props) {
         // A phase is completed if we have event data for it (it has happened)
         const hasEvent = !!event;
         // Phases up to and including current phase are completed (if they have events)
-        const isCompleted = isRefunded
-          ? phase !== REFUND_PHASE && hasEvent
-          : hasEvent;
+        const isCompleted = isRefunded ? phase !== REFUND_PHASE && hasEvent : hasEvent;
         // A phase is "pending" if it's after the current phase and has no event
         const isPending = !hasEvent && PHASE_ORDER.indexOf(phase) > currentIndex;
         const isLast = index === displayPhases.length - 1;
@@ -108,14 +114,10 @@ export function IntentTimeline({ events, currentPhase }: Props) {
                 >
                   {phase.toLowerCase()}
                 </span>
-                {isPending && (
-                  <span className="text-xs text-neutral-500">(pending)</span>
-                )}
+                {isPending && <span className="text-xs text-neutral-500">(pending)</span>}
               </div>
 
-              <p className="mt-0.5 text-xs text-neutral-500">
-                {getPhaseDescription(phase, event)}
-              </p>
+              <p className="mt-0.5 text-xs text-neutral-500">{getPhaseDescription(phase, event)}</p>
 
               {event && (
                 <div className="mt-2 flex items-center justify-between text-xs">

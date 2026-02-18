@@ -53,7 +53,7 @@ export function IntentExplorer() {
               value={searchOrderId}
               onChange={(e) => IntentExplorerController.setSearchOrderId(e.target.value)}
               onKeyDown={handleSearchKeyDown}
-              className="h-10 border-white/10 bg-white/5! pl-10 pr-10 text-white placeholder:text-neutral-500 focus-visible:border-white/20 focus-visible:bg-white/10! focus-visible:ring-0"
+              className="bg-white/5! focus-visible:bg-white/10! h-10 border-white/10 pl-10 pr-10 text-white placeholder:text-neutral-500 focus-visible:border-white/20 focus-visible:ring-0"
             />
             {searchOrderId && (
               <button

@@ -4,11 +4,7 @@
  */
 
 import type { StateTreeLeaf, ActivityItem, TimelineEvent } from "@shinobi-cash/data";
-import {
-  IndexerError,
-  INDEXER_ERROR_CODES,
-  logError,
-} from "@/lib/errors";
+import { IndexerError, INDEXER_ERROR_CODES, logError } from "@/lib/errors";
 
 // Re-export types for components that need them
 export type { ActivityType, ActivityItem, TimelineEvent } from "@shinobi-cash/data";
@@ -251,10 +247,14 @@ export async function fetchIntents(
   } catch (error) {
     logError(error, { action: "fetchIntents", filters });
 
-    throw new IndexerError(INDEXER_ERROR_CODES.FETCH_FAILED, "Failed to fetch intents from indexer", {
-      cause: error,
-      context: { limit, offset, orderDirection, filters },
-    });
+    throw new IndexerError(
+      INDEXER_ERROR_CODES.FETCH_FAILED,
+      "Failed to fetch intents from indexer",
+      {
+        cause: error,
+        context: { limit, offset, orderDirection, filters },
+      }
+    );
   }
 }
 

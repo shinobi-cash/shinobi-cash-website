@@ -24,9 +24,7 @@ const ASP_STATUS_COLORS: Record<ASPStatus | string, string> = {
 };
 
 export function ActivityRow({ activity }: Props) {
-  const isDeposit =
-    activity.type === "DEPOSIT" ||
-    activity.type === "CROSSCHAIN_DEPOSIT_INTENT";
+  const isDeposit = activity.type === "DEPOSIT" || activity.type === "CROSSCHAIN_DEPOSIT_INTENT";
 
   const label = ACTIVITY_TYPE_LABELS[activity.type] ?? activity.type;
   const aspStatus = "aspStatus" in activity ? activity.aspStatus : null;
@@ -48,16 +46,12 @@ export function ActivityRow({ activity }: Props) {
 
       <div className="mt-1.5 flex items-center justify-between text-xs">
         <span
-          className={`font-medium tabular-nums ${
-            isDeposit ? "text-emerald-400" : "text-rose-400"
-          }`}
+          className={`font-medium tabular-nums ${isDeposit ? "text-emerald-400" : "text-rose-400"}`}
         >
           {isDeposit ? "+" : "−"}
           {formatEthAmount(activity.amount, { decimals: 6 })} ETH
         </span>
-        <span className="text-neutral-400">
-          {formatTimestamp(activity.timestamp)}
-        </span>
+        <span className="text-neutral-400">{formatTimestamp(activity.timestamp)}</span>
       </div>
     </div>
   );

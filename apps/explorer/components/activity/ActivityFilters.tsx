@@ -3,9 +3,7 @@
 import { SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
 
 // Available pools - add more as they become available
-const POOLS = [
-  { id: SHINOBI_CASH_ETH_POOL.address, label: "ETH Pool" },
-] as const;
+const POOLS = [{ id: SHINOBI_CASH_ETH_POOL.address, label: "ETH Pool" }] as const;
 
 interface Props {
   poolId: string;

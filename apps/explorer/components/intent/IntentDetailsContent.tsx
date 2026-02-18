@@ -26,9 +26,16 @@ interface Props {
   timelineError: string | null;
 }
 
-export function IntentDetailsContent({ intent, timeline, isLoadingTimeline, timelineError }: Props) {
+export function IntentDetailsContent({
+  intent,
+  timeline,
+  isLoadingTimeline,
+  timelineError,
+}: Props) {
   const originChain = intent.originChainId ? getChainName(Number(intent.originChainId)) : "Unknown";
-  const destChain = intent.destinationChainId ? getChainName(Number(intent.destinationChainId)) : "Pool Chain";
+  const destChain = intent.destinationChainId
+    ? getChainName(Number(intent.destinationChainId))
+    : "Pool Chain";
 
   return (
     <div className="space-y-6 p-6">
@@ -92,20 +99,23 @@ export function IntentDetailsContent({ intent, timeline, isLoadingTimeline, time
               </span>
             </div>
           )}
-          {intent.inputAmount && intent.outputAmount && BigInt(intent.inputAmount) > BigInt(intent.outputAmount) && (() => {
-            const input = BigInt(intent.inputAmount);
-            const output = BigInt(intent.outputAmount);
-            const fee = input - output;
-            const percentage = Number((fee * BigInt(10000)) / input) / 100;
-            return (
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-neutral-500">Solver Fee</span>
-                <span className="font-mono text-xs text-amber-400">
-                  {formatEthAmount(fee, { decimals: 6 })} ETH ({percentage.toFixed(2)}%)
-                </span>
-              </div>
-            );
-          })()}
+          {intent.inputAmount &&
+            intent.outputAmount &&
+            BigInt(intent.inputAmount) > BigInt(intent.outputAmount) &&
+            (() => {
+              const input = BigInt(intent.inputAmount);
+              const output = BigInt(intent.outputAmount);
+              const fee = input - output;
+              const percentage = Number((fee * BigInt(10000)) / input) / 100;
+              return (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-neutral-500">Solver Fee</span>
+                  <span className="font-mono text-xs text-amber-400">
+                    {formatEthAmount(fee, { decimals: 6 })} ETH ({percentage.toFixed(2)}%)
+                  </span>
+                </div>
+              );
+            })()}
 
           {/* Output Recipient */}
           {(() => {
@@ -123,9 +133,11 @@ export function IntentDetailsContent({ intent, timeline, isLoadingTimeline, time
           {intent.fillDeadline && (
             <div className="flex items-center justify-between">
               <span className="text-xs text-neutral-500">Fill Deadline</span>
-              <span className={`flex items-center gap-1 text-xs ${
-                isExpired(intent.fillDeadline) ? "text-red-400" : "text-neutral-300"
-              }`}>
+              <span
+                className={`flex items-center gap-1 text-xs ${
+                  isExpired(intent.fillDeadline) ? "text-red-400" : "text-neutral-300"
+                }`}
+              >
                 <Clock className="h-3 w-3" />
                 {formatDeadline(intent.fillDeadline)}
               </span>
@@ -134,9 +146,11 @@ export function IntentDetailsContent({ intent, timeline, isLoadingTimeline, time
           {intent.expires && (
             <div className="flex items-center justify-between">
               <span className="text-xs text-neutral-500">Expiry (Refund Available)</span>
-              <span className={`flex items-center gap-1 text-xs ${
-                isExpired(intent.expires) ? "text-amber-400" : "text-neutral-300"
-              }`}>
+              <span
+                className={`flex items-center gap-1 text-xs ${
+                  isExpired(intent.expires) ? "text-amber-400" : "text-neutral-300"
+                }`}
+              >
                 <Clock className="h-3 w-3" />
                 {formatDeadline(intent.expires)}
               </span>

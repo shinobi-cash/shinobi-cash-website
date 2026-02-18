@@ -11,10 +11,7 @@ export async function GET(_request: Request, context: Context) {
 
     const detail = await indexerClient.activity.getByTxHash(txHash);
     if (!detail) {
-      return NextResponse.json(
-        { success: false, error: "Activity not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ success: false, error: "Activity not found" }, { status: 404 });
     }
 
     return NextResponse.json(
@@ -28,7 +25,10 @@ export async function GET(_request: Request, context: Context) {
   } catch (error) {
     console.error("[API] activity detail error:", error);
     return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : "Failed to fetch activity" },
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to fetch activity",
+      },
       { status: 500 }
     );
   }

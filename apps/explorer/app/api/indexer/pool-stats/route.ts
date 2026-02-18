@@ -39,7 +39,10 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error("[API] pool-stats error:", error);
     return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : "Failed to fetch pool stats" },
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to fetch pool stats",
+      },
       { status: 500 }
     );
   }

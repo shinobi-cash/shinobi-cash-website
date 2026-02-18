@@ -11,10 +11,7 @@ export async function GET(_request: Request, context: Context) {
 
     const intent = await indexerClient.intent.getById(orderId);
     if (!intent) {
-      return NextResponse.json(
-        { success: false, error: "Intent not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ success: false, error: "Intent not found" }, { status: 404 });
     }
 
     const timeline = buildIntentTimeline(intent);

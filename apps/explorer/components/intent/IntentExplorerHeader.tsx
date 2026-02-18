@@ -33,10 +33,7 @@ export function IntentExplorerHeader() {
           >
             Activity
           </Link>
-          <Link
-            href="/intents"
-            className="text-xs font-medium text-white sm:text-sm"
-          >
+          <Link href="/intents" className="text-xs font-medium text-white sm:text-sm">
             Intents
           </Link>
         </nav>

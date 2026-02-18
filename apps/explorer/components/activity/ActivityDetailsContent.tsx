@@ -90,9 +90,7 @@ function TimelineEventIcon({ type, isLast }: { type: string; isLast: boolean }) 
 export function ActivityDetailsContent({ activity, timeline }: Props) {
   // Determine activity category
   const isDepositActivity =
-    isDeposit(activity) ||
-    isCrosschainDepositIntent(activity) ||
-    isCrosschainDepositFill(activity);
+    isDeposit(activity) || isCrosschainDepositIntent(activity) || isCrosschainDepositFill(activity);
   const isWithdrawalActivity =
     isWithdraw(activity) ||
     isWithdraw2(activity) ||
@@ -114,20 +112,20 @@ export function ActivityDetailsContent({ activity, timeline }: Props) {
   const amount = activity.amount ? BigInt(activity.amount) : null;
 
   // For deposits
-  const originalAmount = "originalAmount" in activity && activity.originalAmount
-    ? BigInt(activity.originalAmount)
-    : null;
-  const vettingFee = "vettingFeeAmount" in activity && activity.vettingFeeAmount
-    ? BigInt(activity.vettingFeeAmount)
-    : BigInt(0);
+  const originalAmount =
+    "originalAmount" in activity && activity.originalAmount
+      ? BigInt(activity.originalAmount)
+      : null;
+  const vettingFee =
+    "vettingFeeAmount" in activity && activity.vettingFeeAmount
+      ? BigInt(activity.vettingFeeAmount)
+      : BigInt(0);
 
   // For withdrawals
-  const relayFee = "relayFee" in activity && activity.relayFee
-    ? BigInt(activity.relayFee)
-    : BigInt(0);
-  const solverFee = "solverFee" in activity && activity.solverFee
-    ? BigInt(activity.solverFee)
-    : BigInt(0);
+  const relayFee =
+    "relayFee" in activity && activity.relayFee ? BigInt(activity.relayFee) : BigInt(0);
+  const solverFee =
+    "solverFee" in activity && activity.solverFee ? BigInt(activity.solverFee) : BigInt(0);
 
   // For withdrawals: net received by recipient
   const withdrawalNetReceived =
@@ -195,9 +193,7 @@ export function ActivityDetailsContent({ activity, timeline }: Props) {
       {/* Timeline for cross-chain activities */}
       {isCrossChainActivity && timeline && timeline.length > 0 && (
         <section className="space-y-3">
-          <p className="text-xs font-medium uppercase tracking-wider text-neutral-500">
-            Timeline
-          </p>
+          <p className="text-xs font-medium uppercase tracking-wider text-neutral-500">Timeline</p>
           <div className="rounded-xl bg-white/5 p-4">
             <div className="relative space-y-4">
               {timeline.map((event, index) => {
@@ -215,7 +211,7 @@ export function ActivityDetailsContent({ activity, timeline }: Props) {
                     </div>
 
                     {/* Content */}
-                    <div className="flex-1 min-w-0">
+                    <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium text-white">
                           {TIMELINE_TYPE_LABELS[event.type] ?? event.type}
@@ -245,9 +241,7 @@ export function ActivityDetailsContent({ activity, timeline }: Props) {
       {/* Fund Flow - Deposits */}
       {isDepositActivity && (
         <section className="space-y-3">
-          <p className="text-xs font-medium uppercase tracking-wider text-neutral-500">
-            Fund Flow
-          </p>
+          <p className="text-xs font-medium uppercase tracking-wider text-neutral-500">Fund Flow</p>
           {/* Source: User */}
           {activity.user && (
             <FlowRow
@@ -278,16 +272,18 @@ export function ActivityDetailsContent({ activity, timeline }: Props) {
           )}
 
           {/* Vetting Fee */}
-          {"vettingFeeRecipient" in activity && activity.vettingFeeRecipient && vettingFee > BigInt(0) && (
-            <FlowRow
-              label="To"
-              role="Entrypoint"
-              address={activity.vettingFeeRecipient}
-              amount={vettingFee}
-              direction="in"
-              feeType="Vetting Fee"
-            />
-          )}
+          {"vettingFeeRecipient" in activity &&
+            activity.vettingFeeRecipient &&
+            vettingFee > BigInt(0) && (
+              <FlowRow
+                label="To"
+                role="Entrypoint"
+                address={activity.vettingFeeRecipient}
+                amount={vettingFee}
+                direction="in"
+                feeType="Vetting Fee"
+              />
+            )}
 
           {/* Pool */}
           <FlowRow
@@ -304,9 +300,7 @@ export function ActivityDetailsContent({ activity, timeline }: Props) {
       {/* Fund Flow - Withdrawals */}
       {isWithdrawalActivity && amount && (
         <section className="space-y-3">
-          <p className="text-xs font-medium uppercase tracking-wider text-neutral-500">
-            Fund Flow
-          </p>
+          <p className="text-xs font-medium uppercase tracking-wider text-neutral-500">Fund Flow</p>
           {/* Source: Pool */}
           <FlowRow
             label="From"
@@ -397,16 +391,9 @@ export function ActivityDetailsContent({ activity, timeline }: Props) {
 
       {/* Chain & Transaction */}
       <section className="flex flex-wrap gap-6">
-        <ChainLink
-          label="Chain"
-          chainId={activity.chainId}
-          txHash={activity.txHash}
-        />
+        <ChainLink label="Chain" chainId={activity.chainId} txHash={activity.txHash} />
         {isCrosschainDepositIntent(activity) && activity.destinationChainId && (
-          <ChainLink
-            label="Destination Chain"
-            chainId={activity.destinationChainId}
-          />
+          <ChainLink label="Destination Chain" chainId={activity.destinationChainId} />
         )}
       </section>
 

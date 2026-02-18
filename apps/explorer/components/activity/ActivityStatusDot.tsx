@@ -20,7 +20,7 @@ export function ActivityStatusDot({ type, status }: Props) {
 
   const colors = isFinalWithdrawal
     ? STATUS_COLORS.approved
-    : STATUS_COLORS[status ?? "pending"] ?? STATUS_COLORS.pending;
+    : (STATUS_COLORS[status ?? "pending"] ?? STATUS_COLORS.pending);
 
   return <div className={`h-2 w-2 rounded-full ${colors.dot} ring-2 ${colors.ring}`} />;
 }
