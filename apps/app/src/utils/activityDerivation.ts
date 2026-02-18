@@ -4,25 +4,27 @@
  * Converts raw activities from discovery into ActivityEntry for display.
  */
 
-import type { Activity, ActivityType } from "@shinobi-cash/core/discovery";
-import type { ActivityEntry } from "@/types/activity";
+import type { ActivityItem } from "@shinobi-cash/data";
+import type { ActivityEntry, ActivityType } from "@/types/activity";
 
 /**
  * Get display type from Activity type.
  */
-function getDisplayType(activity: Activity): ActivityType {
+function getDisplayType(activity: ActivityItem): ActivityType {
   switch (activity.type) {
     case "DEPOSIT":
-    case "CROSSCHAIN_DEPOSIT":
-    case "CROSSCHAIN_DEPOSIT_PENDING":
+    case "CROSSCHAIN_DEPOSIT_FILL":
+    case "CROSSCHAIN_DEPOSIT_INTENT":
       return "deposit";
-    case "WITHDRAWAL":
-    case "WITHDRAW2":
-    case "CROSSCHAIN_WITHDRAWAL":
-    case "CROSSCHAIN_WITHDRAW2":
-    case "CROSSCHAIN_WITHDRAWAL_PENDING":
-    case "CROSSCHAIN_WITHDRAW2_PENDING":
+    case "WITHDRAW":
+    case "WITHDRAW_2":
+    case "CROSSCHAIN_WITHDRAW_INTENT":
+    case "CROSSCHAIN_WITHDRAW_2_INTENT":
+    case "CROSSCHAIN_WITHDRAWAL_FILL":
       return "withdrawal";
+    case "CROSSCHAIN_DEPOSIT_REFUND":
+    case "CROSSCHAIN_WITHDRAWAL_REFUND":
+      return "refund";
     case "RAGEQUIT":
       return "ragequit";
     default:
@@ -33,28 +35,29 @@ function getDisplayType(activity: Activity): ActivityType {
 /**
  * Check if activity is cross-chain.
  */
-function isCrossChainActivity(activity: Activity): boolean {
+function isCrossChainActivity(activity: ActivityItem): boolean {
   return (
-    activity.type === "CROSSCHAIN_DEPOSIT" ||
-    activity.type === "CROSSCHAIN_DEPOSIT_PENDING" ||
-    activity.type === "CROSSCHAIN_WITHDRAWAL" ||
-    activity.type === "CROSSCHAIN_WITHDRAW2" ||
-    activity.type === "CROSSCHAIN_WITHDRAWAL_PENDING" ||
-    activity.type === "CROSSCHAIN_WITHDRAW2_PENDING"
+    activity.type === "CROSSCHAIN_DEPOSIT_FILL" ||
+    activity.type === "CROSSCHAIN_DEPOSIT_INTENT" ||
+    activity.type === "CROSSCHAIN_DEPOSIT_REFUND" ||
+    activity.type === "CROSSCHAIN_WITHDRAW_INTENT" ||
+    activity.type === "CROSSCHAIN_WITHDRAW_2_INTENT" ||
+    activity.type === "CROSSCHAIN_WITHDRAWAL_FILL" ||
+    activity.type === "CROSSCHAIN_WITHDRAWAL_REFUND"
   );
 }
 
 /**
  * Get display amount from Activity.
  */
-function getDisplayAmount(activity: Activity): string {
+function getDisplayAmount(activity: ActivityItem): string {
   return activity.amount?.toString() ?? "0";
 }
 
 /**
  * Create ActivityEntry from raw Activity.
  */
-function createActivityEntry(activity: Activity): ActivityEntry {
+function createActivityEntry(activity: ActivityItem): ActivityEntry {
   return {
     activity,
     type: getDisplayType(activity),
@@ -69,7 +72,7 @@ function createActivityEntry(activity: Activity): ActivityEntry {
  * Activities are already sorted by timestamp descending from discovery.
  */
 export function deriveActivitiesFromRawActivities(
-  activities: Activity[]
+  activities: ActivityItem[]
 ): ActivityEntry[] {
   return activities.map(createActivityEntry);
 }
@@ -99,8 +102,8 @@ export function getActivityCounts(entries: ActivityEntry[]) {
 }
 
 /**
- * Find activity entry by ID
+ * Find activity entry by ID (txHash in data-v2)
  */
 export function findActivityById(entries: ActivityEntry[], id: string): ActivityEntry | undefined {
-  return entries.find((e) => e.activity.id === id);
+  return entries.find((e) => e.activity.txHash === id);
 }

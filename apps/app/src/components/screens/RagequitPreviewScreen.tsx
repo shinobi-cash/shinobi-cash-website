@@ -142,9 +142,7 @@ export function RagequitPreviewScreen({
                 className={`capitalize ${
                   note.aspStatus === "approved"
                     ? "text-emerald-400"
-                    : note.aspStatus === "rejected"
-                      ? "text-rose-400"
-                      : "text-amber-400"
+                    : "text-amber-400"
                 }`}
               >
                 {note.aspStatus}

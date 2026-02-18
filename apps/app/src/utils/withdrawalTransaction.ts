@@ -4,7 +4,6 @@ import type {
   WithdrawalProof,
   Withdraw2Proof,
   PreparedUserOperation,
-  ExecutionResult,
 } from "@/types/withdrawal";
 import {
   getCrosschainWithdrawalSmartAccountClient,
@@ -22,8 +21,6 @@ import {
   encodeWithdraw2RelayCallData,
   encodeCrossChainWithdraw2CallData,
   prepareWithdrawalUserOperation,
-  prepareCrossChainWithdrawalUserOperation,
-  executeWithdrawalUserOperation,
 } from "@/utils/withdrawalContract";
 
 export async function prepareUserOperation(
@@ -47,29 +44,17 @@ export async function prepareUserOperation(
         context.poolScope
       );
 
-  const smartAccountClient = isCrossChain
+  const { smartAccountClient, gasLimits } = isCrossChain
     ? await getCrosschainWithdrawalSmartAccountClient()
     : await getWithdrawalSmartAccountClient();
 
-  const userOperation = isCrossChain
-    ? await prepareCrossChainWithdrawalUserOperation(smartAccountClient, callData)
-    : await prepareWithdrawalUserOperation(smartAccountClient, callData);
-
-  return { context, proof, userOperation, smartAccountClient };
-}
-
-export async function executeUserOperation(
-  preparedUserOp: PreparedUserOperation,
-  isWithdraw2: boolean = false
-): Promise<ExecutionResult> {
-  const isCrossChain = preparedUserOp.context.kind === "cross-chain";
-  const transactionHash = await executeWithdrawalUserOperation(
-    preparedUserOp.smartAccountClient,
-    preparedUserOp.userOperation,
-    isCrossChain,
-    isWithdraw2
+  const userOperation = await prepareWithdrawalUserOperation(
+    smartAccountClient,
+    callData,
+    gasLimits
   );
-  return { transactionHash, success: true };
+
+  return { context, proof, userOperation, smartAccountClient, gasLimits };
 }
 
 // ============ WITHDRAW2 (2:1) ============
@@ -83,7 +68,7 @@ export async function prepareWithdraw2UserOperation(
 
   const isCrossChain = context.kind === "cross-chain";
 
-  // Format proof based on withdrawal type (9 signals for same-chain, 10 for cross-chain)
+  // Format proof based on withdrawal type (9 signals for same-chain, 14 for cross-chain)
   const callData = isCrossChain
     ? encodeCrossChainWithdraw2CallData(
         withdrawalData,
@@ -97,13 +82,15 @@ export async function prepareWithdraw2UserOperation(
       );
 
   // Use withdraw2-specific smart account clients with the correct paymaster
-  const smartAccountClient = isCrossChain
+  const { smartAccountClient, gasLimits } = isCrossChain
     ? await getCrosschainWithdraw2SmartAccountClient()
     : await getWithdraw2SmartAccountClient();
 
-  const userOperation = isCrossChain
-    ? await prepareCrossChainWithdrawalUserOperation(smartAccountClient, callData)
-    : await prepareWithdrawalUserOperation(smartAccountClient, callData);
+  const userOperation = await prepareWithdrawalUserOperation(
+    smartAccountClient,
+    callData,
+    gasLimits
+  );
 
-  return { context, proof, userOperation, smartAccountClient };
+  return { context, proof, userOperation, smartAccountClient, gasLimits };
 }

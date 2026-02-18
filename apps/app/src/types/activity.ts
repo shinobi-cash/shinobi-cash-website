@@ -5,7 +5,7 @@
  * This provides a view model for the activity list/details screens.
  */
 
-import type { Activity, ActivityType } from "@shinobi-cash/core/discovery";
+import type { ActivityItem } from "@shinobi-cash/data";
 
 /**
  * Activity filter options
@@ -13,11 +13,16 @@ import type { Activity, ActivityType } from "@shinobi-cash/core/discovery";
 export type ActivityFilter = "all" | "deposit" | "withdrawal" | "refund";
 
 /**
+ * Display activity type (simplified for UI)
+ */
+export type ActivityType = "deposit" | "withdrawal" | "refund" | "ragequit";
+
+/**
  * Activity entry - wraps raw Activity with display values
  */
 export interface ActivityEntry {
   /** The raw activity from indexer */
-  activity: Activity;
+  activity: ActivityItem;
 
   /** Display type (deposit/withdrawal/refund/ragequit) */
   type: ActivityType;
@@ -64,8 +69,8 @@ export const ACTIVITY_TYPE_LABELS: Record<ActivityType, string> = {
 
 /**
  * Get unique ID for an activity entry.
- * Uses the activity's unique ID from indexer.
+ * Uses the activity's txHash from indexer.
  */
 export function getActivityId(entry: ActivityEntry): string {
-  return entry.activity.id;
+  return entry.activity.txHash;
 }

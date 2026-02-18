@@ -62,7 +62,14 @@ function calculateTotalGas(gasLimits: GasLimits): bigint {
 }
 
 /**
- * Calculate relay fee BPS from gas cost and withdrawal amount
+ * Buffer multiplier for gas price fluctuations between quote and execution.
+ * 2% buffer ensures the fee covers gas even if prices increase slightly.
+ */
+const GAS_PRICE_BUFFER = 1.02;
+
+/**
+ * Calculate relay fee BPS from gas cost and withdrawal amount.
+ * Includes a small buffer to account for gas price fluctuations.
  */
 function calculateRelayFeeBPS(
   withdrawAmountWei: bigint,
@@ -70,7 +77,9 @@ function calculateRelayFeeBPS(
   maxBPS: number
 ): number {
   const calculatedBPS = Number((estimatedGasCostWei * BigInt(10000)) / withdrawAmountWei);
-  return Math.min(Math.max(Math.ceil(calculatedBPS), 1), maxBPS);
+  // Add buffer for gas price fluctuations and round up
+  const bufferedBPS = Math.ceil(calculatedBPS * GAS_PRICE_BUFFER);
+  return Math.min(Math.max(bufferedBPS, 1), maxBPS);
 }
 
 /**

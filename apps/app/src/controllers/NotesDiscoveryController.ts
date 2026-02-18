@@ -1,5 +1,5 @@
 import { proxy } from "valtio";
-import type { NoteTree, DiscoveryProgress, Note, Activity } from "@shinobi-cash/core/discovery";
+import type { NoteTree, DiscoveryProgress, Note, ActivityItem } from "@shinobi-cash/core/discovery";
 import { getSpendableNotes, getWithdrawableNotes, getNoteTreeCounts } from "@shinobi-cash/core/discovery";
 import { notesRepo } from "@/lib/storage/repositories/NotesRepository";
 import { fetchActivities } from "@/utils/indexer";
@@ -29,7 +29,7 @@ interface NotesDiscoveryControllerState {
   noteTrees: NoteTree[];
 
   // Raw activities for display (source of truth for activity feed)
-  activities: Activity[];
+  activities: ActivityItem[];
 
   // Discovery progress
   progress: DiscoveryProgress | null;
@@ -309,8 +309,8 @@ export const NotesDiscoveryController = {
         crypto.publicKey,
         SHINOBI_CASH_ETH_POOL.address,
         crypto.accountKey,
-        async (poolAddress, limit, cursor, orderDirection) => {
-          const result = await fetchActivities(poolAddress, limit, cursor, orderDirection);
+        async (poolAddress, limit, offset) => {
+          const result = await fetchActivities(poolAddress, limit, offset);
           return { items: result.items, pageInfo: result.pageInfo };
         },
         {

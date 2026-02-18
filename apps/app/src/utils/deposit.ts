@@ -13,7 +13,7 @@ import {
   notesStorageAdapter,
   sharedEncryptionService,
 } from "@/lib/storage/adapters/IndexedDBStore";
-import { resolveDepositRoute, buildDepositCallParams } from "@/utils/depositRoute";
+import { resolveDepositRoute, buildDepositCallParams, type DepositSettings } from "@/utils/depositRoute";
 
 const GAS_BUFFER = BigInt(120);
 const DIVISOR = BigInt(100);
@@ -71,10 +71,11 @@ export const depositService = {
     chainId: number,
     publicClient: PublicClient,
     gasPrice: bigint,
-    solverFeeBPS?: number
+    settings: DepositSettings,
+    useDefaults: boolean
   ): Promise<GasEstimate> {
     const route = resolveDepositRoute(chainId);
-    const callParams = buildDepositCallParams(route, noteData.precommitment, solverFeeBPS);
+    const callParams = buildDepositCallParams(route, noteData.precommitment, settings, useDefaults);
     const valueWei = parseEther(amount);
 
     const gasLimit = await estimateContractGas(publicClient, {
@@ -100,12 +101,13 @@ export const depositService = {
     noteData: CashNoteData,
     chainId: number,
     walletClient: WalletClient,
-    gasPrice?: bigint,
-    solverFeeBPS?: number
+    gasPrice: bigint | undefined,
+    settings: DepositSettings,
+    useDefaults: boolean
   ): Promise<`0x${string}`> {
     const amountWei = parseEther(amount);
     const route = resolveDepositRoute(chainId);
-    const callParams = buildDepositCallParams(route, noteData.precommitment, solverFeeBPS);
+    const callParams = buildDepositCallParams(route, noteData.precommitment, settings, useDefaults);
 
     // Add 50% buffer to gas price to handle L2 gas fluctuations
     const gasParams = gasPrice

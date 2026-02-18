@@ -23,13 +23,13 @@ import {
 import { quoteFees, quoteWithdraw2Fees as quoteWithdraw2FeesUtil } from "@/utils/withdrawalFees";
 import {
   prepareUserOperation,
-  executeUserOperation,
   prepareWithdraw2UserOperation,
 } from "@/utils/withdrawalTransaction";
 import {
   createWithdrawalData,
   createCrossChainWithdrawalData,
   fetchPoolScope,
+  executeWithdrawalUserOperation,
 } from "@/utils/withdrawalContract";
 import { fetchASPData, fetchStateTreeLeaves } from "@/utils/indexer";
 import { withdrawalProofGenerator } from "@/services/ProofGeneratorService";
@@ -148,9 +148,9 @@ export class WithdrawalEngine {
     if (!this.state.preparedUserOp) {
       throw Errors.withdrawal.precondition("Withdrawal not prepared");
     }
-    // Check if this is a withdraw2 operation by checking for primaryNote in request
-    const isWithdraw2 = !!(this.state.request && "primaryNote" in this.state.request);
-    const result = await executeUserOperation(this.state.preparedUserOp, isWithdraw2);
+    const { smartAccountClient, userOperation, gasLimits } = this.state.preparedUserOp;
+    const transactionHash = await executeWithdrawalUserOperation(smartAccountClient, userOperation, gasLimits);
+    const result: ExecutionResult = { transactionHash, success: true };
     this.state.executionResult = result;
     this.state.phase = "executed";
     return result;
@@ -169,7 +169,6 @@ export class WithdrawalEngine {
             request.recipient,
             request.destinationChainId!,
             SHINOBI_CASH_CROSSCHAIN_WITHDRAWAL_PAYMASTER.address,
-            BigInt(feeQuote.relayFeeBPS),
             BigInt(feeQuote.solverFeeBPS)
           )
         : createWithdrawalData(
@@ -221,7 +220,7 @@ export class WithdrawalEngine {
       fetchASPData(),
     ]);
 
-    const stateTreeLeaves = stateTreeLeavesRaw.map((leaf) => BigInt(leaf.leafValue));
+    const stateTreeLeaves = stateTreeLeavesRaw.map((leaf) => BigInt(leaf.commitment));
     const aspTreeLeaves = aspData.approvalList.map((label: string) => BigInt(label));
 
     const circuitInputs =
@@ -326,7 +325,6 @@ export class WithdrawalEngine {
             request.recipient,
             request.destinationChainId!,
             SHINOBI_CASH_CROSSCHAIN_WITHDRAW2_PAYMASTER.address,
-            BigInt(feeQuote.relayFeeBPS),
             BigInt(feeQuote.solverFeeBPS)
           )
         : createWithdrawalData(
@@ -381,18 +379,13 @@ export class WithdrawalEngine {
 
     const poolAddress = primaryNote.poolAddress.toLowerCase();
 
-    console.log("[Withdraw2] Building witness for pool:", poolAddress);
-
     const [stateTreeLeavesRaw, aspData] = await Promise.all([
       fetchStateTreeLeaves(poolAddress),
       fetchASPData(),
     ]);
 
-    const stateTreeLeaves = stateTreeLeavesRaw.map((leaf) => BigInt(leaf.leafValue));
+    const stateTreeLeaves = stateTreeLeavesRaw.map((leaf) => BigInt(leaf.commitment));
     const aspTreeLeaves = aspData.approvalList.map((label: string) => BigInt(label));
-
-    console.log("[Withdraw2] State tree leaves count:", stateTreeLeaves.length);
-    console.log("[Withdraw2] ASP approved labels count:", aspTreeLeaves.length);
 
     const circuitInputs =
       context.kind === "cross-chain"
@@ -413,51 +406,32 @@ export class WithdrawalEngine {
             secondaryLabel: BigInt(secondaryNote.label),
           };
 
-    console.log("[Withdraw2] Primary note label:", circuitInputs.primaryLabel.toString());
-    console.log("[Withdraw2] Secondary note label:", circuitInputs.secondaryLabel.toString());
-    console.log("[Withdraw2] Primary label in ASP:", aspTreeLeaves.includes(circuitInputs.primaryLabel));
-    console.log("[Withdraw2] Secondary label in ASP:", aspTreeLeaves.includes(circuitInputs.secondaryLabel));
-
     return { context, stateTreeLeaves, aspTreeLeaves, circuitInputs };
   }
 
   private async generateWithdraw2Proof(witness: Withdraw2Witness): Promise<Withdraw2Proof> {
     const { context, stateTreeLeaves, aspTreeLeaves, circuitInputs } = witness;
 
-    console.log("[Withdraw2] Generating proof, kind:", context.kind);
-
-    try {
-      if (context.kind === "cross-chain") {
-        // Type guard: cross-chain circuitInputs must have fee fields
-        const crossChainInputs = circuitInputs as CrossChainWithdraw2CircuitInputs;
-        console.log("[Withdraw2] Building cross-chain circuit witness...");
-        const circuitWitness = buildCrosschainWithdraw2CircuitWitness(
-          context.derivation as Parameters<typeof buildCrosschainWithdraw2CircuitWitness>[0],
-          stateTreeLeaves,
-          aspTreeLeaves,
-          crossChainInputs
-        );
-        console.log("[Withdraw2] Circuit witness built, generating proof...");
-        const proofData =
-          await withdrawalProofGenerator.generateCrosschainWithdraw2Proof(circuitWitness);
-        console.log("[Withdraw2] Proof generated successfully");
-        return { witness, proof: proofData.proof, publicSignals: proofData.publicSignals };
-      }
-
-      console.log("[Withdraw2] Building same-chain circuit witness...");
-      const circuitWitness = buildWithdraw2CircuitWitness(
-        context.derivation as Parameters<typeof buildWithdraw2CircuitWitness>[0],
+    if (context.kind === "cross-chain") {
+      const crossChainInputs = circuitInputs as CrossChainWithdraw2CircuitInputs;
+      const circuitWitness = buildCrosschainWithdraw2CircuitWitness(
+        context.derivation as Parameters<typeof buildCrosschainWithdraw2CircuitWitness>[0],
         stateTreeLeaves,
         aspTreeLeaves,
-        circuitInputs
+        crossChainInputs
       );
-      console.log("[Withdraw2] Circuit witness built, generating proof...");
-      const proofData = await withdrawalProofGenerator.generateWithdraw2Proof(circuitWitness);
-      console.log("[Withdraw2] Proof generated successfully");
+      const proofData =
+        await withdrawalProofGenerator.generateCrosschainWithdraw2Proof(circuitWitness);
       return { witness, proof: proofData.proof, publicSignals: proofData.publicSignals };
-    } catch (error) {
-      console.error("[Withdraw2] Proof generation failed:", error);
-      throw error;
     }
+
+    const circuitWitness = buildWithdraw2CircuitWitness(
+      context.derivation as Parameters<typeof buildWithdraw2CircuitWitness>[0],
+      stateTreeLeaves,
+      aspTreeLeaves,
+      circuitInputs
+    );
+    const proofData = await withdrawalProofGenerator.generateWithdraw2Proof(circuitWitness);
+    return { witness, proof: proofData.proof, publicSignals: proofData.publicSignals };
   }
 }

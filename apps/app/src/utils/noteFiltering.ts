@@ -4,7 +4,8 @@
  * UI-specific utilities only. Core domain logic is in @shinobi-cash/core/discovery.
  */
 
-import type { Note, Activity } from "@shinobi-cash/core/discovery";
+import type { Note } from "@shinobi-cash/core/discovery";
+import type { ActivityItem } from "@shinobi-cash/data";
 import {
   isIntentNote,
   isMergedNote,
@@ -30,8 +31,8 @@ export function getStatusDotColor(note: Note): string {
   if (isSpendableNote(note)) {
     if (note.status === "spent") return "bg-neutral-500";
     if (note.aspStatus === "approved") return "bg-emerald-500";
-    if (note.aspStatus === "rejected") return "bg-rose-500";
-    if (note.aspStatus === "pending") return "bg-amber-400";
+    // ASP status "pending" is the only other option for spendable notes
+    return "bg-amber-400";
   }
 
   return "bg-neutral-500";
@@ -40,34 +41,43 @@ export function getStatusDotColor(note: Note): string {
 /**
  * Get Tailwind background color class for activity status dot.
  * Works with raw Activity from indexer.
+ *
+ * data-v2 activity types:
+ * - INTENT types are pending (amber)
+ * - FILL types are completed (gray for withdrawals, green for deposits)
+ * - REFUND types are refunded (orange)
  */
-export function getActivityStatusDotColor(activity: Activity): string {
-  const { type, aspStatus, intentStatus } = activity;
+export function getActivityStatusDotColor(activity: ActivityItem): string {
+  const { type } = activity;
 
-  // Pending cross-chain operations (awaiting solver)
-  if (type === "CROSSCHAIN_DEPOSIT_PENDING" ||
-      type === "CROSSCHAIN_WITHDRAWAL_PENDING" ||
-      type === "CROSSCHAIN_WITHDRAW2_PENDING") {
-    if (intentStatus === "pending") return "bg-amber-400";
-    if (intentStatus === "refunded") return "bg-rose-400";
-    // Filled intents are complete
-    return "bg-neutral-500";
+  // Pending cross-chain operations (intent types - awaiting solver)
+  if (type === "CROSSCHAIN_DEPOSIT_INTENT" ||
+      type === "CROSSCHAIN_WITHDRAW_INTENT" ||
+      type === "CROSSCHAIN_WITHDRAW_2_INTENT") {
+    return "bg-amber-400";
+  }
+
+  // Refunded operations
+  if (type === "CROSSCHAIN_DEPOSIT_REFUND" ||
+      type === "CROSSCHAIN_WITHDRAWAL_REFUND") {
+    return "bg-orange-400";
   }
 
   // Completed withdrawals and ragequits are always gray (terminal)
-  if (type === "WITHDRAWAL" ||
-      type === "WITHDRAW2" ||
-      type === "CROSSCHAIN_WITHDRAWAL" ||
-      type === "CROSSCHAIN_WITHDRAW2" ||
+  if (type === "WITHDRAW" ||
+      type === "WITHDRAW_2" ||
+      type === "CROSSCHAIN_WITHDRAWAL_FILL" ||
       type === "RAGEQUIT") {
     return "bg-neutral-500";
   }
 
-  // Deposits - use ASP status
-  if (type === "DEPOSIT" || type === "CROSSCHAIN_DEPOSIT") {
+  // Deposits - use ASP status (only exists on deposit types)
+  if (type === "DEPOSIT" || type === "CROSSCHAIN_DEPOSIT_FILL") {
+    const aspStatus = "aspStatus" in activity ? activity.aspStatus : null;
     if (aspStatus === "approved") return "bg-emerald-500";
-    if (aspStatus === "rejected") return "bg-rose-500";
     if (aspStatus === "pending") return "bg-amber-400";
+    // No aspStatus or unknown
+    return "bg-amber-400";
   }
 
   return "bg-neutral-500";

@@ -7,6 +7,7 @@ import type {
 import type { Note } from "@shinobi-cash/core/discovery";
 import type { SmartAccountClient } from "permissionless";
 import type { UserOperation } from "viem/account-abstraction";
+import type { GasLimits } from "@/lib/clients";
 
 /**
  * Type of withdrawal operation
@@ -112,6 +113,7 @@ export interface PreparedUserOperation {
   proof: WithdrawalProof | Withdraw2Proof;
   userOperation: UserOperation<"0.7">;
   smartAccountClient: SmartAccountClient;
+  gasLimits: GasLimits;
 }
 
 export interface ExecutionResult {

@@ -1,4 +1,3 @@
-import { IPFS_GATEWAY_URL } from "@shinobi-cash/constants";
 import type { StateTreeLeaf } from "@shinobi-cash/data";
 import { Errors, AppError, logError } from "@/lib/errors/errors";
 import { AuthController } from "@/controllers/AuthController";
@@ -21,18 +20,6 @@ function assertAuthenticated() {
 }
 
 /**
- * IPFS approval list structure (format stored in IPFS)
- */
-interface IPFSApprovalList {
-  version: "1.0";
-  poolId: string;
-  cumulativeApprovedLabels: string[];
-  aspRoot: string;
-  timestamp: number;
-  description: string;
-}
-
-/**
  * Internal fetch activities - no auth check
  * Used by web workers which can't access main thread auth state
  * Worker lifecycle is managed by AppRuntime (only runs when authenticated)
@@ -40,18 +27,14 @@ interface IPFSApprovalList {
 async function fetchActivitiesInternal(
   poolAddress?: string,
   limit = 100,
-  offset?: number,
-  orderDirection: "asc" | "desc" = "desc"
+  offset?: number
 ) {
-  const response = await fetch("/api/indexer", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      endpoint: "activities",
-      params: { poolAddress, limit, offset, orderDirection },
-    }),
-  });
+  const params = new URLSearchParams();
+  if (poolAddress) params.set("pool", poolAddress);
+  params.set("limit", String(limit));
+  if (offset !== undefined) params.set("offset", String(offset));
 
+  const response = await fetch(`/api/indexer/activities?${params}`);
   const result = await response.json();
 
   if (!result.success) {
@@ -64,12 +47,11 @@ async function fetchActivitiesInternal(
 export async function fetchActivities(
   poolAddress?: string,
   limit = 100,
-  offset?: number,
-  orderDirection: "asc" | "desc" = "desc"
+  offset?: number
 ) {
   assertAuthenticated();
   try {
-    return await fetchActivitiesInternal(poolAddress, limit, offset, orderDirection);
+    return await fetchActivitiesInternal(poolAddress, limit, offset);
   } catch (error) {
     logError(error, { action: "fetchActivities", poolId: poolAddress });
     throw Errors.indexer.fetchFailed("Failed to fetch activities", error);
@@ -79,15 +61,10 @@ export async function fetchActivities(
 export async function fetchStateTreeLeaves(poolId: string): Promise<StateTreeLeaf[]> {
   assertAuthenticated();
   try {
-    const response = await fetch("/api/indexer", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        endpoint: "stateTree",
-        params: { poolId },
-      }),
-    });
+    const params = new URLSearchParams();
+    params.set("poolId", poolId);
 
+    const response = await fetch(`/api/indexer/state-tree?${params}`);
     const result = await response.json();
 
     if (!result.success) {
@@ -101,66 +78,21 @@ export async function fetchStateTreeLeaves(poolId: string): Promise<StateTreeLea
   }
 }
 
-export async function fetchLatestASPRoot(): Promise<{
-  root: string;
-  ipfsCID: string;
-  timestamp: string;
-}> {
+/**
+ * Fetch ASP approved labels directly from indexer
+ * No longer needs IPFS - labels are stored in database
+ */
+export async function fetchASPData(): Promise<{ approvalList: string[] }> {
   assertAuthenticated();
   try {
-    const response = await fetch("/api/indexer", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        endpoint: "aspRoot",
-      }),
-    });
-
+    const response = await fetch("/api/indexer/asp-labels");
     const result = await response.json();
 
     if (!result.success) {
-      throw new Error(result.error || "Failed to fetch ASP root");
+      throw new Error(result.error || "Failed to fetch ASP labels");
     }
 
-    return result.data;
-  } catch (error) {
-    if (error instanceof AppError) throw error;
-    logError(error, { action: "fetchLatestASPRoot" });
-    throw Errors.indexer.fetchFailed("Failed to fetch ASP root", error);
-  }
-}
-
-export async function fetchApprovedLabelsFromIPFS(ipfsCID: string): Promise<string[]> {
-  assertAuthenticated();
-  try {
-    const ipfsResponse = await fetch(`${IPFS_GATEWAY_URL}${ipfsCID}`);
-
-    if (!ipfsResponse.ok) {
-      throw Errors.network.requestFailed(`Failed to fetch from IPFS: ${ipfsResponse.statusText}`);
-    }
-
-    const approvalList = (await ipfsResponse.json()) as IPFSApprovalList;
-
-    if (
-      !approvalList.cumulativeApprovedLabels ||
-      !Array.isArray(approvalList.cumulativeApprovedLabels)
-    ) {
-      throw Errors.indexer.invalidResponse();
-    }
-
-    return approvalList.cumulativeApprovedLabels;
-  } catch (error) {
-    if (error instanceof AppError) throw error;
-    logError(error, { action: "fetchApprovedLabelsFromIPFS", ipfsCID });
-    throw Errors.network.requestFailed("Failed to fetch approved labels from IPFS", error);
-  }
-}
-
-export async function fetchASPData() {
-  try {
-    const { root, ipfsCID, timestamp } = await fetchLatestASPRoot();
-    const approvalList = await fetchApprovedLabelsFromIPFS(ipfsCID);
-    return { root, ipfsCID, timestamp, approvalList };
+    return { approvalList: result.data.labels };
   } catch (error) {
     if (error instanceof AppError) throw error;
     logError(error, { action: "fetchASPData" });
@@ -168,31 +100,16 @@ export async function fetchASPData() {
   }
 }
 
-export async function fetchLatestIndexedBlock(): Promise<{
-  blockNumber: string;
-  timestamp: string;
-} | null> {
+export async function checkIndexerHealth(): Promise<boolean> {
   if (!isAuthenticated()) {
-    return null;
+    return false;
   }
   try {
-    const response = await fetch("/api/indexer", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        endpoint: "latestBlock",
-      }),
-    });
-
+    const response = await fetch("/api/indexer/health");
     const result = await response.json();
-
-    if (!result.success || !result.data) {
-      return null;
-    }
-
-    return result.data;
+    return result.success && result.data?.status === true;
   } catch (error) {
-    logError(error, { action: "fetchLatestIndexedBlock" });
-    return null;
+    logError(error, { action: "checkIndexerHealth" });
+    return false;
   }
 }

@@ -8,7 +8,7 @@ import { NoteRow } from "./NoteRow";
 import { type NotesScreenControllerAPI } from "@/hooks/useNotesScreen";
 import { NOTE_FILTER_LABELS, type NoteFilter } from "@/types/notes";
 import type { NoteTree } from "@shinobi-cash/core/discovery";
-import { getSpendableLeaves, getLeafNodes } from "@shinobi-cash/core/discovery";
+import { getSpendableLeaves, getLeafNodes, getNoteCategoryWithContext } from "@shinobi-cash/core/discovery";
 
 interface NotesSectionProps {
   controller: NotesScreenControllerAPI;
@@ -106,28 +106,45 @@ export function NotesSection({ controller, onNoteTreeClick }: NotesSectionProps)
     return null;
   };
 
-  // Helper to get display note from tree
-  // - For spendable/pending: first spendable leaf
+  // Helper to get display note from tree based on active filter
+  // - For spendable: first spendable leaf (ChangeNote)
+  // - For pending: first pending leaf (WithdrawalIntentNote, DepositIntentNote)
   // - For spent: most recently spent leaf (by timestamp)
-  const getDisplayNote = (tree: NoteTree) => {
-    const spendableLeaves = getSpendableLeaves(tree);
-    if (spendableLeaves.length > 0) {
-      return spendableLeaves[0].note;
-    }
-
-    // For spent trees, find the most recently spent leaf
+  const getDisplayNote = (tree: NoteTree, filter: NoteFilter) => {
     const leaves = getLeafNodes(tree);
-    if (leaves.length > 0) {
-      // Sort by timestamp descending
-      // RagequitNote is a terminal child with its own timestamp
-      const sorted = [...leaves].sort((a, b) => {
-        const tsA = Number(a.note.originTimestamp);
-        const tsB = Number(b.note.originTimestamp);
-        return tsB - tsA;
-      });
-      return sorted[0].note;
+
+    if (filter === "spendable") {
+      const spendableLeaves = getSpendableLeaves(tree);
+      if (spendableLeaves.length > 0) {
+        return spendableLeaves[0].note;
+      }
     }
 
+    if (filter === "pending") {
+      const pendingLeaf = leaves.find(
+        (leaf) => getNoteCategoryWithContext(leaf) === "pending"
+      );
+      if (pendingLeaf) {
+        return pendingLeaf.note;
+      }
+    }
+
+    if (filter === "spent") {
+      const spentLeaves = leaves.filter(
+        (leaf) => getNoteCategoryWithContext(leaf) === "spent"
+      );
+      if (spentLeaves.length > 0) {
+        // Sort by timestamp descending (most recent first)
+        const sorted = [...spentLeaves].sort((a, b) => {
+          const tsA = Number(a.note.originTimestamp);
+          const tsB = Number(b.note.originTimestamp);
+          return tsB - tsA;
+        });
+        return sorted[0].note;
+      }
+    }
+
+    // Fallback: return root note
     return tree.root.note;
   };
 
@@ -151,7 +168,7 @@ export function NotesSection({ controller, onNoteTreeClick }: NotesSectionProps)
               {controller.filteredNoteViews.map((view) => (
                 <NoteRow
                   key={view.key}
-                  note={getDisplayNote(view.tree)}
+                  note={getDisplayNote(view.tree, controller.activeFilter)}
                   onClick={() => onNoteTreeClick(view.tree)}
                 />
               ))}
