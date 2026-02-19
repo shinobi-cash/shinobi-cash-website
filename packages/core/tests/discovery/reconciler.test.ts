@@ -6,7 +6,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { reconcileTrees } from '../../src/discovery/reconciler.js';
 import { buildActivityIndex } from '../../src/discovery/activity-indexer.js';
 import type { NoteTree, DepositNote, ChainKey } from '../../src/discovery/types.js';
-import { makeChainKey } from '../../src/discovery/types.js';
+import { makeChainKey, isWithdrawalIntent, isDepositIntent } from '../../src/discovery/types.js';
 import {
   createMockDepositActivity,
   createMockCrossChainDepositActivity,
@@ -380,7 +380,7 @@ describe('reconciler', () => {
 
       reconcileTrees(trees, [], activityIndex);
 
-      const intentNode = findNode(tree, (n) => n.note.noteType === 'withdrawalIntent');
+      const intentNode = findNode(tree, (n) => isWithdrawalIntent(n.note));
       expect(intentNode).toBeDefined();
       // Intent note should have CrosschainWithdrawalNote child when filled
       expect(intentNode!.children).toHaveLength(1);
@@ -412,7 +412,7 @@ describe('reconciler', () => {
       reconcileTrees(trees, [], activityIndex);
 
       // Find intent node
-      const intentNode = findNode(tree, (n) => n.note.noteType === 'withdrawalIntent');
+      const intentNode = findNode(tree, (n) => isWithdrawalIntent(n.note));
       expect(intentNode).toBeDefined();
 
       // WithdrawalRefundedNote should be child of intent node
@@ -447,7 +447,7 @@ describe('reconciler', () => {
 
       // First reconcile
       reconcileTrees(trees, [], activityIndex);
-      const intentNode = findNode(tree, (n) => n.note.noteType === 'withdrawalIntent');
+      const intentNode = findNode(tree, (n) => isWithdrawalIntent(n.note));
       expect(intentNode!.children).toHaveLength(1);
 
       // Second reconcile - should NOT create duplicate (checked by children.length > 0)
@@ -470,7 +470,7 @@ describe('reconciler', () => {
 
       reconcileTrees(trees, [], activityIndex);
 
-      const intentNode = findNode(tree, (n) => n.note.noteType === 'withdrawalIntent');
+      const intentNode = findNode(tree, (n) => isWithdrawalIntent(n.note));
       // No children added when orderId is empty
       expect(intentNode!.children).toHaveLength(0);
     });
@@ -494,7 +494,7 @@ describe('reconciler', () => {
 
       reconcileTrees(trees, [], activityIndex);
 
-      const intentNode = findNode(tree, (n) => n.note.noteType === 'withdrawalIntent');
+      const intentNode = findNode(tree, (n) => isWithdrawalIntent(n.note));
       // No children added when orderId doesn't match
       expect(intentNode!.children).toHaveLength(0);
     });
@@ -534,8 +534,8 @@ describe('reconciler', () => {
       reconcileTrees(trees, [], activityIndex);
 
       // Find intent nodes by orderId
-      const intent1Node = findNode(tree, (n) => n.note.noteType === 'withdrawalIntent' && (n.note as any).orderId === 'order-A');
-      const intent2Node = findNode(tree, (n) => n.note.noteType === 'withdrawalIntent' && (n.note as any).orderId === 'order-B');
+      const intent1Node = findNode(tree, (n) => isWithdrawalIntent(n.note) && (n.note as any).orderId === 'order-A');
+      const intent2Node = findNode(tree, (n) => isWithdrawalIntent(n.note) && (n.note as any).orderId === 'order-B');
 
       // First intent should have CrosschainWithdrawalNote child
       expect(intent1Node!.children).toHaveLength(1);
@@ -675,7 +675,7 @@ describe('reconciler', () => {
 
         reconcileTrees(trees, [], activityIndex);
 
-        const intentNode = findNode(tree, (n) => n.note.noteType === 'withdrawalIntent');
+        const intentNode = findNode(tree, (n) => isWithdrawalIntent(n.note));
         // CrosschainWithdrawalNote is created as child (terminal record of delivery)
         expect(intentNode!.children).toHaveLength(1);
         expect(intentNode!.children[0].note.noteType).toBe('crosschainWithdrawal');
@@ -705,7 +705,7 @@ describe('reconciler', () => {
 
         reconcileTrees(trees, [], activityIndex);
 
-        const intentNode = findNode(tree, (n) => n.note.noteType === 'withdrawalIntent');
+        const intentNode = findNode(tree, (n) => isWithdrawalIntent(n.note));
         // WithdrawalRefundedNote should be child of intent
         expect(intentNode!.children).toHaveLength(1);
         expect(intentNode!.children[0].note.noteType).toBe('withdrawalRefunded');

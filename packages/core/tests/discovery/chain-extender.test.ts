@@ -6,8 +6,8 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { extendAllTrees } from '../../src/discovery/chain-extender.js';
 import { buildActivityIndex } from '../../src/discovery/activity-indexer.js';
 import { deriveAndHashNullifier } from '../../src/discovery/nullifier-utils.js';
-import type { NoteTree, NullifierInfo, ChangeNote, WithdrawalIntentNote, MergedNote, ChainKey, WithdrawalNote } from '../../src/discovery/types.js';
-import { makeChainKey } from '../../src/discovery/types.js';
+import type { NoteTree, NullifierInfo, ChangeNote, WithdrawalIntent, MergedNote, ChainKey, WithdrawalNote } from '../../src/discovery/types.js';
+import { makeChainKey, isWithdrawalIntent } from '../../src/discovery/types.js';
 import {
   createMockNoteTree,
   createMockDepositNote,
@@ -163,15 +163,15 @@ describe('chain-extender', () => {
 
         const updatedTree = result.updatedTrees.get(chainKey)!;
 
-        // Root should have 2 children: ChangeNote and WithdrawalIntentNote (siblings)
+        // Root should have 2 children: ChangeNote and WithdrawalIntent (siblings)
         expect(updatedTree.root.children).toHaveLength(2);
 
-        const intentNode = updatedTree.root.children.find((c) => c.note.noteType === 'withdrawalIntent');
+        const intentNode = updatedTree.root.children.find((c) => isWithdrawalIntent(c.note));
         expect(intentNode).toBeDefined();
         expect(intentNode!.note.amount).toBe(toEther(0.5).toString());
         // Note: CrosschainWithdrawIntentActivity doesn't have destinationChainId
         // The factory defaults to originChainId
-        expect((intentNode!.note as WithdrawalIntentNote).destinationChainId).toBe(TEST_CHAIN_ID);
+        expect((intentNode!.note as WithdrawalIntent).destinationChainId).toBe(TEST_CHAIN_ID);
       });
 
       it('should apply sequential withdrawals', () => {
@@ -401,11 +401,11 @@ describe('chain-extender', () => {
           TEST_POOL_ADDRESS,
         );
 
-        // Primary tree should have 2 children: ChangeNote and WithdrawalIntentNote
+        // Primary tree should have 2 children: ChangeNote and WithdrawalIntent
         const primaryTree = result.updatedTrees.get(chainKey1)!;
         expect(primaryTree.root.children).toHaveLength(2);
 
-        const intentNode = primaryTree.root.children.find((c) => c.note.noteType === 'withdrawalIntent');
+        const intentNode = primaryTree.root.children.find((c) => isWithdrawalIntent(c.note));
         expect(intentNode).toBeDefined();
       });
     });

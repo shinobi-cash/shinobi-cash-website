@@ -16,7 +16,7 @@ import type {
   CrosschainWithdrawalRefundActivity,
   RagequitActivity,
 } from '@shinobi-cash/data';
-import type { Note, DepositNote, ChangeNote, DepositIntentNote, WithdrawalIntentNote, WithdrawalRefundedNote, RagequitNote, MergedNote, NoteTree } from '../../src/discovery/types.js';
+import type { Note, DepositNote, ChangeNote, DepositIntent, WithdrawalIntent, WithdrawalRefundedNote, RagequitNote, MergedNote, NoteTree } from '../../src/discovery/types.js';
 import { generateSerialNumber } from '../../src/discovery/types.js';
 import { deriveDepositPrecommitment, deriveAndHashNullifier } from '../../src/discovery/nullifier-utils.js';
 import { createNoteTree, addChild } from '../../src/discovery/tree-utils.js';
@@ -369,7 +369,7 @@ export function createMockDepositNote(
 
   return {
     noteType: 'deposit',
-    serialNumber: generateSerialNumber(TEST_CHAIN_ID, depositIndex, 0, false),
+    serialNumber: generateSerialNumber(TEST_CHAIN_ID, depositIndex, 0),
     poolAddress: TEST_POOL_ADDRESS,
     depositIndex,
     changeIndex: 0,
@@ -394,7 +394,7 @@ export function createMockChangeNote(
 ): ChangeNote {
   return {
     noteType: 'change',
-    serialNumber: generateSerialNumber(TEST_CHAIN_ID, depositIndex, changeIndex, false),
+    serialNumber: generateSerialNumber(TEST_CHAIN_ID, depositIndex, changeIndex),
     poolAddress: TEST_POOL_ADDRESS,
     depositIndex,
     changeIndex,
@@ -411,15 +411,14 @@ export function createMockChangeNote(
   };
 }
 
-export function createMockWithdrawalIntentNote(
+export function createMockWithdrawalIntent(
   depositIndex: number,
   changeIndex: number,
   amount: string | bigint,
-  overrides: Partial<WithdrawalIntentNote> = {},
-): WithdrawalIntentNote {
+  overrides: Partial<WithdrawalIntent> = {},
+): WithdrawalIntent {
   return {
-    noteType: 'withdrawalIntent',
-    serialNumber: generateSerialNumber(TEST_CHAIN_ID, depositIndex, changeIndex, true),
+    intentType: 'withdrawalIntent',
     poolAddress: TEST_POOL_ADDRESS,
     depositIndex,
     changeIndex,
@@ -432,20 +431,23 @@ export function createMockWithdrawalIntentNote(
     fillDeadline: (Math.floor(Date.now() / 1000) + 3600).toString(),
     expires: (Math.floor(Date.now() / 1000) + 86400).toString(),
     refundCommitment: `0xrefund-${depositIndex}-${changeIndex}`,
+    refundChangeIndex: changeIndex + 1, // Same level as sibling ChangeNote
     activityData: {},
     ...overrides,
   };
 }
 
-export function createMockDepositIntentNote(
+/** @deprecated Use createMockWithdrawalIntent instead */
+export const createMockWithdrawalIntentNote = createMockWithdrawalIntent;
+
+export function createMockDepositIntent(
   depositIndex: number,
   amount: string | bigint,
-  overrides: Partial<DepositIntentNote> = {},
-): DepositIntentNote {
+  overrides: Partial<DepositIntent> = {},
+): DepositIntent {
   const chainId = '84532'; // Base Sepolia (origin)
   return {
-    noteType: 'depositIntent',
-    serialNumber: generateSerialNumber(chainId, depositIndex, 0, true),
+    intentType: 'depositIntent',
     poolAddress: TEST_POOL_ADDRESS,
     depositIndex,
     changeIndex: 0,
@@ -462,6 +464,9 @@ export function createMockDepositIntentNote(
   };
 }
 
+/** @deprecated Use createMockDepositIntent instead */
+export const createMockDepositIntentNote = createMockDepositIntent;
+
 export function createMockWithdrawalRefundedNote(
   depositIndex: number,
   changeIndex: number,
@@ -470,7 +475,7 @@ export function createMockWithdrawalRefundedNote(
 ): WithdrawalRefundedNote {
   return {
     noteType: 'withdrawalRefunded',
-    serialNumber: generateSerialNumber(TEST_CHAIN_ID, depositIndex, changeIndex, false),
+    serialNumber: generateSerialNumber(TEST_CHAIN_ID, depositIndex, changeIndex, 0), // refundIndex=0
     poolAddress: TEST_POOL_ADDRESS,
     depositIndex,
     changeIndex,

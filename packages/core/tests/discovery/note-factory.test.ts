@@ -8,8 +8,8 @@ import {
   createChangeNote,
   createWithdraw2ChangeNote,
   createMergedNote,
-  createWithdrawalIntentNote,
-  createDepositIntentNote,
+  createWithdrawalIntent,
+  createDepositIntent,
   createWithdrawalRefundedNote,
   createCrosschainDepositNote,
 } from '../../src/discovery/note-factory.js';
@@ -217,13 +217,13 @@ describe('note-factory', () => {
     });
   });
 
-  describe('createWithdrawalIntentNote', () => {
+  describe('createWithdrawalIntent', () => {
     it('should create a withdrawal intent note', () => {
       const parentNote = createMockDepositNote(0, toEther(1));
       const activity = createMockCrossChainWithdrawalActivity(0, 0, toEther(0.5));
-      const note = createWithdrawalIntentNote(parentNote, activity, 0);
+      const note = createWithdrawalIntent(parentNote, activity, 0, 1); // refundChangeIndex=1
 
-      expect(note.noteType).toBe('withdrawalIntent');
+      expect(note.intentType).toBe('withdrawalIntent');
       expect(note.depositIndex).toBe(0);
       expect(note.changeIndex).toBe(0);
       expect(note.amount).toBe(toEther(0.5).toString());
@@ -236,7 +236,7 @@ describe('note-factory', () => {
         orderId: 'order-xyz',
         refundCommitment: '0xrefund123',
       });
-      const note = createWithdrawalIntentNote(parentNote, activity, 0);
+      const note = createWithdrawalIntent(parentNote, activity, 0, 1);
 
       expect(note.orderId).toBe('order-xyz');
       expect(note.refundCommitment).toBe('0xrefund123');
@@ -245,7 +245,7 @@ describe('note-factory', () => {
     it('should set destination chain from origin (intent lacks destination info)', () => {
       const parentNote = createMockDepositNote(0, toEther(1));
       const activity = createMockCrossChainWithdrawalActivity(0, 0, toEther(0.5));
-      const note = createWithdrawalIntentNote(parentNote, activity, 0);
+      const note = createWithdrawalIntent(parentNote, activity, 0, 1);
 
       // Note: CrosschainWithdrawIntentActivity doesn't have destinationChainId
       // The factory defaults to originChainId
@@ -257,7 +257,7 @@ describe('note-factory', () => {
       const activity = createMockCrossChainWithdrawalActivity(0, 0, toEther(0.5), {
         orderId: 'test-order-123',
       });
-      const note = createWithdrawalIntentNote(parentNote, activity, 0);
+      const note = createWithdrawalIntent(parentNote, activity, 0, 1);
 
       expect(note.orderId).toBe('test-order-123');
     });
@@ -265,12 +265,14 @@ describe('note-factory', () => {
 
   describe('createWithdrawalRefundedNote', () => {
     it('should create a refund note from pending intent', () => {
+      // Mock intent at changeIndex=0, refundChangeIndex=1 (sibling level)
       const pendingIntent = createMockWithdrawalIntentNote(0, 0, toEther(0.5));
       const note = createWithdrawalRefundedNote(pendingIntent, 'test-label', 'approved');
 
       expect(note.noteType).toBe('withdrawalRefunded');
       expect(note.depositIndex).toBe(0);
-      expect(note.changeIndex).toBe(0);
+      // Refund note uses refundChangeIndex from intent (1, same level as ChangeNote sibling)
+      expect(note.changeIndex).toBe(1);
       expect(note.amount).toBe(toEther(0.5).toString());
       expect(note.status).toBe('unspent');
     });
@@ -329,12 +331,12 @@ describe('note-factory', () => {
     });
   });
 
-  describe('createDepositIntentNote', () => {
+  describe('createDepositIntent', () => {
     it('should create a pending intent note for cross-chain deposit', () => {
       const activity = createMockPendingCrossChainDepositActivity(0, toEther(1));
-      const note = createDepositIntentNote(activity, 0, TEST_POOL_ADDRESS);
+      const note = createDepositIntent(activity, 0, TEST_POOL_ADDRESS);
 
-      expect(note.noteType).toBe('depositIntent');
+      expect(note.intentType).toBe('depositIntent');
       expect(note.poolAddress).toBe(TEST_POOL_ADDRESS);
       expect(note.depositIndex).toBe(0);
       expect(note.changeIndex).toBe(0);
@@ -346,14 +348,14 @@ describe('note-factory', () => {
       const activity = createMockPendingCrossChainDepositActivity(0, toEther(1), {
         orderId: 'test-order-123',
       });
-      const note = createDepositIntentNote(activity, 0, TEST_POOL_ADDRESS);
+      const note = createDepositIntent(activity, 0, TEST_POOL_ADDRESS);
 
       expect(note.orderId).toBe('test-order-123');
     });
 
     it('should set chainIds correctly', () => {
       const activity = createMockPendingCrossChainDepositActivity(0, toEther(1));
-      const note = createDepositIntentNote(activity, 0, TEST_POOL_ADDRESS);
+      const note = createDepositIntent(activity, 0, TEST_POOL_ADDRESS);
 
       // Fixture: origin = 84532 (Base), destination = 421614 (Arbitrum pool chain)
       expect(note.originChainId).toBe('84532'); // Base Sepolia (origin)
@@ -362,7 +364,7 @@ describe('note-factory', () => {
 
     it('should set fillDeadline and expires from activity timestamp', () => {
       const activity = createMockPendingCrossChainDepositActivity(0, toEther(1));
-      const note = createDepositIntentNote(activity, 0, TEST_POOL_ADDRESS);
+      const note = createDepositIntent(activity, 0, TEST_POOL_ADDRESS);
 
       // Note: CrosschainDepositIntentActivity doesn't have fillDeadline/expires
       // The factory defaults to using activity.timestamp
@@ -372,7 +374,7 @@ describe('note-factory', () => {
 
     it('should set discoveredAtOffset when provided', () => {
       const activity = createMockPendingCrossChainDepositActivity(0, toEther(1));
-      const note = createDepositIntentNote(activity, 0, TEST_POOL_ADDRESS, 42);
+      const note = createDepositIntent(activity, 0, TEST_POOL_ADDRESS, 42);
 
       expect(note.discoveredAtOffset).toBe(42);
     });
