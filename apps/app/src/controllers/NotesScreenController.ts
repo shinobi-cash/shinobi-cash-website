@@ -5,12 +5,15 @@
  */
 
 import { proxy } from "valtio";
-import type { Note, NoteNode, NoteTree } from "@shinobi-cash/core/discovery";
+import type { NoteOrIntent, NoteNode, NoteTree } from "@shinobi-cash/core/discovery";
 import {
   getSpendableLeaves,
   canWithdraw,
   traverseTree,
   getNoteCategoryWithContext,
+  isNote,
+  isIntent,
+  isTerminalNote,
 } from "@shinobi-cash/core/discovery";
 import type { NoteFilter, NoteCategory } from "@/types/notes";
 
@@ -18,7 +21,7 @@ import type { NoteFilter, NoteCategory } from "@/types/notes";
  * View model for individual note display
  */
 export interface NoteView {
-  note: Note;
+  note: NoteOrIntent;
   node: NoteNode;
   tree: NoteTree;
   category: NoteCategory;
@@ -33,7 +36,7 @@ interface NotesScreenState {
   activeFilter: NoteFilter;
 
   // Selected note for drill-down (UTXO-style)
-  selectedNote: Note | null;
+  selectedNote: NoteOrIntent | null;
   selectedNoteNode: NoteNode | null;
 }
 
@@ -44,7 +47,12 @@ const state = proxy<NotesScreenState>({
 });
 
 /**
- * Flatten all notes from all trees into individual NoteViews
+ * Flatten all notes from all trees into individual NoteViews.
+ * Excludes:
+ * - Resolved intents (their context is shown in resulting notes)
+ * - Terminal notes (withdrawal, merged, ragequit records with amount=0)
+ *
+ * Users see spendable notes (with their amounts) and pending intents.
  */
 function flattenNotesToViews(trees: NoteTree[]): NoteView[] {
   const views: NoteView[] = [];
@@ -52,12 +60,31 @@ function flattenNotesToViews(trees: NoteTree[]): NoteView[] {
   for (const tree of trees) {
     traverseTree(tree, (node) => {
       const category = getNoteCategoryWithContext(node);
+      const item = node.note;
+
+      // Exclude resolved intents - they have children and category "spent"
+      // Users see the resulting notes instead, which show the intent context
+      if (isIntent(item) && category === "spent") {
+        return;
+      }
+
+      // Exclude terminal notes (withdrawal, merged, ragequit, etc.)
+      // These are implementation records with amount=0, not actual value
+      // The spent spendable notes already show what was spent
+      if (isNote(item) && isTerminalNote(item)) {
+        return;
+      }
+
+      // Key must be unique - combine serialNumber/orderId with noteType
+      const key = isNote(item)
+        ? `${item.serialNumber}-${item.noteType}`
+        : `intent-${item.orderId}`;
       views.push({
-        note: node.note,
+        note: item,
         node,
         tree,
         category,
-        key: node.note.serialNumber,
+        key,
       });
     });
   }
@@ -92,21 +119,21 @@ export const NotesScreenSelectors = {
   },
 
   /**
-   * Get counts by category
+   * Get counts by category (spendable + pending only)
+   * Spent notes are viewed via Activity tab
    */
-  getNoteCounts(trees: NoteTree[]): { spendable: number; pending: number; spent: number } {
+  getNoteCounts(trees: NoteTree[]): { spendable: number; pending: number } {
     const allViews = flattenNotesToViews(trees);
     return {
       spendable: allViews.filter((v) => v.category === "spendable").length,
       pending: allViews.filter((v) => v.category === "pending").length,
-      spent: allViews.filter((v) => v.category === "spent").length,
     };
   },
 
   /**
    * Get selected note
    */
-  getSelectedNote: (): Note | null => state.selectedNote,
+  getSelectedNote: (): NoteOrIntent | null => state.selectedNote,
 
   /**
    * Get selected note node
@@ -125,7 +152,8 @@ export const NotesScreenSelectors = {
   canWithdrawFromTree(tree: NoteTree): boolean {
     if (!tree) return false;
     const spendableLeaves = getSpendableLeaves(tree);
-    return spendableLeaves.some((node) => canWithdraw(node.note));
+    // Note: getSpendableLeaves already filters for notes, so node.note is a SpendableNote
+    return spendableLeaves.some((node) => isNote(node.note) && canWithdraw(node.note));
   },
 };
 
@@ -146,7 +174,7 @@ export const NotesScreenController = {
   /**
    * Select individual note (UTXO-style)
    */
-  selectNote(note: Note, node: NoteNode): void {
+  selectNote(note: NoteOrIntent, node: NoteNode): void {
     state.selectedNote = note;
     state.selectedNoteNode = node;
   },
