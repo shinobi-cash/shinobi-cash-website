@@ -9,9 +9,9 @@ import { NoteChainScreen } from "@/components/screens/NoteChainScreen";
 import { NotesSection } from "@/components/notes/NotesSection";
 import { ScreenLayout } from "@/components/layout/ScreenLayout";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";
-import type { NoteTree } from "@shinobi-cash/core/discovery";
+import type { Note, NoteNode } from "@shinobi-cash/core/discovery";
+import { traverseTree } from "@shinobi-cash/core/discovery";
 import { useNotesScreen } from "@/hooks/useNotesScreen";
-import { NotesDiscoveryController } from "@/controllers/NotesDiscoveryController";
 
 export default function NotesPage() {
   const router = useRouter();
@@ -20,30 +20,48 @@ export default function NotesPage() {
 
   // Handle depositIndex query param from Activity → View Note Chain navigation
   const depositIndexParam = searchParams.get("depositIndex");
-  const { isLoading, selectNoteTree } = controller;
+  const { isLoading, selectNote, allTrees } = controller;
   useEffect(() => {
     if (!depositIndexParam || isLoading) return;
 
     const depositIndex = parseInt(depositIndexParam, 10);
     if (isNaN(depositIndex)) return;
 
-    // Find matching note tree by deposit index
-    const noteTrees = NotesDiscoveryController.state.noteTrees;
-    const matchingTree = noteTrees.find((tree) => {
-      return tree.root.note.depositIndex === depositIndex;
-    });
+    // Find matching note by deposit index (find the root deposit note)
+    for (const tree of allTrees) {
+      let foundNote: Note | null = null;
+      let foundNode: NoteNode | null = null;
 
-    if (matchingTree) {
-      selectNoteTree(matchingTree as NoteTree);
-      // Clear the query param to avoid re-selecting on subsequent renders
-      router.replace("/notes", { scroll: false });
+      traverseTree(tree, (node) => {
+        if (node.note.depositIndex === depositIndex && node.note.changeIndex === 0) {
+          foundNote = node.note;
+          foundNode = node;
+        }
+      });
+
+      if (foundNote && foundNode) {
+        selectNote(foundNote, foundNode);
+        // Clear the query param to avoid re-selecting on subsequent renders
+        router.replace("/notes", { scroll: false });
+        return;
+      }
     }
-  }, [depositIndexParam, isLoading, selectNoteTree, router]);
+  }, [depositIndexParam, isLoading, selectNote, allTrees, router]);
 
-  // Show note tree details screen
-  if (controller.selectedNoteTree) {
+  // Handle note click from list
+  const handleNoteClick = (note: Note, node: NoteNode) => {
+    selectNote(note, node);
+  };
+
+  // Show note details screen (UTXO view)
+  if (controller.selectedNote && controller.selectedNoteNode) {
     return (
-      <NoteChainScreen noteTree={controller.selectedNoteTree} onBack={controller.clearSelection} />
+      <NoteChainScreen
+        note={controller.selectedNote}
+        noteNode={controller.selectedNoteNode}
+        allTrees={controller.allTrees}
+        onBack={controller.clearSelection}
+      />
     );
   }
 
@@ -78,7 +96,7 @@ export default function NotesPage() {
 
       {/* Notes Section - Scrollable */}
       <div className="min-h-0 flex-1 overflow-y-auto pb-4">
-        <NotesSection controller={controller} onNoteTreeClick={controller.selectNoteTree} />
+        <NotesSection controller={controller} onNoteClick={handleNoteClick} />
       </div>
     </ScreenLayout>
   );

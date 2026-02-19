@@ -1,27 +1,20 @@
 /**
- * Notes Section - Refactored
- * Pure UI component that delegates all logic to useNotesController
+ * Notes Section - UTXO-style display
+ * Shows individual notes (not grouped by tree) with filtering
  */
 
 import { RefreshCw } from "lucide-react";
 import { NoteRow } from "./NoteRow";
 import { type NotesScreenControllerAPI } from "@/hooks/useNotesScreen";
 import { NOTE_FILTER_LABELS, type NoteFilter } from "@/types/notes";
-import type { NoteTree } from "@shinobi-cash/core/discovery";
-import {
-  getSpendableLeaves,
-  getLeafNodes,
-  getNoteCategoryWithContext,
-} from "@shinobi-cash/core/discovery";
+import type { Note, NoteNode } from "@shinobi-cash/core/discovery";
 
 interface NotesSectionProps {
   controller: NotesScreenControllerAPI;
-  onNoteTreeClick: (tree: NoteTree) => void;
+  onNoteClick: (note: Note, node: NoteNode) => void;
 }
 
-export function NotesSection({ controller, onNoteTreeClick }: NotesSectionProps) {
-  // Controller is passed in to avoid double instantiation
-
+export function NotesSection({ controller, onNoteClick }: NotesSectionProps) {
   const renderFilterButton = (filter: NoteFilter, count: number, borderColor: string) => (
     <button
       type="button"
@@ -110,44 +103,6 @@ export function NotesSection({ controller, onNoteTreeClick }: NotesSectionProps)
     return null;
   };
 
-  // Helper to get display note from tree based on active filter
-  // - For spendable: first spendable leaf (ChangeNote)
-  // - For pending: first pending leaf (WithdrawalIntentNote, DepositIntentNote)
-  // - For spent: most recently spent leaf (by timestamp)
-  const getDisplayNote = (tree: NoteTree, filter: NoteFilter) => {
-    const leaves = getLeafNodes(tree);
-
-    if (filter === "spendable") {
-      const spendableLeaves = getSpendableLeaves(tree);
-      if (spendableLeaves.length > 0) {
-        return spendableLeaves[0].note;
-      }
-    }
-
-    if (filter === "pending") {
-      const pendingLeaf = leaves.find((leaf) => getNoteCategoryWithContext(leaf) === "pending");
-      if (pendingLeaf) {
-        return pendingLeaf.note;
-      }
-    }
-
-    if (filter === "spent") {
-      const spentLeaves = leaves.filter((leaf) => getNoteCategoryWithContext(leaf) === "spent");
-      if (spentLeaves.length > 0) {
-        // Sort by timestamp descending (most recent first)
-        const sorted = [...spentLeaves].sort((a, b) => {
-          const tsA = Number(a.note.originTimestamp);
-          const tsB = Number(b.note.originTimestamp);
-          return tsB - tsA;
-        });
-        return sorted[0].note;
-      }
-    }
-
-    // Fallback: return root note
-    return tree.root.note;
-  };
-
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex-shrink-0 border-b border-white/10">
@@ -162,14 +117,14 @@ export function NotesSection({ controller, onNoteTreeClick }: NotesSectionProps)
         <div className="h-full overflow-y-auto">
           {renderEmptyState()}
 
-          {/* Render filtered notes */}
+          {/* Render individual notes */}
           {controller.filteredNoteViews.length > 0 && (
             <div className="divide-y divide-white/5">
               {controller.filteredNoteViews.map((view) => (
                 <NoteRow
                   key={view.key}
-                  note={getDisplayNote(view.tree, controller.activeFilter)}
-                  onClick={() => onNoteTreeClick(view.tree)}
+                  note={view.note}
+                  onClick={() => onNoteClick(view.note, view.node)}
                 />
               ))}
             </div>

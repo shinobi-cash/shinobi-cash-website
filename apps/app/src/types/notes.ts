@@ -1,4 +1,6 @@
-import type { NoteTree, NoteCategory } from "@shinobi-cash/core/discovery";
+import type { NoteTree, NoteCategory as CoreNoteCategory } from "@shinobi-cash/core/discovery";
+
+export type NoteCategory = CoreNoteCategory;
 
 export type NotesStatus = "idle" | "loading" | "error" | "empty" | "ready";
 
