@@ -64,58 +64,52 @@ export interface ParsedSerialNumber {
   chainCode: string;
   depositIndex: number;
   changeIndex: number;
-  isIntent: boolean;
   refundIndex: number;
 }
 
 /**
  * Generate a fixed-length serial number for a note.
  *
- * Format: {CHAIN}-{DDD}-{CC}-{I}-{RR} (15 chars)
+ * Format: {CHAIN}-{DDD}-{CC}-{RR} (12 chars)
  * - CHAIN: 3-letter chain code (BAS, ARB, ETH, OPT)
  * - DDD: 3-digit deposit index (001-999), 1-indexed
  * - CC: 2-digit change index (00-99)
- * - I: 1-digit intent flag (0 or 1)
  * - RR: 2-digit refund index (00-99), 1-indexed when present
  *
  * @param chainId - The chain ID where the deposit originated
  * @param depositIndex - The deposit index (0-indexed)
  * @param changeIndex - The change index (0 for deposits)
- * @param isIntent - Whether this is an intent note (deposit or withdrawal intent)
  * @param refundIndex - The refund index (0-indexed), only for refund notes
  */
 export function generateSerialNumber(
   chainId: string | number,
   depositIndex: number,
   changeIndex: number,
-  isIntent: boolean = false,
   refundIndex: number = -1
 ): string {
   const chain = getChainCode(chainId);
   const d = String(depositIndex + 1).padStart(3, "0");
   const c = String(changeIndex).padStart(2, "0");
-  const i = isIntent ? "1" : "0";
   const r = refundIndex >= 0 ? String(refundIndex + 1).padStart(2, "0") : "00";
 
-  return `${chain}-${d}-${c}-${i}-${r}`;
+  return `${chain}-${d}-${c}-${r}`;
 }
 
 /**
  * Parse a serial number into its components.
  *
- * @param serial - The serial number string (e.g., "BAS-001-01-0-00")
+ * @param serial - The serial number string (e.g., "BAS-001-01-00")
  * @returns Parsed components or null if invalid format
  */
 export function parseSerialNumber(serial: string): ParsedSerialNumber | null {
-  const match = serial.match(/^([A-Z]{3})-(\d{3})-(\d{2})-([01])-(\d{2})$/);
+  const match = serial.match(/^([A-Z]{3})-(\d{3})-(\d{2})-(\d{2})$/);
   if (!match) return null;
 
-  const [, chainCode, d, c, i, r] = match;
+  const [, chainCode, d, c, r] = match;
   return {
     chainCode,
     depositIndex: parseInt(d, 10) - 1, // Convert back to 0-indexed
     changeIndex: parseInt(c, 10),
-    isIntent: i === "1",
     refundIndex: parseInt(r, 10) - 1, // -1 if was "00", otherwise 0-indexed
   };
 }
@@ -170,7 +164,7 @@ export interface ActivityMetadata {
 
 /** Common fields for all note types */
 interface BaseNote {
-  /** Serial number: {CHAIN}-{DDD}-{CC}-{I}-{RR} */
+  /** Serial number: {CHAIN}-{DDD}-{CC}-{RR} */
   serialNumber: string;
   poolAddress: string;
   depositIndex: number;
@@ -186,6 +180,32 @@ interface BaseNote {
   activityData: ActivityMetadata;
   /** Offset where this note was discovered */
   discoveredAtOffset?: number;
+}
+
+/** Common fields for intent types (pending cross-chain operations, not actual notes) */
+interface BaseIntent {
+  poolAddress: string;
+  depositIndex: number;
+  changeIndex: number;
+  amount: string;
+  /** Timestamp on origin chain */
+  originTimestamp: string;
+  /** Chain where action was triggered */
+  originChainId: string;
+  /** Transaction hash on origin chain */
+  originTransactionHash: string;
+  /** Additional activity metadata */
+  activityData: ActivityMetadata;
+  /** Offset where this intent was discovered */
+  discoveredAtOffset?: number;
+  /** Target chain for fill/delivery */
+  destinationChainId: string;
+  /** Order ID from OIF - primary identifier for intents */
+  orderId: string;
+  /** Solver must fill by this time */
+  fillDeadline: string;
+  /** Refund available after this time */
+  expires: string;
 }
 
 /** Base interface for spendable notes (label and ASP status for withdrawal proofs) */
@@ -284,27 +304,16 @@ export interface DepositRefundedNote extends BaseNote {
 }
 
 // ============================================================================
-// Intent Notes (pending cross-chain operations)
+// Intent Types (pending cross-chain operations - NOT notes)
 // ============================================================================
-
-/** Common fields for intent notes */
-interface BaseIntentNote extends BaseNote {
-  /** Target chain for fill/delivery */
-  destinationChainId: string;
-  orderId: string;
-  /** Solver must fill by this time */
-  fillDeadline: string;
-  /** Refund available after this time */
-  expires: string;
-}
 
 /**
  * Pending cross-chain deposit (escrowed on origin chain, changeIndex=0)
  * → Filled: CrosschainDepositNote child
  * → Refunded: DepositRefundedNote child
  */
-export interface DepositIntentNote extends BaseIntentNote {
-  noteType: "depositIntent";
+export interface DepositIntent extends BaseIntent {
+  intentType: "depositIntent";
   changeIndex: 0;
 }
 
@@ -313,13 +322,18 @@ export interface DepositIntentNote extends BaseIntentNote {
  * → Filled: CrosschainWithdrawalNote child
  * → Refunded: WithdrawalRefundedNote child (spendable)
  */
-export interface WithdrawalIntentNote extends BaseIntentNote {
-  noteType: "withdrawalIntent";
+export interface WithdrawalIntent extends BaseIntent {
+  intentType: "withdrawalIntent";
   /** Commitment for claiming refund */
   refundCommitment: string;
   /** Merge type: '1:1' for single input, '2:1' for Withdraw2 */
   mergeType?: "1:1" | "2:1";
+  /** Change index for refund note (same level as sibling ChangeNote) */
+  refundChangeIndex: number;
 }
+
+/** Union of all intent types */
+export type Intent = DepositIntent | WithdrawalIntent;
 
 export type Note =
   | DepositNote
@@ -330,9 +344,10 @@ export type Note =
   | WithdrawalRefundedNote
   | RagequitNote
   | MergedNote
-  | DepositRefundedNote
-  | DepositIntentNote
-  | WithdrawalIntentNote;
+  | DepositRefundedNote;
+
+/** Union of notes and intents for tree nodes */
+export type NoteOrIntent = Note | Intent;
 
 // ============================================================================
 // Note Tree Structure
@@ -344,28 +359,28 @@ export type Note =
  * Relationships:
  * - Deposit/CrosschainDeposit → [ChangeNote, WithdrawalNote/CrosschainWithdrawalNote]
  * - ChangeNote → [ChangeNote, WithdrawalNote/CrosschainWithdrawalNote]
- * - DepositIntentNote → CrosschainDepositNote | DepositRefundedNote
- * - WithdrawalIntentNote → CrosschainWithdrawalNote | WithdrawalRefundedNote
+ * - DepositIntent → CrosschainDepositNote | DepositRefundedNote
+ * - WithdrawalIntent → CrosschainWithdrawalNote | WithdrawalRefundedNote
  * - WithdrawalRefundedNote → ChangeNote
  *
  * Terminal (no children): WithdrawalNote, CrosschainWithdrawalNote,
  * RagequitNote, MergedNote, DepositRefundedNote
  */
 export interface NoteNode {
-  note: Note;
+  note: NoteOrIntent;
   parent: NoteNode | null;
   children: NoteNode[];
   isTerminal: boolean;
 }
 
-/** Tree rooted at DepositNote or DepositIntentNote */
+/** Tree rooted at DepositNote or DepositIntent */
 export interface NoteTree {
   root: NoteNode;
 }
 
 /** Serializable tree node (no circular refs) */
 export interface SerializableNoteNode {
-  note: Note;
+  note: NoteOrIntent;
   children: SerializableNoteNode[];
   isTerminal: boolean;
 }
@@ -374,14 +389,24 @@ export interface SerializableNoteNode {
 // Type Guards
 // ============================================================================
 
-/** Check if a note is a DepositIntentNote */
-export function isDepositIntentNote(note: Note): note is DepositIntentNote {
-  return note.noteType === "depositIntent";
+/** Check if item is an intent (not a note) */
+export function isIntent(item: NoteOrIntent): item is Intent {
+  return "intentType" in item;
 }
 
-/** Check if a note is a WithdrawalIntentNote */
-export function isWithdrawalIntentNote(note: Note): note is WithdrawalIntentNote {
-  return note.noteType === "withdrawalIntent";
+/** Check if item is a note (not an intent) */
+export function isNote(item: NoteOrIntent): item is Note {
+  return "noteType" in item;
+}
+
+/** Check if item is a DepositIntent */
+export function isDepositIntent(item: NoteOrIntent): item is DepositIntent {
+  return "intentType" in item && item.intentType === "depositIntent";
+}
+
+/** Check if item is a WithdrawalIntent */
+export function isWithdrawalIntent(item: NoteOrIntent): item is WithdrawalIntent {
+  return "intentType" in item && item.intentType === "withdrawalIntent";
 }
 
 /** Check if a note is a WithdrawalRefundedNote */
@@ -452,20 +477,16 @@ export function isTerminalNote(note: Note): boolean {
   );
 }
 
-/** Check if a note is any intent note (deposit or withdrawal) */
-export function isIntentNote(note: Note): note is DepositIntentNote | WithdrawalIntentNote {
-  return note.noteType === "depositIntent" || note.noteType === "withdrawalIntent";
-}
-
-/** Check if note is from a cross-chain operation */
-export function isCrossChainNote(note: Note): boolean {
+/** Check if item is from a cross-chain operation */
+export function isCrossChainNote(item: NoteOrIntent): boolean {
+  if (isIntent(item)) {
+    return true; // All intents are cross-chain
+  }
   return (
-    note.noteType === "crosschainDeposit" ||
-    note.noteType === "crosschainWithdrawal" ||
-    note.noteType === "depositIntent" ||
-    note.noteType === "withdrawalIntent" ||
-    note.noteType === "withdrawalRefunded" ||
-    note.noteType === "depositRefunded"
+    item.noteType === "crosschainDeposit" ||
+    item.noteType === "crosschainWithdrawal" ||
+    item.noteType === "withdrawalRefunded" ||
+    item.noteType === "depositRefunded"
   );
 }
 

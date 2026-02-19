@@ -14,7 +14,7 @@ import type {
   CrosschainWithdraw2IntentActivity,
 } from "@shinobi-cash/data";
 import type { NoteTree, NullifierInfo, ChainKey } from "./types.js";
-import { makeChainKey, isSpendableNote } from "./types.js";
+import { makeChainKey, isNote, isSpendableNote } from "./types.js";
 import type { ActivityIndex } from "./activity-indexer.js";
 import {
   isSameChainWithdrawal,
@@ -152,9 +152,9 @@ export function planTreeExtensions(
   const depositIndex = rootNote.depositIndex;
 
   // Simulate the tree state as we plan extensions
-  // Note: getLastSpendableLeaf guarantees a spendable note
+  // Note: getLastSpendableLeaf guarantees a spendable note (not an intent)
   const lastNote = lastLeaf.note;
-  if (!isSpendableNote(lastNote)) {
+  if (!isNote(lastNote) || !isSpendableNote(lastNote)) {
     throw new Error("Expected spendable note from getLastSpendableLeaf");
   }
   let currentChangeIndex = lastNote.changeIndex;
@@ -281,7 +281,7 @@ export function planTreeExtensions(
     // Gate on noteType (ragequit only for deposit/change, not intent notes or refund)
     // Also check that lastLeaf is a spendable note since derivedNoteCommitment requires it
     if (currentNoteType === "deposit" || currentNoteType === "change") {
-      if (lastLeaf && isSpendableNote(lastLeaf.note)) {
+      if (lastLeaf && isNote(lastLeaf.note) && isSpendableNote(lastLeaf.note)) {
         const commitment = derivedNoteCommitment(accountKey, lastLeaf.note).toString();
         const ragequit = activityIndex.ragequitByCommitment.get(commitment);
         if (ragequit) {
@@ -408,11 +408,11 @@ function planWithdraw2(
   }
 
   const otherLastLeaf = getLastSpendableLeaf(otherTree);
-  if (
-    !otherLastLeaf ||
-    !isSpendableNote(otherLastLeaf.note) ||
-    otherLastLeaf.note.status !== "unspent"
-  ) {
+  if (!otherLastLeaf) {
+    return null;
+  }
+  const otherNote = otherLastLeaf.note;
+  if (!isNote(otherNote) || !isSpendableNote(otherNote) || otherNote.status !== "unspent") {
     return null;
   }
 
@@ -426,14 +426,14 @@ function planWithdraw2(
   const primaryChainKey = isPrimaryChain ? currentChainKey : otherChainKey;
   const primaryOriginChainId = isPrimaryChain ? currentOriginChainId : otherInfo.originChainId;
   const primaryDepositIndex = isPrimaryChain ? currentDepositIndex : otherInfo.depositIndex;
-  const primaryChangeIndex = isPrimaryChain ? currentChangeIndex : otherLastLeaf.note.changeIndex;
-  const primaryAmount = isPrimaryChain ? currentAmount : BigInt(otherLastLeaf.note.amount);
+  const primaryChangeIndex = isPrimaryChain ? currentChangeIndex : otherNote.changeIndex;
+  const primaryAmount = isPrimaryChain ? currentAmount : BigInt(otherNote.amount);
 
   const secondaryChainKey = isPrimaryChain ? otherChainKey : currentChainKey;
   const secondaryOriginChainId = isPrimaryChain ? otherInfo.originChainId : currentOriginChainId;
   const secondaryDepositIndex = isPrimaryChain ? otherInfo.depositIndex : currentDepositIndex;
-  const secondaryChangeIndex = isPrimaryChain ? otherLastLeaf.note.changeIndex : currentChangeIndex;
-  const secondaryAmount = isPrimaryChain ? BigInt(otherLastLeaf.note.amount) : currentAmount;
+  const secondaryChangeIndex = isPrimaryChain ? otherNote.changeIndex : currentChangeIndex;
+  const secondaryAmount = isPrimaryChain ? BigInt(otherNote.amount) : currentAmount;
 
   const combinedValue = primaryAmount + secondaryAmount;
   // Use withdrawnValue (the actual value spent from the note in the circuit)

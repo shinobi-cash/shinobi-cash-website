@@ -39,6 +39,8 @@ export type {
   // Union types
   Note,
   SpendableNote,
+  Intent,
+  NoteOrIntent,
   // Individual note types (for type narrowing after guards)
   DepositNote,
   CrosschainDepositNote,
@@ -49,8 +51,9 @@ export type {
   RagequitNote,
   MergedNote,
   DepositRefundedNote,
-  DepositIntentNote,
-  WithdrawalIntentNote,
+  // Intent types (pending cross-chain operations)
+  DepositIntent,
+  WithdrawalIntent,
   // Tree structure
   NoteNode,
   NoteTree,
@@ -71,12 +74,14 @@ export {
   isMergedNote,
   isDepositRefundedNote,
   isWithdrawalRefundedNote,
-  isDepositIntentNote,
-  isWithdrawalIntentNote,
+  // Intent type guards
+  isIntent,
+  isNote,
+  isDepositIntent,
+  isWithdrawalIntent,
   // Category guards
   isSpendableNote,
   isTerminalNote,
-  isIntentNote,
   isCrossChainNote,
 } from "./types.js";
 

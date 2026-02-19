@@ -6,9 +6,10 @@
  * These represent core domain logic for the 3-category model.
  */
 
-import type { Note, NoteTree, NoteNode } from "./types.js";
+import type { Note, NoteTree, NoteNode, NoteOrIntent } from "./types.js";
 import {
-  isIntentNote,
+  isNote,
+  isIntent,
   isMergedNote,
   isRagequitNote,
   isWithdrawalNote,
@@ -53,7 +54,6 @@ function isTerminalNote(note: Note): boolean {
 
 /** Check if note has balance and can be acted upon */
 function hasActionableBalance(note: Note): boolean {
-  if (isIntentNote(note)) return false;
   if (isTerminalNote(note)) return false;
   if (!isSpendableNote(note)) return false;
   return note.status === "unspent" && BigInt(note.amount) > 0n;
@@ -83,9 +83,6 @@ function hasActionableBalance(note: Note): boolean {
  *    - Intent notes with children (filled or refunded)
  */
 export function getNoteCategory(note: Note): NoteCategory {
-  // Intent notes: treat as pending (tree context needed for accurate status)
-  if (isIntentNote(note)) return "pending";
-
   // Terminal notes are always spent
   if (isTerminalNote(note)) return "spent";
 
@@ -105,10 +102,10 @@ export function getNoteCategory(note: Note): NoteCategory {
  * Intent notes with children are considered "spent" (resolved).
  */
 export function getNoteCategoryWithContext(node: NoteNode): NoteCategory {
-  const note = node.note;
+  const item = node.note;
 
-  // Intent notes: check children to determine status
-  if (isIntentNote(note)) {
+  // Intents: check children to determine status
+  if (isIntent(item)) {
     // If intent has children, it's been resolved (filled or refunded) → spent
     if (node.children.length > 0) {
       return "spent";
@@ -117,8 +114,8 @@ export function getNoteCategoryWithContext(node: NoteNode): NoteCategory {
     return "pending";
   }
 
-  // For other notes, use the basic category function
-  return getNoteCategory(note);
+  // For notes, use the basic category function
+  return getNoteCategory(item);
 }
 
 /**
@@ -266,7 +263,7 @@ export function getSpendableNotesFromTree(tree: NoteTree): Note[] {
   const spendableLeaves = getSpendableLeaves(tree);
   return spendableLeaves
     .map((node) => node.note)
-    .filter((note) => getNoteCategory(note) === "spendable");
+    .filter((item): item is Note => isNote(item) && getNoteCategory(item) === "spendable");
 }
 
 /**

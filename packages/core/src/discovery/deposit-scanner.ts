@@ -16,7 +16,7 @@ import { deriveDepositPrecommitment, deriveAndHashNullifier } from "./nullifier-
 import {
   createDepositNote,
   createCrosschainDepositNote,
-  createDepositIntentNote,
+  createDepositIntent,
 } from "./note-factory.js";
 import { createNoteTree } from "./tree-utils.js";
 
@@ -98,9 +98,9 @@ export function scanForDeposits(
     let isPending = false;
 
     if (isCrosschainDepositIntent(activity)) {
-      // Cross-chain deposit intent: create DepositIntentNote
+      // Cross-chain deposit intent: create DepositIntent
       // Don't add to nullifier map yet (commitment not in pool)
-      const depositIntent = createDepositIntentNote(activity, idx, poolAddress, currentOffset);
+      const depositIntent = createDepositIntent(activity, idx, poolAddress, currentOffset);
       tree = createNoteTree(depositIntent);
       isPending = true;
     } else if (isCrosschainDepositFill(activity)) {

@@ -3,31 +3,31 @@
  * Tree utilities for NoteTree operations
  */
 
-import type { Note, NoteNode, NoteTree, SerializableNoteNode } from "./types.js";
-import { isTerminalNote, isSpendableNote, isIntentNote } from "./types.js";
+import type { Note, NoteNode, NoteTree, SerializableNoteNode, NoteOrIntent } from "./types.js";
+import { isNote, isTerminalNote, isSpendableNote, isIntent } from "./types.js";
 
 // ============================================================================
 // Construction
 // ============================================================================
 
 /**
- * Create a new NoteTree with the given root note.
- * Root note must be a DepositNote or DepositIntentNote.
+ * Create a new NoteTree with the given root.
+ * Root must be a DepositNote, DepositIntent, or CrosschainDepositNote.
  */
-export function createNoteTree(rootNote: Note): NoteTree {
-  const root = createNoteNode(rootNote, null);
+export function createNoteTree(rootItem: NoteOrIntent): NoteTree {
+  const root = createNoteNode(rootItem, null);
   return { root };
 }
 
 /**
- * Create a new NoteNode with the given note and parent.
+ * Create a new NoteNode with the given note/intent and parent.
  */
-export function createNoteNode(note: Note, parent: NoteNode | null): NoteNode {
+export function createNoteNode(item: NoteOrIntent, parent: NoteNode | null): NoteNode {
   return {
-    note,
+    note: item,
     parent,
     children: [],
-    isTerminal: isTerminalNote(note),
+    isTerminal: isNote(item) && isTerminalNote(item),
   };
 }
 
@@ -37,13 +37,19 @@ export function createNoteNode(note: Note, parent: NoteNode | null): NoteNode {
  *
  * @throws Error if parent is terminal (ragequit, merged)
  */
-export function addChild(parent: NoteNode, childNote: Note, isTerminal: boolean = false): NoteNode {
+export function addChild(
+  parent: NoteNode,
+  childItem: NoteOrIntent,
+  terminal: boolean = false
+): NoteNode {
   if (parent.isTerminal) {
-    throw new Error(`Cannot add child to terminal node (noteType: ${parent.note.noteType})`);
+    const parentNote = parent.note;
+    const typeStr = isNote(parentNote) ? parentNote.noteType : parentNote.intentType;
+    throw new Error(`Cannot add child to terminal node (type: ${typeStr})`);
   }
 
-  const child = createNoteNode(childNote, parent);
-  child.isTerminal = isTerminal || isTerminalNote(childNote);
+  const child = createNoteNode(childItem, parent);
+  child.isTerminal = terminal || (isNote(childItem) && isTerminalNote(childItem));
   parent.children.push(child);
   return child;
 }
@@ -97,10 +103,10 @@ export function findNodeByPosition(
 }
 
 /**
- * Find a node by orderId (for intent notes).
+ * Find a node by orderId (for intents).
  */
 export function findNodeByOrderId(tree: NoteTree, orderId: string): NoteNode | null {
-  return findNode(tree, (node) => isIntentNote(node.note) && node.note.orderId === orderId);
+  return findNode(tree, (node) => isIntent(node.note) && node.note.orderId === orderId);
 }
 
 /**
@@ -126,6 +132,7 @@ export function getLeafNodes(tree: NoteTree): NoteNode[] {
 /**
  * Get all spendable leaf nodes.
  * A node is spendable if:
+ * - Item is a note (not an intent)
  * - Note type is spendable (deposit, crosschainDeposit, change, refund)
  * - Status is 'unspent'
  * - Not terminal
@@ -133,12 +140,13 @@ export function getLeafNodes(tree: NoteTree): NoteNode[] {
  */
 export function getSpendableLeaves(tree: NoteTree): NoteNode[] {
   return getLeafNodes(tree).filter((node) => {
-    const note = node.note;
+    const item = node.note;
     return (
-      isSpendableNote(note) &&
-      note.status === "unspent" &&
+      isNote(item) &&
+      isSpendableNote(item) &&
+      item.status === "unspent" &&
       !node.isTerminal &&
-      BigInt(note.amount) > 0n
+      BigInt(item.amount) > 0n
     );
   });
 }
@@ -214,12 +222,14 @@ export function serializeTree(tree: NoteTree): SerializableNoteNode {
  */
 export function deserializeTree(serialized: SerializableNoteNode): NoteTree {
   function deserializeNode(data: SerializableNoteNode, parent: NoteNode | null): NoteNode {
+    const item = data.note;
     const node: NoteNode = {
-      note: data.note,
+      note: item,
       parent,
       children: [],
       // Recompute isTerminal from note state rather than trusting serialized value
-      isTerminal: isTerminalNote(data.note),
+      // Intents are never terminal (they await fill/refund)
+      isTerminal: isNote(item) && isTerminalNote(item),
     };
     node.children = data.children.map((child) => deserializeNode(child, node));
     return node;

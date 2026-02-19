@@ -14,11 +14,12 @@ import type {
   NoteTree,
   NoteNode,
   DepositNote,
-  DepositIntentNote,
-  WithdrawalIntentNote,
+  DepositIntent,
+  WithdrawalIntent,
   ChangeNote,
   ChainKey,
   Note,
+  NoteOrIntent,
 } from "./types.js";
 import type { ActivityIndex } from "./activity-indexer.js";
 import { isDepositActivity } from "./activity-indexer.js";
@@ -29,7 +30,7 @@ import {
   createDepositRefundedNote,
 } from "./note-factory.js";
 import { traverseTree, addChild, markTerminal } from "./tree-utils.js";
-import { isTerminalNote, isSpendableNote } from "./types.js";
+import { isNote, isIntent, isDepositIntent, isWithdrawalIntent, isTerminalNote, isSpendableNote } from "./types.js";
 
 // ============================================================================
 // Helpers
@@ -44,7 +45,7 @@ function updateTreeAspStatus(tree: NoteTree, fresh: ActivityItem): void {
   let currentLabel: string | undefined;
 
   traverseTree(tree, (node) => {
-    if (isSpendableNote(node.note) && currentAspStatus === undefined) {
+    if (isNote(node.note) && isSpendableNote(node.note) && currentAspStatus === undefined) {
       currentAspStatus = node.note.aspStatus;
       currentLabel = node.note.label;
     }
@@ -66,8 +67,8 @@ function updateTreeAspStatus(tree: NoteTree, fresh: ActivityItem): void {
   traverseTree(tree, (node) => {
     const note = node.note;
 
-    // ASP status and label only propagate to spendable notes
-    if (isSpendableNote(note)) {
+    // ASP status and label only propagate to spendable notes (not intents)
+    if (isNote(note) && isSpendableNote(note)) {
       if (aspChanged && freshAspStatus) {
         note.aspStatus = freshAspStatus;
       }
@@ -127,11 +128,11 @@ export function reconcileTrees(
 
   // Update each tree with fresh data
   for (const [, tree] of trees) {
-    const rootNote = tree.root.note;
+    const rootItem = tree.root.note;
 
     // Handle trees starting with DepositNote (same-chain deposits)
-    if (rootNote.noteType === "deposit") {
-      const depositNote = rootNote as DepositNote;
+    if (isNote(rootItem) && rootItem.noteType === "deposit") {
+      const depositNote = rootItem as DepositNote;
       const fresh = depositActivityMap.get(depositNote.precommitmentHash);
       if (fresh) {
         updateTreeAspStatus(tree, fresh);
@@ -142,13 +143,15 @@ export function reconcileTrees(
         }
       }
     }
-    // Handle trees starting with DepositIntentNote (cross-chain deposits)
-    else if (rootNote.noteType === "depositIntent") {
+    // Handle trees starting with DepositIntent (cross-chain deposits)
+    else if (isDepositIntent(rootItem)) {
       // Find the filled deposit child (if any)
       const depositChild = tree.root.children.find(
-        (child) => child.note.noteType === "crosschainDeposit" || child.note.noteType === "deposit"
+        (child) =>
+          isNote(child.note) &&
+          (child.note.noteType === "crosschainDeposit" || child.note.noteType === "deposit")
       );
-      if (depositChild && "precommitmentHash" in depositChild.note) {
+      if (depositChild && isNote(depositChild.note) && "precommitmentHash" in depositChild.note) {
         const fresh = depositActivityMap.get(depositChild.note.precommitmentHash as string);
         if (fresh) {
           updateTreeAspStatus(tree, fresh);
@@ -160,7 +163,7 @@ export function reconcileTrees(
         }
       }
     }
-    // Note: Intent notes are handled in reconcileIntentNotes
+    // Note: Intents are handled in reconcileIntentNotes
   }
 
   // Reconcile intent notes with fresh activity data
@@ -199,18 +202,17 @@ function reconcileIntentNotes(
     const childrenToAdd: Array<{ parent: NoteNode; child: Note }> = [];
 
     traverseTree(tree, (node) => {
-      const note = node.note;
+      const item = node.note;
 
-      // Handle withdrawal intent notes
-      if (note.noteType === "withdrawalIntent") {
-        const withdrawalIntent = note as WithdrawalIntentNote;
-        if (!withdrawalIntent.orderId) return;
+      // Handle withdrawal intents
+      if (isWithdrawalIntent(item)) {
+        if (!item.orderId) return;
 
         // Check for fill activity
-        const fillActivity = activityIndex.withdrawalFillsByOrderId.get(withdrawalIntent.orderId);
+        const fillActivity = activityIndex.withdrawalFillsByOrderId.get(item.orderId);
         if (fillActivity && isCrosschainWithdrawalFill(fillActivity)) {
           const wasReconciled = reconcileWithdrawalIntentWithFill(
-            withdrawalIntent,
+            item,
             fillActivity,
             node,
             childrenToAdd
@@ -223,24 +225,18 @@ function reconcileIntentNotes(
         }
 
         // Check for refund activity
-        const refundActivity = activityIndex.withdrawalRefundsByOrderId.get(
-          withdrawalIntent.orderId
-        );
+        const refundActivity = activityIndex.withdrawalRefundsByOrderId.get(item.orderId);
         if (refundActivity) {
-          const wasReconciled = reconcileWithdrawalIntentWithRefund(
-            withdrawalIntent,
-            node,
-            childrenToAdd
-          );
+          const wasReconciled = reconcileWithdrawalIntentWithRefund(item, node, childrenToAdd);
           if (wasReconciled && !addedActivityTxHashes.has(refundActivity.txHash)) {
             result.matchedActivities.push(refundActivity);
             addedActivityTxHashes.add(refundActivity.txHash);
           }
         }
       }
-      // Handle deposit intent notes
-      else if (note.noteType === "depositIntent") {
-        const depositIntent = note as DepositIntentNote;
+      // Handle deposit intents
+      else if (isDepositIntent(item)) {
+        const depositIntent = item;
         if (!depositIntent.orderId) return;
 
         // Check for fill activity
@@ -296,7 +292,7 @@ function reconcileIntentNotes(
  * @returns true if reconciliation was performed, false if already resolved
  */
 function reconcileWithdrawalIntentWithFill(
-  withdrawalIntent: WithdrawalIntentNote,
+  withdrawalIntent: WithdrawalIntent,
   fillActivity: CrosschainWithdrawalFillActivity,
   node: NoteNode,
   childrenToAdd: Array<{ parent: NoteNode; child: Note }>
@@ -309,7 +305,9 @@ function reconcileWithdrawalIntentWithFill(
   if (withdrawalIntent.mergeType === "2:1" && node.parent) {
     const siblingChangeNote = node.parent.children.find(
       (sibling): sibling is NoteNode & { note: ChangeNote } =>
-        sibling.note.noteType === "change" && Object.keys(sibling.note.mergedFrom).length > 0
+        isNote(sibling.note) &&
+        sibling.note.noteType === "change" &&
+        Object.keys(sibling.note.mergedFrom).length > 0
     );
     if (siblingChangeNote) {
       mergedFrom = siblingChangeNote.note.mergedFrom;
@@ -335,7 +333,7 @@ function reconcileWithdrawalIntentWithFill(
  * @returns true if reconciliation was performed, false if already resolved
  */
 function reconcileWithdrawalIntentWithRefund(
-  withdrawalIntent: WithdrawalIntentNote,
+  withdrawalIntent: WithdrawalIntent,
   node: NoteNode,
   childrenToAdd: Array<{ parent: NoteNode; child: Note }>
 ): boolean {
@@ -343,9 +341,13 @@ function reconcileWithdrawalIntentWithRefund(
   if (node.children.length > 0) return false;
 
   // Get label and aspStatus from parent (the spendable note that was spent)
-  const parentNote = node.parent?.note;
-  const label = parentNote && isSpendableNote(parentNote) ? parentNote.label : "";
-  const aspStatus = parentNote && isSpendableNote(parentNote) ? parentNote.aspStatus : "pending";
+  const parentItem = node.parent?.note;
+  const label =
+    parentItem && isNote(parentItem) && isSpendableNote(parentItem) ? parentItem.label : "";
+  const aspStatus =
+    parentItem && isNote(parentItem) && isSpendableNote(parentItem)
+      ? parentItem.aspStatus
+      : "pending";
   const refundNote = createWithdrawalRefundedNote(withdrawalIntent, label, aspStatus);
   childrenToAdd.push({ parent: node, child: refundNote });
 
@@ -360,7 +362,7 @@ function reconcileWithdrawalIntentWithRefund(
  * @returns true if reconciliation was performed, false if already resolved
  */
 function reconcileDepositIntentWithFill(
-  depositIntent: DepositIntentNote,
+  depositIntent: DepositIntent,
   fillActivity: CrosschainDepositFillActivity,
   node: NoteNode,
   childrenToAdd: Array<{ parent: NoteNode; child: Note }>,
@@ -389,14 +391,14 @@ function reconcileDepositIntentWithFill(
 }
 
 /**
- * Reconcile a DepositIntentNote when a REFUND activity is found
+ * Reconcile a DepositIntent when a REFUND activity is found
  *
  * Creates DepositRefundedNote as child (terminal)
  *
  * @returns true if reconciliation was performed, false if already resolved
  */
 function reconcileDepositIntentWithRefund(
-  depositIntent: DepositIntentNote,
+  depositIntent: DepositIntent,
   node: NoteNode,
   childrenToAdd: Array<{ parent: NoteNode; child: Note }>
 ): boolean {

@@ -17,7 +17,7 @@
 import type { ActivityItem, RagequitActivity } from "@shinobi-cash/data";
 import type { NoteTree, NullifierInfo, SpendableNote } from "./types.js";
 import type { ChainKey } from "./types.js";
-import { isSpendableNote } from "./types.js";
+import { isNote, isSpendableNote } from "./types.js";
 import type { ActivityIndex } from "./activity-indexer.js";
 import {
   isSameChainWithdrawal,
@@ -30,7 +30,7 @@ import {
   createWithdrawalNote,
   createWithdraw2ChangeNote,
   createMergedNote,
-  createWithdrawalIntentNote,
+  createWithdrawalIntent,
   createCrosschainWithdrawalNote,
   createRagequitNote,
   type ChangeActivity,
@@ -175,9 +175,9 @@ function apply1x1Withdrawal(
     return;
   }
 
-  // Verify the node contains a spendable note
+  // Verify the node contains a spendable note (not an intent)
   const parentNote = nodeToExtend.note;
-  if (!isSpendableNote(parentNote)) {
+  if (!isNote(parentNote) || !isSpendableNote(parentNote)) {
     return;
   }
 
@@ -195,10 +195,12 @@ function apply1x1Withdrawal(
 
   if (isCrosschainWithdrawIntent(plan.activity)) {
     const activity = plan.activity;
-    const withdrawalIntent = createWithdrawalIntentNote(
+    // refundChangeIndex is same as newChangeIndex (sibling to ChangeNote)
+    const withdrawalIntent = createWithdrawalIntent(
       parentNote,
       activity,
-      plan.parentChangeIndex
+      plan.parentChangeIndex,
+      plan.newChangeIndex // refundChangeIndex
     );
     addChild(nodeToExtend, withdrawalIntent);
   } else if (isSameChainWithdrawal(plan.activity)) {
@@ -271,10 +273,15 @@ function applyWithdraw2(
     return;
   }
 
-  // Verify both nodes contain spendable notes
+  // Verify both nodes contain spendable notes (not intents)
   const primaryNote = primaryNode.note;
   const secondaryNote = secondaryNode.note;
-  if (!isSpendableNote(primaryNote) || !isSpendableNote(secondaryNote)) {
+  if (
+    !isNote(primaryNote) ||
+    !isSpendableNote(primaryNote) ||
+    !isNote(secondaryNote) ||
+    !isSpendableNote(secondaryNote)
+  ) {
     return;
   }
 
@@ -295,10 +302,12 @@ function applyWithdraw2(
 
   if (isCrosschainWithdraw2Intent(plan.activity)) {
     const activity = plan.activity;
-    const withdrawalIntent = createWithdrawalIntentNote(
+    // refundChangeIndex is same as newChangeIndex (sibling to ChangeNote)
+    const withdrawalIntent = createWithdrawalIntent(
       primaryNote,
       activity,
-      plan.primaryParentChangeIndex
+      plan.primaryParentChangeIndex,
+      plan.primaryNewChangeIndex // refundChangeIndex
     );
     addChild(primaryNode, withdrawalIntent);
   } else if (isSameChainWithdraw2(plan.activity)) {
@@ -348,9 +357,9 @@ function applyRagequit(
   const node = findNodeByPosition(tree, plan.depositIndex, plan.changeIndex);
   if (!node) return;
 
-  // Verify the node contains a spendable note
+  // Verify the node contains a spendable note (not an intent)
   const note = node.note;
-  if (!isSpendableNote(note)) return;
+  if (!isNote(note) || !isSpendableNote(note)) return;
 
   // Mark parent note as spent
   note.status = "spent";
