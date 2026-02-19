@@ -3,6 +3,9 @@
  *
  * ActivityEntry wraps a raw Activity with computed display values.
  * This provides a view model for the activity list/details screens.
+ *
+ * Cross-chain activities are consolidated by orderId - only the final
+ * state is shown in the list, with full timeline in details.
  */
 
 import type { ActivityItem } from "@shinobi-cash/data";
@@ -18,10 +21,19 @@ export type ActivityFilter = "all" | "deposit" | "withdrawal" | "refund";
 export type ActivityType = "deposit" | "withdrawal" | "refund" | "ragequit";
 
 /**
+ * Timeline event for cross-chain activity details
+ */
+export interface ActivityTimelineEvent {
+  activity: ActivityItem;
+  label: string;
+  timestamp: string;
+}
+
+/**
  * Activity entry - wraps raw Activity with display values
  */
 export interface ActivityEntry {
-  /** The raw activity from indexer */
+  /** The raw activity from indexer (final state for cross-chain) */
   activity: ActivityItem;
 
   /** Display type (deposit/withdrawal/refund/ragequit) */
@@ -35,6 +47,9 @@ export interface ActivityEntry {
 
   /** Display timestamp (Unix seconds as string) */
   displayTimestamp: string;
+
+  /** Timeline of related activities (for cross-chain operations) */
+  timeline?: ActivityTimelineEvent[];
 }
 
 /**

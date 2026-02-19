@@ -11,7 +11,7 @@
 
 import { useMemo } from "react";
 import { useSnapshot } from "valtio";
-import type { Note, NoteNode, NoteTree } from "@shinobi-cash/core/discovery";
+import type { Note, NoteOrIntent, NoteNode, NoteTree } from "@shinobi-cash/core/discovery";
 import type { NotesStatus, NotesError, NoteFilter } from "@/types/notes";
 import type { NoteView } from "@/controllers/NotesScreenController";
 import { useNotesDiscovery } from "./useNotesDiscovery";
@@ -40,7 +40,6 @@ export interface NotesScreenControllerAPI {
   activeFilter: NoteFilter;
   spendableCount: number;
   pendingCount: number;
-  spentCount: number;
   totalCount: number;
 
   // Loading states
@@ -54,12 +53,12 @@ export interface NotesScreenControllerAPI {
   spendableNotes: Note[];
 
   // Selected note (UTXO-style)
-  selectedNote: Note | null;
+  selectedNote: NoteOrIntent | null;
   selectedNoteNode: NoteNode | null;
 
   // Actions
   setFilter: (filter: NoteFilter) => void;
-  selectNote: (note: Note, node: NoteNode) => void;
+  selectNote: (note: NoteOrIntent, node: NoteNode) => void;
   clearSelection: () => void;
   reset: () => void;
 }
@@ -131,8 +130,7 @@ export function useNotesScreen(): NotesScreenControllerAPI {
     activeFilter,
     spendableCount: noteCounts.spendable,
     pendingCount: noteCounts.pending,
-    spentCount: noteCounts.spent,
-    totalCount: noteCounts.spendable + noteCounts.pending + noteCounts.spent,
+    totalCount: noteCounts.spendable + noteCounts.pending,
 
     // Loading states (canonical)
     isLoading: viewState.isLoading,
@@ -145,7 +143,7 @@ export function useNotesScreen(): NotesScreenControllerAPI {
     spendableNotes: viewState.spendableNotes,
 
     // Selection (UTXO-style)
-    selectedNote: selectedNote as Note | null,
+    selectedNote: selectedNote as NoteOrIntent | null,
     selectedNoteNode: selectedNoteNode as NoteNode | null,
 
     // Actions

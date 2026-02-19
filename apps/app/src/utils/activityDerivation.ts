@@ -2,10 +2,12 @@
  * Activity Derivation Utility
  *
  * Converts raw activities from discovery into ActivityEntry for display.
+ * Cross-chain activities are consolidated by orderId - only the final
+ * state is shown in the list, with full timeline available in details.
  */
 
 import type { ActivityItem } from "@shinobi-cash/data";
-import type { ActivityEntry, ActivityType } from "@/types/activity";
+import type { ActivityEntry, ActivityType, ActivityTimelineEvent } from "@/types/activity";
 
 /**
  * Get display type from Activity type.
@@ -48,6 +50,16 @@ function isCrossChainActivity(activity: ActivityItem): boolean {
 }
 
 /**
+ * Get orderId from activity if it has one (cross-chain activities).
+ */
+function getOrderId(activity: ActivityItem): string | null {
+  if ("orderId" in activity) {
+    return activity.orderId;
+  }
+  return null;
+}
+
+/**
  * Get display amount from Activity.
  */
 function getDisplayAmount(activity: ActivityItem): string {
@@ -55,24 +67,117 @@ function getDisplayAmount(activity: ActivityItem): string {
 }
 
 /**
- * Create ActivityEntry from raw Activity.
+ * Get timeline label for activity type.
  */
-function createActivityEntry(activity: ActivityItem): ActivityEntry {
+function getTimelineLabel(activity: ActivityItem): string {
+  switch (activity.type) {
+    case "CROSSCHAIN_DEPOSIT_INTENT":
+      return "Intent created";
+    case "CROSSCHAIN_DEPOSIT_FILL":
+      return "Deposit filled";
+    case "CROSSCHAIN_DEPOSIT_REFUND":
+      return "Deposit refunded";
+    case "CROSSCHAIN_WITHDRAW_INTENT":
+    case "CROSSCHAIN_WITHDRAW_2_INTENT":
+      return "Intent created";
+    case "CROSSCHAIN_WITHDRAWAL_FILL":
+      return "Withdrawal filled";
+    case "CROSSCHAIN_WITHDRAWAL_REFUND":
+      return "Withdrawal refunded";
+    default:
+      return activity.type;
+  }
+}
+
+/**
+ * Priority for selecting final state (higher = takes precedence).
+ */
+function getActivityPriority(activity: ActivityItem): number {
+  switch (activity.type) {
+    // Intents are lowest priority (pending state)
+    case "CROSSCHAIN_DEPOSIT_INTENT":
+    case "CROSSCHAIN_WITHDRAW_INTENT":
+    case "CROSSCHAIN_WITHDRAW_2_INTENT":
+      return 1;
+    // Fills are higher priority (completed state)
+    case "CROSSCHAIN_DEPOSIT_FILL":
+    case "CROSSCHAIN_WITHDRAWAL_FILL":
+      return 2;
+    // Refunds are highest priority (final state after failure)
+    case "CROSSCHAIN_DEPOSIT_REFUND":
+    case "CROSSCHAIN_WITHDRAWAL_REFUND":
+      return 3;
+    default:
+      return 0;
+  }
+}
+
+/**
+ * Create ActivityEntry from raw Activity with optional timeline.
+ */
+function createActivityEntry(
+  activity: ActivityItem,
+  timeline?: ActivityTimelineEvent[]
+): ActivityEntry {
   return {
     activity,
     type: getDisplayType(activity),
     displayAmount: getDisplayAmount(activity),
     isCrossChain: isCrossChainActivity(activity),
     displayTimestamp: activity.timestamp.toString(),
+    timeline,
   };
 }
 
 /**
  * Derive activity entries from raw activities.
- * Activities are already sorted by timestamp descending from discovery.
+ * Cross-chain activities are consolidated by orderId - only the final state is shown.
  */
 export function deriveActivitiesFromRawActivities(activities: ActivityItem[]): ActivityEntry[] {
-  return activities.map(createActivityEntry);
+  // Group cross-chain activities by orderId
+  const orderGroups = new Map<string, ActivityItem[]>();
+  const standaloneActivities: ActivityItem[] = [];
+
+  for (const activity of activities) {
+    const orderId = getOrderId(activity);
+    if (orderId && isCrossChainActivity(activity)) {
+      const group = orderGroups.get(orderId) ?? [];
+      group.push(activity);
+      orderGroups.set(orderId, group);
+    } else {
+      standaloneActivities.push(activity);
+    }
+  }
+
+  const entries: ActivityEntry[] = [];
+
+  // Process grouped cross-chain activities
+  for (const [, group] of orderGroups) {
+    // Sort by priority to get final state
+    const sorted = [...group].sort((a, b) => getActivityPriority(b) - getActivityPriority(a));
+    const finalActivity = sorted[0];
+
+    // Build timeline (sorted by timestamp ascending)
+    const timeline: ActivityTimelineEvent[] = [...group]
+      .sort((a, b) => Number(a.timestamp) - Number(b.timestamp))
+      .map((act) => ({
+        activity: act,
+        label: getTimelineLabel(act),
+        timestamp: act.timestamp.toString(),
+      }));
+
+    entries.push(createActivityEntry(finalActivity, timeline));
+  }
+
+  // Add standalone activities
+  for (const activity of standaloneActivities) {
+    entries.push(createActivityEntry(activity));
+  }
+
+  // Sort all entries by timestamp descending (newest first)
+  entries.sort((a, b) => Number(b.displayTimestamp) - Number(a.displayTimestamp));
+
+  return entries;
 }
 
 /**

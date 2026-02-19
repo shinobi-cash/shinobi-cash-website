@@ -17,11 +17,11 @@ export interface NoteTreeView {
 
 /**
  * Filter type for note list tabs
+ * Only spendable + pending - spent notes are viewed via Activity tab
  */
-export type NoteFilter = NoteCategory;
+export type NoteFilter = "spendable" | "pending";
 
 export const NOTE_FILTER_LABELS: Record<NoteFilter, string> = {
   spendable: "Spendable",
   pending: "Pending",
-  spent: "Spent",
 };
