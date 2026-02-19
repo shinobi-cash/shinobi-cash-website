@@ -11,14 +11,43 @@ import { formatTimestamp } from "@/utils/formatters";
 import { getActivityStatusDotColor } from "@/utils/noteFiltering";
 
 /**
+ * Check if activity is a Withdraw2 (merged) type.
+ * For consolidated cross-chain, check timeline for WITHDRAW_2_INTENT.
+ */
+function isWithdraw2(entry: ActivityEntry): boolean {
+  const type = entry.activity.type;
+  if (type === "WITHDRAW_2" || type === "CROSSCHAIN_WITHDRAW_2_INTENT") {
+    return true;
+  }
+  // For FILL, check timeline for Withdraw2 intent
+  if (type === "CROSSCHAIN_WITHDRAWAL_FILL" && entry.timeline) {
+    return entry.timeline.some((e) => e.activity.type === "CROSSCHAIN_WITHDRAW_2_INTENT");
+  }
+  return false;
+}
+
+/**
  * Get display label for activity type.
  */
 function getActivityLabel(entry: ActivityEntry): string {
+  const isMerged = isWithdraw2(entry);
+
   if (entry.isCrossChain && entry.type === "deposit") {
-    return "Cross-chain deposit";
+    return "Crosschain deposit";
   }
   if (entry.isCrossChain && entry.type === "withdrawal") {
-    return "Cross-chain withdrawal";
+    return isMerged ? "Crosschain Withdraw2" : "Crosschain Withdraw";
+  }
+  if (entry.type === "refund") {
+    const isDepositRefund = entry.activity.type === "CROSSCHAIN_DEPOSIT_REFUND";
+    return isDepositRefund ? "Deposit refunded" : "Withdraw refunded";
+  }
+  if (isMerged) {
+    return "Withdraw2";
+  }
+  // Same-chain withdrawal
+  if (entry.type === "withdrawal") {
+    return "Withdraw";
   }
   return entry.type.charAt(0).toUpperCase() + entry.type.slice(1);
 }

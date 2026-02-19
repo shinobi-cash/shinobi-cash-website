@@ -9,7 +9,7 @@ import { NoteChainScreen } from "@/components/screens/NoteChainScreen";
 import { NotesSection } from "@/components/notes/NotesSection";
 import { ScreenLayout } from "@/components/layout/ScreenLayout";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";
-import type { Note, NoteNode } from "@shinobi-cash/core/discovery";
+import type { NoteOrIntent, NoteNode } from "@shinobi-cash/core/discovery";
 import { traverseTree } from "@shinobi-cash/core/discovery";
 import { useNotesScreen } from "@/hooks/useNotesScreen";
 
@@ -29,7 +29,7 @@ export default function NotesPage() {
 
     // Find matching note by deposit index (find the root deposit note)
     for (const tree of allTrees) {
-      let foundNote: Note | null = null;
+      let foundNote: NoteOrIntent | null = null;
       let foundNode: NoteNode | null = null;
 
       traverseTree(tree, (node) => {
@@ -49,7 +49,7 @@ export default function NotesPage() {
   }, [depositIndexParam, isLoading, selectNote, allTrees, router]);
 
   // Handle note click from list
-  const handleNoteClick = (note: Note, node: NoteNode) => {
+  const handleNoteClick = (note: NoteOrIntent, node: NoteNode) => {
     selectNote(note, node);
   };
 

@@ -5,13 +5,14 @@
 
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import type { Note, NoteNode, NoteTree, DepositIntentNote, WithdrawalIntentNote } from "@shinobi-cash/core/discovery";
+import type { NoteOrIntent, NoteNode, NoteTree, DepositIntent, WithdrawalIntent } from "@shinobi-cash/core/discovery";
 import {
   isSpendableNote,
   canWithdraw,
   canRagequit,
-  isDepositIntentNote,
-  isWithdrawalIntentNote,
+  isDepositIntent,
+  isWithdrawalIntent,
+  isNote,
 } from "@shinobi-cash/core/discovery";
 import { Lock, Unlock, Clock, Loader2 } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
@@ -22,21 +23,17 @@ import { RagequitController } from "@/controllers/RagequitController";
 import { useIntentDetails } from "@/hooks/useIntentDetails";
 import { NoteUtxoView } from "./NoteUtxoView";
 import { findNoteBySerial } from "./note-navigation";
-
-// Commented out for UTXO view refactor - keep for potential future toggle
-// import { HistoryTimeline } from "./HistoryTimeline";
-// import { buildTimelineEntries } from "./utils";
 // import { Section, Row } from "@/components/shared/Section";
 
 interface NoteChainScreenProps {
-  note: Note;
+  note: NoteOrIntent;
   noteNode: NoteNode;
   allTrees: NoteTree[];
   onBack: () => void;
 }
 
 interface NavigationStackItem {
-  note: Note;
+  note: NoteOrIntent;
   node: NoteNode;
 }
 
@@ -68,8 +65,8 @@ function formatRefundCountdown(expiresTimestamp: string): { text: string; isAvai
 /**
  * Check if note is a pending intent (no children yet)
  */
-function isPendingIntent(note: Note, node: NoteNode): note is DepositIntentNote | WithdrawalIntentNote {
-  return (isDepositIntentNote(note) || isWithdrawalIntentNote(note)) && node.children.length === 0;
+function isPendingIntent(item: NoteOrIntent, node: NoteNode): item is DepositIntent | WithdrawalIntent {
+  return (isDepositIntent(item) || isWithdrawalIntent(item)) && node.children.length === 0;
 }
 
 export function NoteChainScreen({ note, noteNode, allTrees, onBack }: NoteChainScreenProps) {
@@ -77,7 +74,7 @@ export function NoteChainScreen({ note, noteNode, allTrees, onBack }: NoteChainS
 
   // Navigation stack for back button support
   const [navigationStack, setNavigationStack] = useState<NavigationStackItem[]>([]);
-  const [currentNote, setCurrentNote] = useState<Note>(note);
+  const [currentNote, setCurrentNote] = useState<NoteOrIntent>(note);
   const [currentNode, setCurrentNode] = useState<NoteNode>(noteNode);
 
   // Navigate to another note (push to stack)
@@ -110,9 +107,9 @@ export function NoteChainScreen({ note, noteNode, allTrees, onBack }: NoteChainS
     }
   }, [navigationStack, onBack]);
 
-  // Check if current note can be withdrawn/ragequit
-  const canWithdrawPrivately = isSpendableNote(currentNote) && canWithdraw(currentNote);
-  const canWithdrawPublicly = isSpendableNote(currentNote) && canRagequit(currentNote);
+  // Check if current note can be withdrawn/ragequit (only notes, not intents)
+  const canWithdrawPrivately = isNote(currentNote) && isSpendableNote(currentNote) && canWithdraw(currentNote);
+  const canWithdrawPublicly = isNote(currentNote) && isSpendableNote(currentNote) && canRagequit(currentNote);
 
   // Check if current note is a pending intent (can show refund option)
   const pendingIntent = isPendingIntent(currentNote, currentNode);
@@ -130,13 +127,13 @@ export function NoteChainScreen({ note, noteNode, allTrees, onBack }: NoteChainS
   const hasActions = canWithdrawPrivately || canWithdrawPublicly || pendingIntent;
 
   const handleWithdrawPrivately = () => {
-    if (!isSpendableNote(currentNote)) return;
+    if (!isNote(currentNote) || !isSpendableNote(currentNote)) return;
     WithdrawController.selectNote(currentNote);
     router.push(`/withdraw?note=${currentNote.depositIndex}`);
   };
 
   const handleWithdrawPublicly = () => {
-    if (!isSpendableNote(currentNote)) return;
+    if (!isNote(currentNote) || !isSpendableNote(currentNote)) return;
     RagequitController.selectNote(currentNote);
     router.push(`/ragequit?note=${currentNote.depositIndex}`);
   };

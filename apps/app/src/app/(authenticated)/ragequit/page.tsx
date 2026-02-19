@@ -12,6 +12,7 @@ import { RagequitController, RagequitSelectors } from "@/controllers/RagequitCon
 import {
   traverseTree,
   getSpendableNotes,
+  isNote,
   type NoteTree,
   type ChangeNote,
 } from "@shinobi-cash/core/discovery";
@@ -25,8 +26,9 @@ function checkMergeHistory(noteTrees: NoteTree[], depositIndex: number): boolean
   let hasMerge = false;
   traverseTree(tree, (node) => {
     // Check if this is a ChangeNote with merge history
-    if (node.note.noteType === "change") {
-      const changeNote = node.note as ChangeNote;
+    const item = node.note;
+    if (isNote(item) && item.noteType === "change") {
+      const changeNote = item as ChangeNote;
       if (Object.keys(changeNote.mergedFrom).length > 0) {
         hasMerge = true;
       }

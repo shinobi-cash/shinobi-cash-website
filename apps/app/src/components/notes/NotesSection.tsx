@@ -7,11 +7,11 @@ import { RefreshCw } from "lucide-react";
 import { NoteRow } from "./NoteRow";
 import { type NotesScreenControllerAPI } from "@/hooks/useNotesScreen";
 import { NOTE_FILTER_LABELS, type NoteFilter } from "@/types/notes";
-import type { Note, NoteNode } from "@shinobi-cash/core/discovery";
+import type { NoteOrIntent, NoteNode } from "@shinobi-cash/core/discovery";
 
 interface NotesSectionProps {
   controller: NotesScreenControllerAPI;
-  onNoteClick: (note: Note, node: NoteNode) => void;
+  onNoteClick: (note: NoteOrIntent, node: NoteNode) => void;
 }
 
 export function NotesSection({ controller, onNoteClick }: NotesSectionProps) {
@@ -80,19 +80,13 @@ export function NotesSection({ controller, onNoteClick }: NotesSectionProps) {
                   All your deposits have been spent or are pending
                 </p>
               </>
-            ) : controller.activeFilter === "pending" ? (
+            ) : (
               <>
                 <span className="mb-2 block text-2xl">⏳</span>
                 <p className="mb-1 text-neutral-400">No pending deposits</p>
                 <p className="text-sm text-neutral-500">
                   All cross-chain deposits have been filled
                 </p>
-              </>
-            ) : (
-              <>
-                <span className="mb-2 block text-2xl">🔒</span>
-                <p className="mb-1 text-neutral-400">No spent deposits</p>
-                <p className="text-sm text-neutral-500">Your deposits are still spendable</p>
               </>
             )}
           </div>
@@ -109,7 +103,6 @@ export function NotesSection({ controller, onNoteClick }: NotesSectionProps) {
         <div className="flex">
           {renderFilterButton("spendable", controller.spendableCount, "border-emerald-400")}
           {renderFilterButton("pending", controller.pendingCount, "border-yellow-400")}
-          {renderFilterButton("spent", controller.spentCount, "border-rose-400")}
         </div>
       </div>
 

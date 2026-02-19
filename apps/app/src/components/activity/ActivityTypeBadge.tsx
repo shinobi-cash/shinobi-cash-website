@@ -75,14 +75,14 @@ const TYPE_STYLES: Record<ActivityType, { bg: string; text: string; dot: string 
 
 const TYPE_LABELS: Record<ActivityType, string> = {
   DEPOSIT: "Deposit",
-  CROSSCHAIN_DEPOSIT_FILL: "Cross-chain Deposit",
-  CROSSCHAIN_DEPOSIT_INTENT: "Deposit Pending",
+  CROSSCHAIN_DEPOSIT_FILL: "Crosschain Deposit",
+  CROSSCHAIN_DEPOSIT_INTENT: "Crosschain Deposit",
   CROSSCHAIN_DEPOSIT_REFUND: "Deposit Refunded",
   WITHDRAW: "Withdrawal",
-  WITHDRAW_2: "Withdrawal",
-  CROSSCHAIN_WITHDRAW_INTENT: "Withdrawal Pending",
-  CROSSCHAIN_WITHDRAW_2_INTENT: "Withdrawal Pending",
-  CROSSCHAIN_WITHDRAWAL_FILL: "Cross-chain Withdrawal",
+  WITHDRAW_2: "Withdraw2",
+  CROSSCHAIN_WITHDRAW_INTENT: "Crosschain Withdraw",
+  CROSSCHAIN_WITHDRAW_2_INTENT: "Crosschain Withdraw2",
+  CROSSCHAIN_WITHDRAWAL_FILL: "Crosschain Withdrawal",
   CROSSCHAIN_WITHDRAWAL_REFUND: "Withdrawal Refunded",
   RAGEQUIT: "Ragequit",
 };

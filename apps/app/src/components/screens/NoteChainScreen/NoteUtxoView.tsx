@@ -1,32 +1,33 @@
 /**
  * Note UTXO View Component
- * Displays a single note in UTXO style with INPUTS → THIS NOTE → OUTPUTS sections
  */
 
-import type { Note, NoteNode } from "@shinobi-cash/core/discovery";
+import type { NoteOrIntent, NoteNode } from "@shinobi-cash/core/discovery";
 import {
   isDepositNote,
   isCrosschainDepositNote,
   isChangeNote,
   isWithdrawalRefundedNote,
-  isDepositIntentNote,
-  isWithdrawalIntentNote,
+  isDepositIntent,
+  isWithdrawalIntent,
   isMergedNote,
   isRagequitNote,
   isDepositRefundedNote,
   isWithdrawalNote,
   isCrosschainWithdrawalNote,
   isSpendableNote,
+  isNote,
 } from "@shinobi-cash/core/discovery";
-import { ArrowRight, ExternalLink } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Section, Row } from "@/components/shared/Section";
 import { CopyableText } from "@/components/shared/CopyableText";
 import { AmountDisplay } from "@/components/shared/AmountDisplay";
+import { ExplorerLink } from "@/components/shared/ExplorerLink";
 import { formatEthAmount } from "@/utils/formatters";
-import { getTxExplorerUrl, getChainName } from "@/config/chains";
+import { getChainName } from "@/config/chains";
 
 interface NoteUtxoViewProps {
-  note: Note;
+  note: NoteOrIntent;
   node: NoteNode;
   onNavigate: (serialNumber: string) => void;
 }
@@ -55,23 +56,12 @@ function NoteLink({
   );
 }
 
+
 /**
- * External link to block explorer
+ * Helper to get serial number from a NoteOrIntent (only notes have serials)
  */
-function TxLink({ chainId, txHash }: { chainId: string; txHash: string }) {
-  const url = getTxExplorerUrl(chainId, txHash);
-  const chainName = getChainName(chainId);
-  return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 hover:underline"
-    >
-      {chainName}
-      <ExternalLink className="h-3 w-3" />
-    </a>
-  );
+function getSerialNumber(item: NoteOrIntent): string | undefined {
+  return isNote(item) ? item.serialNumber : undefined;
 }
 
 /**
@@ -82,12 +72,12 @@ function InputsSection({
   node,
   onNavigate,
 }: {
-  note: Note;
+  note: NoteOrIntent;
   node: NoteNode;
   onNavigate: (serial: string) => void;
 }) {
   // DepositNote - deposited from wallet
-  if (isDepositNote(note)) {
+  if (isNote(note) && isDepositNote(note)) {
     const userAddress = note.activityData.user;
     return (
       <Section title="Inputs">
@@ -101,98 +91,127 @@ function InputsSection({
             )
           }
         />
-        <Row label="Chain" value={<TxLink chainId={note.originChainId} txHash={note.originTransactionHash} />} />
+        <Row label="Chain" value={<ExplorerLink chainId={note.originChainId} txHash={note.originTransactionHash} />} />
       </Section>
     );
   }
 
   // CrosschainDepositNote - cross-chain deposit
-  if (isCrosschainDepositNote(note)) {
+  if (isNote(note) && isCrosschainDepositNote(note)) {
+    const userAddress = note.activityData.user;
     return (
       <Section title="Inputs">
-        <Row label="Source" value="Cross-chain deposit" />
-        <Row label="Escrowed" value={<TxLink chainId={note.originChainId} txHash={note.originTransactionHash} />} />
-        <Row label="Filled" value={<TxLink chainId={note.destinationChainId} txHash={note.destinationTransactionHash} />} />
+        <Row
+          label="Source"
+          value={
+            userAddress ? (
+              <CopyableText text={userAddress} />
+            ) : (
+              "Wallet"
+            )
+          }
+        />
+        <Row label="Escrowed" value={<ExplorerLink chainId={note.originChainId} txHash={note.originTransactionHash} />} />
+        <Row label="Filled" value={<ExplorerLink chainId={note.destinationChainId} txHash={note.destinationTransactionHash} />} />
       </Section>
     );
   }
 
   // ChangeNote - from withdrawal
-  if (isChangeNote(note)) {
-    const parentSerial = node.parent?.note.serialNumber;
-    const mergedSerials = Object.keys(note.mergedFrom);
+  if (isNote(note) && isChangeNote(note)) {
+    const parentNote = node.parent?.note;
+    const parentSerial = parentNote && isNote(parentNote) ? parentNote.serialNumber : undefined;
+    const parentAmount = parentNote && isNote(parentNote) && isSpendableNote(parentNote) ? parentNote.amount : undefined;
+    const mergedEntries = Object.entries(note.mergedFrom);
 
     return (
       <Section title="Inputs">
-        <Row label="Source" value="Created from withdrawal" />
+        <Row label="Source" value={mergedEntries.length > 0 ? "Created from Withdraw2 merge" : "Created from withdrawal"} />
         {parentSerial && (
           <Row
             label="From"
-            value={<NoteLink serialNumber={parentSerial} onClick={() => onNavigate(parentSerial)} />}
-          />
-        )}
-        {mergedSerials.length > 0 && (
-          <Row
-            label="Merged"
             value={
               <NoteLink
-                serialNumber={mergedSerials[0]}
-                onClick={() => onNavigate(mergedSerials[0])}
+                serialNumber={parentSerial}
+                label={parentAmount ? `${parentSerial} (${formatEthAmount(parentAmount, { maxDecimals: 6 })} ETH)` : parentSerial}
+                onClick={() => onNavigate(parentSerial)}
               />
             }
           />
         )}
+        {mergedEntries.map(([serial, amount]) => (
+          <Row
+            key={serial}
+            label="Merged"
+            value={
+              <NoteLink
+                serialNumber={serial}
+                label={`${serial} (${formatEthAmount(amount, { maxDecimals: 6 })} ETH)`}
+                onClick={() => onNavigate(serial)}
+              />
+            }
+          />
+        ))}
       </Section>
     );
   }
 
   // WithdrawalRefundedNote - refund from failed withdrawal
-  if (isWithdrawalRefundedNote(note)) {
-    const parentSerial = node.parent?.note.serialNumber;
+  if (isNote(note) && isWithdrawalRefundedNote(note)) {
+    // Parent is WithdrawalIntent which doesn't have serialNumber - show orderId instead
+    const parentItem = node.parent?.note;
+    const parentLabel = parentItem && isWithdrawalIntent(parentItem) ? `Order ${parentItem.orderId.slice(0, 6)}...${parentItem.orderId.slice(-4)}` : undefined;
     return (
       <Section title="Inputs">
         <Row label="Source" value="Refund from failed cross-chain withdrawal" />
-        {parentSerial && (
-          <Row
-            label="Intent"
-            value={<NoteLink serialNumber={parentSerial} onClick={() => onNavigate(parentSerial)} />}
-          />
+        {parentLabel && (
+          <Row label="Intent" value={<span className="font-mono text-xs text-neutral-400">{parentLabel}</span>} />
         )}
-        <Row label="Refunded" value={<TxLink chainId={note.originChainId} txHash={note.originTransactionHash} />} />
+        <Row label="Refunded" value={<ExplorerLink chainId={note.originChainId} txHash={note.originTransactionHash} />} />
       </Section>
     );
   }
 
-  // DepositIntentNote - pending cross-chain deposit
-  if (isDepositIntentNote(note)) {
+  // DepositIntent - pending cross-chain deposit
+  if (isDepositIntent(note)) {
+    const userAddress = note.activityData.user;
     return (
       <Section title="Inputs">
-        <Row label="Source" value="Cross-chain deposit (pending)" />
-        <Row label="Escrowed" value={<TxLink chainId={note.originChainId} txHash={note.originTransactionHash} />} />
+        <Row
+          label="Source"
+          value={
+            userAddress ? (
+              <CopyableText text={userAddress} />
+            ) : (
+              "Wallet"
+            )
+          }
+        />
+        <Row label="Escrowed" value={<ExplorerLink chainId={note.originChainId} txHash={note.originTransactionHash} />} />
       </Section>
     );
   }
 
-  // WithdrawalIntentNote - pending cross-chain withdrawal
-  if (isWithdrawalIntentNote(note)) {
-    const parentSerial = node.parent?.note.serialNumber;
+  // WithdrawalIntent - pending cross-chain withdrawal
+  if (isWithdrawalIntent(note)) {
+    const parentSerial = node.parent ? getSerialNumber(node.parent.note) : undefined;
     return (
       <Section title="Inputs">
-        <Row label="Source" value="Cross-chain withdrawal (pending)" />
+        <Row label="Source" value="Crosschain withdrawal" />
         {parentSerial && (
           <Row
             label="From"
             value={<NoteLink serialNumber={parentSerial} onClick={() => onNavigate(parentSerial)} />}
           />
         )}
-        <Row label="Escrowed" value={<TxLink chainId={note.originChainId} txHash={note.originTransactionHash} />} />
+        <Row label="Escrowed" value={<ExplorerLink chainId={note.originChainId} txHash={note.originTransactionHash} />} />
       </Section>
     );
   }
 
   // MergedNote - from Withdraw2 loser
-  if (isMergedNote(note)) {
-    const parentSerial = node.parent?.note.serialNumber;
+  if (isNote(note) && isMergedNote(note)) {
+    const parentSerial = node.parent ? getSerialNumber(node.parent.note) : undefined;
     return (
       <Section title="Inputs">
         <Row label="Source" value="Merged in Withdraw2" />
@@ -207,8 +226,8 @@ function InputsSection({
   }
 
   // RagequitNote - from ragequit
-  if (isRagequitNote(note)) {
-    const parentSerial = node.parent?.note.serialNumber;
+  if (isNote(note) && isRagequitNote(note)) {
+    const parentSerial = node.parent ? getSerialNumber(node.parent.note) : undefined;
     return (
       <Section title="Inputs">
         <Row label="Source" value="Public withdrawal (ragequit)" />
@@ -223,24 +242,23 @@ function InputsSection({
   }
 
   // DepositRefundedNote - refund from failed deposit
-  if (isDepositRefundedNote(note)) {
-    const parentSerial = node.parent?.note.serialNumber;
+  if (isNote(note) && isDepositRefundedNote(note)) {
+    // Parent is DepositIntent which doesn't have serialNumber - show orderId instead
+    const parentItem = node.parent?.note;
+    const parentLabel = parentItem && isDepositIntent(parentItem) ? `Order ${parentItem.orderId.slice(0, 6)}...${parentItem.orderId.slice(-4)}` : undefined;
     return (
       <Section title="Inputs">
         <Row label="Source" value="Refund from expired deposit" />
-        {parentSerial && (
-          <Row
-            label="Intent"
-            value={<NoteLink serialNumber={parentSerial} onClick={() => onNavigate(parentSerial)} />}
-          />
+        {parentLabel && (
+          <Row label="Intent" value={<span className="font-mono text-xs text-neutral-400">{parentLabel}</span>} />
         )}
       </Section>
     );
   }
 
   // WithdrawalNote / CrosschainWithdrawalNote - terminal withdrawal records
-  if (isWithdrawalNote(note) || isCrosschainWithdrawalNote(note)) {
-    const parentSerial = node.parent?.note.serialNumber;
+  if (isNote(note) && (isWithdrawalNote(note) || isCrosschainWithdrawalNote(note))) {
+    const parentSerial = node.parent ? getSerialNumber(node.parent.note) : undefined;
     return (
       <Section title="Inputs">
         <Row label="Source" value="Withdrawal record" />
@@ -260,22 +278,25 @@ function InputsSection({
 /**
  * THIS NOTE Section - Shows note details
  */
-function ThisNoteSection({ note, node }: { note: Note; node: NoteNode }) {
+function ThisNoteSection({ note, node }: { note: NoteOrIntent; node: NoteNode }) {
   // Spendable notes (DepositNote, CrosschainDepositNote, ChangeNote, WithdrawalRefundedNote)
-  if (isSpendableNote(note)) {
+  if (isNote(note) && isSpendableNote(note)) {
     // Determine combined status text
     const getStatusText = () => {
       if (note.status === "spent") return { text: "Spent", color: "text-neutral-400" };
-      if (note.aspStatus === "pending") return { text: "Awaiting ASP approval", color: "text-amber-400" };
-      return { text: "Available", color: "text-emerald-400" };
+      if (note.aspStatus === "pending") return { text: "Awaiting ASP approval", color: "text-amber-400 italic" };
+      return { text: "Approved", color: "text-emerald-400" };
     };
     const status = getStatusText();
+
+    // "Balance" for spendable notes, "Amount Spent" for spent notes
+    const amountLabel = note.status === "spent" ? "Amount Spent" : "Balance";
 
     return (
       <Section title="This Note">
         <Row label="Serial" value={<span className="font-mono">{note.serialNumber}</span>} />
         <Row
-          label="Balance"
+          label={amountLabel}
           value={
             <AmountDisplay
               amount={note.amount}
@@ -291,17 +312,17 @@ function ThisNoteSection({ note, node }: { note: Note; node: NoteNode }) {
     );
   }
 
-  // DepositIntentNote
-  if (isDepositIntentNote(note)) {
+  // DepositIntent
+  if (isDepositIntent(note)) {
     const hasChildren = node.children.length > 0;
     return (
       <Section title="This Intent">
-        <Row label="Serial" value={<span className="font-mono">{note.serialNumber}</span>} />
-        <Row label="Amount" value={`${formatEthAmount(note.amount, { maxDecimals: 6 })} ETH (escrowed)`} />
+        <Row label="Order" value={<CopyableText text={note.orderId} displayText={`${note.orderId.slice(0, 6)}...${note.orderId.slice(-4)}`} className="text-xs" />} />
+        <Row label="Escrowed Amount" value={<AmountDisplay amount={note.amount} layout="inline" ethOptions={{ maxDecimals: 6 }} />} />
         <Row
           label="Status"
           value={
-            <span className={hasChildren ? "text-neutral-400" : "text-amber-400"}>
+            <span className={hasChildren ? "text-neutral-400" : "text-amber-400 italic"}>
               {hasChildren ? "Resolved" : "Awaiting solver fill"}
             </span>
           }
@@ -311,18 +332,18 @@ function ThisNoteSection({ note, node }: { note: Note; node: NoteNode }) {
     );
   }
 
-  // WithdrawalIntentNote
-  if (isWithdrawalIntentNote(note)) {
+  // WithdrawalIntent
+  if (isWithdrawalIntent(note)) {
     const hasChildren = node.children.length > 0;
     return (
       <Section title="This Intent">
-        <Row label="Serial" value={<span className="font-mono">{note.serialNumber}</span>} />
+        <Row label="Order" value={<CopyableText text={note.orderId} displayText={`${note.orderId.slice(0, 6)}...${note.orderId.slice(-4)}`} className="text-xs" />} />
         <Row label="Amount" value={`${formatEthAmount(note.amount, { maxDecimals: 6 })} ETH`} />
         <Row
           label="Status"
           value={
-            <span className={hasChildren ? "text-neutral-400" : "text-amber-400"}>
-              {hasChildren ? "Resolved" : "Awaiting delivery"}
+            <span className={hasChildren ? "text-neutral-400" : "text-amber-400 italic"}>
+              {hasChildren ? "Resolved" : "Awaiting solver fill"}
             </span>
           }
         />
@@ -332,7 +353,7 @@ function ThisNoteSection({ note, node }: { note: Note; node: NoteNode }) {
   }
 
   // MergedNote
-  if (isMergedNote(note)) {
+  if (isNote(note) && isMergedNote(note)) {
     return (
       <Section title="This Note">
         <Row label="Serial" value={<span className="font-mono">{note.serialNumber}</span>} />
@@ -343,19 +364,19 @@ function ThisNoteSection({ note, node }: { note: Note; node: NoteNode }) {
   }
 
   // RagequitNote
-  if (isRagequitNote(note)) {
+  if (isNote(note) && isRagequitNote(note)) {
     return (
       <Section title="This Note">
         <Row label="Serial" value={<span className="font-mono">{note.serialNumber}</span>} />
         <Row label="Withdrawn" value={`${formatEthAmount(note.ragequitAmount, { maxDecimals: 6 })} ETH`} />
-        <Row label="To" value={<span className="font-mono text-xs">{note.recipient}</span>} />
+        <Row label="To" value={<CopyableText text={note.recipient} className="text-xs" />} />
         <Row label="Status" value={<span className="text-orange-400">Ragequit (terminal)</span>} />
       </Section>
     );
   }
 
   // DepositRefundedNote
-  if (isDepositRefundedNote(note)) {
+  if (isNote(note) && isDepositRefundedNote(note)) {
     return (
       <Section title="This Note">
         <Row label="Serial" value={<span className="font-mono">{note.serialNumber}</span>} />
@@ -366,25 +387,25 @@ function ThisNoteSection({ note, node }: { note: Note; node: NoteNode }) {
   }
 
   // WithdrawalNote
-  if (isWithdrawalNote(note)) {
+  if (isNote(note) && isWithdrawalNote(note)) {
     return (
       <Section title="This Note">
         <Row label="Serial" value={<span className="font-mono">{note.serialNumber}</span>} />
         <Row label="Withdrawn" value={`${formatEthAmount(note.withdrawnAmount, { maxDecimals: 6 })} ETH`} />
-        <Row label="To" value={<span className="font-mono text-xs">{note.recipient}</span>} />
+        <Row label="To" value={<CopyableText text={note.recipient} className="text-xs" />} />
         <Row label="Status" value={<span className="text-neutral-400">Withdrawal record</span>} />
       </Section>
     );
   }
 
   // CrosschainWithdrawalNote
-  if (isCrosschainWithdrawalNote(note)) {
+  if (isNote(note) && isCrosschainWithdrawalNote(note)) {
     return (
       <Section title="This Note">
         <Row label="Serial" value={<span className="font-mono">{note.serialNumber}</span>} />
         <Row label="Withdrawn" value={`${formatEthAmount(note.withdrawnAmount, { maxDecimals: 6 })} ETH`} />
-        <Row label="To" value={<span className="font-mono text-xs">{note.recipient}</span>} />
-        <Row label="Delivered" value={<TxLink chainId={note.destinationChainId} txHash={note.destinationTransactionHash} />} />
+        <Row label="To" value={<CopyableText text={note.recipient} className="text-xs" />} />
+        <Row label="Delivered" value={<ExplorerLink chainId={note.destinationChainId} txHash={note.destinationTransactionHash} />} />
         <Row label="Status" value={<span className="text-neutral-400">Withdrawal record</span>} />
       </Section>
     );
@@ -401,69 +422,70 @@ function OutputsSection({
   node,
   onNavigate,
 }: {
-  note: Note;
+  note: NoteOrIntent;
   node: NoteNode;
   onNavigate: (serial: string) => void;
 }) {
   // Spendable notes - show if spent or available
-  if (isSpendableNote(note)) {
+  if (isNote(note) && isSpendableNote(note)) {
     // Unspent with no children - status already shown in "This Note" section
     if (note.status === "unspent" && node.children.length === 0) {
       return null;
     }
 
     // Find child notes to show
-    const changeChild = node.children.find((c) => isChangeNote(c.note));
+    const changeChild = node.children.find((c) => isNote(c.note) && isChangeNote(c.note));
     const withdrawalChild = node.children.find(
-      (c) => isWithdrawalNote(c.note) || isCrosschainWithdrawalNote(c.note)
+      (c) => isNote(c.note) && (isWithdrawalNote(c.note) || isCrosschainWithdrawalNote(c.note))
     );
-    const intentChild = node.children.find((c) => isWithdrawalIntentNote(c.note));
-    const ragequitChild = node.children.find((c) => isRagequitNote(c.note));
+    const intentChild = node.children.find((c) => isWithdrawalIntent(c.note));
+    const ragequitChild = node.children.find((c) => isNote(c.note) && isRagequitNote(c.note));
+
+    // Extract narrowed note types for JSX
+    const withdrawalNote = withdrawalChild && isNote(withdrawalChild.note) &&
+      (isWithdrawalNote(withdrawalChild.note) || isCrosschainWithdrawalNote(withdrawalChild.note))
+      ? withdrawalChild.note : null;
+    const changeNote = changeChild && isNote(changeChild.note) ? changeChild.note : null;
+    const ragequitNote = ragequitChild && isNote(ragequitChild.note) ? ragequitChild.note : null;
+    const intentNote = intentChild && isWithdrawalIntent(intentChild.note) ? intentChild.note : null;
 
     return (
       <Section title="Outputs">
-        {withdrawalChild && isWithdrawalNote(withdrawalChild.note) && (
+        {withdrawalNote && (
           <Row
             label="Withdrew"
-            value={`${formatEthAmount(withdrawalChild.note.withdrawnAmount, { maxDecimals: 6 })} ETH to ${withdrawalChild.note.recipient.slice(0, 8)}...`}
+            value={`${formatEthAmount(withdrawalNote.withdrawnAmount, { maxDecimals: 6 })} ETH to ${withdrawalNote.recipient.slice(0, 8)}...`}
           />
         )}
-        {withdrawalChild && isCrosschainWithdrawalNote(withdrawalChild.note) && (
+        {intentNote && (
           <Row
-            label="Withdrew"
-            value={`${formatEthAmount(withdrawalChild.note.withdrawnAmount, { maxDecimals: 6 })} ETH to ${withdrawalChild.note.recipient.slice(0, 8)}...`}
-          />
-        )}
-        {intentChild && (
-          <Row
-            label="Pending"
+            label="Order"
             value={
-              <NoteLink
-                serialNumber={intentChild.note.serialNumber}
-                label="Withdrawal intent"
-                onClick={() => onNavigate(intentChild.note.serialNumber)}
-              />
+              <span className="font-mono text-xs text-amber-400">
+                {intentNote.orderId.slice(0, 6)}...{intentNote.orderId.slice(-4)} ({formatEthAmount(intentNote.amount, { maxDecimals: 6 })} ETH)
+              </span>
             }
           />
         )}
-        {changeChild && (
+        {changeNote && isSpendableNote(changeNote) && (
           <Row
             label="Change"
             value={
               <NoteLink
-                serialNumber={changeChild.note.serialNumber}
-                onClick={() => onNavigate(changeChild.note.serialNumber)}
+                serialNumber={changeNote.serialNumber}
+                label={`${changeNote.serialNumber} (${formatEthAmount(changeNote.amount, { maxDecimals: 6 })} ETH)`}
+                onClick={() => onNavigate(changeNote.serialNumber)}
               />
             }
           />
         )}
-        {ragequitChild && (
+        {ragequitNote && (
           <Row
             label="Ragequit"
             value={
               <NoteLink
-                serialNumber={ragequitChild.note.serialNumber}
-                onClick={() => onNavigate(ragequitChild.note.serialNumber)}
+                serialNumber={ragequitNote.serialNumber}
+                onClick={() => onNavigate(ragequitNote.serialNumber)}
               />
             }
           />
@@ -475,20 +497,22 @@ function OutputsSection({
     );
   }
 
-  // DepositIntentNote - show outcome
-  if (isDepositIntentNote(note)) {
-    const filledChild = node.children.find((c) => isCrosschainDepositNote(c.note));
-    const refundedChild = node.children.find((c) => isDepositRefundedNote(c.note));
+  // DepositIntent - show outcome
+  if (isDepositIntent(note)) {
+    const filledChildNode = node.children.find((c) => isNote(c.note) && isCrosschainDepositNote(c.note));
+    const refundedChildNode = node.children.find((c) => isNote(c.note) && isDepositRefundedNote(c.note));
+    const filledNote = filledChildNode && isNote(filledChildNode.note) ? filledChildNode.note : null;
+    const refundedNote = refundedChildNode && isNote(refundedChildNode.note) ? refundedChildNode.note : null;
 
-    if (filledChild) {
+    if (filledNote) {
       return (
         <Section title="Outcome">
           <Row
             label="Filled"
             value={
               <NoteLink
-                serialNumber={filledChild.note.serialNumber}
-                onClick={() => onNavigate(filledChild.note.serialNumber)}
+                serialNumber={filledNote.serialNumber}
+                onClick={() => onNavigate(filledNote.serialNumber)}
               />
             }
           />
@@ -496,15 +520,15 @@ function OutputsSection({
       );
     }
 
-    if (refundedChild) {
+    if (refundedNote) {
       return (
         <Section title="Outcome">
           <Row
             label="Refunded"
             value={
               <NoteLink
-                serialNumber={refundedChild.note.serialNumber}
-                onClick={() => onNavigate(refundedChild.note.serialNumber)}
+                serialNumber={refundedNote.serialNumber}
+                onClick={() => onNavigate(refundedNote.serialNumber)}
               />
             }
           />
@@ -516,30 +540,35 @@ function OutputsSection({
     return null;
   }
 
-  // WithdrawalIntentNote - show outcome
-  if (isWithdrawalIntentNote(note)) {
-    const filledChild = node.children.find((c) => isCrosschainWithdrawalNote(c.note));
-    const refundedChild = node.children.find((c) => isWithdrawalRefundedNote(c.note));
+  // WithdrawalIntent - show outcome
+  if (isWithdrawalIntent(note)) {
+    const filledChildNode = node.children.find((c) => isNote(c.note) && isCrosschainWithdrawalNote(c.note));
+    const refundedChildNode = node.children.find((c) => isNote(c.note) && isWithdrawalRefundedNote(c.note));
     // Change note is sibling, not child
-    const changeSibling = node.parent?.children.find(
-      (c) => c !== node && isChangeNote(c.note)
+    const changeSiblingNode = node.parent?.children.find(
+      (c) => c !== node && isNote(c.note) && isChangeNote(c.note)
     );
 
-    if (filledChild && isCrosschainWithdrawalNote(filledChild.note)) {
-      const filledNote = filledChild.note;
+    // Extract narrowed types
+    const filledNote = filledChildNode && isNote(filledChildNode.note) && isCrosschainWithdrawalNote(filledChildNode.note)
+      ? filledChildNode.note : null;
+    const changeNote = changeSiblingNode && isNote(changeSiblingNode.note) ? changeSiblingNode.note : null;
+    const refundedNote = refundedChildNode && isNote(refundedChildNode.note) ? refundedChildNode.note : null;
+
+    if (filledNote) {
       return (
         <Section title="Outcome">
           <Row
             label="Delivered"
-            value={<TxLink chainId={filledNote.destinationChainId} txHash={filledNote.destinationTransactionHash} />}
+            value={<ExplorerLink chainId={filledNote.destinationChainId} txHash={filledNote.destinationTransactionHash} />}
           />
-          {changeSibling && (
+          {changeNote && (
             <Row
               label="Change"
               value={
                 <NoteLink
-                  serialNumber={changeSibling.note.serialNumber}
-                  onClick={() => onNavigate(changeSibling.note.serialNumber)}
+                  serialNumber={changeNote.serialNumber}
+                  onClick={() => onNavigate(changeNote.serialNumber)}
                 />
               }
             />
@@ -548,15 +577,15 @@ function OutputsSection({
       );
     }
 
-    if (refundedChild) {
+    if (refundedNote) {
       return (
         <Section title="Outcome">
           <Row
             label="Refunded"
             value={
               <NoteLink
-                serialNumber={refundedChild.note.serialNumber}
-                onClick={() => onNavigate(refundedChild.note.serialNumber)}
+                serialNumber={refundedNote.serialNumber}
+                onClick={() => onNavigate(refundedNote.serialNumber)}
               />
             }
           />
@@ -569,7 +598,7 @@ function OutputsSection({
   }
 
   // MergedNote - show where it merged into
-  if (isMergedNote(note)) {
+  if (isNote(note) && isMergedNote(note)) {
     return (
       <Section title="Merged Into">
         <Row
@@ -586,7 +615,7 @@ function OutputsSection({
   }
 
   // Terminal notes don't have outputs
-  if (isRagequitNote(note) || isDepositRefundedNote(note)) {
+  if (isNote(note) && (isRagequitNote(note) || isDepositRefundedNote(note))) {
     return (
       <Section title="Outputs">
         <Row label="Status" value={<span className="text-neutral-400">Terminal (no further outputs)</span>} />
@@ -603,8 +632,8 @@ function OutputsSection({
 export function NoteUtxoView({ note, node, onNavigate }: NoteUtxoViewProps) {
   return (
     <div className="space-y-4">
-      <InputsSection note={note} node={node} onNavigate={onNavigate} />
       <ThisNoteSection note={note} node={node} />
+      <InputsSection note={note} node={node} onNavigate={onNavigate} />
       <OutputsSection note={note} node={node} onNavigate={onNavigate} />
     </div>
   );
