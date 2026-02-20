@@ -6,7 +6,6 @@ export {
   StateTreeClient,
   IntentClient,
   PoolClient,
-  GraphQLClient,
   ASPClient,
   type ASPRootInfo,
 } from "./client";
