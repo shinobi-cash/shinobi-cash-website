@@ -6,65 +6,59 @@ How to deposit into Shinobi Cash.
 
 Depositing adds your funds to the privacy pool, creating a commitment that only you can later withdraw.
 
+---
+
 ## Same-Chain Deposit
 
-When depositing on the pool chain (Arbitrum Sepolia):
+When depositing on the pool chain:
 
 1. **Navigate to Deposit** — Select the Deposit tab
-2. **Enter Amount** — Minimum 0.01 ETH
-3. **Review Fees** — Compliance fee applies
+2. **Enter Amount** — Enter the amount you want to deposit
+3. **Review Fees** — Vetting fee applies (for compliance)
 4. **Confirm** — Sign the transaction in your wallet
 
-Your deposit is added directly to the pool's Merkle tree.
+Your deposit is added directly to the pool.
+
+---
 
 ## Crosschain Deposit
 
-When depositing from another chain (e.g., Base Sepolia):
-
-:::info[Testnet]
-Fees are configurable. Solver availability on testnet is limited, so crosschain deposits may take longer.
-:::
+When depositing from an origin chain:
 
 1. **Select Source Chain** — Choose where your funds are
-2. **Enter Amount** — Minimum 0.01 ETH
+2. **Enter Amount** — Enter the amount you want to deposit
 3. **Review Fees**:
-   - Compliance fee
-   - Solver fee (for crosschain)
+   - Vetting fee (compliance)
+   - Solver fee (crosschain)
+   - Network gas
 4. **Confirm** — Sign the transaction
 
-### What Happens Behind the Scenes
+A solver will detect your intent and deliver the deposit to the pool chain.
 
-```
-Your wallet → DepositEntrypoint → InputSettler (escrows funds)
-                                        │
-                    Solver detects intent ◄───┘
-                           │
-                           ▼
-              DepositOutputSettler → Pool (commitment inserted)
-                           │
-              Solver claims escrowed funds
-```
+---
 
-The solver fronts the capital on the destination chain and claims your escrowed funds after proving the fill.
-
-## After Depositing
-
-### Deposit States
+## Deposit States
 
 | Status | Meaning |
 |--------|---------|
-| **Confirming** | Transaction submitted, awaiting block confirmation |
-| **Confirmed** | On-chain, waiting for indexer |
-| **Indexed** | Visible in your notes |
-| **Pending (Crosschain)** | Waiting for solver to fill |
-| **Pending (ASP)** | Waiting for compliance approval |
-| **Spendable** | Ready to withdraw |
+| **Preparing** | Generating commitment and estimating gas |
+| **Submitting** | Awaiting wallet signature |
+| **Confirming** | Waiting for block confirmation |
+| **Confirmed** | On-chain; notes will sync shortly |
 
-### Activation Time
+For crosschain deposits, there's an additional wait for the solver to fill the intent.
 
-Deposits need to be "activated" before withdrawal:
-- Same-chain: ~1-2 minutes (indexer sync + ASP)
-- Crosschain: ~2-5 minutes (solver fill + indexer + ASP)
+---
+
+## After Depositing
+
+Once confirmed, your deposit enters **pending** status while the ASP reviews it for compliance.
+
+When approved:
+- The deposit becomes **spendable**
+- You can withdraw privately
+
+---
 
 ## Tips
 
@@ -72,30 +66,32 @@ Deposits need to be "activated" before withdrawal:
 Wait for more deposits after yours before withdrawing. A larger anonymity set means stronger privacy.
 :::
 
-:::warning[Minimum Amount]
-The minimum deposit is 0.01 ETH. Smaller amounts are rejected.
-:::
+---
 
 ## Troubleshooting
 
-### Deposit stuck in "Pending"
+### Deposit stuck in pending
 - **Crosschain**: Wait for solver — usually fills within minutes
 - **ASP pending**: Testnet ASP auto-approves; should resolve quickly
 
 ### Transaction failed
-- Check you have enough ETH for gas + deposit amount
+- Check you have enough funds for gas + deposit amount
 - Ensure you're on the correct network
 
-## What Can Go Wrong?
+---
 
-| Issue | Impact | Recovery |
-|-------|--------|----------|
-| **ASP rejects deposit** | Cannot withdraw normally | Ragequit (recover funds, lose privacy) |
-| **Solver doesn't fill** | Crosschain deposit delayed | Wait for another solver, or intent expires and refunds |
-| **Browser crash mid-deposit** | Transaction may not submit | Check wallet history; retry if needed |
-| **Wrong amount** | Funds in pool at that amount | Withdraw in parts or wait for more deposits at same amount |
+## Ragequit
 
-## Next Steps
+If your deposit is stuck in pending and you need your funds back:
+- You can **ragequit** to recover funds to the original depositor address
+- Privacy is lost for that deposit
+
+This ensures you're never trapped waiting for approval.
+
+---
+
+## Learn More
 
 - **[Withdrawing](/guides/withdraw)** — How to withdraw privately
 - **[Privacy Pools](/concepts/privacy-pools)** — Understand the technology
+- **[Compliance](/concepts/compliance)** — How ASP approval works
