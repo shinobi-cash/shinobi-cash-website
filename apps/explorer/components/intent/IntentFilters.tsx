@@ -74,7 +74,7 @@ function FilterDropdown({
         </button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="start" className="min-w-32 bg-neutral-900 border-white/10">
+      <DropdownMenuContent align="start" className="min-w-32 border-white/10 bg-neutral-900">
         {options.map((option) => (
           <DropdownMenuItem
             key={option.value ?? "all"}

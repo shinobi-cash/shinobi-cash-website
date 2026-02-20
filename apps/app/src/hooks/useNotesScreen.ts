@@ -11,8 +11,9 @@
 
 import { useMemo } from "react";
 import { useSnapshot } from "valtio";
-import type { Note, NoteTree } from "@shinobi-cash/core/discovery";
-import type { NotesStatus, NotesError, NoteFilter, NoteTreeView } from "@/types/notes";
+import type { Note, NoteOrIntent, NoteNode, NoteTree } from "@shinobi-cash/core/discovery";
+import type { NotesStatus, NotesError, NoteFilter } from "@/types/notes";
+import type { NoteView } from "@/controllers/NotesScreenController";
 import { useNotesDiscovery } from "./useNotesDiscovery";
 import {
   NotesDiscoveryController,
@@ -29,14 +30,16 @@ export interface NotesScreenControllerAPI {
   lastError: NotesError | null;
   syncError: string | null; // Set when we have cached data but sync failed
 
-  // Filtered views
-  filteredNoteViews: NoteTreeView[];
+  // Filtered views (individual notes, not trees)
+  filteredNoteViews: NoteView[];
+
+  // All trees (for navigation across trees)
+  allTrees: NoteTree[];
 
   // Filter state
   activeFilter: NoteFilter;
   spendableCount: number;
   pendingCount: number;
-  spentCount: number;
   totalCount: number;
 
   // Loading states
@@ -49,12 +52,13 @@ export interface NotesScreenControllerAPI {
   // Spendable notes (can withdraw or ragequit)
   spendableNotes: Note[];
 
-  // Selected note tree (domain data)
-  selectedNoteTree: NoteTree | null;
+  // Selected note (UTXO-style)
+  selectedNote: NoteOrIntent | null;
+  selectedNoteNode: NoteNode | null;
 
   // Actions
   setFilter: (filter: NoteFilter) => void;
-  selectNoteTree: (tree: NoteTree) => void;
+  selectNote: (note: NoteOrIntent, node: NoteNode) => void;
   clearSelection: () => void;
   reset: () => void;
 }
@@ -65,7 +69,7 @@ export interface NotesScreenControllerAPI {
  *
  * Uses selective subscriptions - only accesses:
  * - noteTrees, state.status, lastError from discovery (not progress)
- * - activeFilter, selectedNoteTree from screen controller
+ * - activeFilter, selectedNote from screen controller
  *
  * @returns Controller interface for notes screen
  */
@@ -79,7 +83,7 @@ export function useNotesScreen(): NotesScreenControllerAPI {
   } = useSnapshot(NotesDiscoveryController.state);
 
   // Selective subscription to screen controller
-  const { activeFilter, selectedNoteTree } = useSnapshot(NotesScreenController.state);
+  const { activeFilter, selectedNote, selectedNoteNode } = useSnapshot(NotesScreenController.state);
 
   // Trigger the useNotesDiscovery hook for its side effects (transaction refresh)
   useNotesDiscovery();
@@ -91,10 +95,16 @@ export function useNotesScreen(): NotesScreenControllerAPI {
     [discoveryState.status, noteTrees]
   );
 
-  // Get filtered views (from screen controller)
+  // Get filtered views (individual notes)
   const filteredNoteViews = useMemo(
     () => NotesScreenSelectors.getFilteredNoteViews(noteTrees as NoteTree[], activeFilter),
     [noteTrees, activeFilter]
+  );
+
+  // Get counts (individual notes)
+  const noteCounts = useMemo(
+    () => NotesScreenSelectors.getNoteCounts(noteTrees as NoteTree[]),
+    [noteTrees]
   );
 
   // Calculate total balance from spendable notes
@@ -110,15 +120,17 @@ export function useNotesScreen(): NotesScreenControllerAPI {
     lastError,
     syncError: viewState.syncError,
 
-    // Filtered views
+    // Filtered views (individual notes)
     filteredNoteViews,
 
-    // Filter state
+    // All trees for navigation
+    allTrees: noteTrees as NoteTree[],
+
+    // Filter state (using individual note counts)
     activeFilter,
-    spendableCount: viewState.counts.spendable,
-    pendingCount: viewState.counts.pending,
-    spentCount: viewState.counts.spent,
-    totalCount: viewState.totalCount,
+    spendableCount: noteCounts.spendable,
+    pendingCount: noteCounts.pending,
+    totalCount: noteCounts.spendable + noteCounts.pending,
 
     // Loading states (canonical)
     isLoading: viewState.isLoading,
@@ -130,12 +142,13 @@ export function useNotesScreen(): NotesScreenControllerAPI {
     // Spendable notes (canonical)
     spendableNotes: viewState.spendableNotes,
 
-    // Selection
-    selectedNoteTree: selectedNoteTree as NoteTree | null,
+    // Selection (UTXO-style)
+    selectedNote: selectedNote as NoteOrIntent | null,
+    selectedNoteNode: selectedNoteNode as NoteNode | null,
 
     // Actions
     setFilter: NotesScreenController.setFilter,
-    selectNoteTree: NotesScreenController.selectNoteTree,
+    selectNote: NotesScreenController.selectNote,
     clearSelection: NotesScreenController.clearSelection,
     reset: NotesScreenController.reset,
   };

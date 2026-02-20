@@ -1,11 +1,14 @@
 import type { IntentPhase } from "@shinobi-cash/data";
 
-export const PHASE_COLORS: Record<IntentPhase, {
-  dot: string;
-  ring: string;
-  badge: string;
-  text: string;
-}> = {
+export const PHASE_COLORS: Record<
+  IntentPhase,
+  {
+    dot: string;
+    ring: string;
+    badge: string;
+    text: string;
+  }
+> = {
   ESCROWED: {
     dot: "bg-yellow-500",
     ring: "ring-yellow-500/30",

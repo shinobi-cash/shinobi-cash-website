@@ -14,7 +14,9 @@ export function IntentRow({ intent }: Props) {
   const phaseColors = PHASE_COLORS[intent.phase];
 
   const originChain = intent.originChainId ? getChainName(Number(intent.originChainId)) : "Unknown";
-  const destChain = intent.destinationChainId ? getChainName(Number(intent.destinationChainId)) : "Pool";
+  const destChain = intent.destinationChainId
+    ? getChainName(Number(intent.destinationChainId))
+    : "Pool";
 
   return (
     <div className="px-5 py-4">
@@ -25,9 +27,7 @@ export function IntentRow({ intent }: Props) {
             {isDeposit ? "Deposit" : "Withdraw"}
           </span>
           <span className="text-neutral-600">|</span>
-          <span className="font-mono text-xs text-neutral-400">
-            {formatHash(intent.orderId)}
-          </span>
+          <span className="font-mono text-xs text-neutral-400">{formatHash(intent.orderId)}</span>
         </div>
         <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${phaseColors.badge}`}>
           {phaseLabel}
@@ -38,9 +38,7 @@ export function IntentRow({ intent }: Props) {
         <span className="text-neutral-500">
           {originChain} → {destChain}
         </span>
-        <span className="text-neutral-400">
-          {formatTimestamp(intent.timestamp)}
-        </span>
+        <span className="text-neutral-400">{formatTimestamp(intent.escrowTimestamp)}</span>
       </div>
     </div>
   );

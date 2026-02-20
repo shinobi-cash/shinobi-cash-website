@@ -6,7 +6,7 @@ Frequently asked questions about Shinobi Cash.
 
 ### What is Shinobi Cash?
 
-Shinobi Cash is a cross-chain privacy protocol that enables private transactions across the Ethereum ecosystem. It uses Privacy Pools and zero-knowledge proofs to let you deposit from any chain and withdraw to any chain while maintaining privacy.
+Shinobi Cash is a crosschain privacy protocol that enables private transactions across the Ethereum ecosystem. It uses Privacy Pools and zero-knowledge proofs to let you deposit from any chain and withdraw to any chain while maintaining privacy.
 
 ### Is this a mixer?
 
@@ -45,7 +45,7 @@ However:
 
 ### What's an anonymity set?
 
-The anonymity set is all the deposits your withdrawal could be from. Larger is better. Shinobi Cash's cross-chain approach creates a larger anonymity set than per-chain solutions.
+The anonymity set is all the deposits your withdrawal could be from. Larger is better. Shinobi Cash's crosschain approach creates a larger anonymity set than per-chain solutions.
 
 ## Compliance
 
@@ -75,7 +75,7 @@ No. Withdrawals are relayed via standard ERC-4337 bundlers. A paymaster sponsors
 
 Yes. Withdraw2 lets you spend 2 notes in a single transaction. This is useful for consolidating small notes or making larger withdrawals from multiple deposits.
 
-### What happens if a cross-chain transaction fails?
+### What happens if a crosschain transaction fails?
 
 If a solver doesn't fill your intent before the deadline:
 - Your escrowed funds are returned to the pool as a refund commitment
@@ -85,30 +85,30 @@ If a solver doesn't fill your intent before the deadline:
 
 ### What are the fees?
 
-:::info[Testnet Configuration]
-All fees are configurable. These are current testnet values and may change for mainnet.
+:::info[Testnet]
+All fees are configurable and may change for mainnet.
 :::
 
 **Deposits:**
-- Compliance fee: 1%
-- Solver fee: 5% (cross-chain only)
+- Compliance fee (goes to protocol)
+- Solver fee (crosschain only)
 
 **Withdrawals:**
-- Relay fee: Up to 15% (covers gas)
-- Solver fee: 5% (cross-chain only)
+- Relay fee (covers gas)
+- Solver fee (crosschain only)
 
 ### Why are fees high?
 
 Fees cover:
 - Gas costs (sponsored by paymasters)
-- Solver incentives (for cross-chain settlement)
+- Solver incentives (for crosschain settlement)
 - Protocol sustainability
 
 Fees may decrease as the protocol scales.
 
-### Why are cross-chain operations slow?
+### Why are crosschain operations slow?
 
-Solver availability on testnet is limited. Cross-chain deposits and withdrawals depend on solvers to fill intents. On mainnet, more solvers will provide faster settlement.
+Solver availability on testnet is limited. Crosschain deposits and withdrawals depend on solvers to fill intents. On mainnet, more solvers will provide faster settlement.
 
 ## Troubleshooting
 
@@ -116,7 +116,7 @@ Solver availability on testnet is limited. Cross-chain deposits and withdrawals 
 
 1. Wait for transaction confirmation (~1-2 blocks)
 2. Wait for indexer sync (~30 seconds)
-3. For cross-chain, wait for solver fill (~1-5 minutes)
+3. For crosschain, wait for solver fill (~1-5 minutes)
 4. Try refreshing the page
 
 ### Withdrawal failed
@@ -128,7 +128,7 @@ Common causes:
 
 ### Transaction stuck
 
-For cross-chain transactions, solvers usually fill within minutes. If expired:
+For crosschain transactions, solvers usually fill within minutes. If expired:
 - Funds return as a refund commitment
 - Refund appears in your notes
 - Withdraw the refund normally

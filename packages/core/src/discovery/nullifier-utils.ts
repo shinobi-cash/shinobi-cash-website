@@ -3,9 +3,13 @@
  * Nullifier derivation and hashing utilities
  */
 
-import { poseidon1 } from 'poseidon-lite/poseidon1';
-import { deriveDepositNullifier, deriveDepositSecret, derivePrecommitment } from '../deposit/index.js';
-import { deriveChangeNullifier } from '../withdrawal/index.js';
+import { poseidon1 } from "poseidon-lite/poseidon1";
+import {
+  deriveDepositNullifier,
+  deriveDepositSecret,
+  derivePrecommitment,
+} from "../deposit/index.js";
+import { deriveChangeNullifier } from "../withdrawal/index.js";
 
 /**
  * Derive the nullifier for a note at a given position
@@ -17,7 +21,7 @@ export function deriveNullifier(
   poolAddress: string,
   chainId: number | bigint | string,
   depositIndex: number,
-  changeIndex: number,
+  changeIndex: number
 ): bigint {
   return changeIndex === 0
     ? deriveDepositNullifier(accountKey, poolAddress, chainId, depositIndex)
@@ -41,7 +45,7 @@ export function deriveAndHashNullifier(
   poolAddress: string,
   chainId: number | bigint | string,
   depositIndex: number,
-  changeIndex: number,
+  changeIndex: number
 ): string {
   const nullifier = deriveNullifier(accountKey, poolAddress, chainId, depositIndex, changeIndex);
   return hashNullifier(nullifier);
@@ -55,7 +59,7 @@ export function deriveDepositPrecommitment(
   accountKey: bigint,
   poolAddress: string,
   chainId: number | bigint | string,
-  depositIndex: number,
+  depositIndex: number
 ): string {
   const nullifier = deriveDepositNullifier(accountKey, poolAddress, chainId, depositIndex);
   const secret = deriveDepositSecret(accountKey, poolAddress, chainId, depositIndex);

@@ -13,51 +13,59 @@ interface ActivityTypeBadgeProps {
 }
 
 const TYPE_STYLES: Record<ActivityType, { bg: string; text: string; dot: string }> = {
+  // Deposits
   DEPOSIT: {
     bg: "bg-emerald-400/10",
     text: "text-emerald-400",
     dot: "bg-emerald-400",
   },
-  CROSSCHAIN_DEPOSIT: {
+  CROSSCHAIN_DEPOSIT_FILL: {
     bg: "bg-emerald-400/10",
     text: "text-emerald-400",
     dot: "bg-emerald-400",
   },
-  CROSSCHAIN_DEPOSIT_PENDING: {
+  CROSSCHAIN_DEPOSIT_INTENT: {
     bg: "bg-amber-400/10",
     text: "text-amber-400",
     dot: "bg-amber-400",
   },
-  WITHDRAWAL: {
+  CROSSCHAIN_DEPOSIT_REFUND: {
+    bg: "bg-orange-400/10",
+    text: "text-orange-400",
+    dot: "bg-orange-400",
+  },
+  // Withdrawals
+  WITHDRAW: {
     bg: "bg-rose-400/10",
     text: "text-rose-400",
     dot: "bg-rose-400",
   },
-  WITHDRAW2: {
+  WITHDRAW_2: {
     bg: "bg-rose-400/10",
     text: "text-rose-400",
     dot: "bg-rose-400",
   },
-  CROSSCHAIN_WITHDRAWAL: {
-    bg: "bg-rose-400/10",
-    text: "text-rose-400",
-    dot: "bg-rose-400",
-  },
-  CROSSCHAIN_WITHDRAW2: {
-    bg: "bg-rose-400/10",
-    text: "text-rose-400",
-    dot: "bg-rose-400",
-  },
-  CROSSCHAIN_WITHDRAWAL_PENDING: {
+  CROSSCHAIN_WITHDRAW_INTENT: {
     bg: "bg-amber-400/10",
     text: "text-amber-400",
     dot: "bg-amber-400",
   },
-  CROSSCHAIN_WITHDRAW2_PENDING: {
+  CROSSCHAIN_WITHDRAW_2_INTENT: {
     bg: "bg-amber-400/10",
     text: "text-amber-400",
     dot: "bg-amber-400",
   },
+  CROSSCHAIN_WITHDRAWAL_FILL: {
+    bg: "bg-rose-400/10",
+    text: "text-rose-400",
+    dot: "bg-rose-400",
+  },
+  CROSSCHAIN_WITHDRAWAL_REFUND: {
+    bg: "bg-orange-400/10",
+    text: "text-orange-400",
+    dot: "bg-orange-400",
+  },
+  // Ragequit
   RAGEQUIT: {
     bg: "bg-red-500/10",
     text: "text-red-500",
@@ -67,14 +75,15 @@ const TYPE_STYLES: Record<ActivityType, { bg: string; text: string; dot: string 
 
 const TYPE_LABELS: Record<ActivityType, string> = {
   DEPOSIT: "Deposit",
-  CROSSCHAIN_DEPOSIT: "Cross-chain Deposit",
-  CROSSCHAIN_DEPOSIT_PENDING: "Deposit Pending",
-  WITHDRAWAL: "Withdrawal",
-  WITHDRAW2: "Withdrawal",
-  CROSSCHAIN_WITHDRAWAL: "Cross-chain Withdrawal",
-  CROSSCHAIN_WITHDRAW2: "Cross-chain Withdrawal",
-  CROSSCHAIN_WITHDRAWAL_PENDING: "Withdrawal Pending",
-  CROSSCHAIN_WITHDRAW2_PENDING: "Withdrawal Pending",
+  CROSSCHAIN_DEPOSIT_FILL: "Crosschain Deposit",
+  CROSSCHAIN_DEPOSIT_INTENT: "Crosschain Deposit",
+  CROSSCHAIN_DEPOSIT_REFUND: "Deposit Refunded",
+  WITHDRAW: "Withdrawal",
+  WITHDRAW_2: "Withdraw2",
+  CROSSCHAIN_WITHDRAW_INTENT: "Crosschain Withdraw",
+  CROSSCHAIN_WITHDRAW_2_INTENT: "Crosschain Withdraw2",
+  CROSSCHAIN_WITHDRAWAL_FILL: "Crosschain Withdrawal",
+  CROSSCHAIN_WITHDRAWAL_REFUND: "Withdrawal Refunded",
   RAGEQUIT: "Ragequit",
 };
 

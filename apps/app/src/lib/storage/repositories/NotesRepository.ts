@@ -15,10 +15,8 @@ import {
   type NoteTree,
   type SerializableNoteNode,
   type NullifierInfo,
-  type Activity,
-  type SerializedActivity,
+  type ActivityItem,
 } from "@shinobi-cash/core/discovery";
-import { serializeActivity, deserializeActivity } from "@shinobi-cash/data";
 import type { DiscoveryResult, DiscoveryOptions } from "@shinobi-cash/core/discovery";
 import {
   type IndexedDBStore,
@@ -67,8 +65,8 @@ export class NotesRepository {
         }
       }
 
-      // Deserialize activities
-      const activities = (cached.activities ?? []).map(deserializeActivity);
+      // Activities are already in correct format (data-v2 uses string values)
+      const activities = cached.activities ?? [];
 
       return {
         trees,
@@ -109,7 +107,7 @@ export class NotesRepository {
     minOffset?: number,
     nullifierMap?: Array<{ hash: string; info: NullifierInfo }>,
     nextDepositIndex?: Array<{ chainId: string; index: number }>,
-    activities?: SerializedActivity[]
+    activities?: ActivityItem[]
   ): Promise<void> {
     const sensitiveData: CachedNoteData = {
       poolAddress,
@@ -188,7 +186,10 @@ export class NotesRepository {
   ): Promise<DiscoveryResult> {
     // Create sync engine with persistence callbacks
     const engine = new NoteDiscovery(fetchActivities, {
-      loadState: async (pubKey: string, pool: string): Promise<SerializableDiscoveryState | null> => {
+      loadState: async (
+        pubKey: string,
+        pool: string
+      ): Promise<SerializableDiscoveryState | null> => {
         const cached = await this.getCachedData(pubKey, pool);
         if (!cached) return null;
 

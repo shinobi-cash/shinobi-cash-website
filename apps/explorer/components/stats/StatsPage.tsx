@@ -26,10 +26,7 @@ export function StatsPage() {
           </Link>
 
           <nav className="flex items-center gap-4">
-            <Link
-              href="/"
-              className="text-xs font-medium text-white sm:text-sm"
-            >
+            <Link href="/" className="text-xs font-medium text-white sm:text-sm">
               Stats
             </Link>
             <Link

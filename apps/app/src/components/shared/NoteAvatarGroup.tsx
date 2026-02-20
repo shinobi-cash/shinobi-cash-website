@@ -29,9 +29,10 @@ export function NoteAvatarGroup({
   className,
 }: NoteAvatarGroupProps) {
   const canAddMore = notes.length < maxNotes && showAddButton;
-  const sizeClasses = size === "sm"
-    ? { avatar: "h-6 w-6", icon: "h-3 w-3", text: "text-[10px]", overlap: "-ml-2" }
-    : { avatar: "h-8 w-8", icon: "h-4 w-4", text: "text-xs", overlap: "-ml-3" };
+  const sizeClasses =
+    size === "sm"
+      ? { avatar: "h-6 w-6", icon: "h-3 w-3", text: "text-[10px]", overlap: "-ml-2" }
+      : { avatar: "h-8 w-8", icon: "h-4 w-4", text: "text-xs", overlap: "-ml-3" };
 
   if (notes.length === 0) {
     return (
@@ -40,7 +41,7 @@ export function NoteAvatarGroup({
         disabled={disabled}
         className={cn(
           "flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 text-sm text-neutral-400 transition-colors",
-          !disabled && "hover:bg-white/[0.08] hover:text-white cursor-pointer",
+          !disabled && "cursor-pointer hover:bg-white/[0.08] hover:text-white",
           disabled && "cursor-not-allowed opacity-50",
           className
         )}
@@ -57,7 +58,7 @@ export function NoteAvatarGroup({
       disabled={disabled}
       className={cn(
         "flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 transition-colors",
-        !disabled && "hover:bg-white/[0.08] cursor-pointer",
+        !disabled && "cursor-pointer hover:bg-white/[0.08]",
         disabled && "cursor-not-allowed opacity-50",
         className
       )}
@@ -96,11 +97,8 @@ export function NoteAvatarGroup({
 
       {/* Label */}
       <div className="flex flex-col items-start">
-        <span className="text-sm font-medium font-mono text-white">
-          {notes.length === 1
-            ? notes[0].serialNumber
-            : `${notes.length} Notes`
-          }
+        <span className="font-mono text-sm font-medium text-white">
+          {notes.length === 1 ? notes[0].serialNumber : `${notes.length} Notes`}
         </span>
       </div>
     </button>
@@ -119,9 +117,10 @@ export function NoteAvatarStack({
   size?: "sm" | "md";
   className?: string;
 }) {
-  const sizeClasses = size === "sm"
-    ? { avatar: "h-5 w-5", text: "text-[9px]", overlap: "-ml-1.5" }
-    : { avatar: "h-6 w-6", text: "text-[10px]", overlap: "-ml-2" };
+  const sizeClasses =
+    size === "sm"
+      ? { avatar: "h-5 w-5", text: "text-[9px]", overlap: "-ml-1.5" }
+      : { avatar: "h-6 w-6", text: "text-[10px]", overlap: "-ml-2" };
 
   if (notes.length === 0) return null;
 

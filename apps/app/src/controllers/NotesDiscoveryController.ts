@@ -1,6 +1,10 @@
 import { proxy } from "valtio";
-import type { NoteTree, DiscoveryProgress, Note, Activity } from "@shinobi-cash/core/discovery";
-import { getSpendableNotes, getWithdrawableNotes, getNoteTreeCounts } from "@shinobi-cash/core/discovery";
+import type { NoteTree, DiscoveryProgress, Note, ActivityItem } from "@shinobi-cash/core/discovery";
+import {
+  getSpendableNotes,
+  getWithdrawableNotes,
+  getNoteTreeCounts,
+} from "@shinobi-cash/core/discovery";
 import { notesRepo } from "@/lib/storage/repositories/NotesRepository";
 import { fetchActivities } from "@/utils/indexer";
 import { createStateMachine } from "@/utils/stateMachine";
@@ -29,7 +33,7 @@ interface NotesDiscoveryControllerState {
   noteTrees: NoteTree[];
 
   // Raw activities for display (source of truth for activity feed)
-  activities: Activity[];
+  activities: ActivityItem[];
 
   // Discovery progress
   progress: DiscoveryProgress | null;
@@ -256,7 +260,9 @@ export const NotesDiscoveryController = {
       );
 
       if (cached && cached.trees) {
-        log.debug(`Loaded ${cached.trees.length} cached note trees, ${cached.activities.length} activities`);
+        log.debug(
+          `Loaded ${cached.trees.length} cached note trees, ${cached.activities.length} activities`
+        );
         state.noteTrees = cached.trees;
         state.activities = cached.activities;
       }
@@ -309,8 +315,8 @@ export const NotesDiscoveryController = {
         crypto.publicKey,
         SHINOBI_CASH_ETH_POOL.address,
         crypto.accountKey,
-        async (poolAddress, limit, cursor, orderDirection) => {
-          const result = await fetchActivities(poolAddress, limit, cursor, orderDirection);
+        async (poolAddress, limit, offset) => {
+          const result = await fetchActivities(poolAddress, limit, offset);
           return { items: result.items, pageInfo: result.pageInfo };
         },
         {
@@ -325,7 +331,9 @@ export const NotesDiscoveryController = {
 
       // Only update if this is still the current run
       if (runId === discoveryId) {
-        log.debug(`Discovery complete: ${result.trees.length} note trees, ${result.activities.length} activities`);
+        log.debug(
+          `Discovery complete: ${result.trees.length} note trees, ${result.activities.length} activities`
+        );
         state.noteTrees = result.trees;
         state.activities = result.activities;
         state.progress = null;

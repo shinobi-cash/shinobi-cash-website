@@ -1,0 +1,150 @@
+# Shinobi x OIF
+
+Shinobi Cash extends the **Open Intent Framework (OIF)** with specialized settlers to support **privacy-preserving crosschain deposits and withdrawals**.
+
+The core extension addresses a fundamental mismatch between **optimistic settlement** and **privacy pools**.
+
+---
+
+## Design Principle
+
+Standard OIF assumes **optimistic settlement**:
+- solvers fill intents
+- later prove the fill to claim escrowed funds
+
+This model works for swaps, where economic incentives align.
+
+**Privacy pools break this assumption.**
+
+When deposits are created via intents, the **depositor address determines compliance status**.  
+If a solver can fill an intent *without proving the original deposit existed*, the system becomes vulnerable to laundering.
+
+---
+
+## Why Optimistic Settlement Fails for Deposits
+
+In a privacy context, the attacker can be the **user and solver**.
+
+Without deposit intent validation:
+
+1. Attacker signs a deposit intent with a clean address B
+2. Attacker (as solver) fills it using illicit funds from address A
+3. Deposit is attributed to B → passes ASP compliance
+4. Attacker withdraws "clean" funds using a ZK proof
+
+Standard OIF relies on solver profit motive for security — but laundering attacks are not economically disincentivized.
+
+---
+
+## Shinobi’s Extension: Intent-Proven Deposits
+
+Shinobi requires **intent proof validation for deposits**.
+
+Before a deposit intent can be filled on the pool chain, the destination must verify that:
+- the intent was created on the origin chain
+- funds were actually escrowed
+- the depositor address matches the escrow provider
+
+This is enforced via an **intentOracle**.
+
+> **Invariant:**  
+> *The address receiving compliance status must be the address that provided the funds.*
+
+---
+
+## Settler Architecture
+
+Shinobi uses three settler contracts:
+
+| Contract | Chain | Role |
+|--------|------|------|
+| `ShinobiInputSettler` | Origin | Escrows funds, handles claims and refunds |
+| `ShinobiDepositOutputSettler` | Pool | Fills deposit intents (**intent-proven**) |
+| `ShinobiWithdrawalOutputSettler` | Destination | Fills withdrawal intents (optimistic) |
+
+---
+
+## ShinobiInputSettler (Origin)
+
+Manages the origin side of crosschain operations:
+- escrows funds
+- releases funds to solvers after fill proof
+- refunds expired intents (permissionless)
+
+**Lifecycle:**
+```
+None → Deposited → Claimed
+            ↓
+        Refunded
+```
+
+Refunds differ by flow:
+- **Deposits** → direct ETH refund
+- **Withdrawals** → refund commitment created in the pool
+
+---
+
+## ShinobiDepositOutputSettler (Pool Chain)
+
+Handles deposit fills with **mandatory intent validation**.
+
+Before accepting a fill, it verifies via `intentOracle` that:
+- the intent exists on the origin chain
+- escrowed funds are present
+- chain configuration matches
+
+If intent proof is missing or invalid, the fill is rejected.
+
+:::warning[Critical Security]
+This validation is the key difference from standard OIF.  
+Without it, privacy pools are vulnerable to free laundering.
+:::
+
+---
+
+## ShinobiWithdrawalOutputSettler (Destination)
+
+Handles withdrawal fills using **optimistic settlement**.
+
+No intent proof validation is required because:
+- the ZK proof was verified on the pool chain
+- the entrypoint only creates intents after proof verification
+- ownership and amount are cryptographically enforced
+
+Solvers fill the withdrawal, then prove the fill via `fillOracle` to claim escrowed funds.
+
+---
+
+## Oracle System
+
+| Oracle | Direction | Purpose |
+|------|-----------|--------|
+| `fillOracle` | Destination → Origin | Proves fills occurred (claims) |
+| `intentOracle` | Origin → Destination | Proves deposit intents are legitimate |
+
+---
+
+## Security Summary
+
+| Aspect | Deposits | Withdrawals |
+|------|----------|-------------|
+| Optimistic settlement | ❌ | ✅ |
+| Intent proof required | ✅ | ❌ |
+| Why | Prevents depositor spoofing | ZK proof already validates user |
+| Fill validation | fillOracle | fillOracle |
+| Refund | ETH to user | Commitment in pool |
+
+---
+
+## Source Code
+
+- [ShinobiInputSettler](https://github.com/shinobi-cash/shinobi.cash-contracts/blob/main/src/oif/ShinobiInputSettler.sol)
+- [ShinobiDepositOutputSettler](https://github.com/shinobi-cash/shinobi.cash-contracts/blob/main/src/oif/ShinobiDepositOutputSettler.sol)
+- [ShinobiWithdrawalOutputSettler](https://github.com/shinobi-cash/shinobi.cash-contracts/blob/main/src/oif/ShinobiWithdrawalOutputSettler.sol)
+
+---
+
+## Related
+
+- **[Entrypoints](/contracts/entrypoint)** — Creates intents
+- **[Crosschain Architecture](/concepts/cross-chain)** — End-to-end flow

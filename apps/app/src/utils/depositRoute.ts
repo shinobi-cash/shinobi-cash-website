@@ -8,7 +8,6 @@ import {
   EntrypointDepositAbi,
   SHINOBI_CASH_CROSSCHAIN_CONTRACTS,
   CrosschainDepositEntrypointAbi,
-  FEE_CONFIG,
   POOL_CHAIN,
 } from "@shinobi-cash/constants";
 import type { Abi, Address } from "viem";
@@ -23,6 +22,12 @@ export interface DepositRoute {
 
 export interface DepositCallParams extends DepositRoute {
   args: readonly unknown[];
+}
+
+export interface DepositSettings {
+  solverFeeBPS: number;
+  fillDeadlineSeconds: number;
+  expirySeconds: number;
 }
 
 /**
@@ -61,7 +66,7 @@ export function resolveDepositRoute(chainId: number): DepositRoute {
   return {
     address: crosschainContract.DEPOSIT_ENTRYPOINT.address as Address,
     abi: CrosschainDepositEntrypointAbi,
-    functionName: "depositWithCustomFee",
+    functionName: "deposit", // Default function, may be overridden in buildDepositCallParams
     isCrossChain: true,
     chainId,
   };
@@ -69,27 +74,45 @@ export function resolveDepositRoute(chainId: number): DepositRoute {
 
 /**
  * Builds deposit call arguments based on route and parameters
- * Separates fee policy from routing logic
+ * Uses deposit() for defaults, depositWithCustomParams() for custom settings
  * @param route - Deposit route from resolveDepositRoute
  * @param precommitment - Cash note precommitment hash
- * @param solverFeeBps - Solver fee in basis points (only for cross-chain)
+ * @param settings - Deposit settings (solverFeeBPS, fillDeadline, expiry)
+ * @param useDefaults - If true, use simple deposit() with contract defaults
  * @returns Complete call parameters with args
  */
 export function buildDepositCallParams(
   route: DepositRoute,
   precommitment: bigint,
-  solverFeeBps: number = FEE_CONFIG.DEFAULT_SOLVER_FEE_BPS
+  settings: DepositSettings,
+  useDefaults: boolean
 ): DepositCallParams {
-  if (route.isCrossChain) {
+  // Same-chain always uses simple deposit
+  if (!route.isCrossChain) {
     return {
       ...route,
-      args: [precommitment, BigInt(solverFeeBps)] as const,
+      args: [precommitment] as const,
+    };
+  }
+
+  // Cross-chain: use deposit() for defaults, depositWithCustomParams() for custom
+  if (useDefaults) {
+    return {
+      ...route,
+      functionName: "deposit",
+      args: [precommitment] as const,
     };
   }
 
   return {
     ...route,
-    args: [precommitment] as const,
+    functionName: "depositWithCustomParams",
+    args: [
+      precommitment,
+      BigInt(settings.solverFeeBPS),
+      settings.fillDeadlineSeconds,
+      settings.expirySeconds,
+    ] as const,
   };
 }
 

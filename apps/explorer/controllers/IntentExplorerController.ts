@@ -1,9 +1,18 @@
 import { proxy } from "valtio";
-import type { Intent, IntentTimelineEvent, PaginatedResponse } from "@shinobi-cash/data";
+import type { Intent, PaginatedResponse } from "@shinobi-cash/data";
 import type { IntentTypeFilter, IntentPhaseFilter } from "@/services/data/indexerService";
 import { fetchIntents, fetchIntentDetails } from "@/services/data/indexerService";
 
 const PAGE_SIZE = 15;
+
+// Timeline event type (built from Intent's embedded phase data)
+export interface IntentTimelineEvent {
+  phase: string;
+  txHash: string;
+  timestamp: string;
+  chainId: string;
+  solver?: string;
+}
 
 // Types
 export interface IntentFilters {
@@ -123,8 +132,8 @@ export const IntentExplorerController = {
         "desc",
         state.filters
       );
-      state.intents = result.items;
-      state.hasNextPage = result.pageInfo?.hasNextPage ?? false;
+      state.intents = result.data;
+      state.hasNextPage = result.pagination.hasMore;
     } catch (error) {
       state.listError = error instanceof Error ? error.message : "Failed to fetch intents";
     } finally {

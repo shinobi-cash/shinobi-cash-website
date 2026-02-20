@@ -9,7 +9,13 @@ import { useScreenNavigation } from "@/hooks/useScreenNavigation";
 import { useRagequitController } from "@/hooks/useRagequitController";
 import { useNotesDiscovery } from "@/hooks/useNotesDiscovery";
 import { RagequitController, RagequitSelectors } from "@/controllers/RagequitController";
-import { traverseTree, getSpendableNotes, type NoteTree, type ChangeNote } from "@shinobi-cash/core/discovery";
+import {
+  traverseTree,
+  getSpendableNotes,
+  isNote,
+  type NoteTree,
+  type ChangeNote,
+} from "@shinobi-cash/core/discovery";
 import type { WalletClient, Account, Transport, Chain } from "viem";
 
 /** Check if a note tree has any merge history (received funds from another note) */
@@ -20,8 +26,9 @@ function checkMergeHistory(noteTrees: NoteTree[], depositIndex: number): boolean
   let hasMerge = false;
   traverseTree(tree, (node) => {
     // Check if this is a ChangeNote with merge history
-    if (node.note.noteType === "change") {
-      const changeNote = node.note as ChangeNote;
+    const item = node.note;
+    if (isNote(item) && item.noteType === "change") {
+      const changeNote = item as ChangeNote;
       if (Object.keys(changeNote.mergedFrom).length > 0) {
         hasMerge = true;
       }
@@ -69,9 +76,7 @@ export default function RagequitPage() {
 
     // Check controller state directly (not stale snapshot)
     if (RagequitController.state.state.status === "ready") {
-      await RagequitController.submit(
-        walletClient as WalletClient<Transport, Chain, Account>,
-      );
+      await RagequitController.submit(walletClient as WalletClient<Transport, Chain, Account>);
     }
   };
 
@@ -130,7 +135,10 @@ export default function RagequitPage() {
   }
 
   // Check if this note tree has merge history
-  const noteHasMergeHistory = checkMergeHistory(discovery.noteTrees as NoteTree[], selectedNote.depositIndex);
+  const noteHasMergeHistory = checkMergeHistory(
+    discovery.noteTrees as NoteTree[],
+    selectedNote.depositIndex
+  );
 
   // Default: Preview screen
   return (

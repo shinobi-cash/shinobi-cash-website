@@ -2,12 +2,17 @@
  * @shinobi-cash/core/withdrawal
  */
 
-import { encodeAbiParameters, encodeFunctionData, keccak256 } from 'viem/utils';
-import { poseidon3 } from 'poseidon-lite/poseidon3';
-import type { SpendableNote, DepositNote, CrosschainDepositNote, ChangeNote } from '../discovery/types.js';
-import { createDeriveFn, derivePrecommitment } from '../crypto/primitives.js';
-import { SNARK_SCALAR_FIELD } from '../crypto/constants.js';
-import { deriveDepositNullifier, deriveDepositSecret } from '../deposit/index.js';
+import { encodeAbiParameters, encodeFunctionData, keccak256 } from "viem/utils";
+import { poseidon3 } from "poseidon-lite/poseidon3";
+import type {
+  SpendableNote,
+  DepositNote,
+  CrosschainDepositNote,
+  ChangeNote,
+} from "../discovery/types.js";
+import { createDeriveFn, derivePrecommitment } from "../crypto/primitives.js";
+import { SNARK_SCALAR_FIELD } from "../crypto/constants.js";
+import { deriveDepositNullifier, deriveDepositSecret } from "../deposit/index.js";
 import {
   EntrypointRelayAbi,
   EntrypointCrosschainWithdrawalAbi,
@@ -15,7 +20,7 @@ import {
   EntrypointCrosschainWithdraw2Abi,
   PoolRagequitAbi,
   SHINOBI_CASH_ENTRYPOINT,
-} from '@shinobi-cash/constants';
+} from "@shinobi-cash/constants";
 import type {
   WithdrawalData,
   CrossChainWithdrawalData,
@@ -33,7 +38,7 @@ import type {
   Withdraw2SecondaryDerivation,
   CrosschainWithdraw2Derivation,
   RagequitDerivation,
-} from './types.js';
+} from "./types.js";
 
 // Re-export types
 export type {
@@ -54,7 +59,7 @@ export type {
   Withdraw2SecondaryDerivation,
   CrosschainWithdraw2Derivation,
   RagequitDerivation,
-} from './types.js';
+} from "./types.js";
 
 // Re-export note selection
 export {
@@ -64,7 +69,7 @@ export {
   isWithdraw2Selection,
   getTotalInputAmount,
   getChangeNoteLabel,
-} from './note-selection.js';
+} from "./note-selection.js";
 export type {
   WithdrawalType,
   SelectedNote,
@@ -73,24 +78,24 @@ export type {
   WithdrawalSelection,
   SelectionError,
   SelectionResult,
-} from './note-selection.js';
+} from "./note-selection.js";
 
 // ============ CONTRACT ENCODING ============
 
 export function createWithdrawalData(
   recipientAddress: string,
   feeRecipient: string,
-  relayFeeBPS: bigint,
+  relayFeeBPS: bigint
 ): readonly [`0x${string}`, `0x${string}`] {
   return [
     SHINOBI_CASH_ENTRYPOINT.address,
     encodeAbiParameters(
       [
-        { type: 'address', name: 'recipient' },
-        { type: 'address', name: 'feeRecipient' },
-        { type: 'uint256', name: 'relayFeeBPS' },
+        { type: "address", name: "recipient" },
+        { type: "address", name: "feeRecipient" },
+        { type: "uint256", name: "relayFeeBPS" },
       ],
-      [recipientAddress as `0x${string}`, feeRecipient as `0x${string}`, relayFeeBPS],
+      [recipientAddress as `0x${string}`, feeRecipient as `0x${string}`, relayFeeBPS]
     ),
   ] as const;
 }
@@ -99,8 +104,7 @@ export function createCrossChainWithdrawalData(
   recipientAddress: string,
   destinationChainId: number,
   feeRecipient: string,
-  relayFeeBPS: bigint,
-  solverFeeBPS: bigint,
+  solverFeeBPS: bigint
 ): readonly [`0x${string}`, `0x${string}`] {
   const encodedDestination = (BigInt(destinationChainId) << BigInt(224)) | BigInt(recipientAddress);
 
@@ -108,23 +112,24 @@ export function createCrossChainWithdrawalData(
     SHINOBI_CASH_ENTRYPOINT.address,
     encodeAbiParameters(
       [
-        { type: 'address', name: 'feeRecipient' },
-        { type: 'uint256', name: 'relayFeeBPS' },
-        { type: 'uint256', name: 'solverFeeBPS' },
-        { type: 'bytes32', name: 'encodedDestination' },
+        { type: "address", name: "feeRecipient" },
+        { type: "uint256", name: "solverFeeBPS" },
+        { type: "bytes32", name: "encodedDestination" },
       ],
       [
         feeRecipient as `0x${string}`,
-        relayFeeBPS,
         solverFeeBPS,
-        `0x${encodedDestination.toString(16).padStart(64, '0')}`,
-      ],
+        `0x${encodedDestination.toString(16).padStart(64, "0")}`,
+      ]
     ),
   ] as const;
 }
 
 /** Format snarkjs proof for Solidity verifier */
-export function formatProofForContract(proof: SnarkJsProof, publicSignals: string[]): ContractProof {
+export function formatProofForContract(
+  proof: SnarkJsProof,
+  publicSignals: string[]
+): ContractProof {
   return {
     pA: [BigInt(proof.pi_a[0]), BigInt(proof.pi_a[1])],
     pB: [
@@ -145,9 +150,25 @@ export function formatProofForContract(proof: SnarkJsProof, publicSignals: strin
   };
 }
 
+/**
+ * Format snarkjs cross-chain proof for Solidity verifier (11 signals)
+ *
+ * Public signals order:
+ * [0] newCommitmentHash - Output: new commitment after withdrawal
+ * [1] existingNullifierHash - Output: spent nullifier
+ * [2] refundCommitmentHash - Output: commitment for refund
+ * [3] relayFeeBPSOut - Output: relay fee in basis points
+ * [4] refundFeeBPSOut - Output: refund fee in basis points
+ * [5] withdrawnValue - Input: amount withdrawn
+ * [6] stateRoot - Input: merkle state root
+ * [7] stateTreeDepth - Input: state tree depth
+ * [8] ASPRoot - Input: ASP merkle root
+ * [9] ASPTreeDepth - Input: ASP tree depth
+ * [10] context - Input: binding context hash
+ */
 export function formatCrossChainProofForContract(
   proof: SnarkJsProof,
-  publicSignals: string[],
+  publicSignals: string[]
 ): ContractCrossChainProof {
   return {
     pA: [BigInt(proof.pi_a[0]), BigInt(proof.pi_a[1])],
@@ -157,15 +178,17 @@ export function formatCrossChainProofForContract(
     ],
     pC: [BigInt(proof.pi_c[0]), BigInt(proof.pi_c[1])],
     pubSignals: [
-      BigInt(publicSignals[0]),
-      BigInt(publicSignals[1]),
-      BigInt(publicSignals[2]),
-      BigInt(publicSignals[3]),
-      BigInt(publicSignals[4]),
-      BigInt(publicSignals[5]),
-      BigInt(publicSignals[6]),
-      BigInt(publicSignals[7]),
-      BigInt(publicSignals[8]),
+      BigInt(publicSignals[0]), // newCommitmentHash
+      BigInt(publicSignals[1]), // existingNullifierHash
+      BigInt(publicSignals[2]), // refundCommitmentHash
+      BigInt(publicSignals[3]), // relayFeeBPSOut
+      BigInt(publicSignals[4]), // refundFeeBPSOut
+      BigInt(publicSignals[5]), // withdrawnValue
+      BigInt(publicSignals[6]), // stateRoot
+      BigInt(publicSignals[7]), // stateTreeDepth
+      BigInt(publicSignals[8]), // ASPRoot
+      BigInt(publicSignals[9]), // ASPTreeDepth
+      BigInt(publicSignals[10]), // context
     ],
   };
 }
@@ -173,11 +196,11 @@ export function formatCrossChainProofForContract(
 export function encodeRelayCallData(
   withdrawalData: WithdrawalData,
   proof: ContractProof,
-  scope: bigint,
+  scope: bigint
 ): `0x${string}` {
   return encodeFunctionData({
     abi: EntrypointRelayAbi,
-    functionName: 'relay',
+    functionName: "relay",
     args: [
       { processooor: withdrawalData.processooor, data: withdrawalData.data },
       { pA: proof.pA, pB: proof.pB, pC: proof.pC, pubSignals: proof.pubSignals },
@@ -189,11 +212,11 @@ export function encodeRelayCallData(
 export function encodeCrossChainWithdrawalCallData(
   withdrawalData: CrossChainWithdrawalData,
   proof: ContractCrossChainProof,
-  scope: bigint,
+  scope: bigint
 ): `0x${string}` {
   return encodeFunctionData({
     abi: EntrypointCrosschainWithdrawalAbi,
-    functionName: 'crosschainWithdrawal',
+    functionName: "crosschainWithdrawal",
     args: [
       { processooor: withdrawalData.processooor, data: withdrawalData.data },
       { pA: proof.pA, pB: proof.pB, pC: proof.pC, pubSignals: proof.pubSignals },
@@ -220,7 +243,7 @@ export function encodeCrossChainWithdrawalCallData(
  */
 export function formatWithdraw2SameChainProofForContract(
   proof: SnarkJsProof,
-  publicSignals: string[],
+  publicSignals: string[]
 ): ContractWithdraw2SameChainProof {
   return {
     pA: [BigInt(proof.pi_a[0]), BigInt(proof.pi_a[1])],
@@ -244,23 +267,25 @@ export function formatWithdraw2SameChainProofForContract(
 }
 
 /**
- * Format snarkjs proof for cross-chain Withdraw2 Solidity verifier (10 signals)
+ * Format snarkjs proof for cross-chain Withdraw2 Solidity verifier (12 signals)
  *
  * Public signals order:
  * [0] newCommitmentHash - Change output commitment
  * [1] nullifierHash0 - Primary input nullifier (spent)
  * [2] nullifierHash1 - Secondary input nullifier (spent)
  * [3] refundCommitmentHash - Cross-chain refund commitment
- * [4] withdrawnValue - Amount withdrawn
- * [5] stateRoot - State merkle root
- * [6] stateTreeDepth - State tree depth
- * [7] ASPRoot - ASP merkle root
- * [8] ASPTreeDepth - ASP tree depth
- * [9] context - Binding context hash
+ * [4] relayFeeBPSOut - Output: relay fee in basis points
+ * [5] refundFeeBPSOut - Output: refund fee in basis points
+ * [6] withdrawnValue - Amount withdrawn
+ * [7] stateRoot - State merkle root
+ * [8] stateTreeDepth - State tree depth
+ * [9] ASPRoot - ASP merkle root
+ * [10] ASPTreeDepth - ASP tree depth
+ * [11] context - Binding context hash
  */
 export function formatWithdraw2CrossChainProofForContract(
   proof: SnarkJsProof,
-  publicSignals: string[],
+  publicSignals: string[]
 ): ContractCrosschainWithdraw2Proof {
   return {
     pA: [BigInt(proof.pi_a[0]), BigInt(proof.pi_a[1])],
@@ -274,12 +299,14 @@ export function formatWithdraw2CrossChainProofForContract(
       BigInt(publicSignals[1]), // nullifierHash0
       BigInt(publicSignals[2]), // nullifierHash1
       BigInt(publicSignals[3]), // refundCommitmentHash
-      BigInt(publicSignals[4]), // withdrawnValue
-      BigInt(publicSignals[5]), // stateRoot
-      BigInt(publicSignals[6]), // stateTreeDepth
-      BigInt(publicSignals[7]), // ASPRoot
-      BigInt(publicSignals[8]), // ASPTreeDepth
-      BigInt(publicSignals[9]), // context
+      BigInt(publicSignals[4]), // relayFeeBPSOut
+      BigInt(publicSignals[5]), // refundFeeBPSOut
+      BigInt(publicSignals[6]), // withdrawnValue
+      BigInt(publicSignals[7]), // stateRoot
+      BigInt(publicSignals[8]), // stateTreeDepth
+      BigInt(publicSignals[9]), // ASPRoot
+      BigInt(publicSignals[10]), // ASPTreeDepth
+      BigInt(publicSignals[11]), // context
     ],
   };
 }
@@ -287,11 +314,11 @@ export function formatWithdraw2CrossChainProofForContract(
 export function encodeWithdraw2RelayCallData(
   withdrawalData: WithdrawalData,
   proof: ContractWithdraw2SameChainProof,
-  scope: bigint,
+  scope: bigint
 ): `0x${string}` {
   return encodeFunctionData({
     abi: EntrypointWithdraw2RelayAbi,
-    functionName: 'relay2',
+    functionName: "relay2",
     args: [
       { processooor: withdrawalData.processooor, data: withdrawalData.data },
       { pA: proof.pA, pB: proof.pB, pC: proof.pC, pubSignals: proof.pubSignals },
@@ -303,11 +330,11 @@ export function encodeWithdraw2RelayCallData(
 export function encodeCrossChainWithdraw2CallData(
   withdrawalData: CrossChainWithdrawalData,
   proof: ContractCrosschainWithdraw2Proof,
-  scope: bigint,
+  scope: bigint
 ): `0x${string}` {
   return encodeFunctionData({
     abi: EntrypointCrosschainWithdraw2Abi,
-    functionName: 'crossChainWithdrawal2',
+    functionName: "crossChainWithdrawal2",
     args: [
       { processooor: withdrawalData.processooor, data: withdrawalData.data },
       { pA: proof.pA, pB: proof.pB, pC: proof.pC, pubSignals: proof.pubSignals },
@@ -318,10 +345,10 @@ export function encodeCrossChainWithdraw2CallData(
 
 // ============ DERIVATION FUNCTIONS ============
 
-export const deriveChangeNullifier = createDeriveFn('shinobi.cash:ChangeNullifierV1');
-export const deriveChangeSecret = createDeriveFn('shinobi.cash:ChangeSecretV1');
-export const deriveRefundNullifier = createDeriveFn('shinobi.cash:RefundNullifierV1');
-export const deriveRefundSecret = createDeriveFn('shinobi.cash:RefundSecretV1');
+export const deriveChangeNullifier = createDeriveFn("shinobi.cash:ChangeNullifierV1");
+export const deriveChangeSecret = createDeriveFn("shinobi.cash:ChangeSecretV1");
+export const deriveRefundNullifier = createDeriveFn("shinobi.cash:RefundNullifierV1");
+export const deriveRefundSecret = createDeriveFn("shinobi.cash:RefundSecretV1");
 
 // ============ DERIVATION LOGIC ============
 
@@ -331,11 +358,11 @@ export function hashToBigInt(data: string): bigint {
 
 export function calculateContextHash(
   poolScope: bigint,
-  withdrawalData: readonly [string, string],
+  withdrawalData: readonly [string, string]
 ): ContextHash {
   const encoded = encodeAbiParameters(
-    [{ type: 'tuple', components: [{ type: 'address' }, { type: 'bytes' }] }, { type: 'uint256' }],
-    [withdrawalData as readonly [`0x${string}`, `0x${string}`], poolScope],
+    [{ type: "tuple", components: [{ type: "address" }, { type: "bytes" }] }, { type: "uint256" }],
+    [withdrawalData as readonly [`0x${string}`, `0x${string}`], poolScope]
   );
   return hashToBigInt(encoded).toString();
 }
@@ -345,21 +372,47 @@ export function derivedNoteCommitment(accountKey: bigint, note: SpendableNote): 
   let secret: bigint;
 
   if (note.changeIndex === 0) {
-    nullifier = deriveDepositNullifier(accountKey, note.poolAddress, note.originChainId, note.depositIndex);
-    secret = deriveDepositSecret(accountKey, note.poolAddress, note.originChainId, note.depositIndex);
+    nullifier = deriveDepositNullifier(
+      accountKey,
+      note.poolAddress,
+      note.originChainId,
+      note.depositIndex
+    );
+    secret = deriveDepositSecret(
+      accountKey,
+      note.poolAddress,
+      note.originChainId,
+      note.depositIndex
+    );
   } else {
-    nullifier = deriveChangeNullifier(accountKey, note.poolAddress, note.originChainId, note.depositIndex, note.changeIndex);
-    secret = deriveChangeSecret(accountKey, note.poolAddress, note.originChainId, note.depositIndex, note.changeIndex);
+    nullifier = deriveChangeNullifier(
+      accountKey,
+      note.poolAddress,
+      note.originChainId,
+      note.depositIndex,
+      note.changeIndex
+    );
+    secret = deriveChangeSecret(
+      accountKey,
+      note.poolAddress,
+      note.originChainId,
+      note.depositIndex,
+      note.changeIndex
+    );
   }
 
-  return poseidon3([BigInt(note.amount), BigInt(note.label), derivePrecommitment(nullifier, secret)]);
+  return poseidon3([
+    BigInt(note.amount),
+    BigInt(note.label),
+    derivePrecommitment(nullifier, secret),
+  ]);
 }
 
 export function deriveRefundCommitment(
   amount: bigint,
   label: bigint,
   refundNullifier: bigint,
-  refundSecret: bigint,
+  refundSecret: bigint
 ): string {
   return poseidon3([amount, label, derivePrecommitment(refundNullifier, refundSecret)]).toString();
 }
@@ -369,14 +422,36 @@ function deriveDepositWithdrawal(
   accountKey: bigint,
   poolAddress: string,
   poolScope: bigint,
-  withdrawalData: readonly [string, string],
+  withdrawalData: readonly [string, string]
 ): WithdrawalDerivation {
   return {
     contextHash: calculateContextHash(poolScope, withdrawalData),
-    existingNullifier: deriveDepositNullifier(accountKey, poolAddress, note.originChainId, note.depositIndex),
-    existingSecret: deriveDepositSecret(accountKey, poolAddress, note.originChainId, note.depositIndex),
-    newNullifier: deriveChangeNullifier(accountKey, poolAddress, note.originChainId, note.depositIndex, 1),
-    newSecret: deriveChangeSecret(accountKey, poolAddress, note.originChainId, note.depositIndex, 1),
+    existingNullifier: deriveDepositNullifier(
+      accountKey,
+      poolAddress,
+      note.originChainId,
+      note.depositIndex
+    ),
+    existingSecret: deriveDepositSecret(
+      accountKey,
+      poolAddress,
+      note.originChainId,
+      note.depositIndex
+    ),
+    newNullifier: deriveChangeNullifier(
+      accountKey,
+      poolAddress,
+      note.originChainId,
+      note.depositIndex,
+      1
+    ),
+    newSecret: deriveChangeSecret(
+      accountKey,
+      poolAddress,
+      note.originChainId,
+      note.depositIndex,
+      1
+    ),
     existingCommitment: derivedNoteCommitment(accountKey, note).toString(),
   };
 }
@@ -386,14 +461,38 @@ function deriveChangeWithdrawal(
   accountKey: bigint,
   poolAddress: string,
   poolScope: bigint,
-  withdrawalData: readonly [string, string],
+  withdrawalData: readonly [string, string]
 ): WithdrawalDerivation {
   return {
     contextHash: calculateContextHash(poolScope, withdrawalData),
-    existingNullifier: deriveChangeNullifier(accountKey, poolAddress, note.originChainId, note.depositIndex, note.changeIndex),
-    existingSecret: deriveChangeSecret(accountKey, poolAddress, note.originChainId, note.depositIndex, note.changeIndex),
-    newNullifier: deriveChangeNullifier(accountKey, poolAddress, note.originChainId, note.depositIndex, note.changeIndex + 1),
-    newSecret: deriveChangeSecret(accountKey, poolAddress, note.originChainId, note.depositIndex, note.changeIndex + 1),
+    existingNullifier: deriveChangeNullifier(
+      accountKey,
+      poolAddress,
+      note.originChainId,
+      note.depositIndex,
+      note.changeIndex
+    ),
+    existingSecret: deriveChangeSecret(
+      accountKey,
+      poolAddress,
+      note.originChainId,
+      note.depositIndex,
+      note.changeIndex
+    ),
+    newNullifier: deriveChangeNullifier(
+      accountKey,
+      poolAddress,
+      note.originChainId,
+      note.depositIndex,
+      note.changeIndex + 1
+    ),
+    newSecret: deriveChangeSecret(
+      accountKey,
+      poolAddress,
+      note.originChainId,
+      note.depositIndex,
+      note.changeIndex + 1
+    ),
     existingCommitment: derivedNoteCommitment(accountKey, note).toString(),
   };
 }
@@ -403,14 +502,14 @@ export function deriveWithdrawalInputs(
   accountKey: bigint,
   poolAddress: string,
   poolScope: bigint,
-  withdrawalData: readonly [string, string],
+  withdrawalData: readonly [string, string]
 ): WithdrawalDerivation {
-  if (note.noteType === 'deposit' || note.noteType === 'crosschainDeposit') {
+  if (note.noteType === "deposit" || note.noteType === "crosschainDeposit") {
     return deriveDepositWithdrawal(note, accountKey, poolAddress, poolScope, withdrawalData);
-  } else if (note.noteType === 'change') {
+  } else if (note.noteType === "change") {
     return deriveChangeWithdrawal(note, accountKey, poolAddress, poolScope, withdrawalData);
   }
-  throw new Error('Cannot withdraw from refund note');
+  throw new Error("Cannot withdraw from refund note");
 }
 
 export function deriveCrosschainWithdrawalInputs(
@@ -418,19 +517,37 @@ export function deriveCrosschainWithdrawalInputs(
   accountKey: bigint,
   poolAddress: string,
   poolScope: bigint,
-  withdrawalData: readonly [string, string],
+  withdrawalData: readonly [string, string]
 ): CrosschainWithdrawalDerivation {
   const base = deriveWithdrawalInputs(note, accountKey, poolAddress, poolScope, withdrawalData);
-  const nextChangeIndex = (note.noteType === 'deposit' || note.noteType === 'crosschainDeposit') ? 1 : note.changeIndex + 1;
+  const nextChangeIndex =
+    note.noteType === "deposit" || note.noteType === "crosschainDeposit" ? 1 : note.changeIndex + 1;
 
-  const refundNullifier = deriveRefundNullifier(accountKey, poolAddress, note.originChainId, note.depositIndex, nextChangeIndex);
-  const refundSecret = deriveRefundSecret(accountKey, poolAddress, note.originChainId, note.depositIndex, nextChangeIndex);
+  const refundNullifier = deriveRefundNullifier(
+    accountKey,
+    poolAddress,
+    note.originChainId,
+    note.depositIndex,
+    nextChangeIndex
+  );
+  const refundSecret = deriveRefundSecret(
+    accountKey,
+    poolAddress,
+    note.originChainId,
+    note.depositIndex,
+    nextChangeIndex
+  );
 
   return {
     ...base,
     refundNullifier,
     refundSecret,
-    refundCommitment: deriveRefundCommitment(BigInt(note.amount), BigInt(note.label), refundNullifier, refundSecret),
+    refundCommitment: deriveRefundCommitment(
+      BigInt(note.amount),
+      BigInt(note.label),
+      refundNullifier,
+      refundSecret
+    ),
   };
 }
 
@@ -443,21 +560,45 @@ export function deriveCrosschainWithdrawalInputs(
 function derivePrimaryInput(
   note: SpendableNote,
   accountKey: bigint,
-  poolAddress: string,
+  poolAddress: string
 ): Withdraw2PrimaryDerivation {
-  const isDeposit = note.noteType === 'deposit' || note.noteType === 'crosschainDeposit';
+  const isDeposit = note.noteType === "deposit" || note.noteType === "crosschainDeposit";
   const nextChangeIndex = isDeposit ? 1 : note.changeIndex + 1;
 
   return {
     existingNullifier: isDeposit
       ? deriveDepositNullifier(accountKey, poolAddress, note.originChainId, note.depositIndex)
-      : deriveChangeNullifier(accountKey, poolAddress, note.originChainId, note.depositIndex, note.changeIndex),
+      : deriveChangeNullifier(
+          accountKey,
+          poolAddress,
+          note.originChainId,
+          note.depositIndex,
+          note.changeIndex
+        ),
     existingSecret: isDeposit
       ? deriveDepositSecret(accountKey, poolAddress, note.originChainId, note.depositIndex)
-      : deriveChangeSecret(accountKey, poolAddress, note.originChainId, note.depositIndex, note.changeIndex),
+      : deriveChangeSecret(
+          accountKey,
+          poolAddress,
+          note.originChainId,
+          note.depositIndex,
+          note.changeIndex
+        ),
     existingCommitment: derivedNoteCommitment(accountKey, note).toString(),
-    newNullifier: deriveChangeNullifier(accountKey, poolAddress, note.originChainId, note.depositIndex, nextChangeIndex),
-    newSecret: deriveChangeSecret(accountKey, poolAddress, note.originChainId, note.depositIndex, nextChangeIndex),
+    newNullifier: deriveChangeNullifier(
+      accountKey,
+      poolAddress,
+      note.originChainId,
+      note.depositIndex,
+      nextChangeIndex
+    ),
+    newSecret: deriveChangeSecret(
+      accountKey,
+      poolAddress,
+      note.originChainId,
+      note.depositIndex,
+      nextChangeIndex
+    ),
   };
 }
 
@@ -468,17 +609,29 @@ function derivePrimaryInput(
 function deriveSecondaryInput(
   note: SpendableNote,
   accountKey: bigint,
-  poolAddress: string,
+  poolAddress: string
 ): Withdraw2SecondaryDerivation {
-  const isDeposit = note.noteType === 'deposit' || note.noteType === 'crosschainDeposit';
+  const isDeposit = note.noteType === "deposit" || note.noteType === "crosschainDeposit";
 
   return {
     existingNullifier: isDeposit
       ? deriveDepositNullifier(accountKey, poolAddress, note.originChainId, note.depositIndex)
-      : deriveChangeNullifier(accountKey, poolAddress, note.originChainId, note.depositIndex, note.changeIndex),
+      : deriveChangeNullifier(
+          accountKey,
+          poolAddress,
+          note.originChainId,
+          note.depositIndex,
+          note.changeIndex
+        ),
     existingSecret: isDeposit
       ? deriveDepositSecret(accountKey, poolAddress, note.originChainId, note.depositIndex)
-      : deriveChangeSecret(accountKey, poolAddress, note.originChainId, note.depositIndex, note.changeIndex),
+      : deriveChangeSecret(
+          accountKey,
+          poolAddress,
+          note.originChainId,
+          note.depositIndex,
+          note.changeIndex
+        ),
     existingCommitment: derivedNoteCommitment(accountKey, note).toString(),
   };
 }
@@ -504,11 +657,11 @@ export function deriveWithdraw2Inputs(
   poolAddress: string,
   poolScope: bigint,
   withdrawalData: readonly [string, string],
-  labelSelector: 0 | 1 = 0,
+  labelSelector: 0 | 1 = 0
 ): Withdraw2Derivation {
   // Validate that primary has larger depositIndex
   if (primaryNote.depositIndex <= secondaryNote.depositIndex) {
-    throw new Error('Primary note must have larger depositIndex than secondary note');
+    throw new Error("Primary note must have larger depositIndex than secondary note");
   }
 
   return {
@@ -540,7 +693,7 @@ export function deriveCrosschainWithdraw2Inputs(
   poolAddress: string,
   poolScope: bigint,
   withdrawalData: readonly [string, string],
-  labelSelector: 0 | 1 = 0,
+  labelSelector: 0 | 1 = 0
 ): CrosschainWithdraw2Derivation {
   const base = deriveWithdraw2Inputs(
     primaryNote,
@@ -549,25 +702,28 @@ export function deriveCrosschainWithdraw2Inputs(
     poolAddress,
     poolScope,
     withdrawalData,
-    labelSelector,
+    labelSelector
   );
 
   // Refund uses primary's chain position (since primary continues)
-  const nextChangeIndex = (primaryNote.noteType === 'deposit' || primaryNote.noteType === 'crosschainDeposit') ? 1 : primaryNote.changeIndex + 1;
+  const nextChangeIndex =
+    primaryNote.noteType === "deposit" || primaryNote.noteType === "crosschainDeposit"
+      ? 1
+      : primaryNote.changeIndex + 1;
 
   const refundNullifier = deriveRefundNullifier(
     accountKey,
     poolAddress,
     primaryNote.originChainId,
     primaryNote.depositIndex,
-    nextChangeIndex,
+    nextChangeIndex
   );
   const refundSecret = deriveRefundSecret(
     accountKey,
     poolAddress,
     primaryNote.originChainId,
     primaryNote.depositIndex,
-    nextChangeIndex,
+    nextChangeIndex
   );
 
   // Refund commitment uses the selected label
@@ -581,7 +737,12 @@ export function deriveCrosschainWithdraw2Inputs(
     ...base,
     refundNullifier,
     refundSecret,
-    refundCommitment: deriveRefundCommitment(refundAmount, selectedLabel, refundNullifier, refundSecret),
+    refundCommitment: deriveRefundCommitment(
+      refundAmount,
+      selectedLabel,
+      refundNullifier,
+      refundSecret
+    ),
   };
 }
 
@@ -598,7 +759,7 @@ export function deriveCrosschainWithdraw2Inputs(
  */
 export function formatRagequitProofForContract(
   proof: SnarkJsProof,
-  publicSignals: string[],
+  publicSignals: string[]
 ): ContractRagequitProof {
   return {
     pA: [BigInt(proof.pi_a[0]), BigInt(proof.pi_a[1])],
@@ -622,7 +783,7 @@ export function formatRagequitProofForContract(
 export function encodeRagequitCallData(proof: ContractRagequitProof): `0x${string}` {
   return encodeFunctionData({
     abi: PoolRagequitAbi,
-    functionName: 'ragequit',
+    functionName: "ragequit",
     args: [{ pA: proof.pA, pB: proof.pB, pC: proof.pC, pubSignals: proof.pubSignals }],
   });
 }
@@ -634,17 +795,29 @@ export function encodeRagequitCallData(proof: ContractRagequitProof): `0x${strin
 export function deriveRagequitInputs(
   note: SpendableNote,
   accountKey: bigint,
-  poolAddress: string,
+  poolAddress: string
 ): RagequitDerivation {
-  const isDeposit = note.noteType === 'deposit' || note.noteType === 'crosschainDeposit';
+  const isDeposit = note.noteType === "deposit" || note.noteType === "crosschainDeposit";
 
   const existingNullifier = isDeposit
     ? deriveDepositNullifier(accountKey, poolAddress, note.originChainId, note.depositIndex)
-    : deriveChangeNullifier(accountKey, poolAddress, note.originChainId, note.depositIndex, note.changeIndex);
+    : deriveChangeNullifier(
+        accountKey,
+        poolAddress,
+        note.originChainId,
+        note.depositIndex,
+        note.changeIndex
+      );
 
   const existingSecret = isDeposit
     ? deriveDepositSecret(accountKey, poolAddress, note.originChainId, note.depositIndex)
-    : deriveChangeSecret(accountKey, poolAddress, note.originChainId, note.depositIndex, note.changeIndex);
+    : deriveChangeSecret(
+        accountKey,
+        poolAddress,
+        note.originChainId,
+        note.depositIndex,
+        note.changeIndex
+      );
 
   return {
     existingNullifier,

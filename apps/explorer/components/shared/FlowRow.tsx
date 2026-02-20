@@ -51,7 +51,7 @@ export function FlowRow({
       </div>
       {amount !== null && (
         <span
-          className={`tabular-nums text-sm font-medium ${
+          className={`text-sm font-medium tabular-nums ${
             direction === "in" ? "text-emerald-400" : "text-rose-400"
           }`}
         >

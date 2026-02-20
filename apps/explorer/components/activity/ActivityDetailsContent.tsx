@@ -1,16 +1,15 @@
-import type { Activity } from "@shinobi-cash/data";
+import type { ActivityItem, TimelineEvent } from "@shinobi-cash/data";
 import {
-  isDepositActivity,
-  isWithdrawalActivity,
-  isWithdraw2Activity,
-  isCrossChainDepositActivity,
-  isCrossChainWithdrawalActivity,
-  isCrossChainWithdraw2Activity,
-  isCrossChainDepositPendingActivity,
-  isCrossChainWithdrawalPendingActivity,
-  isCrossChainWithdraw2PendingActivity,
-  isRagequitActivity,
-  isAnyCrossChainActivity,
+  isDeposit,
+  isCrosschainDepositFill,
+  isCrosschainDepositIntent,
+  isWithdraw,
+  isWithdraw2,
+  isCrosschainWithdrawIntent,
+  isCrosschainWithdraw2Intent,
+  isCrosschainWithdrawalFill,
+  isRagequit,
+  isCrossChain,
 } from "@shinobi-cash/data";
 import { formatEthAmount, formatHash, formatTimestamp } from "@/utils/formatters";
 import { ActivityStatusBadge } from "./ActivityStatusBadge";
@@ -19,72 +18,118 @@ import { ChainLink } from "@/components/shared/ChainLink";
 import { HashField } from "@/components/shared/HashField";
 import { DetailField } from "@/components/shared/DetailField";
 import { CopyableText } from "@/components/shared/CopyableText";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Check, Clock, AlertCircle } from "lucide-react";
 import Link from "next/link";
+import { getChainName, getTxExplorerUrl } from "@/config/chains";
 
 interface Props {
-  activity: Activity;
+  activity: ActivityItem;
+  timeline?: readonly TimelineEvent[] | null;
 }
 
 const ACTIVITY_TYPE_LABELS: Record<string, string> = {
   DEPOSIT: "Deposit",
-  WITHDRAWAL: "Withdrawal",
-  WITHDRAW2: "Withdrawal (2:1 Merge)",
-  CROSSCHAIN_DEPOSIT: "Cross-chain Deposit",
-  CROSSCHAIN_WITHDRAWAL: "Cross-chain Withdrawal",
-  CROSSCHAIN_WITHDRAW2: "Cross-chain Withdrawal (2:1 Merge)",
-  CROSSCHAIN_DEPOSIT_PENDING: "Cross-chain Deposit (Pending)",
-  CROSSCHAIN_WITHDRAWAL_PENDING: "Cross-chain Withdrawal (Pending)",
-  CROSSCHAIN_WITHDRAW2_PENDING: "Cross-chain Withdrawal (2:1 Merge, Pending)",
+  WITHDRAW: "Withdrawal",
+  WITHDRAW_2: "Withdrawal (2:1 Merge)",
+  CROSSCHAIN_DEPOSIT_INTENT: "Cross-chain Deposit (Intent)",
+  CROSSCHAIN_DEPOSIT_FILL: "Cross-chain Deposit",
+  CROSSCHAIN_DEPOSIT_REFUND: "Cross-chain Deposit (Refund)",
+  CROSSCHAIN_WITHDRAW_INTENT: "Cross-chain Withdrawal (Intent)",
+  CROSSCHAIN_WITHDRAW_2_INTENT: "Cross-chain Withdrawal (2:1 Merge, Intent)",
+  CROSSCHAIN_WITHDRAWAL_FILL: "Cross-chain Withdrawal",
+  CROSSCHAIN_WITHDRAWAL_REFUND: "Cross-chain Withdrawal (Refund)",
   RAGEQUIT: "Ragequit",
 };
 
-const INTENT_STATUS_LABELS: Record<string, string> = {
-  pending: "Pending",
-  filled: "Filled",
-  refunded: "Refunded",
+const TIMELINE_TYPE_LABELS: Record<string, string> = {
+  CROSSCHAIN_DEPOSIT_INTENT: "Intent Created",
+  CROSSCHAIN_DEPOSIT_FILL: "Deposit Filled",
+  CROSSCHAIN_DEPOSIT_REFUND: "Deposit Refunded",
+  CROSSCHAIN_WITHDRAW_INTENT: "Intent Created",
+  CROSSCHAIN_WITHDRAW_2_INTENT: "Intent Created",
+  CROSSCHAIN_WITHDRAWAL_FILL: "Withdrawal Filled",
+  CROSSCHAIN_WITHDRAWAL_REFUND: "Withdrawal Refunded",
 };
 
-export function ActivityDetailsContent({ activity }: Props) {
-  const isDeposit =
-    isDepositActivity(activity) ||
-    isCrossChainDepositActivity(activity) ||
-    isCrossChainDepositPendingActivity(activity);
-  const isWithdrawal =
-    isWithdrawalActivity(activity) ||
-    isWithdraw2Activity(activity) ||
-    isCrossChainWithdrawalActivity(activity) ||
-    isCrossChainWithdraw2Activity(activity) ||
-    isCrossChainWithdrawalPendingActivity(activity) ||
-    isCrossChainWithdraw2PendingActivity(activity);
-  const isCrossChain = isAnyCrossChainActivity(activity);
-  const isRagequit = isRagequitActivity(activity);
-  const isPending =
-    isCrossChainDepositPendingActivity(activity) ||
-    isCrossChainWithdrawalPendingActivity(activity);
+function TimelineEventIcon({ type, isLast }: { type: string; isLast: boolean }) {
+  const isRefund = type.includes("REFUND");
+  const isFill = type.includes("FILL");
+  const isIntent = type.includes("INTENT");
+
+  if (isRefund) {
+    return (
+      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-red-500/20 text-red-400">
+        <AlertCircle className="h-3 w-3" />
+      </div>
+    );
+  }
+
+  if (isFill || isLast) {
+    return (
+      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400">
+        <Check className="h-3 w-3" />
+      </div>
+    );
+  }
+
+  if (isIntent) {
+    return (
+      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500/20 text-blue-400">
+        <Clock className="h-3 w-3" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-white/10 text-neutral-500">
+      <div className="h-2 w-2 rounded-full bg-current" />
+    </div>
+  );
+}
+
+export function ActivityDetailsContent({ activity, timeline }: Props) {
+  // Determine activity category
+  const isDepositActivity =
+    isDeposit(activity) || isCrosschainDepositIntent(activity) || isCrosschainDepositFill(activity);
+  const isWithdrawalActivity =
+    isWithdraw(activity) ||
+    isWithdraw2(activity) ||
+    isCrosschainWithdrawIntent(activity) ||
+    isCrosschainWithdraw2Intent(activity) ||
+    isCrosschainWithdrawalFill(activity);
+  const isCrossChainActivity = isCrossChain(activity);
+  const isCrossChainIntent =
+    isCrosschainDepositIntent(activity) ||
+    isCrosschainWithdrawIntent(activity) ||
+    isCrosschainWithdraw2Intent(activity);
+  const isRagequitActivity = isRagequit(activity);
 
   // ASP status is only relevant for deposits
-  const showAspStatus = isDeposit && activity.aspStatus;
-
-  // Intent status is only relevant for cross-chain activities
-  const showIntentStatus = isCrossChain && activity.intentStatus;
+  const aspStatus = "aspStatus" in activity ? activity.aspStatus : null;
+  const showAspStatus = isDepositActivity && aspStatus;
 
   // Fee calculations
-  const originalAmount = activity.originalAmount ? BigInt(activity.originalAmount) : null;
   const amount = activity.amount ? BigInt(activity.amount) : null;
-  const vettingFee = activity.vettingFeeAmount ? BigInt(activity.vettingFeeAmount) : BigInt(0);
-  const solverFee = activity.solverFeeAmount ? BigInt(activity.solverFeeAmount) : BigInt(0);
-  const relayFee = activity.relayFeeAmount ? BigInt(activity.relayFeeAmount) : BigInt(0);
-  const paymasterRefund = activity.paymasterFeeRefund
-    ? BigInt(activity.paymasterFeeRefund)
-    : BigInt(0);
 
-  // Net relay fee after refund (for sponsored withdrawals)
-  const netRelayFee = relayFee - paymasterRefund;
+  // For deposits
+  const originalAmount =
+    "originalAmount" in activity && activity.originalAmount
+      ? BigInt(activity.originalAmount)
+      : null;
+  const vettingFee =
+    "vettingFeeAmount" in activity && activity.vettingFeeAmount
+      ? BigInt(activity.vettingFeeAmount)
+      : BigInt(0);
+
+  // For withdrawals
+  const relayFee =
+    "relayFee" in activity && activity.relayFee ? BigInt(activity.relayFee) : BigInt(0);
+  const solverFee =
+    "solverFee" in activity && activity.solverFee ? BigInt(activity.solverFee) : BigInt(0);
 
   // For withdrawals: net received by recipient
   const withdrawalNetReceived =
-    isWithdrawal && amount !== null ? amount - netRelayFee - solverFee : null;
+    isWithdrawalActivity && amount !== null ? amount - relayFee - solverFee : null;
 
   return (
     <div className="space-y-6 p-5">
@@ -94,28 +139,23 @@ export function ActivityDetailsContent({ activity }: Props) {
           <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs font-medium text-white">
             {ACTIVITY_TYPE_LABELS[activity.type] ?? activity.type}
           </span>
-          {showAspStatus && <ActivityStatusBadge status={activity.aspStatus} />}
-          {isRagequit && (
+          {showAspStatus && <ActivityStatusBadge status={aspStatus} />}
+          {isRagequitActivity && (
             <span className="rounded-full bg-rose-500/20 px-2 py-0.5 text-xs font-medium text-rose-400">
               Emergency Exit
             </span>
           )}
-          {isPending && (
+          {isCrossChainIntent && (
             <span className="rounded-full bg-yellow-500/20 px-2 py-0.5 text-xs font-medium text-yellow-400">
               Awaiting Fill
             </span>
           )}
-          {activity.isSponsored && (
-            <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs font-medium text-emerald-400">
-              Sponsored
-            </span>
-          )}
         </div>
         <p className="mt-3 text-3xl font-semibold tabular-nums text-white">
-          {isDeposit || isRagequit ? "+" : "−"}
+          {isDepositActivity || isRagequitActivity ? "+" : "−"}
           {formatEthAmount(activity.amount, { decimals: 6 })} ETH
         </p>
-        {isPending && (
+        {isCrossChainIntent && (
           <p className="mt-1 text-sm text-neutral-400">
             Amount will be finalized when solver fills the intent
           </p>
@@ -128,72 +168,113 @@ export function ActivityDetailsContent({ activity }: Props) {
           Status & Metadata
         </p>
         <div className="flex flex-wrap gap-6">
-        {showIntentStatus && (
-          <DetailField label="Intent Status">
-            <span className="capitalize">
-              {INTENT_STATUS_LABELS[activity.intentStatus!] ?? activity.intentStatus}
-            </span>
-          </DetailField>
-        )}
-        <DetailField label="Time">{formatTimestamp(activity.timestamp)}</DetailField>
-        {isCrossChain && activity.orderId && (
-          <DetailField label="Order ID">
-            <span className="flex items-center gap-2">
-              <CopyableText
-                value={activity.orderId}
-                displayValue={formatHash(activity.orderId)}
-                className="font-mono"
-              />
-              <Link
-                href={`/intents?orderId=${activity.orderId}`}
-                className="rounded p-1 text-neutral-400 transition hover:bg-white/10 hover:text-orange-400"
-                title="View Intent Details"
-              >
-                <ExternalLink className="h-3.5 w-3.5" />
-              </Link>
-            </span>
-          </DetailField>
-        )}
+          <DetailField label="Time">{formatTimestamp(activity.timestamp)}</DetailField>
+          {isCrossChainActivity && "orderId" in activity && activity.orderId && (
+            <DetailField label="Order ID">
+              <span className="flex items-center gap-2">
+                <CopyableText
+                  value={activity.orderId}
+                  displayValue={formatHash(activity.orderId)}
+                  className="font-mono"
+                />
+                <Link
+                  href={`/intents?orderId=${activity.orderId}`}
+                  className="rounded p-1 text-neutral-400 transition hover:bg-white/10 hover:text-orange-400"
+                  title="View Intent Details"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </Link>
+              </span>
+            </DetailField>
+          )}
         </div>
       </section>
 
-      {/* Fund Flow - Deposits */}
-      {isDeposit && (
+      {/* Timeline for cross-chain activities */}
+      {isCrossChainActivity && timeline && timeline.length > 0 && (
         <section className="space-y-3">
-          <p className="text-xs font-medium uppercase tracking-wider text-neutral-500">
-            Fund Flow
-          </p>
-            {/* Source: User */}
-            {activity.user && (
-              <FlowRow
-                label="From"
-                role="Depositor"
-                address={activity.user}
-                amount={originalAmount || amount}
-                direction="out"
-              />
-            )}
+          <p className="text-xs font-medium uppercase tracking-wider text-neutral-500">Timeline</p>
+          <div className="rounded-xl bg-white/5 p-4">
+            <div className="relative space-y-4">
+              {timeline.map((event, index) => {
+                const isLast = index === timeline.length - 1;
+                return (
+                  <div key={event.txHash} className="relative flex gap-3">
+                    {/* Vertical line */}
+                    {!isLast && (
+                      <div className="absolute left-3 top-6 h-[calc(100%+0.5rem)] w-px -translate-x-1/2 bg-white/10" />
+                    )}
 
-            {/* Arrow */}
-            <div className="flex items-center gap-2 pl-4 text-neutral-500">
-              <span>↓</span>
-              <span className="text-xs">distributed to</span>
+                    {/* Icon */}
+                    <div className="relative z-10">
+                      <TimelineEventIcon type={event.type} isLast={isLast} />
+                    </div>
+
+                    {/* Content */}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-white">
+                          {TIMELINE_TYPE_LABELS[event.type] ?? event.type}
+                        </span>
+                      </div>
+                      <div className="mt-1 flex items-center justify-between text-xs">
+                        <a
+                          href={getTxExplorerUrl(event.chainId, event.txHash)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-neutral-300 transition-colors hover:text-orange-400"
+                        >
+                          {getChainName(event.chainId)}
+                          <span className="text-neutral-500">↗</span>
+                        </a>
+                        <span className="text-neutral-400">{formatTimestamp(event.timestamp)}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
+          </div>
+        </section>
+      )}
 
-            {/* Solver Fee (crosschain only) */}
-            {isCrossChain && activity.solver && solverFee > BigInt(0) && (
-              <FlowRow
-                label="To"
-                role="Solver"
-                address={activity.solver}
-                amount={solverFee}
-                direction="in"
-                feeType="Solver Fee"
-              />
-            )}
+      {/* Fund Flow - Deposits */}
+      {isDepositActivity && (
+        <section className="space-y-3">
+          <p className="text-xs font-medium uppercase tracking-wider text-neutral-500">Fund Flow</p>
+          {/* Source: User */}
+          {activity.user && (
+            <FlowRow
+              label="From"
+              role="Depositor"
+              address={activity.user}
+              amount={originalAmount || amount}
+              direction="out"
+            />
+          )}
 
-            {/* Vetting Fee */}
-            {activity.vettingFeeRecipient && vettingFee > BigInt(0) && (
+          {/* Arrow */}
+          <div className="flex items-center gap-2 pl-4 text-neutral-500">
+            <span>↓</span>
+            <span className="text-xs">distributed to</span>
+          </div>
+
+          {/* Solver Fee (crosschain) */}
+          {isCrossChainActivity && solverFee > BigInt(0) && (
+            <FlowRow
+              label="To"
+              role="Solver"
+              address={"solver" in activity && activity.solver ? activity.solver : "Pending fill"}
+              amount={solverFee}
+              direction="in"
+              feeType="Solver Fee"
+            />
+          )}
+
+          {/* Vetting Fee */}
+          {"vettingFeeRecipient" in activity &&
+            activity.vettingFeeRecipient &&
+            vettingFee > BigInt(0) && (
               <FlowRow
                 label="To"
                 role="Entrypoint"
@@ -204,125 +285,115 @@ export function ActivityDetailsContent({ activity }: Props) {
               />
             )}
 
-            {/* Pool */}
-            <FlowRow
-              label="To"
-              role="Pool"
-              address={activity.poolId}
-              amount={amount}
-              direction="in"
-              highlight
-            />
+          {/* Pool */}
+          <FlowRow
+            label="To"
+            role="Pool"
+            address={activity.pool}
+            amount={amount}
+            direction="in"
+            highlight
+          />
         </section>
       )}
 
       {/* Fund Flow - Withdrawals */}
-      {isWithdrawal && amount && (
+      {isWithdrawalActivity && amount && (
         <section className="space-y-3">
-          <p className="text-xs font-medium uppercase tracking-wider text-neutral-500">
-            Fund Flow
-          </p>
-            {/* Source: Pool */}
+          <p className="text-xs font-medium uppercase tracking-wider text-neutral-500">Fund Flow</p>
+          {/* Source: Pool */}
+          <FlowRow
+            label="From"
+            role="Pool"
+            address={activity.pool}
+            amount={amount}
+            direction="out"
+          />
+
+          {/* Arrow */}
+          <div className="flex items-center gap-2 pl-4 text-neutral-500">
+            <span>↓</span>
+            <span className="text-xs">distributed to</span>
+          </div>
+
+          {/* Solver Fee (crosschain) */}
+          {isCrossChainActivity && solverFee > BigInt(0) && (
             <FlowRow
-              label="From"
-              role="Pool"
-              address={activity.poolId}
-              amount={amount}
-              direction="out"
+              label="To"
+              role="Solver"
+              address={"solver" in activity && activity.solver ? activity.solver : "Pending fill"}
+              amount={solverFee}
+              direction="in"
+              feeType="Solver Fee"
             />
+          )}
 
-            {/* Arrow */}
-            <div className="flex items-center gap-2 pl-4 text-neutral-500">
-              <span>↓</span>
-              <span className="text-xs">distributed to</span>
-            </div>
+          {/* Relay Fee */}
+          {"relayer" in activity && activity.relayer && relayFee > BigInt(0) && (
+            <FlowRow
+              label="To"
+              role="Relayer"
+              address={activity.relayer}
+              amount={relayFee}
+              direction="in"
+              feeType="Relay Fee"
+            />
+          )}
 
-            {/* Solver Fee (crosschain only) */}
-            {isCrossChain && activity.solver && solverFee > BigInt(0) && (
-              <FlowRow
-                label="To"
-                role="Solver"
-                address={activity.solver}
-                amount={solverFee}
-                direction="in"
-                feeType="Solver Fee"
-              />
-            )}
-
-            {/* Relay Fee */}
-            {activity.relayer && relayFee > BigInt(0) && (
-              <FlowRow
-                label="To"
-                role="Relayer"
-                address={activity.relayer}
-                amount={netRelayFee}
-                direction="in"
-                feeType="Relay Fee"
-              />
-            )}
-
-            {/* Recipient */}
-            {activity.recipient && withdrawalNetReceived !== null && (
-              <FlowRow
-                label="To"
-                role="Recipient"
-                address={activity.recipient}
-                amount={withdrawalNetReceived}
-                direction="in"
-                highlight
-              />
-            )}
+          {/* Recipient */}
+          {"recipient" in activity && activity.recipient && withdrawalNetReceived !== null && (
+            <FlowRow
+              label="To"
+              role="Recipient"
+              address={activity.recipient}
+              amount={withdrawalNetReceived}
+              direction="in"
+              highlight
+            />
+          )}
         </section>
       )}
 
       {/* Fund Flow - Ragequit */}
-      {isRagequit && amount && (
+      {isRagequitActivity && amount && (
         <section className="space-y-3">
           <p className="text-xs font-medium uppercase tracking-wider text-rose-400">
             Emergency Exit - No Fees
           </p>
-            {/* Source: Pool */}
+          {/* Source: Pool */}
+          <FlowRow
+            label="From"
+            role="Pool"
+            address={activity.pool}
+            amount={amount}
+            direction="out"
+          />
+
+          {/* Arrow */}
+          <div className="flex items-center gap-2 pl-4 text-neutral-500">
+            <span>↓</span>
+            <span className="text-xs">full amount returned</span>
+          </div>
+
+          {/* User */}
+          {activity.user && (
             <FlowRow
-              label="From"
-              role="Pool"
-              address={activity.poolId}
+              label="To"
+              role="Ragequitter"
+              address={activity.user}
               amount={amount}
-              direction="out"
+              direction="in"
+              highlight
             />
-
-            {/* Arrow */}
-            <div className="flex items-center gap-2 pl-4 text-neutral-500">
-              <span>↓</span>
-              <span className="text-xs">full amount returned</span>
-            </div>
-
-            {/* User */}
-            {activity.user && (
-              <FlowRow
-                label="To"
-                role="Ragequitter"
-                address={activity.user}
-                amount={amount}
-                direction="in"
-                highlight
-              />
-            )}
+          )}
         </section>
       )}
 
       {/* Chain & Transaction */}
       <section className="flex flex-wrap gap-6">
-        <ChainLink
-          label={isCrossChain ? "Origin Chain" : "Chain"}
-          chainId={activity.originChainId}
-          txHash={activity.originTransactionHash}
-        />
-        {isCrossChain && activity.destinationChainId && (
-          <ChainLink
-            label="Destination Chain"
-            chainId={activity.destinationChainId}
-            txHash={activity.destinationTransactionHash}
-          />
+        <ChainLink label="Chain" chainId={activity.chainId} txHash={activity.txHash} />
+        {isCrosschainDepositIntent(activity) && activity.destinationChainId && (
+          <ChainLink label="Destination Chain" chainId={activity.destinationChainId} />
         )}
       </section>
 
@@ -333,41 +404,38 @@ export function ActivityDetailsContent({ activity }: Props) {
         </p>
 
         {/* Deposits: Commitment, Precommitment, Label */}
-        {isDeposit && (
+        {isDepositActivity && (
           <div className="flex flex-wrap gap-x-6 gap-y-3">
-            <HashField label="Commitment" value={activity.commitment} />
-            {activity.precommitmentHash && (
-              <HashField label="Precommitment" value={activity.precommitmentHash} />
+            {"commitment" in activity && activity.commitment && (
+              <HashField label="Commitment" value={activity.commitment} />
             )}
-            {activity.label && <HashField label="Label" value={activity.label} />}
+            {"precommitment" in activity && activity.precommitment && (
+              <HashField label="Precommitment" value={activity.precommitment} />
+            )}
+            {"label" in activity && activity.label && (
+              <HashField label="Label" value={activity.label} />
+            )}
           </div>
         )}
 
-        {/* Withdrawals: Nullifier(s), Change Commitment, Refund Commitment */}
-        {isWithdrawal && (
+        {/* Withdrawals: Change Commitment, Refund Commitment */}
+        {isWithdrawalActivity && (
           <div className="flex flex-wrap gap-x-6 gap-y-3">
-            {activity.spentNullifier && (
-              <HashField
-                label={activity.spentNullifier1 ? "Spent Nullifier 1" : "Spent Nullifier"}
-                value={activity.spentNullifier}
-              />
-            )}
-            {activity.spentNullifier1 && (
-              <HashField label="Spent Nullifier 2" value={activity.spentNullifier1} />
-            )}
-            {activity.newCommitment && (
+            {"newCommitment" in activity && activity.newCommitment && (
               <HashField label="Change Commitment" value={activity.newCommitment} />
             )}
-            {activity.refundCommitment && (
+            {"refundCommitment" in activity && activity.refundCommitment && (
               <HashField label="Refund Commitment" value={activity.refundCommitment} />
             )}
           </div>
         )}
 
         {/* Ragequit: Commitment */}
-        {isRagequit && (
+        {isRagequitActivity && (
           <div className="flex flex-wrap gap-x-6 gap-y-3">
-            <HashField label="Commitment" value={activity.commitment} />
+            {"commitment" in activity && (
+              <HashField label="Commitment" value={activity.commitment} />
+            )}
           </div>
         )}
       </section>

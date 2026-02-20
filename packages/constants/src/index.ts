@@ -11,10 +11,11 @@ export {
   PoolScopeAbi,
   PoolRagequitAbi,
   CrosschainDepositEntrypointAbi,
+  CrosschainDepositConfigAbi,
   EntrypointWithdraw2RelayAbi,
   EntrypointCrosschainWithdraw2Abi,
-} from './abi.js';
+} from "./abi.js";
 
 // ============ CONTRACTS ============
-export * from './contracts/constants.js';
-export * from './network/index.js';
+export * from "./contracts/constants.js";
+export * from "./network/index.js";

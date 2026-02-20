@@ -20,12 +20,39 @@ export interface ContractProof {
   pubSignals: [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint];
 }
 
-/** Cross-chain contract-ready proof (9 signals) */
+/**
+ * Cross-chain contract-ready proof (11 signals)
+ *
+ * Public signals order:
+ * [0] newCommitmentHash - Output: new commitment after withdrawal
+ * [1] existingNullifierHash - Output: spent nullifier
+ * [2] refundCommitmentHash - Output: commitment for refund
+ * [3] relayFeeBPSOut - Output: relay fee in basis points
+ * [4] refundFeeBPSOut - Output: refund fee in basis points
+ * [5] withdrawnValue - Input: amount withdrawn
+ * [6] stateRoot - Input: merkle state root
+ * [7] stateTreeDepth - Input: state tree depth
+ * [8] ASPRoot - Input: ASP merkle root
+ * [9] ASPTreeDepth - Input: ASP tree depth
+ * [10] context - Input: binding context hash
+ */
 export interface ContractCrossChainProof {
   pA: [bigint, bigint];
   pB: [[bigint, bigint], [bigint, bigint]];
   pC: [bigint, bigint];
-  pubSignals: [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint];
+  pubSignals: [
+    bigint,
+    bigint,
+    bigint,
+    bigint,
+    bigint,
+    bigint,
+    bigint,
+    bigint,
+    bigint,
+    bigint,
+    bigint,
+  ];
 }
 
 export interface SnarkJsProof {
@@ -75,25 +102,40 @@ export interface ContractWithdraw2SameChainProof {
 }
 
 /**
- * Cross-chain Withdraw2 contract-ready proof (10 signals)
+ * Cross-chain Withdraw2 contract-ready proof (12 signals)
  *
  * Public signals order:
  * [0] newCommitmentHash - Change output commitment
  * [1] nullifierHash0 - Primary input nullifier (spent)
  * [2] nullifierHash1 - Secondary input nullifier (spent)
  * [3] refundCommitmentHash - Cross-chain refund commitment
- * [4] withdrawnValue - Amount withdrawn
- * [5] stateRoot - State merkle root
- * [6] stateTreeDepth - State tree depth
- * [7] ASPRoot - ASP merkle root
- * [8] ASPTreeDepth - ASP tree depth
- * [9] context - Binding context hash
+ * [4] relayFeeBPSOut - Output: relay fee in basis points
+ * [5] refundFeeBPSOut - Output: refund fee in basis points
+ * [6] withdrawnValue - Amount withdrawn
+ * [7] stateRoot - State merkle root
+ * [8] stateTreeDepth - State tree depth
+ * [9] ASPRoot - ASP merkle root
+ * [10] ASPTreeDepth - ASP tree depth
+ * [11] context - Binding context hash
  */
 export interface ContractCrosschainWithdraw2Proof {
   pA: [bigint, bigint];
   pB: [[bigint, bigint], [bigint, bigint]];
   pC: [bigint, bigint];
-  pubSignals: [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint];
+  pubSignals: [
+    bigint,
+    bigint,
+    bigint,
+    bigint,
+    bigint,
+    bigint,
+    bigint,
+    bigint,
+    bigint,
+    bigint,
+    bigint,
+    bigint,
+  ];
 }
 
 /**

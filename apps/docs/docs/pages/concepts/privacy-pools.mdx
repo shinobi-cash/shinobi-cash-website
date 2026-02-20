@@ -1,134 +1,136 @@
 # Privacy Pools
 
-Understanding the core cryptographic primitives behind Shinobi Cash.
-
-:::note[Audience]
-This page is for **Developers and Security Reviewers**. For user guides, see [Deposit](/guides/deposit) and [Withdraw](/guides/withdraw).
-:::
-
 :::info[TL;DR]
-Deposits create **commitments** in a Merkle tree. Withdrawals reveal **nullifiers** that prove ownership without revealing which deposit. Zero-knowledge proofs verify everything on-chain without leaking information.
+Deposits create **commitments** in a shared Merkle tree.
+Withdrawals reveal **nullifiers** that prove ownership without revealing which deposit was used.
+Zero-knowledge proofs verify everything on-chain without leaking information.
 :::
 
-## Key Terms
+---
 
-| Term | Meaning |
-|------|---------|
-| **Commitment** | A hash representing your deposit, added to the Merkle tree |
-| **Nullifier** | A unique value revealed during withdrawal to prevent double-spend |
-| **Merkle Tree** | Data structure that allows proving membership without revealing position |
-| **ZK Proof** | Cryptographic proof that verifies claims without revealing inputs |
+## The Core Idea
 
-## Overview
+Privacy Pools break the public link between deposits and withdrawals.
 
-Privacy Pools enable private transactions by breaking the on-chain link between deposits and withdrawals. Users deposit funds into a shared pool and later withdraw using zero-knowledge proofs that verify ownership without revealing which deposit is theirs.
+Users deposit funds into a shared pool and later withdraw using **zero-knowledge proofs** that demonstrate:
+- they own a valid deposit, and
+- the deposit has not been spent before
 
-## Concrete Example
+without revealing **which deposit** it was.
 
-```
-Alice deposits 1 ETH:
-  → Commitment C₁ added to Merkle tree
-  → Alice stores secret S₁ locally
-
-Later, Alice withdraws 0.3 ETH:
-  → Generates ZK proof: "I know secret for some commitment in the tree"
-  → Reveals nullifier N₁ (derived from S₁)
-  → Receives 0.3 ETH to recipient address
-  → Change note: 0.7 ETH commitment C₂ created
-
-On-chain, observers see:
-  → Deposit: someone added C₁
-  → Withdrawal: someone spent N₁, created C₂
-  → No link between C₁ and N₁ visible
-```
+---
 
 ## Key Concepts
 
-### Commitments
+| Term | Meaning |
+|------|---------|
+| **Commitment** | A cryptographic representation of a deposit |
+| **Nullifier** | A value revealed at withdrawal to prevent double-spending |
+| **Merkle Tree** | A structure that allows proving membership without revealing position |
+| **Zero-Knowledge Proof** | A proof that verifies correctness without revealing private data |
 
-When you deposit, a **commitment** is created and added to a Merkle tree:
+---
 
-```
-commitment = hash(nullifier, secret, amount, ...)
-```
+## A Simple Example
 
-This commitment is public, but the underlying values (nullifier, secret) are known only to you.
+Alice deposits 1 ETH:
+- A commitment is added to the pool
+- Alice stores a secret locally
 
-### Nullifiers
+Later, Alice withdraws 0.3 ETH:
+- She generates a proof: "I own some deposit in the pool"
+- She reveals a nullifier (marking that deposit as spent)
+- She receives 0.3 ETH
+- A new commitment (0.7 ETH) is created as change
 
-When you withdraw, you reveal a **nullifier** derived from your deposit:
+On-chain observers see:
+- A deposit occurred
+- A withdrawal occurred
+- A nullifier was spent
 
-```
-nullifier = hash(secret, depositIndex)
-```
+They **cannot link** the withdrawal to the original deposit.
 
-The nullifier proves you own a valid deposit without revealing which one. Once revealed, the nullifier is marked as "spent" to prevent double-spending.
+---
 
-### Zero-Knowledge Proofs
+## Commitments
 
-Withdrawals require a **Groth16 SNARK proof** that verifies:
+When a user deposits, a **commitment** is created and added to a Merkle tree.
 
-1. You know the secret for a valid commitment in the tree
-2. The nullifier is correctly derived from that commitment
-3. The commitment is in a compliant Association Set (ASP membership)
+- Commitments are public
+- The underlying secret is known only to the depositor
+- Commitments cannot be reversed or linked to a future withdrawal
 
-The proof reveals nothing about which deposit you're spending.
+---
+
+## Nullifiers
+
+When withdrawing, the user reveals a **nullifier** derived from their secret.
+
+- Each deposit has exactly one nullifier
+- Once revealed, it is marked as spent
+- This prevents double-spending without revealing deposit identity
+
+---
+
+## Zero-Knowledge Proofs
+
+Each withdrawal includes a zero-knowledge proof that verifies:
+
+1. The user owns a valid commitment in the pool
+2. The nullifier is correctly derived and unused
+3. The deposit belongs to an approved compliance set (via ASP)
+
+The proof reveals **nothing** about:
+- Which deposit was used
+- When it was created
+- Who created it
+
+---
 
 ## Merkle Trees
 
-Shinobi Cash uses two Merkle trees:
+Shinobi Cash maintains two Merkle trees:
 
-### State Tree
-Contains all deposit commitments. The root changes with each deposit.
+| Tree | Purpose |
+|------|---------|
+| **Pool State Tree** | Contains all deposit commitments (the full anonymity set) |
+| **ASP Tree** | Contains only commitments approved by an Association Set Provider |
 
-### ASP Tree
-Contains commitments approved by Association Set Providers. Only deposits in the ASP tree can be withdrawn (ensuring compliance).
+Both trees are referenced inside the withdrawal proof.
 
-## Proof Signals
+---
 
-### Standard Withdrawal (8 signals)
-```
-[0] newCommitmentHash      // Change note commitment
-[1] existingNullifierHash  // Spent deposit nullifier
-[2] withdrawnValue         // Amount withdrawn
-[3] stateRoot              // Merkle root of deposits
-[4] stateTreeDepth         // Depth of state tree
-[5] ASPRoot                // Merkle root of ASP set
-[6] ASPTreeDepth           // Depth of ASP tree
-[7] context                // Binding context (prevents replay)
-```
+## Withdrawal Variants
 
-### Cross-Chain Withdrawal (9 signals)
-Adds one additional signal:
-```
-[2] refundCommitmentHash   // Fallback if intent fails
-```
+| Type | Description |
+|------|-------------|
+| **Single note** | Same-chain withdrawal from one deposit |
+| **Two notes** | Spend two deposits in one withdrawal |
+| **Crosschain** | Withdrawal to another chain via a solver |
+| **Crosschain (two notes)** | Two-deposit withdrawal delivered crosschain |
 
-This enables recovery if the cross-chain settlement fails.
+All withdrawals:
+- Are unlinkable to deposits
+- Always create a change commitment with the remaining amount
+- Never expose deposit identity
 
-### Withdraw2 (9 signals)
-Spend 2 notes in one transaction:
-```
-[1] nullifierHash0         // First note's nullifier
-[2] nullifierHash1         // Second note's nullifier
-```
+---
 
-Useful for consolidating multiple small notes.
+## What's Hidden vs Revealed
 
-### CrossChainWithdraw2 (10 signals)
-Combines both: spend 2 notes for cross-chain withdrawal with refund protection.
+| Hidden | Revealed |
+|--------|----------|
+| Which deposit was spent | That a valid deposit exists |
+| Deposit history | The nullifier (once spent) |
+| Link to identity | Withdrawal amount |
+| | Recipient address |
 
-## Privacy Guarantees
+Privacy depends on using the system correctly (e.g., avoiding timing or amount correlation).
 
-| What's Hidden | What's Revealed |
-|---------------|-----------------|
-| Which deposit you're spending | That you have a valid deposit |
-| Your deposit history | The nullifier (once spent) |
-| Connection to your identity | The withdrawal amount |
-| | The recipient address |
+---
 
 ## Learn More
 
-- **[Cross-Chain Architecture](/concepts/cross-chain)** — How privacy works across chains
-- **[Compliance](/concepts/compliance)** — Association Set Providers explained
+- **[Crosschain Architecture](/concepts/cross-chain)** — How privacy works across chains
+- **[Compliance](/concepts/compliance)** — Association Set Providers
 - **[Smart Contracts](/contracts/)** — Implementation details

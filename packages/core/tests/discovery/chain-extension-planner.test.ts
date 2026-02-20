@@ -17,6 +17,7 @@ import {
   createMock1x1WithdrawalActivity,
   createMockCrossChainWithdrawalActivity,
   createMockWithdraw2Activity,
+  createMockCrossChainWithdraw2Activity,
   createMockRagequitActivity,
   resetActivityCounter,
   TEST_POOL_ADDRESS,
@@ -530,10 +531,8 @@ describe('chain-extension-planner', () => {
           [nullifier1, { originChainId: TEST_CHAIN_ID.toString(), depositIndex: 1, changeIndex: 0 }],
         ]);
 
-        const activity = createMockWithdraw2Activity(0, 0, 1, 0, toEther(0.5), {
-          type: 'CROSSCHAIN_WITHDRAW2_PENDING',
-          intentStatus: 'pending',
-        });
+        // Use the correct cross-chain Withdraw2 intent activity type
+        const activity = createMockCrossChainWithdraw2Activity(0, 0, 1, 0, toEther(0.5));
         const activityIndex = buildActivityIndex([activity]);
 
         const plans = planTreeExtensions(

@@ -1,23 +1,20 @@
 /**
- * Notes Section - Refactored
- * Pure UI component that delegates all logic to useNotesController
+ * Notes Section - UTXO-style display
+ * Shows individual notes (not grouped by tree) with filtering
  */
 
 import { RefreshCw } from "lucide-react";
 import { NoteRow } from "./NoteRow";
 import { type NotesScreenControllerAPI } from "@/hooks/useNotesScreen";
 import { NOTE_FILTER_LABELS, type NoteFilter } from "@/types/notes";
-import type { NoteTree } from "@shinobi-cash/core/discovery";
-import { getSpendableLeaves, getLeafNodes } from "@shinobi-cash/core/discovery";
+import type { NoteOrIntent, NoteNode } from "@shinobi-cash/core/discovery";
 
 interface NotesSectionProps {
   controller: NotesScreenControllerAPI;
-  onNoteTreeClick: (tree: NoteTree) => void;
+  onNoteClick: (note: NoteOrIntent, node: NoteNode) => void;
 }
 
-export function NotesSection({ controller, onNoteTreeClick }: NotesSectionProps) {
-  // Controller is passed in to avoid double instantiation
-
+export function NotesSection({ controller, onNoteClick }: NotesSectionProps) {
   const renderFilterButton = (filter: NoteFilter, count: number, borderColor: string) => (
     <button
       type="button"
@@ -83,19 +80,13 @@ export function NotesSection({ controller, onNoteTreeClick }: NotesSectionProps)
                   All your deposits have been spent or are pending
                 </p>
               </>
-            ) : controller.activeFilter === "pending" ? (
+            ) : (
               <>
                 <span className="mb-2 block text-2xl">⏳</span>
                 <p className="mb-1 text-neutral-400">No pending deposits</p>
                 <p className="text-sm text-neutral-500">
                   All cross-chain deposits have been filled
                 </p>
-              </>
-            ) : (
-              <>
-                <span className="mb-2 block text-2xl">🔒</span>
-                <p className="mb-1 text-neutral-400">No spent deposits</p>
-                <p className="text-sm text-neutral-500">Your deposits are still spendable</p>
               </>
             )}
           </div>
@@ -106,38 +97,12 @@ export function NotesSection({ controller, onNoteTreeClick }: NotesSectionProps)
     return null;
   };
 
-  // Helper to get display note from tree
-  // - For spendable/pending: first spendable leaf
-  // - For spent: most recently spent leaf (by timestamp)
-  const getDisplayNote = (tree: NoteTree) => {
-    const spendableLeaves = getSpendableLeaves(tree);
-    if (spendableLeaves.length > 0) {
-      return spendableLeaves[0].note;
-    }
-
-    // For spent trees, find the most recently spent leaf
-    const leaves = getLeafNodes(tree);
-    if (leaves.length > 0) {
-      // Sort by timestamp descending
-      // RagequitNote is a terminal child with its own timestamp
-      const sorted = [...leaves].sort((a, b) => {
-        const tsA = Number(a.note.originTimestamp);
-        const tsB = Number(b.note.originTimestamp);
-        return tsB - tsA;
-      });
-      return sorted[0].note;
-    }
-
-    return tree.root.note;
-  };
-
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex-shrink-0 border-b border-white/10">
         <div className="flex">
           {renderFilterButton("spendable", controller.spendableCount, "border-emerald-400")}
           {renderFilterButton("pending", controller.pendingCount, "border-yellow-400")}
-          {renderFilterButton("spent", controller.spentCount, "border-rose-400")}
         </div>
       </div>
 
@@ -145,14 +110,14 @@ export function NotesSection({ controller, onNoteTreeClick }: NotesSectionProps)
         <div className="h-full overflow-y-auto">
           {renderEmptyState()}
 
-          {/* Render filtered notes */}
+          {/* Render individual notes */}
           {controller.filteredNoteViews.length > 0 && (
             <div className="divide-y divide-white/5">
               {controller.filteredNoteViews.map((view) => (
                 <NoteRow
                   key={view.key}
-                  note={getDisplayNote(view.tree)}
-                  onClick={() => onNoteTreeClick(view.tree)}
+                  note={view.note}
+                  onClick={() => onNoteClick(view.note, view.node)}
                 />
               ))}
             </div>

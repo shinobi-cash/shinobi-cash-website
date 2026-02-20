@@ -1,14 +1,15 @@
 "use client";
 
 import { useSnapshot } from "valtio";
-import { X } from "lucide-react";
+import { X, Loader2 } from "lucide-react";
 import { ActivityExplorerController } from "@/controllers/ActivityExplorerController";
 import { ActivityDetailsContent } from "./ActivityDetailsContent";
 
 export function ActivityDetailsPanel() {
   const state = useSnapshot(ActivityExplorerController.state);
 
-  if (!state.selectedActivity) {
+  // No selection
+  if (!state.selectedTxHash) {
     return (
       <aside className="bg-white/2 hidden h-full rounded-2xl border border-white/10 p-6 lg:block">
         <p className="text-sm text-neutral-400">Select an activity to view details</p>
@@ -38,7 +39,28 @@ export function ActivityDetailsPanel() {
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto">
-          <ActivityDetailsContent activity={state.selectedActivity} />
+          {/* Loading state */}
+          {state.isLoadingDetails && (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin text-neutral-500" />
+            </div>
+          )}
+
+          {/* Error state */}
+          {!state.isLoadingDetails && state.detailsError && (
+            <div className="p-6 text-center">
+              <p className="text-sm text-red-400">Failed to load activity details</p>
+              <p className="mt-1 text-xs text-neutral-500">{state.detailsError}</p>
+            </div>
+          )}
+
+          {/* Content */}
+          {!state.isLoadingDetails && !state.detailsError && state.selectedActivity && (
+            <ActivityDetailsContent
+              activity={state.selectedActivity}
+              timeline={state.selectedTimeline}
+            />
+          )}
         </div>
       </aside>
     </>

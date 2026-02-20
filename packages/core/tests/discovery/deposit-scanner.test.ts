@@ -231,11 +231,11 @@ describe('deposit-scanner', () => {
         expect(result.newTrees).toHaveLength(1);
         expect(result.pendingDepositsFound).toBe(1);
 
-        // Should create DepositIntentNote, not DepositNote
-        const note = result.newTrees[0].root.note;
-        expect(note.noteType).toBe('depositIntent');
-        // Intent notes don't have status field - pending state is implicit in noteType
-        expect(isCrossChainNote(note)).toBe(true);
+        // Should create DepositIntent, not DepositNote
+        const intent = result.newTrees[0].root.note;
+        expect((intent as any).intentType).toBe('depositIntent');
+        // Intents don't have status field - pending state is implicit in intentType
+        expect(isCrossChainNote(intent)).toBe(true);
       });
 
       it('should NOT add nullifier entry for pending cross-chain deposit', () => {
@@ -248,10 +248,8 @@ describe('deposit-scanner', () => {
       });
 
       it('should create CrosschainDepositNote for filled cross-chain deposit', () => {
-        // Filled cross-chain deposit (intentStatus='filled')
-        const deposit = createMockCrossChainDepositActivity(0, toEther(1), {
-          intentStatus: 'filled',
-        });
+        // Filled cross-chain deposit (CROSSCHAIN_DEPOSIT_FILL type)
+        const deposit = createMockCrossChainDepositActivity(0, toEther(1));
         const index = buildActivityIndex([deposit]);
         const result = scanForDeposits(index, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0);
 

@@ -102,7 +102,7 @@ export class RagequitEngine {
     const derivation = deriveRagequitInputs(
       note as SpendableNote,
       request.accountKey,
-      note.poolAddress,
+      note.poolAddress
     );
     this.state.derivation = derivation;
 
@@ -137,9 +137,7 @@ export class RagequitEngine {
    *
    * @param walletClient - The connected wallet client (must be original depositor)
    */
-  async execute(
-    walletClient: WalletClient<Transport, Chain, Account>,
-  ): Promise<RagequitResult> {
+  async execute(walletClient: WalletClient<Transport, Chain, Account>): Promise<RagequitResult> {
     if (!this.state.contractProof || !this.state.request) {
       throw Errors.withdrawal.precondition("Must call prepare() first");
     }

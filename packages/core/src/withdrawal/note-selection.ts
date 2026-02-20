@@ -4,14 +4,14 @@
  * Validates manually selected notes and determines withdrawal type (1:1 or 2:1)
  */
 
-import type { Note, SpendableNote } from '../discovery/types.js';
-import { isSpendableNote } from '../discovery/types.js';
+import type { Note, SpendableNote } from "../discovery/types.js";
+import { isSpendableNote } from "../discovery/types.js";
 
 // ============================================================================
 // Types
 // ============================================================================
 
-export type WithdrawalType = 'standard' | 'withdraw2';
+export type WithdrawalType = "standard" | "withdraw2";
 
 export interface SelectedNote {
   note: SpendableNote;
@@ -22,14 +22,14 @@ export interface SelectedNote {
 }
 
 export interface StandardWithdrawalSelection {
-  type: 'standard';
+  type: "standard";
   input: SelectedNote;
   withdrawAmount: bigint;
   changeAmount: bigint;
 }
 
 export interface Withdraw2Selection {
-  type: 'withdraw2';
+  type: "withdraw2";
   /** Primary input - chain with latest depositIndex (continues after merge) */
   primaryInput: SelectedNote;
   /** Secondary input - chain with older depositIndex (merges into primary) */
@@ -43,7 +43,7 @@ export interface Withdraw2Selection {
 export type WithdrawalSelection = StandardWithdrawalSelection | Withdraw2Selection;
 
 export interface SelectionError {
-  code: 'INSUFFICIENT_BALANCE' | 'NOTE_NOT_SPENDABLE' | 'INVALID_NOTES' | 'SAME_NOTE';
+  code: "INSUFFICIENT_BALANCE" | "NOTE_NOT_SPENDABLE" | "INVALID_NOTES" | "SAME_NOTE";
   message: string;
 }
 
@@ -56,7 +56,7 @@ export type SelectionResult =
 // ============================================================================
 
 function isSpendable(note: Note): note is SpendableNote {
-  return isSpendableNote(note) && note.status === 'unspent' && BigInt(note.amount) > 0n;
+  return isSpendableNote(note) && note.status === "unspent" && BigInt(note.amount) > 0n;
 }
 
 function toSelectedNote(note: SpendableNote): SelectedNote {
@@ -81,7 +81,7 @@ export function selectSingleNote(note: Note, withdrawAmount: bigint): SelectionR
     return {
       success: false,
       error: {
-        code: 'NOTE_NOT_SPENDABLE',
+        code: "NOTE_NOT_SPENDABLE",
         message: `Note is not spendable (type: ${note.noteType}, amount: ${note.amount})`,
       },
     };
@@ -92,7 +92,7 @@ export function selectSingleNote(note: Note, withdrawAmount: bigint): SelectionR
     return {
       success: false,
       error: {
-        code: 'INSUFFICIENT_BALANCE',
+        code: "INSUFFICIENT_BALANCE",
         message: `Note balance ${noteAmount} is less than withdrawal amount ${withdrawAmount}`,
       },
     };
@@ -101,7 +101,7 @@ export function selectSingleNote(note: Note, withdrawAmount: bigint): SelectionR
   return {
     success: true,
     selection: {
-      type: 'standard',
+      type: "standard",
       input: toSelectedNote(note),
       withdrawAmount,
       changeAmount: noteAmount - withdrawAmount,
@@ -120,7 +120,7 @@ export function selectTwoNotes(note1: Note, note2: Note, withdrawAmount: bigint)
     return {
       success: false,
       error: {
-        code: 'NOTE_NOT_SPENDABLE',
+        code: "NOTE_NOT_SPENDABLE",
         message: `First note is not spendable (type: ${note1.noteType}, amount: ${note1.amount})`,
       },
     };
@@ -130,7 +130,7 @@ export function selectTwoNotes(note1: Note, note2: Note, withdrawAmount: bigint)
     return {
       success: false,
       error: {
-        code: 'NOTE_NOT_SPENDABLE',
+        code: "NOTE_NOT_SPENDABLE",
         message: `Second note is not spendable (type: ${note2.noteType}, amount: ${note2.amount})`,
       },
     };
@@ -141,8 +141,8 @@ export function selectTwoNotes(note1: Note, note2: Note, withdrawAmount: bigint)
     return {
       success: false,
       error: {
-        code: 'SAME_NOTE',
-        message: 'Cannot use the same note twice',
+        code: "SAME_NOTE",
+        message: "Cannot use the same note twice",
       },
     };
   }
@@ -155,7 +155,7 @@ export function selectTwoNotes(note1: Note, note2: Note, withdrawAmount: bigint)
     return {
       success: false,
       error: {
-        code: 'INSUFFICIENT_BALANCE',
+        code: "INSUFFICIENT_BALANCE",
         message: `Combined balance ${totalAmount} is less than withdrawal amount ${withdrawAmount}`,
       },
     };
@@ -173,7 +173,7 @@ export function selectTwoNotes(note1: Note, note2: Note, withdrawAmount: bigint)
   return {
     success: true,
     selection: {
-      type: 'withdraw2',
+      type: "withdraw2",
       primaryInput: toSelectedNote(primaryNote),
       secondaryInput: toSelectedNote(secondaryNote),
       withdrawAmount,
@@ -191,8 +191,8 @@ export function selectNotesForWithdrawal(notes: Note[], withdrawAmount: bigint):
     return {
       success: false,
       error: {
-        code: 'INVALID_NOTES',
-        message: 'At least one note must be provided',
+        code: "INVALID_NOTES",
+        message: "At least one note must be provided",
       },
     };
   }
@@ -208,8 +208,8 @@ export function selectNotesForWithdrawal(notes: Note[], withdrawAmount: bigint):
   return {
     success: false,
     error: {
-      code: 'INVALID_NOTES',
-      message: 'Maximum 2 notes can be selected for withdrawal',
+      code: "INVALID_NOTES",
+      message: "Maximum 2 notes can be selected for withdrawal",
     },
   };
 }
@@ -221,15 +221,17 @@ export function selectNotesForWithdrawal(notes: Note[], withdrawAmount: bigint):
 /**
  * Check if a withdrawal selection is a Withdraw2 (2:1)
  */
-export function isWithdraw2Selection(selection: WithdrawalSelection): selection is Withdraw2Selection {
-  return selection.type === 'withdraw2';
+export function isWithdraw2Selection(
+  selection: WithdrawalSelection
+): selection is Withdraw2Selection {
+  return selection.type === "withdraw2";
 }
 
 /**
  * Get the total input amount for a selection
  */
 export function getTotalInputAmount(selection: WithdrawalSelection): bigint {
-  if (selection.type === 'standard') {
+  if (selection.type === "standard") {
     return selection.input.amount;
   }
   return selection.primaryInput.amount + selection.secondaryInput.amount;
@@ -239,7 +241,7 @@ export function getTotalInputAmount(selection: WithdrawalSelection): bigint {
  * Get the label that will be used for the change note
  */
 export function getChangeNoteLabel(selection: WithdrawalSelection): string {
-  if (selection.type === 'standard') {
+  if (selection.type === "standard") {
     return selection.input.label;
   }
   return selection.labelSelector === 0

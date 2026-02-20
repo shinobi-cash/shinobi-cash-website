@@ -10,12 +10,8 @@ import {
   POOL_CHAIN,
   SHINOBI_CASH_ETH_POOL,
   SHINOBI_CASH_ENTRYPOINT,
-  SAME_CHAIN_GAS_LIMITS,
-  CROSS_CHAIN_GAS_LIMITS,
-  WITHDRAW2_SAME_CHAIN_GAS_LIMITS,
-  WITHDRAW2_CROSS_CHAIN_GAS_LIMITS,
 } from "@shinobi-cash/constants";
-import { pimlicoClient } from "@/lib/clients";
+import { pimlicoClient, type GasLimits } from "@/lib/clients";
 import type { SmartAccountClient } from "permissionless";
 import { Errors, logError } from "@/lib/errors/errors";
 import { http, createPublicClient } from "viem";
@@ -59,7 +55,7 @@ const publicClient = createPublicClient({
 export async function fetchPoolScope(): Promise<string> {
   try {
     const scope = (await publicClient.readContract({
-      address: SHINOBI_CASH_ETH_POOL.address,
+      address: SHINOBI_CASH_ETH_POOL.address as `0x${string}`,
       abi: PoolScopeAbi,
       functionName: "SCOPE",
     })) as bigint;
@@ -72,25 +68,39 @@ export async function fetchPoolScope(): Promise<string> {
   }
 }
 
+/**
+ * Prepare a withdrawal UserOperation with fixed gas limits.
+ * Uses hardcoded gas limits to avoid bundler estimation which can cause
+ * paymaster validation failures due to gas cost mismatches.
+ */
 export async function prepareWithdrawalUserOperation(
   smartAccountClient: SmartAccountClient,
-  relayCallData: `0x${string}`
-) {
+  callData: `0x${string}`,
+  gasLimits: GasLimits
+): Promise<UserOperation<"0.7">> {
   try {
     if (!smartAccountClient.account) {
       throw new Error("Smart account not initialized");
     }
-    const userOperationGasPrice = await pimlicoClient.getUserOperationGasPrice();
+
+    const gasPrices = await pimlicoClient.getUserOperationGasPrice();
+
+    // Prepare UserOperation with fixed gas limits to skip bundler estimation
     const preparedUserOperation = await smartAccountClient.prepareUserOperation({
       account: smartAccountClient.account,
       calls: [
         {
           to: SHINOBI_CASH_ENTRYPOINT.address,
-          data: relayCallData,
+          data: callData,
           value: BigInt(0),
         },
       ],
-      ...userOperationGasPrice.fast,
+      // Fixed gas limits - prevents bundler from estimating (which triggers paymaster validation)
+      callGasLimit: gasLimits.CALL_GAS_LIMIT,
+      verificationGasLimit: gasLimits.VERIFICATION_GAS_LIMIT,
+      preVerificationGas: gasLimits.PRE_VERIFICATION_GAS,
+      // Gas prices from bundler
+      ...gasPrices.fast,
     });
 
     return preparedUserOperation;
@@ -100,22 +110,20 @@ export async function prepareWithdrawalUserOperation(
   }
 }
 
+/**
+ * Execute a prepared withdrawal UserOperation.
+ * Gas limits are already set during preparation.
+ */
 export async function executeWithdrawalUserOperation(
   smartAccountClient: SmartAccountClient,
   userOperation: UserOperation,
-  isCrossChain: boolean = false,
-  isWithdraw2: boolean = false
+  gasLimits: GasLimits
 ): Promise<string> {
   try {
-    // Use appropriate gas limits based on withdrawal type
-    let gasLimits;
-    if (isWithdraw2) {
-      gasLimits = isCrossChain ? WITHDRAW2_CROSS_CHAIN_GAS_LIMITS : WITHDRAW2_SAME_CHAIN_GAS_LIMITS;
-    } else {
-      gasLimits = isCrossChain ? CROSS_CHAIN_GAS_LIMITS : SAME_CHAIN_GAS_LIMITS;
-    }
-
+    // Ensure gas limits are set (they should already be from preparation)
     userOperation.callGasLimit = gasLimits.CALL_GAS_LIMIT;
+    userOperation.verificationGasLimit = gasLimits.VERIFICATION_GAS_LIMIT;
+    userOperation.preVerificationGas = gasLimits.PRE_VERIFICATION_GAS;
     userOperation.paymasterVerificationGasLimit = gasLimits.PAYMASTER_VERIFICATION_GAS_LIMIT;
     userOperation.paymasterPostOpGasLimit = gasLimits.POST_OP_GAS_LIMIT;
 
@@ -128,9 +136,8 @@ export async function executeWithdrawalUserOperation(
 
     const receipt = await smartAccountClient.waitForUserOperationReceipt({ hash: userOpHash });
 
-    // Verify transaction was successful
     if (!receipt.success) {
-      throw new Error("UserOperation execution failed");
+      throw new Error(`UserOperation execution failed: ${receipt.reason || "unknown reason"}`);
     }
 
     return receipt.receipt.transactionHash;
@@ -151,36 +158,5 @@ export async function executeWithdrawalUserOperation(
     }
 
     throw Errors.blockchain.transactionFailed("Failed to execute withdrawal transaction", error);
-  }
-}
-
-export async function prepareCrossChainWithdrawalUserOperation(
-  smartAccountClient: SmartAccountClient,
-  crossChainCallData: `0x${string}`
-) {
-  try {
-    if (!smartAccountClient.account) {
-      throw new Error("Smart account not initialized");
-    }
-    const userOperationGasPrice = await pimlicoClient.getUserOperationGasPrice();
-    const preparedUserOperation = await smartAccountClient.prepareUserOperation({
-      account: smartAccountClient.account,
-      calls: [
-        {
-          to: SHINOBI_CASH_ENTRYPOINT.address,
-          data: crossChainCallData,
-          value: BigInt(0),
-        },
-      ],
-      ...userOperationGasPrice.fast,
-    });
-
-    return preparedUserOperation;
-  } catch (error) {
-    logError(error, { action: "prepareCrossChainWithdrawalUserOperation" });
-    throw Errors.blockchain.contractError(
-      "Failed to prepare cross-chain withdrawal transaction",
-      error
-    );
   }
 }

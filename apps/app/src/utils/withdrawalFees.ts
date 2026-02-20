@@ -1,4 +1,9 @@
-import type { FeeQuote, WithdrawalRequest, Withdraw2Request, WithdrawalKind } from "@/types/withdrawal";
+import type {
+  FeeQuote,
+  WithdrawalRequest,
+  Withdraw2Request,
+  WithdrawalKind,
+} from "@/types/withdrawal";
 import {
   SAME_CHAIN_GAS_LIMITS,
   CROSS_CHAIN_GAS_LIMITS,
@@ -62,7 +67,14 @@ function calculateTotalGas(gasLimits: GasLimits): bigint {
 }
 
 /**
- * Calculate relay fee BPS from gas cost and withdrawal amount
+ * Buffer multiplier for gas price fluctuations between quote and execution.
+ * 2% buffer ensures the fee covers gas even if prices increase slightly.
+ */
+const GAS_PRICE_BUFFER = 1.02;
+
+/**
+ * Calculate relay fee BPS from gas cost and withdrawal amount.
+ * Includes a small buffer to account for gas price fluctuations.
  */
 function calculateRelayFeeBPS(
   withdrawAmountWei: bigint,
@@ -70,7 +82,9 @@ function calculateRelayFeeBPS(
   maxBPS: number
 ): number {
   const calculatedBPS = Number((estimatedGasCostWei * BigInt(10000)) / withdrawAmountWei);
-  return Math.min(Math.max(Math.ceil(calculatedBPS), 1), maxBPS);
+  // Add buffer for gas price fluctuations and round up
+  const bufferedBPS = Math.ceil(calculatedBPS * GAS_PRICE_BUFFER);
+  return Math.min(Math.max(bufferedBPS, 1), maxBPS);
 }
 
 /**
@@ -142,7 +156,8 @@ export async function quoteWithdraw2Fees(
   };
 
   // Use withdraw2-specific gas limits (higher due to 2-input proof verification)
-  const gasLimits = kind === "cross-chain" ? WITHDRAW2_CROSS_CHAIN_GAS_LIMITS : WITHDRAW2_SAME_CHAIN_GAS_LIMITS;
+  const gasLimits =
+    kind === "cross-chain" ? WITHDRAW2_CROSS_CHAIN_GAS_LIMITS : WITHDRAW2_SAME_CHAIN_GAS_LIMITS;
   const totalGas = calculateTotalGas(gasLimits);
   const estimatedGasCostWei = totalGas * gasPrice.maxFeePerGas;
   const relayFeeBPS = calculateRelayFeeBPS(

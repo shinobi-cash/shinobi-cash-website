@@ -3,9 +3,12 @@
  *
  * ActivityEntry wraps a raw Activity with computed display values.
  * This provides a view model for the activity list/details screens.
+ *
+ * Cross-chain activities are consolidated by orderId - only the final
+ * state is shown in the list, with full timeline in details.
  */
 
-import type { Activity, ActivityType } from "@shinobi-cash/core/discovery";
+import type { ActivityItem } from "@shinobi-cash/data";
 
 /**
  * Activity filter options
@@ -13,11 +16,25 @@ import type { Activity, ActivityType } from "@shinobi-cash/core/discovery";
 export type ActivityFilter = "all" | "deposit" | "withdrawal" | "refund";
 
 /**
+ * Display activity type (simplified for UI)
+ */
+export type ActivityType = "deposit" | "withdrawal" | "refund" | "ragequit";
+
+/**
+ * Timeline event for cross-chain activity details
+ */
+export interface ActivityTimelineEvent {
+  activity: ActivityItem;
+  label: string;
+  timestamp: string;
+}
+
+/**
  * Activity entry - wraps raw Activity with display values
  */
 export interface ActivityEntry {
-  /** The raw activity from indexer */
-  activity: Activity;
+  /** The raw activity from indexer (final state for cross-chain) */
+  activity: ActivityItem;
 
   /** Display type (deposit/withdrawal/refund/ragequit) */
   type: ActivityType;
@@ -30,6 +47,9 @@ export interface ActivityEntry {
 
   /** Display timestamp (Unix seconds as string) */
   displayTimestamp: string;
+
+  /** Timeline of related activities (for cross-chain operations) */
+  timeline?: ActivityTimelineEvent[];
 }
 
 /**
@@ -64,8 +84,8 @@ export const ACTIVITY_TYPE_LABELS: Record<ActivityType, string> = {
 
 /**
  * Get unique ID for an activity entry.
- * Uses the activity's unique ID from indexer.
+ * Uses the activity's txHash from indexer.
  */
 export function getActivityId(entry: ActivityEntry): string {
-  return entry.activity.id;
+  return entry.activity.txHash;
 }

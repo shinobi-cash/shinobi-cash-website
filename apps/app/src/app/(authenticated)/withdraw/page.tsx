@@ -163,7 +163,8 @@ export default function WithdrawPage() {
   // Calculate USD values
   const youReceiveAmount = WithdrawSelectors.getYouReceive();
   const youReceiveUsd = usdPrice && youReceiveAmount > 0 ? youReceiveAmount * usdPrice : null;
-  const withdrawAmountUsd = usdPrice && parseFloat(state.amount) > 0 ? parseFloat(state.amount) * usdPrice : null;
+  const withdrawAmountUsd =
+    usdPrice && parseFloat(state.amount) > 0 ? parseFloat(state.amount) * usdPrice : null;
 
   // Quick amount handler
   const handleQuickAmount = (percentage: number) => {
@@ -331,9 +332,7 @@ export default function WithdrawPage() {
             />
             <AmountInput
               value={
-                youReceiveAmount > 0
-                  ? formatDisplayAmount(youReceiveAmount)
-                  : state.amount || "0"
+                youReceiveAmount > 0 ? formatDisplayAmount(youReceiveAmount) : state.amount || "0"
               }
               disabled
             />

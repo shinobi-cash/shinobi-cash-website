@@ -1,224 +1,107 @@
-# Cross-Chain Architecture
-
-How Shinobi Cash enables privacy across multiple chains.
-
-:::note[Audience]
-This page is for **Developers and Security Reviewers**. For user guides, see [Deposit](/guides/deposit) and [Withdraw](/guides/withdraw).
-:::
+# Crosschain Architecture
 
 :::info[TL;DR]
-One pool lives on Arbitrum. Deposits and withdrawals from other chains are expressed as **intents** and fulfilled by **solvers**. Funds are always escrowed or provably recoverable. A malicious solver can delay but **cannot steal**.
+Shinobi Cash uses **one privacy pool on a single chain**.
+Deposits and withdrawals from other chains are handled via **intents** fulfilled by **solvers**.
+Funds are always escrowed or recoverable — solvers can delay, but **cannot steal**.
 :::
 
-## Key Terms
-
-| Term | Meaning |
-|------|---------|
-| **Intent** | A signed request to move funds cross-chain |
-| **Solver** | An off-chain actor that fulfills intents for a fee |
-| **Escrow** | Funds locked until intent is filled or expires |
-| **Refund Commitment** | Fallback if intent expires — funds return to pool |
+---
 
 ## The Problem
 
-Traditional privacy solutions deploy separate pools on each chain. This creates fragmented anonymity sets — each pool has fewer users, weakening privacy.
+Most privacy protocols deploy a separate pool on each chain.
+
+This fragments the anonymity set:
+- fewer users per pool
+- weaker privacy guarantees
+- worse UX across chains
+
+---
 
 ## The Solution
 
-Shinobi Cash maintains a **single privacy pool** on one chain (Arbitrum Sepolia) while accepting deposits and withdrawals from any supported chain.
+Shinobi Cash maintains **one canonical privacy pool** on a single chain, while allowing users to deposit from and withdraw to many chains.
 
-```
-┌─────────────────┐     ┌─────────────────┐
-│   Base Sepolia  │     │ Arbitrum Sepolia│
-│   (Origin)      │     │  (Pool Chain)   │
-│                 │     │                 │
-│  ┌───────────┐  │     │  ┌───────────┐  │
-│  │  Deposit  │──┼─────┼─►│  Privacy  │  │
-│  │ Entrypoint│  │     │  │   Pool    │  │
-│  └───────────┘  │     │  └───────────┘  │
-│                 │     │                 │
-│  ┌───────────┐  │     │                 │
-│  │ Withdrawal│◄─┼─────┼──│  Withdrawal │  │
-│  │  Output   │  │     │  │   Intent    │  │
-│  └───────────┘  │     │                 │
-└─────────────────┘     └─────────────────┘
-```
+**Result:**  
+One pool. Every chain. Stronger anonymity.
 
-## Open Intent Framework (OIF)
+---
 
-Cross-chain operations use the **Open Intent Framework** — a standard for expressing user intents that solvers fulfill.
+## Key Concepts
 
-### Intent Structure
+| Term | Meaning |
+|------|---------|
+| **Pool chain** | The chain where the privacy pool lives |
+| **Origin chain** | Any chain users deposit from or withdraw to |
+| **Intent** | A request to move funds across chains |
+| **Solver** | An off-chain actor that fulfills intents for a fee |
+| **Escrow** | Funds locked until the intent is completed or expires |
 
-```solidity
-struct ShinobiIntent {
-    address user;           // Intent creator
-    uint256 nonce;          // Unique identifier
-    uint256 originChainId;  // Source chain
-    uint32 expires;         // Expiry timestamp
-    uint32 fillDeadline;    // Deadline for filling
-    address fillOracle;     // Validates fills
-    uint256[2][] inputs;    // Escrowed tokens
-    MandateOutput[] outputs;// Actions on destination
+---
 
-    // Shinobi extensions
-    address intentOracle;   // Validates intent existence
-    bytes refundCalldata;   // Custom refund logic
-}
-```
+## How Solvers Work
 
-### Solvers
+Solvers are permissionless off-chain actors.
 
-**Solvers** are off-chain actors that monitor intents and fulfill them:
+They:
+1. Monitor chains for new intents
+2. Execute the requested action on the destination chain
+3. Prove execution via an oracle
+4. Receive escrowed funds as payment
 
-1. Detect new intent on origin chain
-2. Execute the output on destination chain
-3. Prove the fill via oracle
-4. Claim escrowed funds on origin chain
+A solver may choose **not** to act, but **cannot steal funds**.
 
-Solvers earn fees for providing this service.
+---
 
-## Cross-Chain Deposit Flow
+## Crosschain Deposits (High Level)
 
-```
-User (Base) → DepositEntrypoint → InputSettler (escrow)
-                                        │
-                    Solver monitors ◄───┘
-                           │
-                           ▼
-              DepositOutputSettler (Arbitrum) → Entrypoint → Pool
-                           │
-              Fill proof via oracle
-                           │
-                           ▼
-              InputSettler releases funds to solver
-```
+1. User deposits funds on an origin chain
+2. Funds are escrowed and an intent is created
+3. A solver fulfills the intent on the pool chain
+4. A deposit commitment is added to the privacy pool
+5. Solver proves completion and receives escrowed funds
 
-**Key Security**: Deposits require **intentOracle validation** to verify the depositor address came from a legitimate user on the origin chain.
+Deposits are only accepted if the intent corresponds to a **real escrowed deposit**.
 
-## Cross-Chain Withdrawal Flow
+---
 
-```
-User generates ZK proof
-          │
-          ▼
-Entrypoint (Arbitrum) → Pool validates proof → InputSettler (escrow)
-                                                      │
-                                  Solver monitors ◄───┘
-                                         │
-                                         ▼
-                        WithdrawalOutputSettler (Base) → User receives ETH
-                                         │
-                        Fill proof via oracle
-                                         │
-                                         ▼
-                        InputSettler releases funds to solver
-```
+## Crosschain Withdrawals (High Level)
 
-**Key Security**: Withdrawals use **optimistic settlement** — the ZK proof on the origin chain already validated the user's ownership, so no additional intent proof is needed.
+1. User generates a zero-knowledge proof on the pool chain
+2. A withdrawal intent is created and funds are escrowed
+3. A solver executes the withdrawal on the destination chain
+4. User receives funds
+5. Solver proves completion and receives escrowed funds
 
-## Oracle System
+Withdrawals are privacy-preserving and unlinkable to deposits.
 
-Two oracles ensure secure cross-chain settlement:
+---
 
-| Oracle | Direction | Purpose |
-|--------|-----------|---------|
-| **fillOracle** | Dest → Origin | Proves the solver filled the intent |
-| **intentOracle** | Origin → Dest | Proves the intent is legitimate (deposits only) |
+## Refunds and Failure Handling
 
-### Hyperlane Integration
+If an intent is **not filled** before expiry:
 
-Shinobi Cash uses **Hyperlane** for cross-chain oracle messaging. The `HyperlaneOracle` contract implements both oracle roles:
+| Flow | What Happens |
+|------|--------------|
+| **Deposit** | Funds are returned directly to the depositor |
+| **Withdrawal** | A refund commitment is created in the pool |
 
-- Receives messages via Hyperlane Mailbox
-- Marks payloads as proven when messages arrive
-- Submits proofs to destination chains
+This ensures funds are **never lost**, even if no solver participates.
 
-This provides a decentralized, permissionless bridge for intent proofs without relying on a centralized relay service.
+---
 
-## Why intentOracle is Required (Shinobi Extension)
+## What This Design Guarantees
 
-:::warning[Critical Security]
-This is Shinobi's key extension to the standard OIF. Without it, privacy pools are vulnerable to money laundering attacks.
-:::
+- One shared anonymity set across chains
+- No reliance on trusted relayers
+- No loss of funds due to solver failure
+- Privacy preserved across chains
 
-### The Problem with Optimistic Settlement
-
-Standard cross-chain intent systems (like ERC-7683) use **optimistic settlement**:
-
-```
-Standard Flow (ERC-7683):
-1. User signs intent (off-chain)
-2. Solver fills on destination (fronts capital)
-3. Solver claims reimbursement on origin
-```
-
-The security assumption: **Solvers are economically rational** — they won't fill intents they can't profitably settle.
-
-### Why Optimistic Fails for Privacy Pools
-
-In privacy pools, an attacker can control **both the "user" and the solver**:
-
-```
-Attack:
-1. Attacker has illicit funds in address A
-2. Attacker controls clean address B
-3. Attacker signs intent with B as depositor (but B has no funds)
-4. Attacker (as solver) fills with A's illicit funds
-5. Deposit attributed to B (clean) → passes ASP
-6. Settlement fails (B never deposited) — attacker doesn't care
-7. Attacker withdraws "clean" funds via ZK proof
-
-Result: FREE LAUNDERING
-```
-
-The attacker doesn't lose funds — they just moved illicit funds through the pool with clean attribution.
-
-### Shinobi's Solution: Input-First with Intent Proof
-
-Shinobi requires **verified deposits** before fills are accepted:
-
-```
-Shinobi Flow:
-1. User deposits on origin → funds escrowed (user = msg.sender)
-2. Intent oracle proves deposit to destination
-3. Fill ONLY accepted with valid intent proof
-4. Depositor address cryptographically bound to fund provider
-```
-
-```solidity
-// ShinobiDepositOutputSettler.fill()
-if (!IInputOracle(intentOracle).isProven(orderId))
-    revert IntentNotProven();  // Blocks fill without real deposit
-```
-
-This ensures the **depositor address equals the fund provider** — not just someone who signed an authorization.
-
-### Why This Can't Use Standard ERC-7683
-
-ERC-7683's optimistic model is **fundamentally incompatible** with privacy pool deposits:
-
-| Aspect | ERC-7683 (Optimistic) | Shinobi (Verified) |
-|--------|----------------------|-------------------|
-| Security model | Solver economic rationality | Cryptographic proof |
-| Assumption | Solver ≠ User | Attacker may be both |
-| Fill validation | None (optimistic) | Intent oracle required |
-| Compatible with | Standard solver marketplaces | Shinobi-aware solvers |
-
-The trade-off: Shinobi cannot use generic ERC-7683 solver marketplaces for deposits, but gains critical security against money laundering.
-
-## Refund Mechanism
-
-If a cross-chain withdrawal intent expires without being filled:
-
-1. The escrowed funds return to the pool
-2. A **refund commitment** is inserted (from the 9th proof signal)
-3. User can withdraw the refund as a normal privacy pool withdrawal
-
-This ensures funds are never lost, even if solvers fail to fill.
+---
 
 ## Learn More
 
-- **[Privacy Pools](/concepts/privacy-pools)** — Core cryptographic primitives
-- **[OIF Settlers](/contracts/settlers)** — Smart contract implementation
-- **[Compliance](/concepts/compliance)** — How ASPs work with cross-chain
+- **[Shinobi x OIF](/contracts/oif)** — Settlement mechanics  
+- **[Compliance](/concepts/compliance)** — ASP-based compliance  
+- **[Privacy Pools](/concepts/privacy-pools)** — Cryptographic foundations

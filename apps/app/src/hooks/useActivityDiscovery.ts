@@ -13,6 +13,7 @@
 
 import { useEffect } from "react";
 import { useSnapshot } from "valtio";
+import type { ActivityItem } from "@shinobi-cash/data";
 import { NotesDiscoveryController } from "@/controllers/NotesDiscoveryController";
 import { ActivityDiscoveryController } from "@/controllers/ActivityDiscoveryController";
 
@@ -33,8 +34,9 @@ export function useActivityDiscovery() {
   const activitySnapshot = useSnapshot(ActivityDiscoveryController.state);
 
   // Recompute activity entries whenever raw activities change
+  // Cast to mutable array since Valtio snapshot returns readonly
   useEffect(() => {
-    ActivityDiscoveryController.deriveFromActivities(activities);
+    ActivityDiscoveryController.deriveFromActivities(activities as ActivityItem[]);
   }, [activities]);
 
   return activitySnapshot;

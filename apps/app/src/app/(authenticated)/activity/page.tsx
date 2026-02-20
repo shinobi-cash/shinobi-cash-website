@@ -1,23 +1,48 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useState, useCallback } from "react";
 import { History } from "lucide-react";
 import { Badge } from "@workspace/ui/components/badge";
+import type { Note, NoteNode } from "@shinobi-cash/core/discovery";
 import { ActivityFilterDropdown } from "@/components/activity/ActivityFilterDropdown";
 import { ActivityList } from "@/components/activity/ActivityList";
 import { ActivityDetailsScreen } from "@/components/screens/ActivityDetailsScreen";
+import { NoteChainScreen } from "@/components/screens/NoteChainScreen";
 import { ScreenLayout } from "@/components/layout/ScreenLayout";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";
 import { useActivityScreen } from "@/hooks/useActivityScreen";
+import { useNotesScreen } from "@/hooks/useNotesScreen";
+import { findNoteBySerial } from "@/components/screens/NoteChainScreen/note-navigation";
 
 export default function ActivityPage() {
-  const router = useRouter();
   const controller = useActivityScreen();
+  const notesController = useNotesScreen();
 
-  const handleViewNoteChain = (depositIndex: number) => {
-    // Navigate to notes page with the deposit index as query param
-    router.push(`/notes?depositIndex=${depositIndex}`);
-  };
+  // State for viewing a note chain from activity
+  const [viewingNote, setViewingNote] = useState<{ note: Note; node: NoteNode } | null>(null);
+
+  const handleViewNoteChain = useCallback(
+    (note: Note) => {
+      // Find the node for this note
+      const result = findNoteBySerial(note.serialNumber, notesController.allTrees);
+      if (result) {
+        setViewingNote({ note, node: result.node });
+      }
+    },
+    [notesController.allTrees]
+  );
+
+  // Show note chain if viewing a note
+  if (viewingNote) {
+    return (
+      <NoteChainScreen
+        note={viewingNote.note}
+        noteNode={viewingNote.node}
+        allTrees={notesController.allTrees}
+        onBack={() => setViewingNote(null)}
+      />
+    );
+  }
 
   // Show activity details if selected
   if (controller.selectedEntry) {
@@ -26,6 +51,7 @@ export default function ActivityPage() {
         entry={controller.selectedEntry}
         onBack={controller.clearSelection}
         onViewNoteChain={handleViewNoteChain}
+        allTrees={notesController.allTrees}
       />
     );
   }

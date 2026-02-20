@@ -2,7 +2,10 @@
 
 import { useSnapshot } from "valtio";
 import { X } from "lucide-react";
-import { IntentExplorerController, IntentExplorerSelectors } from "@/controllers/IntentExplorerController";
+import {
+  IntentExplorerController,
+  IntentExplorerSelectors,
+} from "@/controllers/IntentExplorerController";
 import { IntentDetailsContent } from "./IntentDetailsContent";
 
 export function IntentDetailsPanel() {

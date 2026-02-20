@@ -1,172 +1,113 @@
-# ShinobiCashEntrypoint
+# Entrypoints
 
-:::note[Audience]
-This page is for **Developers and Security Reviewers**.
-:::
+Entrypoints are the **only user-facing contracts** in Shinobi Cash.  
+They coordinate proof verification, intent creation, and crosschain fund movement by interacting with pools, settlers, and oracles.
 
-The central orchestrator for cross-chain operations on the pool chain (Arbitrum Sepolia).
+---
 
-## Overview
+## Design Principle
 
-`ShinobiCashEntrypoint` inherits from:
-- `Entrypoint` (privacy-pools-core)
-- `ShinobiCashCrosschainState` (cross-chain configuration)
-- `IShinobiCashCrossChainHandler` (handler interface)
+Shinobi separates entrypoints by **authority domain**.
 
-It coordinates all cross-chain deposits and withdrawals, manages settler addresses, and handles refunds for failed intents.
+| Contract | Chain | Responsibility |
+|--------|------|----------------|
+| `ShinobiCashEntrypoint` | Pool chain (Arbitrum) | Proof-verified withdrawals and pool state updates |
+| `ShinobiCrosschainDepositEntrypoint` | Origin chains (Base, etc.) | User-originated crosschain deposits |
 
-## State Variables
+Users always interact with the entrypoint on the chain where they currently hold funds.
+Entrypoints **do not custody funds** — funds flow through to settlers in the same transaction.
 
-```solidity
-// Settler addresses
-address public withdrawalInputSettler;    // For withdrawal intents
-address public depositOutputSettler;       // For deposit fills
+---
 
-// Per-chain destination configuration
-mapping(uint256 => WithdrawalChainConfig) public withdrawalChainConfig;
+## ShinobiCashEntrypoint (Pool Chain)
 
-// Precommitment replay prevention
-mapping(uint256 => bool) public usedPrecommitments;
-```
+The canonical orchestrator on the pool chain.  
+Extends the base `Entrypoint` from `privacy-pools-core`.
 
-## WithdrawalChainConfig
+### Responsibilities
 
-Configuration for each supported destination chain:
+- **Crosschain withdrawals**
+  - Verifies ZK proof via the pool
+  - Creates OIF withdrawal intent
+  - Escrows funds for solver settlement
 
-```solidity
-struct WithdrawalChainConfig {
-    bool isConfigured;              // Whether this destination is active
-    uint32 fillDeadline;            // Default fill deadline (seconds from now)
-    uint32 expiry;                  // Default expiry (seconds from now)
-    address withdrawalOutputSettler; // ShinobiWithdrawalOutputSettler on destination
-    address withdrawalFillOracle;    // Output oracle on destination chain
-    address fillOracle;              // Fill oracle for validating fills (dest → origin)
-}
-```
+- **Crosschain deposits**
+  - Accepts verified deposit fills from `ShinobiDepositOutputSettler`
+  - Inserts commitments into the pool
 
-## Key Functions
+- **Refund handling**
+  - Accepts expired withdrawal intents from `ShinobiInputSettler`
+  - Inserts refund commitments into the pool
 
-### crosschainWithdrawal
+- **Same-chain withdrawals**
+  - `withdraw2`: spends two notes on the pool chain
+  - `crosschainWithdraw2`: spends two notes and exits crosschain
 
-Main entry point for cross-chain withdrawals. Validates the ZK proof and creates an OIF intent.
+### Access Control
 
-```solidity
-function crosschainWithdrawal(
-    IPrivacyPool.Withdrawal calldata _withdrawal,
-    CrossChainProofLib.CrossChainWithdrawProof calldata _proof,
-    uint256 _scope
-) external nonReentrant
-```
+- Withdrawal functions are **permissionless** (valid proof required)
+- Crosschain deposit handler callable **only** by `ShinobiDepositOutputSettler`
+- Refund handler callable **only** by `ShinobiInputSettler`
 
-**Flow:**
-1. Validate `withdrawalInputSettler` is configured
-2. Validate withdrawn amount > 0
-3. Validate processooor is this entrypoint
-4. Fetch pool by scope, validate exists
-5. Decode `CrossChainRelayData` from withdrawal.data
-6. Validate destination chain is configured
-7. Validate relay fee ≤ max allowed
-8. Execute `pool.crosschainWithdraw()` (validates ZK proof)
-9. Calculate fees (relay + solver)
-10. Create OIF intent with configured destination settings
-11. Transfer relay fee to feeRecipient
-12. Open intent on `ShinobiInputSettler` (escrows funds)
-13. Emit `CrossChainWithdrawalIntentRelayed` event
+---
 
-### crosschainDeposit
+## ShinobiCrosschainDepositEntrypoint (Origin Chains)
 
-Handles verified cross-chain deposits. Called by `ShinobiDepositOutputSettler` after oracle validation.
+Entrypoint deployed on non-pool chains where users hold assets.
 
-```solidity
-function crosschainDeposit(
-    address _depositor,
-    uint256 _amount,
-    uint256 _precommitment
-) external payable nonReentrant onlyDepositOutputSettler
-```
+### Responsibilities
 
-**Flow:**
-1. Validate caller is the configured `depositOutputSettler`
-2. Validate precommitment hasn't been used (replay prevention)
-3. Mark precommitment as used
-4. Insert commitment into the pool's Merkle tree
-5. Emit deposit event
+- **Crosschain deposits**
+  - Accepts funds and a precommitment
+  - Creates an OIF deposit intent
+  - Escrows funds in `ShinobiInputSettler`
+  - Submits intent proof to the pool chain via Hyperlane
 
-### handleRefund
+- **Refund initiation**
+  - Proxies refund requests for expired deposit intents
+  - Refund execution remains permissionless via `InputSettler`
 
-Handles refunds for failed cross-chain withdrawals. Called by `ShinobiInputSettler` when an intent expires.
+### Deposit Flow
 
-```solidity
-function handleRefund(
-    uint256 _refundCommitmentHash,
-    uint256 _amount,
-    uint256 _scope
-) external payable onlyWithdrawalInputSettler
-```
+1. User calls `deposit()` with funds and a precommitment
+2. Entrypoint creates an OIF intent and escrows funds in `InputSettler`
+3. Intent proof is relayed to the pool chain
+4. Solver fills the intent via `ShinobiDepositOutputSettler`
+5. Solver claims escrowed funds after proving the fill
 
-**Flow:**
-1. Validate caller is the configured `withdrawalInputSettler`
-2. Fetch pool by scope
-3. Call `pool.handleRefund()` to insert refund commitment
-4. User can later withdraw the refund normally
+---
 
-### setWithdrawalChainConfig
+## Precommitments
 
-Configure a destination chain for cross-chain withdrawals.
+Both entrypoints require a **precommitment** derived from the user’s secret.
 
-```solidity
-function setWithdrawalChainConfig(
-    uint256 _chainId,
-    address _outputSettler,
-    address _outputOracle,
-    address _fillOracle,
-    uint32 _fillDeadline,
-    uint32 _expiry
-) external onlyRole(_OWNER_ROLE)
-```
+Precommitments:
+- are marked as used on first submission
+- cannot be reused on the same chain
+- prevent replay and duplicate intent creation
 
-## Access Control
+Precommitments do **not** reveal note secrets or link deposits and withdrawals.
 
-| Function | Access |
-|----------|--------|
-| `crosschainWithdrawal` | Public (anyone with valid proof) |
-| `crosschainDeposit` | `onlyDepositOutputSettler` |
-| `handleRefund` | `onlyWithdrawalInputSettler` |
-| `setWithdrawalChainConfig` | `onlyRole(_OWNER_ROLE)` |
-| `setWithdrawalInputSettler` | `onlyRole(_OWNER_ROLE)` |
-| `setDepositOutputSettler` | `onlyRole(_OWNER_ROLE)` |
+---
 
-## Events
+## Security Notes
 
-```solidity
-event CrossChainWithdrawalIntentRelayed(
-    bytes32 indexed orderId,
-    address indexed recipient,
-    uint256 destinationChainId,
-    uint256 amount,
-    uint256 solverFee
-);
+- Entrypoints do not custody funds (funds flow through to settlers)
+- All withdrawals require valid ZK proofs
+- Crosschain actions are finalized only via settler + oracle validation
+- Entrypoints are **not trusted** for correctness beyond enforcing invariants
 
-event CrossChainDepositProcessed(
-    address indexed depositor,
-    uint256 amount,
-    uint256 precommitment
-);
-```
-
-## Security Considerations
-
-1. **Proof validation** — ZK proof is validated in the pool before intent creation
-2. **Replay prevention** — Precommitments are marked as used
-3. **Access control** — Only authorized settlers can call deposit/refund handlers
-4. **Reentrancy protection** — All entry points use `nonReentrant`
+---
 
 ## Source Code
 
-[View on GitHub](https://github.com/shinobi-cash/shinobi.cash-contracts/blob/main/src/core/ShinobiCashEntrypoint.sol)
+- [ShinobiCashEntrypoint](https://github.com/shinobi-cash/shinobi.cash-contracts/blob/main/src/core/ShinobiCashEntrypoint.sol)
+- [ShinobiCrosschainDepositEntrypoint](https://github.com/shinobi-cash/shinobi.cash-contracts/blob/main/src/core/ShinobiCrosschainDepositEntrypoint.sol)
+
+---
 
 ## Related
 
-- **[Privacy Pool](/contracts/pool)** — Pool contract that validates proofs
-- **[OIF Settlers](/contracts/settlers)** — Settlement contracts
-- **[Cross-Chain Architecture](/concepts/cross-chain)** — How cross-chain works
+- **[Privacy Pool](/contracts/pool)** — Proof validation and commitment management  
+- **[Shinobi x OIF](/contracts/oif)** — Crosschain settlement logic
+- **[Crosschain Architecture](/concepts/cross-chain)** — End-to-end system flow

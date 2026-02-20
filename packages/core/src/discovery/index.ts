@@ -17,18 +17,19 @@ import type {
   DiscoveryOptions,
   DiscoveryPolicy,
   NoteTree,
+  Note,
   ActivityFetcher,
   PersistenceCallbacks,
   SerializableDiscoveryState,
   ChainKey,
-} from './types.js';
-import { DEFAULT_DISCOVERY_POLICY, makeChainKey } from './types.js';
-import { buildActivityIndex } from './activity-indexer.js';
-import { scanForDeposits } from './deposit-scanner.js';
-import { extendAllTrees } from './chain-extender.js';
-import { reconcileTrees } from './reconciler.js';
-import { deriveAndHashNullifier } from './nullifier-utils.js';
-import { serializeTree, deserializeTree, getSpendableLeaves } from './tree-utils.js';
+} from "./types.js";
+import { DEFAULT_DISCOVERY_POLICY, makeChainKey } from "./types.js";
+import { buildActivityIndex } from "./activity-indexer.js";
+import { scanForDeposits } from "./deposit-scanner.js";
+import { extendAllTrees } from "./chain-extender.js";
+import { reconcileTrees } from "./reconciler.js";
+import { deriveAndHashNullifier } from "./nullifier-utils.js";
+import { serializeTree, deserializeTree, getSpendableLeaves } from "./tree-utils.js";
 
 // ============================================================================
 // Note Types
@@ -38,6 +39,8 @@ export type {
   // Union types
   Note,
   SpendableNote,
+  Intent,
+  NoteOrIntent,
   // Individual note types (for type narrowing after guards)
   DepositNote,
   CrosschainDepositNote,
@@ -48,12 +51,13 @@ export type {
   RagequitNote,
   MergedNote,
   DepositRefundedNote,
-  DepositIntentNote,
-  WithdrawalIntentNote,
+  // Intent types (pending cross-chain operations)
+  DepositIntent,
+  WithdrawalIntent,
   // Tree structure
   NoteNode,
   NoteTree,
-} from './types.js';
+} from "./types.js";
 
 // ============================================================================
 // Type Guards
@@ -70,25 +74,30 @@ export {
   isMergedNote,
   isDepositRefundedNote,
   isWithdrawalRefundedNote,
-  isDepositIntentNote,
-  isWithdrawalIntentNote,
+  // Intent type guards
+  isIntent,
+  isNote,
+  isDepositIntent,
+  isWithdrawalIntent,
   // Category guards
   isSpendableNote,
   isTerminalNote,
-  isIntentNote,
   isCrossChainNote,
-} from './types.js';
+} from "./types.js";
 
 // ============================================================================
 // Note Queries - Category, Filtering, Sorting
 // ============================================================================
 
-export type { NoteCategory, ActivityType } from './note-queries.js';
+export type { NoteCategory, ActivityType } from "./note-queries.js";
 
 export {
   // Category determination
   getNoteCategory,
+  getNoteCategoryWithContext,
   getTreeCategory,
+  getTreeCategories,
+  treeMatchesCategory,
   // Action availability
   canWithdraw,
   canRagequit,
@@ -99,7 +108,7 @@ export {
   // Note extraction
   getSpendableNotes,
   getWithdrawableNotes,
-} from './note-queries.js';
+} from "./note-queries.js";
 
 // ============================================================================
 // Tree Utilities
@@ -114,7 +123,7 @@ export {
   // Serialization (for storage)
   serializeTree,
   deserializeTree,
-} from './tree-utils.js';
+} from "./tree-utils.js";
 
 // ============================================================================
 // Discovery - Main API
@@ -132,16 +141,13 @@ export type {
   SerializableNoteNode,
   NullifierInfo,
   ChainKey,
-} from './types.js';
+} from "./types.js";
 
-// Re-export Activity type for consumers
-export type { Activity, SerializedActivity } from '@shinobi-cash/data';
-
-// Import serialization utilities
-import { serializeActivity, deserializeActivity } from '@shinobi-cash/data';
+// Re-export ActivityItem type for consumers
+export type { ActivityItem } from "@shinobi-cash/data";
 
 // For persistence callback implementation
-export { makeChainKey } from './types.js';
+export { makeChainKey } from "./types.js";
 
 // ============================================================================
 // NoteDiscovery Class
@@ -159,7 +165,7 @@ export { makeChainKey } from './types.js';
 export class NoteDiscovery {
   constructor(
     private readonly fetcher: ActivityFetcher,
-    private readonly persistence: PersistenceCallbacks,
+    private readonly persistence: PersistenceCallbacks
   ) {}
 
   /**
@@ -174,7 +180,7 @@ export class NoteDiscovery {
     publicKey: string,
     poolAddress: string,
     accountKey: bigint,
-    options?: DiscoveryOptions,
+    options?: DiscoveryOptions
   ): Promise<DiscoveryResult> {
     const {
       signal,
@@ -209,10 +215,10 @@ export class NoteDiscovery {
     // Process pages starting from minOffset
     while (hasNext && (!maxPages || pagesProcessed < maxPages)) {
       if (signal?.aborted) {
-        throw new DOMException('Aborted', 'AbortError');
+        throw new DOMException("Aborted", "AbortError");
       }
 
-      const page = await this.fetcher(poolAddress, pageSize, currentOffset, 'asc');
+      const page = await this.fetcher(poolAddress, pageSize, currentOffset, "asc");
       state = this.processPage(state, page.items, accountKey, poolAddress, policy, currentOffset);
 
       currentOffset += page.items.length;
@@ -242,25 +248,36 @@ export class NoteDiscovery {
 
   private processPage(
     state: DiscoveryState,
-    activities: import('@shinobi-cash/data').Activity[],
+    activities: import("@shinobi-cash/data").ActivityItem[],
     accountKey: bigint,
     poolAddress: string,
     policy: DiscoveryPolicy,
-    currentOffset: number,
+    currentOffset: number
   ): DiscoveryState {
     const activityIndex = buildActivityIndex(activities);
 
     // Phase 1: Discover new deposits
     const chainIds = new Set<string>();
     for (const activity of activities) {
-      if (activity.type === 'DEPOSIT' || activity.type === 'CROSSCHAIN_DEPOSIT' || activity.type === 'CROSSCHAIN_DEPOSIT_PENDING') {
-        chainIds.add(activity.originChainId.toString());
+      if (
+        activity.type === "DEPOSIT" ||
+        activity.type === "CROSSCHAIN_DEPOSIT_FILL" ||
+        activity.type === "CROSSCHAIN_DEPOSIT_INTENT"
+      ) {
+        chainIds.add(activity.chainId);
       }
     }
 
     for (const chainId of chainIds) {
       const startIndex = state.nextDepositIndex.get(chainId) ?? 0;
-      const scanResult = scanForDeposits(activityIndex, accountKey, poolAddress, chainId, startIndex, currentOffset);
+      const scanResult = scanForDeposits(
+        activityIndex,
+        accountKey,
+        poolAddress,
+        chainId,
+        startIndex,
+        currentOffset
+      );
 
       for (const tree of scanResult.newTrees) {
         const rootNote = tree.root.note;
@@ -272,7 +289,7 @@ export class NoteDiscovery {
       }
       // Store matched deposit activities
       for (const activity of scanResult.matchedActivities) {
-        state.activities.set(activity.id, activity);
+        state.activities.set(activity.txHash, activity);
       }
       state.nextDepositIndex.set(chainId, scanResult.nextDepositIndex);
       state.newFilledDepositsFound += scanResult.filledDepositsFound;
@@ -283,7 +300,13 @@ export class NoteDiscovery {
     const reconcileResult = reconcileTrees(state.trees, activities, activityIndex);
 
     for (const filled of reconcileResult.filledDepositIndices) {
-      const nullifierHash = deriveAndHashNullifier(accountKey, filled.poolAddress, filled.originChainId, filled.depositIndex, 0);
+      const nullifierHash = deriveAndHashNullifier(
+        accountKey,
+        filled.poolAddress,
+        filled.originChainId,
+        filled.depositIndex,
+        0
+      );
       state.nullifierMap.set(nullifierHash, {
         originChainId: filled.originChainId,
         depositIndex: filled.depositIndex,
@@ -292,16 +315,22 @@ export class NoteDiscovery {
     }
     // Store matched reconciliation activities (filled/refunded intents)
     for (const activity of reconcileResult.matchedActivities) {
-      state.activities.set(activity.id, activity);
+      state.activities.set(activity.txHash, activity);
     }
 
     // Phase 3: Extend trees with withdrawals
-    const extensionResult = extendAllTrees(state.trees, state.nullifierMap, activityIndex, accountKey, poolAddress);
+    const extensionResult = extendAllTrees(
+      state.trees,
+      state.nullifierMap,
+      activityIndex,
+      accountKey,
+      poolAddress
+    );
     state.trees = extensionResult.updatedTrees;
     state.nullifierMap = extensionResult.updatedNullifierMap;
     // Store matched withdrawal/ragequit activities
     for (const activity of extensionResult.matchedActivities) {
-      state.activities.set(activity.id, activity);
+      state.activities.set(activity.txHash, activity);
     }
 
     return state;
@@ -323,7 +352,11 @@ export class NoteDiscovery {
     };
   }
 
-  private async saveState(publicKey: string, poolAddress: string, state: DiscoveryState): Promise<void> {
+  private async saveState(
+    publicKey: string,
+    poolAddress: string,
+    state: DiscoveryState
+  ): Promise<void> {
     const serializable = serializeDiscoveryState(state);
     await this.persistence.saveState(publicKey, poolAddress, serializable);
   }
@@ -365,7 +398,7 @@ export class NoteDiscovery {
 export function rebuildNullifierMap(
   state: DiscoveryState,
   accountKey: bigint,
-  poolAddress: string,
+  poolAddress: string
 ): void {
   for (const tree of state.trees.values()) {
     // getSpendableLeaves already filters for spendable notes with status === 'unspent'
@@ -377,7 +410,7 @@ export function rebuildNullifierMap(
         poolAddress,
         note.originChainId,
         note.depositIndex,
-        note.changeIndex,
+        note.changeIndex
       );
       state.nullifierMap.set(nullifierHash, {
         originChainId: note.originChainId,
@@ -389,14 +422,18 @@ export function rebuildNullifierMap(
 }
 
 function serializeDiscoveryState(state: DiscoveryState): SerializableDiscoveryState {
+  // data-v2 activities are already string-based, no serialization needed
   return {
     trees: Array.from(state.trees.entries()).map(([chainKey, tree]) => ({
       chainKey,
       tree: serializeTree(tree),
     })),
     nullifierMap: Array.from(state.nullifierMap.entries()).map(([hash, info]) => ({ hash, info })),
-    nextDepositIndex: Array.from(state.nextDepositIndex.entries()).map(([chainId, index]) => ({ chainId, index })),
-    activities: Array.from(state.activities.values()).map(serializeActivity),
+    nextDepositIndex: Array.from(state.nextDepositIndex.entries()).map(([chainId, index]) => ({
+      chainId,
+      index,
+    })),
+    activities: Array.from(state.activities.values()),
     minOffset: state.minOffset,
     newFilledDepositsFound: state.newFilledDepositsFound,
     newPendingDepositsFound: state.newPendingDepositsFound,
@@ -404,9 +441,8 @@ function serializeDiscoveryState(state: DiscoveryState): SerializableDiscoverySt
 }
 
 function deserializeDiscoveryState(serialized: SerializableDiscoveryState): DiscoveryState {
-  // Deserialize activities and build map keyed by activity.id
-  const activitiesArray = (serialized.activities ?? []).map(deserializeActivity);
-  const activities = new Map(activitiesArray.map((a) => [a.id, a]));
+  // data-v2 activities are already string-based, build map keyed by txHash
+  const activities = new Map((serialized.activities ?? []).map((a) => [a.txHash, a]));
 
   return {
     trees: new Map(serialized.trees.map((t) => [t.chainKey, deserializeTree(t.tree)])),

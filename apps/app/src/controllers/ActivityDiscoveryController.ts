@@ -1,6 +1,6 @@
 import { proxy } from "valtio";
 
-import type { Activity } from "@shinobi-cash/core/discovery";
+import type { ActivityItem } from "@shinobi-cash/data";
 import { NotesDiscoverySelectors } from "@/controllers/NotesDiscoveryController";
 import type { ActivityEntry, ActivityStatus } from "@/types/activity";
 import { deriveActivitiesFromRawActivities, getActivityCounts } from "@/utils/activityDerivation";
@@ -43,9 +43,9 @@ export const ActivityDiscoveryController = {
    * Derive activity entries from raw activities.
    * Called when discovery completes with new activities.
    */
-  deriveFromActivities(activities: readonly Activity[]): void {
+  deriveFromActivities(activities: readonly ActivityItem[]): void {
     const notesView = NotesDiscoverySelectors.getViewState();
-    const entries = deriveActivitiesFromRawActivities(activities as Activity[]);
+    const entries = deriveActivitiesFromRawActivities(activities as ActivityItem[]);
     const counts = getActivityCounts(entries);
 
     const status: ActivityStatus =

@@ -2,7 +2,12 @@ import { proxy } from "valtio";
 import { depositService, type CashNoteData, type GasEstimate } from "@/utils/deposit";
 import { isDepositSupported } from "@/utils/depositRoute";
 import { createStateMachine } from "@/utils/stateMachine";
-import { FEE_CONFIG, POOL_CHAIN, MIN_AMOUNT_CONFIG } from "@shinobi-cash/constants";
+import {
+  FEE_CONFIG,
+  POOL_CHAIN,
+  MIN_AMOUNT_CONFIG,
+  CROSSCHAIN_DEPOSIT_FALLBACK,
+} from "@shinobi-cash/constants";
 import { parseEther } from "viem";
 import { calculateDepositFeeBreakdown } from "@/utils/depositFees";
 import type { PublicClient, WalletClient } from "viem";
@@ -17,6 +22,10 @@ import {
   DEPOSIT_COMMITMENT_MAX_RETRIES,
   DEPOSIT_COMMITMENT_RETRY_DELAY_MS,
 } from "@/constants/timings";
+import {
+  fetchCrosschainDepositDefaults,
+  type CrosschainDepositDefaults,
+} from "@/utils/depositDefaults";
 
 export interface DepositAmounts {
   noteAmount: number;
@@ -49,8 +58,14 @@ interface DepositControllerState {
   amount: string;
   lastPreparedAmounts: DepositAmounts | null;
   wallet: WalletContext;
-  /** User-configurable solver fee in basis points (default from FEE_CONFIG) */
+  /** User-configurable solver fee in basis points */
   solverFeeBPS: number;
+  /** Fill deadline in seconds (cross-chain only) */
+  fillDeadlineSeconds: number;
+  /** Expiry in seconds (cross-chain only) */
+  expirySeconds: number;
+  /** Contract defaults fetched from chain (null for same-chain) */
+  contractDefaults: CrosschainDepositDefaults | null;
 }
 
 const state = proxy<DepositControllerState>({
@@ -66,7 +81,10 @@ const state = proxy<DepositControllerState>({
     walletClient: undefined,
     gasPrice: undefined,
   },
-  solverFeeBPS: FEE_CONFIG.DEFAULT_SOLVER_FEE_BPS,
+  solverFeeBPS: CROSSCHAIN_DEPOSIT_FALLBACK.SOLVER_FEE_BPS,
+  fillDeadlineSeconds: CROSSCHAIN_DEPOSIT_FALLBACK.FILL_DEADLINE_SECONDS,
+  expirySeconds: CROSSCHAIN_DEPOSIT_FALLBACK.EXPIRY_SECONDS,
+  contractDefaults: null,
 });
 
 export const DepositSelectors = {
@@ -105,6 +123,19 @@ export const DepositSelectors = {
     } catch {
       return false;
     }
+  },
+
+  /** Check if user is using contract default settings (for cross-chain) */
+  isUsingDefaultSettings: () => {
+    const defaults = state.contractDefaults;
+    // If defaults not fetched yet, assume using defaults
+    if (!defaults) return true;
+
+    return (
+      state.solverFeeBPS === defaults.solverFeeBPS &&
+      state.fillDeadlineSeconds === defaults.fillDeadlineSeconds &&
+      state.expirySeconds === defaults.expirySeconds
+    );
   },
 };
 
@@ -200,6 +231,13 @@ export const DepositController = {
 
     transition({ status: "preparing", step: "gas" });
 
+    const settings = {
+      solverFeeBPS: state.solverFeeBPS,
+      fillDeadlineSeconds: state.fillDeadlineSeconds,
+      expirySeconds: state.expirySeconds,
+    };
+    const useDefaults = DepositSelectors.isUsingDefaultSettings();
+
     let gasEstimate: GasEstimate;
     try {
       gasEstimate = await depositService.estimateGas(
@@ -208,7 +246,8 @@ export const DepositController = {
         wallet.chainId,
         wallet.publicClient,
         wallet.gasPrice,
-        state.solverFeeBPS
+        settings,
+        useDefaults
       );
     } catch (error) {
       if (current !== prepareId) return;
@@ -220,9 +259,7 @@ export const DepositController = {
 
     const amounts = calculateDepositFeeBreakdown(amount, FEE_CONFIG.VETTING_FEE_BPS);
     const isCrossChain = wallet.chainId !== POOL_CHAIN.id;
-    const solverFee = isCrossChain
-      ? (parseFloat(amount) * state.solverFeeBPS) / 10_000
-      : 0;
+    const solverFee = isCrossChain ? (parseFloat(amount) * state.solverFeeBPS) / 10_000 : 0;
 
     const preparedAmounts = { ...amounts, solverFee };
     state.lastPreparedAmounts = preparedAmounts;
@@ -246,6 +283,13 @@ export const DepositController = {
 
     transition({ status: "submitting" });
 
+    const settings = {
+      solverFeeBPS: state.solverFeeBPS,
+      fillDeadlineSeconds: state.fillDeadlineSeconds,
+      expirySeconds: state.expirySeconds,
+    };
+    const useDefaults = DepositSelectors.isUsingDefaultSettings();
+
     try {
       const txHash = await depositService.submitTransaction(
         amount,
@@ -253,7 +297,8 @@ export const DepositController = {
         wallet.chainId,
         wallet.walletClient,
         wallet.gasPrice,
-        state.solverFeeBPS
+        settings,
+        useDefaults
       );
       transition({ status: "confirming", txHash });
       this._trackTransaction(txHash);
@@ -277,6 +322,37 @@ export const DepositController = {
     }
   },
 
+  setFillDeadlineSeconds(seconds: number) {
+    state.fillDeadlineSeconds = seconds;
+    if (state.state.status === "ready") {
+      this.schedulePrepare(0);
+    }
+  },
+
+  setExpirySeconds(seconds: number) {
+    state.expirySeconds = seconds;
+    if (state.state.status === "ready") {
+      this.schedulePrepare(0);
+    }
+  },
+
+  resetToDefaults() {
+    const defaults = state.contractDefaults;
+    if (defaults) {
+      state.solverFeeBPS = defaults.solverFeeBPS;
+      state.fillDeadlineSeconds = defaults.fillDeadlineSeconds;
+      state.expirySeconds = defaults.expirySeconds;
+    } else {
+      // Use fallback if no contract defaults available
+      state.solverFeeBPS = CROSSCHAIN_DEPOSIT_FALLBACK.SOLVER_FEE_BPS;
+      state.fillDeadlineSeconds = CROSSCHAIN_DEPOSIT_FALLBACK.FILL_DEADLINE_SECONDS;
+      state.expirySeconds = CROSSCHAIN_DEPOSIT_FALLBACK.EXPIRY_SECONDS;
+    }
+    if (state.state.status === "ready") {
+      this.schedulePrepare(0);
+    }
+  },
+
   async retry() {
     if (state.state.status === "error" || state.state.status === "failed") {
       await this.prepare();
@@ -284,7 +360,36 @@ export const DepositController = {
   },
 
   _updateWallet(wallet: WalletContext) {
+    const chainChanged = state.wallet.chainId !== wallet.chainId;
     state.wallet = wallet;
+
+    // Fetch contract defaults when chain changes to a cross-chain
+    if (chainChanged && wallet.publicClient) {
+      this._fetchContractDefaults();
+    }
+  },
+
+  async _fetchContractDefaults() {
+    const { wallet } = state;
+
+    // Only fetch for cross-chain deposits
+    if (!wallet.publicClient || wallet.chainId === POOL_CHAIN.id) {
+      state.contractDefaults = null;
+      return;
+    }
+
+    try {
+      const defaults = await fetchCrosschainDepositDefaults(wallet.chainId, wallet.publicClient);
+      state.contractDefaults = defaults;
+
+      // Reset to fetched defaults
+      state.solverFeeBPS = defaults.solverFeeBPS;
+      state.fillDeadlineSeconds = defaults.fillDeadlineSeconds;
+      state.expirySeconds = defaults.expirySeconds;
+    } catch (error) {
+      console.warn("[DepositController] Failed to fetch contract defaults:", error);
+      // Keep using fallback values
+    }
   },
 
   async _trackTransaction(txHash: `0x${string}`) {

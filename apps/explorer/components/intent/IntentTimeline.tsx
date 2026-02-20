@@ -1,18 +1,8 @@
-import type { IntentTimelineEvent, IntentPhase } from "@shinobi-cash/data";
+import type { IntentPhase } from "@shinobi-cash/data";
+import type { IntentTimelineEvent } from "@/controllers/IntentExplorerController";
 import { formatTimestamp, formatHash } from "@/utils/formatters";
 import { getChainName, getTxExplorerUrl } from "@/config/chains";
 import { Check, Clock, AlertCircle } from "lucide-react";
-
-/**
- * Get the chain ID where a timeline event happened
- * FILLED phase happens on destination chain, all others on origin chain
- */
-function getEventChainId(event: IntentTimelineEvent): bigint | undefined {
-  if (event.phase === "FILLED") {
-    return event.destinationChainId;
-  }
-  return event.originChainId;
-}
 
 interface Props {
   events: IntentTimelineEvent[];
@@ -23,7 +13,15 @@ interface Props {
 const PHASE_ORDER: IntentPhase[] = ["ESCROWED", "FILLED", "FINALIZED"];
 const REFUND_PHASE: IntentPhase = "REFUNDED";
 
-function PhaseIcon({ phase, isActive, isCompleted }: { phase: IntentPhase; isActive: boolean; isCompleted: boolean }) {
+function PhaseIcon({
+  phase,
+  isActive,
+  isCompleted,
+}: {
+  phase: IntentPhase;
+  isActive: boolean;
+  isCompleted: boolean;
+}) {
   if (phase === REFUND_PHASE) {
     return (
       <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500/20 text-red-400">
@@ -85,9 +83,7 @@ export function IntentTimeline({ events, currentPhase }: Props) {
         // A phase is completed if we have event data for it (it has happened)
         const hasEvent = !!event;
         // Phases up to and including current phase are completed (if they have events)
-        const isCompleted = isRefunded
-          ? phase !== REFUND_PHASE && hasEvent
-          : hasEvent;
+        const isCompleted = isRefunded ? phase !== REFUND_PHASE && hasEvent : hasEvent;
         // A phase is "pending" if it's after the current phase and has no event
         const isPending = !hasEvent && PHASE_ORDER.indexOf(phase) > currentIndex;
         const isLast = index === displayPhases.length - 1;
@@ -118,34 +114,25 @@ export function IntentTimeline({ events, currentPhase }: Props) {
                 >
                   {phase.toLowerCase()}
                 </span>
-                {isPending && (
-                  <span className="text-xs text-neutral-500">(pending)</span>
-                )}
+                {isPending && <span className="text-xs text-neutral-500">(pending)</span>}
               </div>
 
-              <p className="mt-0.5 text-xs text-neutral-500">
-                {getPhaseDescription(phase, event)}
-              </p>
+              <p className="mt-0.5 text-xs text-neutral-500">{getPhaseDescription(phase, event)}</p>
 
-              {event && (() => {
-                const eventChainId = getEventChainId(event);
-                return (
-                  <div className="mt-2 flex items-center justify-between text-xs">
-                    {eventChainId && (
-                      <a
-                        href={getTxExplorerUrl(Number(eventChainId), event.txHash)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-neutral-300 transition-colors hover:text-orange-400"
-                      >
-                        {getChainName(Number(eventChainId))}
-                        <span className="text-neutral-500">↗</span>
-                      </a>
-                    )}
-                    <span className="text-neutral-400">{formatTimestamp(event.timestamp)}</span>
-                  </div>
-                );
-              })()}
+              {event && (
+                <div className="mt-2 flex items-center justify-between text-xs">
+                  <a
+                    href={getTxExplorerUrl(Number(event.chainId), event.txHash)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-neutral-300 transition-colors hover:text-orange-400"
+                  >
+                    {getChainName(Number(event.chainId))}
+                    <span className="text-neutral-500">↗</span>
+                  </a>
+                  <span className="text-neutral-400">{formatTimestamp(event.timestamp)}</span>
+                </div>
+              )}
             </div>
           </div>
         );

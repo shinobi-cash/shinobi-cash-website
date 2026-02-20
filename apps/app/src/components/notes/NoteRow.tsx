@@ -5,8 +5,8 @@
  */
 
 import { useRouter } from "next/navigation";
-import type { Note } from "@shinobi-cash/core/discovery";
-import { isIntentNote, canWithdraw, canRagequit } from "@shinobi-cash/core/discovery";
+import type { NoteOrIntent } from "@shinobi-cash/core/discovery";
+import { isIntent, isNote, canWithdraw, canRagequit } from "@shinobi-cash/core/discovery";
 import { MoreVertical, Eye, Lock, Unlock, Clock } from "lucide-react";
 import { formatTimestamp } from "@/utils/formatters";
 import { getStatusDotColor } from "@/utils/noteFiltering";
@@ -21,20 +21,22 @@ import {
 } from "@workspace/ui/components/dropdown-menu";
 
 interface NoteRowProps {
-  note: Note;
+  note: NoteOrIntent;
   onClick?: () => void;
 }
 
 export function NoteRow({ note, onClick }: NoteRowProps) {
   const router = useRouter();
+
+  // Only notes (not intents) can be withdrawn
+  const canWithdrawPrivately = isNote(note) && canWithdraw(note);
+  const canWithdrawPublicly = isNote(note) && canRagequit(note);
+
+  // Intent shows "Awaiting delivery" - only pending intents appear in lists
+  // (resolved intents are filtered out - their context shows in resulting notes)
+  const isPendingIntent = isIntent(note);
+
   const dotColor = getStatusDotColor(note);
-
-  const canWithdrawPrivately = canWithdraw(note);
-  const canWithdrawPublicly = canRagequit(note);
-
-  // Intent notes show "Awaiting delivery" status
-  const isIntent = isIntentNote(note);
-  const intentStatusText = isIntent ? "Awaiting cross-chain delivery" : null;
 
   const displayTimestamp = note.originTimestamp;
 
@@ -45,15 +47,20 @@ export function NoteRow({ note, onClick }: NoteRowProps) {
 
   const handleWithdrawPrivately = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!isNote(note)) return;
     WithdrawController.selectNote(note);
     router.push(`/withdraw?note=${note.depositIndex}`);
   };
 
   const handleWithdrawPublicly = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!isNote(note)) return;
     RagequitController.selectNote(note);
     router.push(`/ragequit?note=${note.depositIndex}`);
   };
+
+  // Display identifier: serialNumber for notes, orderId for intents
+  const isIntentNote = isIntent(note);
 
   return (
     <div className="flex w-full items-center px-4 py-3 transition-colors hover:bg-white/[0.04]">
@@ -69,11 +76,13 @@ export function NoteRow({ note, onClick }: NoteRowProps) {
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <span className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ${dotColor}`} />
-              <span className="truncate text-sm font-medium font-mono text-white">{note.serialNumber}</span>
+              <span className="truncate font-mono text-sm font-medium text-white">
+                {isIntentNote ? `Order ${note.orderId.slice(0, 6)}...${note.orderId.slice(-4)}` : note.serialNumber}
+              </span>
             </div>
             <div className="mt-0.5 pl-[18px] text-xs text-neutral-400">
-              {intentStatusText ? (
-                <span>{intentStatusText}</span>
+              {isPendingIntent ? (
+                <span className="italic">Awaiting solver fill</span>
               ) : (
                 formatTimestamp(displayTimestamp)
               )}
@@ -133,13 +142,10 @@ export function NoteRow({ note, onClick }: NoteRowProps) {
             </DropdownMenuItem>
           )}
 
-          {isIntent && (
-            <DropdownMenuItem
-              disabled
-              className="cursor-not-allowed text-neutral-500"
-            >
+          {isPendingIntent && (
+            <DropdownMenuItem disabled className="cursor-not-allowed text-neutral-500">
               <Clock className="h-4 w-4" />
-              Awaiting Delivery
+              Awaiting Solver Fill
             </DropdownMenuItem>
           )}
         </DropdownMenuContent>

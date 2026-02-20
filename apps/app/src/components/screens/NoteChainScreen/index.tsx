@@ -1,76 +1,148 @@
 /**
  * Note Chain Screen Component
- * Full-screen view for displaying note tree details with transaction timeline
+ * Full-screen view for displaying individual note details with UTXO-style navigation
  */
 
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import type { NoteTree } from "@shinobi-cash/core/discovery";
+import type { NoteOrIntent, NoteNode, NoteTree, DepositIntent, WithdrawalIntent } from "@shinobi-cash/core/discovery";
 import {
-  getSpendableLeaves,
   isSpendableNote,
-  isIntentNote,
   canWithdraw,
   canRagequit,
-  getTotalSpendableBalance,
+  isDepositIntent,
+  isWithdrawalIntent,
+  isNote,
 } from "@shinobi-cash/core/discovery";
-import { formatEthAmount, formatUsdAmount } from "@/utils/formatters";
-import { Lock, Unlock } from "lucide-react";
+import { Lock, Unlock, Clock, Loader2 } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";
 import { ScreenLayout } from "@/components/layout/ScreenLayout";
-import { Section, Row } from "@/components/shared/Section";
-import { usePriceData } from "@/hooks/usePriceData";
 import { WithdrawController } from "@/controllers/WithdrawController";
 import { RagequitController } from "@/controllers/RagequitController";
-import { HistoryTimeline } from "./HistoryTimeline";
-import { buildTimelineEntries } from "./utils";
+import { useIntentDetails } from "@/hooks/useIntentDetails";
+import { NoteUtxoView } from "./NoteUtxoView";
+import { findNoteBySerial } from "./note-navigation";
+// import { Section, Row } from "@/components/shared/Section";
 
 interface NoteChainScreenProps {
-  noteTree: NoteTree | null;
+  note: NoteOrIntent;
+  noteNode: NoteNode;
+  allTrees: NoteTree[];
   onBack: () => void;
 }
 
-export function NoteChainScreen({ noteTree, onBack }: NoteChainScreenProps) {
+interface NavigationStackItem {
+  note: NoteOrIntent;
+  node: NoteNode;
+}
+
+/**
+ * Format countdown to refund availability
+ */
+function formatRefundCountdown(expiresTimestamp: string): { text: string; isAvailable: boolean } {
+  const expiresMs = parseInt(expiresTimestamp, 10) * 1000;
+  const now = Date.now();
+  const diff = expiresMs - now;
+
+  if (diff <= 0) {
+    return { text: "Refund available", isAvailable: true };
+  }
+
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+  if (hours > 24) {
+    const days = Math.floor(hours / 24);
+    return { text: `Refund in ${days}d ${hours % 24}h`, isAvailable: false };
+  }
+  if (hours > 0) {
+    return { text: `Refund in ${hours}h ${minutes}m`, isAvailable: false };
+  }
+  return { text: `Refund in ${minutes}m`, isAvailable: false };
+}
+
+/**
+ * Check if note is a pending intent (no children yet)
+ */
+function isPendingIntent(item: NoteOrIntent, node: NoteNode): item is DepositIntent | WithdrawalIntent {
+  return (isDepositIntent(item) || isWithdrawalIntent(item)) && node.children.length === 0;
+}
+
+export function NoteChainScreen({ note, noteNode, allTrees, onBack }: NoteChainScreenProps) {
   const router = useRouter();
-  const { usdPrice } = usePriceData("ETH");
 
-  if (!noteTree) return null;
+  // Navigation stack for back button support
+  const [navigationStack, setNavigationStack] = useState<NavigationStackItem[]>([]);
+  const [currentNote, setCurrentNote] = useState<NoteOrIntent>(note);
+  const [currentNode, setCurrentNode] = useState<NoteNode>(noteNode);
 
-  // Get spendable leaves to determine available actions
-  const spendableLeaves = getSpendableLeaves(noteTree);
-  const firstSpendableNote = spendableLeaves.length > 0 ? spendableLeaves[0].note : null;
+  // Navigate to another note (push to stack)
+  const handleNavigate = useCallback(
+    (serialNumber: string) => {
+      const result = findNoteBySerial(serialNumber, allTrees);
+      if (result) {
+        // Push current note to stack
+        setNavigationStack((prev) => [...prev, { note: currentNote, node: currentNode }]);
+        // Navigate to new note
+        setCurrentNote(result.note);
+        setCurrentNode(result.node);
+      }
+    },
+    [allTrees, currentNote, currentNode]
+  );
 
-  // Check if any spendable note can be withdrawn/ragequit
-  const canWithdrawPrivately = spendableLeaves.some((node) => canWithdraw(node.note));
-  const canWithdrawPublicly = spendableLeaves.some((node) => canRagequit(node.note));
-  const hasActions = canWithdrawPrivately || canWithdrawPublicly;
+  // Handle back button
+  const handleBack = useCallback(() => {
+    if (navigationStack.length > 0) {
+      // Pop from stack
+      const newStack = [...navigationStack];
+      const previous = newStack.pop()!;
+      setNavigationStack(newStack);
+      setCurrentNote(previous.note);
+      setCurrentNode(previous.node);
+    } else {
+      // No stack, call original onBack
+      onBack();
+    }
+  }, [navigationStack, onBack]);
 
-  // Calculate total remaining balance
-  const remainingBalance = getTotalSpendableBalance(noteTree);
+  // Check if current note can be withdrawn/ragequit (only notes, not intents)
+  const canWithdrawPrivately = isNote(currentNote) && isSpendableNote(currentNote) && canWithdraw(currentNote);
+  const canWithdrawPublicly = isNote(currentNote) && isSpendableNote(currentNote) && canRagequit(currentNote);
+
+  // Check if current note is a pending intent (can show refund option)
+  const pendingIntent = isPendingIntent(currentNote, currentNode);
+  const orderId = pendingIntent ? currentNote.orderId : undefined;
+
+  // Fetch actual intent details for expires timestamp
+  const { intent, isLoading: isLoadingIntent } = useIntentDetails(orderId, {
+    enabled: pendingIntent,
+  });
+
+  // Use fetched expires or fall back to note's (incorrect) value
+  const expiresTimestamp = intent?.expires ?? (pendingIntent ? currentNote.expires : undefined);
+  const refundInfo = expiresTimestamp ? formatRefundCountdown(expiresTimestamp) : null;
+
+  const hasActions = canWithdrawPrivately || canWithdrawPublicly || pendingIntent;
 
   const handleWithdrawPrivately = () => {
-    if (!firstSpendableNote) return;
-    WithdrawController.selectNote(firstSpendableNote);
-    router.push(`/withdraw?note=${firstSpendableNote.depositIndex}`);
+    if (!isNote(currentNote) || !isSpendableNote(currentNote)) return;
+    WithdrawController.selectNote(currentNote);
+    router.push(`/withdraw?note=${currentNote.depositIndex}`);
   };
 
   const handleWithdrawPublicly = () => {
-    if (!firstSpendableNote) return;
-    RagequitController.selectNote(firstSpendableNote);
-    router.push(`/ragequit?note=${firstSpendableNote.depositIndex}`);
+    if (!isNote(currentNote) || !isSpendableNote(currentNote)) return;
+    RagequitController.selectNote(currentNote);
+    router.push(`/ragequit?note=${currentNote.depositIndex}`);
   };
 
-  const toUsdValue = (amount: string | bigint): number | null => {
-    const ethAmount = formatEthAmount(amount, { maxDecimals: 6 });
-    const ethAsNumber = Number.parseFloat(ethAmount);
-    return usdPrice && !Number.isNaN(ethAsNumber) ? ethAsNumber * usdPrice : null;
-  };
-
-  const timelineEntries = buildTimelineEntries(noteTree);
-
-  // Use root note for display info
-  const rootNote = noteTree.root.note;
-  const displayNote = firstSpendableNote ?? rootNote;
+  // Build subtitle showing navigation depth
+  const subtitle =
+    navigationStack.length > 0
+      ? `${navigationStack.length + 1} notes deep`
+      : "Note details";
 
   return (
     <ScreenLayout
@@ -78,8 +150,8 @@ export function NoteChainScreen({ noteTree, onBack }: NoteChainScreenProps) {
       header={
         <ScreenHeader
           title="Note Details"
-          subtitle="Detail of your private deposit and withdrawals"
-          onBack={onBack}
+          subtitle={subtitle}
+          onBack={handleBack}
         />
       }
       footer={
@@ -106,82 +178,35 @@ export function NoteChainScreen({ noteTree, onBack }: NoteChainScreenProps) {
                 Withdraw Privately
               </Button>
             )}
+            {pendingIntent && (
+              <Button
+                onClick={() => {
+                  // TODO: Implement refund flow
+                  console.log("Refund not implemented yet");
+                }}
+                variant="outline"
+                disabled={isLoadingIntent || !refundInfo?.isAvailable}
+                className="h-12 flex-1 rounded-xl border-white/10 text-sm font-semibold text-neutral-300 hover:bg-white/5 hover:text-white disabled:opacity-50"
+                size="lg"
+              >
+                {isLoadingIntent ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Clock className="mr-2 h-4 w-4" />
+                )}
+                {isLoadingIntent ? "Loading..." : refundInfo?.text ?? "Refund"}
+              </Button>
+            )}
           </div>
         ) : undefined
       }
     >
-      <div className="space-y-4">
-        {/* Balance Summary */}
-        <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 text-center">
-          <p className="mb-1 text-sm font-medium text-neutral-400">Remaining Balance</p>
-          <div className="flex items-center justify-center gap-2">
-            <span className="text-2xl font-bold tabular-nums text-white">
-              {formatEthAmount(remainingBalance, { maxDecimals: 6 })} ETH
-            </span>
-            {toUsdValue(remainingBalance) !== null && (
-              <span className="text-sm text-neutral-400">
-                (~{formatUsdAmount(toUsdValue(remainingBalance)!)})
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Status Section */}
-        <Section title="Status">
-          <Row label="Serial" value={<span className="font-mono">{displayNote.serialNumber}</span>} />
-          {isSpendableNote(displayNote) && (
-            <>
-              <Row
-                label="Status"
-                value={
-                  <span
-                    className={`capitalize ${
-                      displayNote.status === "spent"
-                        ? "text-neutral-400"
-                        : "text-emerald-400"
-                    }`}
-                  >
-                    {displayNote.status}
-                  </span>
-                }
-              />
-              <Row
-                label="ASP Status"
-                value={
-                  <span
-                    className={`capitalize ${
-                      displayNote.aspStatus === "approved"
-                        ? "text-emerald-400"
-                        : displayNote.aspStatus === "pending"
-                          ? "text-blue-400"
-                          : "text-red-400"
-                    }`}
-                  >
-                    {displayNote.aspStatus}
-                  </span>
-                }
-              />
-            </>
-          )}
-          {isIntentNote(displayNote) && (
-            <Row
-              label="Intent Status"
-              value={
-                <span className="capitalize text-yellow-400">
-                  Pending
-                </span>
-              }
-            />
-          )}
-        </Section>
-
-        {/* History Section */}
-        <Section title="History">
-          <div className="px-3 py-2">
-            <HistoryTimeline entries={timelineEntries} toUsdValue={toUsdValue} />
-          </div>
-        </Section>
-      </div>
+      {/* UTXO View - INPUTS → THIS NOTE → OUTPUTS */}
+      <NoteUtxoView
+        note={currentNote}
+        node={currentNode}
+        onNavigate={handleNavigate}
+      />
     </ScreenLayout>
   );
 }

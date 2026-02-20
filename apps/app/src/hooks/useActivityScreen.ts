@@ -49,7 +49,8 @@ export function useActivityScreen(): ActivityScreenAPI {
   return {
     status,
     syncError,
-    entries,
+    // Cast to remove Valtio's readonly wrapper for compatibility with ActivityEntry type
+    entries: entries as readonly ActivityEntry[],
     filteredEntries,
     activeFilter,
     setFilter: ActivityScreenController.setFilter,

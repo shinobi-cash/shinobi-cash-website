@@ -7,7 +7,7 @@ import {
   SHINOBI_CASH_CROSSCHAIN_WITHDRAW2_PAYMASTER,
   SHINOBI_CASH_WITHDRAWAL_INPUT_SETTLER,
   SHINOBI_CASH_DEPOSIT_OUTPUT_SETTLER,
-  SHINOBI_CASH_CROSSCHAIN_WITHDRAWAL_FILL_ORACLE,
+  SHINOBI_CASH_HYPERLANE_ORACLE,
   SHINOBI_CASH_CROSSCHAIN_CONTRACTS,
 } from "@shinobi-cash/constants";
 
@@ -52,7 +52,7 @@ const ADDRESS_LABELS: Record<string, AddressLabel> = {
     name: "Deposit Settler",
     description: "Processes cross-chain deposit fills",
   },
-  [SHINOBI_CASH_CROSSCHAIN_WITHDRAWAL_FILL_ORACLE.address.toLowerCase()]: {
+  [SHINOBI_CASH_HYPERLANE_ORACLE.address.toLowerCase()]: {
     name: "Withdrawal Oracle",
     description: "Oracle for cross-chain withdrawal fills",
   },

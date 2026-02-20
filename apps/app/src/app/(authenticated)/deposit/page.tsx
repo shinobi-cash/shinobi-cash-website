@@ -5,7 +5,12 @@ import { useState, useEffect } from "react";
 import { useSwitchChain } from "wagmi";
 import { useSnapshot } from "valtio";
 import { Button } from "@workspace/ui/components/button";
-import { POOL_CHAIN, SHINOBI_CASH_ETH_POOL, MIN_AMOUNT_CONFIG, FEE_CONFIG } from "@shinobi-cash/constants";
+import {
+  POOL_CHAIN,
+  SHINOBI_CASH_ETH_POOL,
+  MIN_AMOUNT_CONFIG,
+  FEE_CONFIG,
+} from "@shinobi-cash/constants";
 import { formatEther } from "viem";
 import { CardContainer } from "@/components/shared/CardContainer";
 import { AssetPill } from "@/components/shared/AssetPill";
@@ -111,7 +116,8 @@ export default function DepositPage() {
   // Calculate USD values
   const noteAmount = state.state.status === "ready" ? state.state.amounts.noteAmount : 0;
   const noteAmountUsd = usdPrice && noteAmount > 0 ? noteAmount * usdPrice : null;
-  const depositAmountUsd = usdPrice && parseFloat(state.amount) > 0 ? parseFloat(state.amount) * usdPrice : null;
+  const depositAmountUsd =
+    usdPrice && parseFloat(state.amount) > 0 ? parseFloat(state.amount) * usdPrice : null;
 
   const isDisabled = state.state.status === "submitting" || !DepositSelectors.isOnSupportedChain();
   const formattedBalance = formatDisplayAmount(state.wallet.balance);
@@ -123,7 +129,8 @@ export default function DepositPage() {
     : MIN_AMOUNT_CONFIG.MIN_POOL_DEPOSIT;
   const minAmountEth = parseFloat(formatEther(minAmount));
   const depositAmountNum = parseFloat(state.amount) || 0;
-  const isBelowMinimum = state.amount.trim() !== "" && depositAmountNum > 0 && !DepositSelectors.isAboveMinimum();
+  const isBelowMinimum =
+    state.amount.trim() !== "" && depositAmountNum > 0 && !DepositSelectors.isAboveMinimum();
 
   // Deposit Timeline Screen
   if (screens.is("timeline")) {
@@ -326,10 +333,7 @@ export default function DepositPage() {
 
           <div className="flex items-center justify-between gap-3">
             <AssetPill asset={asset} chainId={POOL_CHAIN.id} disabled />
-            <AmountInput
-              value={noteAmount > 0 ? formatDisplayAmount(noteAmount) : "0"}
-              disabled
-            />
+            <AmountInput value={noteAmount > 0 ? formatDisplayAmount(noteAmount) : "0"} disabled />
           </div>
 
           <div className="flex items-center justify-between py-1">

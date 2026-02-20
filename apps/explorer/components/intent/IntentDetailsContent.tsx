@@ -1,6 +1,7 @@
 "use client";
 
-import type { Intent, IntentTimelineEvent } from "@shinobi-cash/data";
+import type { Intent } from "@shinobi-cash/data";
+import type { IntentTimelineEvent } from "@/controllers/IntentExplorerController";
 import { formatEthAmount, formatHash, bytes32ToAddress } from "@/utils/formatters";
 import { getChainName } from "@/config/chains";
 import { CopyableText } from "@/components/shared/CopyableText";
@@ -9,42 +10,13 @@ import { IntentTimeline } from "./IntentTimeline";
 import { PHASE_COLORS, PHASE_LABELS } from "@/config/phaseColors";
 import { ArrowRight, Loader2, Clock } from "lucide-react";
 
-function formatDeadline(timestamp: bigint): string {
+function formatDeadline(timestamp: string): string {
   const date = new Date(Number(timestamp) * 1000);
   return date.toLocaleString();
 }
 
-function isExpired(timestamp: bigint): boolean {
+function isExpired(timestamp: string): boolean {
   return Date.now() > Number(timestamp) * 1000;
-}
-
-/**
- * Merge intent data with timeline events
- * The IntentStatusView returns the latest phase which may be missing fields.
- * Timeline events (especially ESCROWED) have the full data.
- */
-function mergeIntentWithTimeline(intent: Intent, timeline: IntentTimelineEvent[] | null): Intent {
-  if (!timeline || timeline.length === 0) return intent;
-
-  // Find the event with the most data (usually ESCROWED has everything)
-  const richEvent = timeline.find(e => e.user || e.inputAmount || e.outputAmount) ?? timeline[0];
-
-  return {
-    ...intent,
-    user: intent.user ?? richEvent?.user,
-    solver: intent.solver ?? richEvent?.solver,
-    originChainId: intent.originChainId ?? richEvent?.originChainId,
-    destinationChainId: intent.destinationChainId ?? richEvent?.destinationChainId,
-    amount: intent.amount ?? richEvent?.amount,
-    fillDeadline: intent.fillDeadline ?? richEvent?.fillDeadline,
-    expires: intent.expires ?? richEvent?.expires,
-    nonce: intent.nonce ?? richEvent?.nonce,
-    fillOracle: intent.fillOracle ?? richEvent?.fillOracle,
-    intentOracle: intent.intentOracle ?? richEvent?.intentOracle,
-    inputAmount: intent.inputAmount ?? richEvent?.inputAmount,
-    outputAmount: intent.outputAmount ?? richEvent?.outputAmount,
-    outputRecipient: intent.outputRecipient ?? richEvent?.outputRecipient,
-  };
 }
 
 interface Props {
@@ -54,12 +26,16 @@ interface Props {
   timelineError: string | null;
 }
 
-export function IntentDetailsContent({ intent: rawIntent, timeline, isLoadingTimeline, timelineError }: Props) {
-  // Merge intent with timeline data to fill in missing fields
-  const intent = mergeIntentWithTimeline(rawIntent, timeline);
-
+export function IntentDetailsContent({
+  intent,
+  timeline,
+  isLoadingTimeline,
+  timelineError,
+}: Props) {
   const originChain = intent.originChainId ? getChainName(Number(intent.originChainId)) : "Unknown";
-  const destChain = intent.destinationChainId ? getChainName(Number(intent.destinationChainId)) : "Pool Chain";
+  const destChain = intent.destinationChainId
+    ? getChainName(Number(intent.destinationChainId))
+    : "Pool Chain";
 
   return (
     <div className="space-y-6 p-6">
@@ -123,20 +99,23 @@ export function IntentDetailsContent({ intent: rawIntent, timeline, isLoadingTim
               </span>
             </div>
           )}
-          {intent.inputAmount && intent.outputAmount && intent.inputAmount > intent.outputAmount && (() => {
-            const input = BigInt(intent.inputAmount);
-            const output = BigInt(intent.outputAmount);
-            const fee = input - output;
-            const percentage = Number((fee * BigInt(10000)) / input) / 100;
-            return (
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-neutral-500">Solver Fee</span>
-                <span className="font-mono text-xs text-amber-400">
-                  {formatEthAmount(fee, { decimals: 6 })} ETH ({percentage.toFixed(2)}%)
-                </span>
-              </div>
-            );
-          })()}
+          {intent.inputAmount &&
+            intent.outputAmount &&
+            BigInt(intent.inputAmount) > BigInt(intent.outputAmount) &&
+            (() => {
+              const input = BigInt(intent.inputAmount);
+              const output = BigInt(intent.outputAmount);
+              const fee = input - output;
+              const percentage = Number((fee * BigInt(10000)) / input) / 100;
+              return (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-neutral-500">Solver Fee</span>
+                  <span className="font-mono text-xs text-amber-400">
+                    {formatEthAmount(fee, { decimals: 6 })} ETH ({percentage.toFixed(2)}%)
+                  </span>
+                </div>
+              );
+            })()}
 
           {/* Output Recipient */}
           {(() => {
@@ -154,9 +133,11 @@ export function IntentDetailsContent({ intent: rawIntent, timeline, isLoadingTim
           {intent.fillDeadline && (
             <div className="flex items-center justify-between">
               <span className="text-xs text-neutral-500">Fill Deadline</span>
-              <span className={`flex items-center gap-1 text-xs ${
-                isExpired(intent.fillDeadline) ? "text-red-400" : "text-neutral-300"
-              }`}>
+              <span
+                className={`flex items-center gap-1 text-xs ${
+                  isExpired(intent.fillDeadline) ? "text-red-400" : "text-neutral-300"
+                }`}
+              >
                 <Clock className="h-3 w-3" />
                 {formatDeadline(intent.fillDeadline)}
               </span>
@@ -165,38 +146,22 @@ export function IntentDetailsContent({ intent: rawIntent, timeline, isLoadingTim
           {intent.expires && (
             <div className="flex items-center justify-between">
               <span className="text-xs text-neutral-500">Expiry (Refund Available)</span>
-              <span className={`flex items-center gap-1 text-xs ${
-                isExpired(intent.expires) ? "text-amber-400" : "text-neutral-300"
-              }`}>
+              <span
+                className={`flex items-center gap-1 text-xs ${
+                  isExpired(intent.expires) ? "text-amber-400" : "text-neutral-300"
+                }`}
+              >
                 <Clock className="h-3 w-3" />
                 {formatDeadline(intent.expires)}
               </span>
             </div>
           )}
 
-          {/* Nonce */}
-          {intent.nonce !== undefined && (
+          {/* Solver (if filled) */}
+          {intent.solver && (
             <div className="flex items-center justify-between">
-              <span className="text-xs text-neutral-500">Nonce</span>
-              <CopyableText
-                value={intent.nonce.toString()}
-                displayValue={formatHash(intent.nonce.toString())}
-                className="font-mono text-xs text-neutral-300"
-              />
-            </div>
-          )}
-
-          {/* Oracles */}
-          {intent.fillOracle && (
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-neutral-500">Fill Oracle</span>
-              <AddressField address={intent.fillOracle} />
-            </div>
-          )}
-          {intent.intentOracle && intent.intentOracle !== "0x0000000000000000000000000000000000000000" && (
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-neutral-500">Intent Oracle</span>
-              <AddressField address={intent.intentOracle} />
+              <span className="text-xs text-neutral-500">Solver</span>
+              <AddressField address={intent.solver} />
             </div>
           )}
         </div>

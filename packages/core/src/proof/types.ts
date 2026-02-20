@@ -3,12 +3,17 @@
  */
 
 // @ts-ignore - snarkjs doesn't have type declarations
-import type * as snarkjs from 'snarkjs';
+import type * as snarkjs from "snarkjs";
 
 export interface WithdrawalIntent {
   withdrawAmount: bigint;
   noteAmount: bigint;
   label: bigint;
+}
+
+export interface CrosschainWithdrawalIntent extends WithdrawalIntent {
+  relayFeeBPS: bigint;
+  refundFeeBPS: bigint;
 }
 
 export interface WithdrawalCircuitWitness {
@@ -33,6 +38,8 @@ export interface WithdrawalCircuitWitness {
 export interface CrosschainWithdrawalCircuitWitness extends WithdrawalCircuitWitness {
   refundNullifier: string;
   refundSecret: string;
+  relayFeeBPS: string;
+  refundFeeBPS: string;
 }
 
 export interface WithdrawalProofData {
@@ -50,10 +57,27 @@ export type CircuitFileLoader = () => Promise<CircuitFiles>;
 
 export interface ProofGenerator {
   generateWithdrawalProof(witness: WithdrawalCircuitWitness): Promise<WithdrawalProofData>;
-  generateCrosschainWithdrawalProof(witness: CrosschainWithdrawalCircuitWitness): Promise<WithdrawalProofData>;
+  generateCrosschainWithdrawalProof(
+    witness: CrosschainWithdrawalCircuitWitness
+  ): Promise<WithdrawalProofData>;
   generateWithdraw2Proof(witness: Withdraw2CircuitWitness): Promise<WithdrawalProofData>;
-  generateCrosschainWithdraw2Proof(witness: CrosschainWithdraw2CircuitWitness): Promise<WithdrawalProofData>;
+  generateCrosschainWithdraw2Proof(
+    witness: CrosschainWithdraw2CircuitWitness
+  ): Promise<WithdrawalProofData>;
   generateRagequitProof?(witness: RagequitCircuitWitness): Promise<RagequitProofData>;
+}
+
+// ============ PRECOMPUTED ASP PROOF ============
+
+/**
+ * Precomputed ASP merkle proof from IPFS (v2.1 format)
+ * Used to skip client-side ASP tree building
+ */
+export interface PrecomputedASPProof {
+  aspRoot: string;
+  treeDepth: number;
+  siblings: string[];
+  index: number;
 }
 
 // ============ RAGEQUIT TYPES ============
@@ -97,6 +121,11 @@ export interface Withdraw2Intent {
   primaryLabel: bigint;
   secondaryNoteAmount: bigint;
   secondaryLabel: bigint;
+}
+
+export interface CrosschainWithdraw2Intent extends Withdraw2Intent {
+  relayFeeBPS: bigint;
+  refundFeeBPS: bigint;
 }
 
 /**
@@ -152,9 +181,11 @@ export interface Withdraw2CircuitWitness {
 }
 
 /**
- * Cross-chain Withdraw2 witness (includes refund commitment inputs)
+ * Cross-chain Withdraw2 witness (includes refund commitment inputs and fees)
  */
 export interface CrosschainWithdraw2CircuitWitness extends Withdraw2CircuitWitness {
   refundNullifier: string;
   refundSecret: string;
+  relayFeeBPS: string;
+  refundFeeBPS: string;
 }
