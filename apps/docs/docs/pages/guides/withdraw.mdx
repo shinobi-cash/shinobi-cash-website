@@ -1,10 +1,6 @@
 # Withdrawing
 
-How to withdraw ETH privately from Shinobi Cash.
-
-:::note[Audience]
-This page is for **Users**. No protocol knowledge required.
-:::
+How to withdraw privately from Shinobi Cash.
 
 ## Overview
 
@@ -17,7 +13,7 @@ Withdrawing uses a zero-knowledge proof to verify you own a deposit without reve
 3. **Enter Amount** — Up to the note's full balance
 4. **Enter Recipient** — Any valid Ethereum address
 5. **Select Destination Chain** — Where funds should arrive
-6. **Review Fees** — Relay fee + solver fee (if cross-chain)
+6. **Review Fees** — Relay fee + solver fee (if crosschain)
 7. **Confirm** — Proof generates in your browser, then submits
 
 ## Proof Generation
@@ -57,7 +53,7 @@ When withdrawing on the pool chain (Arbitrum Sepolia):
 
 **Fees**: Relay fee only (covers gas)
 
-## Cross-Chain Withdrawal
+## Crosschain Withdrawal
 
 When withdrawing to another chain (e.g., Base Sepolia):
 
@@ -67,7 +63,7 @@ When withdrawing to another chain (e.g., Base Sepolia):
 4. Recipient receives funds
 5. Solver claims escrow after proving fill
 
-**Fees**: Relay fee + 5% solver fee
+**Fees**: Relay fee + solver fee
 
 ### What Happens Behind the Scenes
 
@@ -113,16 +109,16 @@ This is useful when you have multiple small notes and want to make a larger with
 
 ## Fee Structure
 
-:::info[Testnet Values]
-Fees are configurable. Values below are testnet settings. Solver availability on testnet is limited.
+:::info[Testnet]
+Fees are configurable. Solver availability on testnet is limited.
 :::
 
-| Fee | Amount | When |
-|-----|--------|------|
-| **Relay Fee** | Up to 15% | Always (covers gas) |
-| **Solver Fee** | 5% | Cross-chain only |
+| Fee | When |
+|-----|------|
+| **Relay Fee** | Always (covers gas) |
+| **Solver Fee** | Crosschain only |
 
-The relay fee is dynamic based on gas prices. Maximum 15%.
+The relay fee is dynamic based on gas prices.
 
 ## Withdrawal States
 
@@ -156,7 +152,7 @@ You can make multiple partial withdrawals from a single deposit. Each creates a 
 - Verify recipient address is valid
 - Ensure ASP approval is complete
 
-### Cross-chain withdrawal stuck
+### Crosschain withdrawal stuck
 - Solvers usually fill within minutes
 - If expired, funds return as a refund commitment
 - Refund can be withdrawn normally
@@ -167,7 +163,7 @@ You can make multiple partial withdrawals from a single deposit. Each creates a 
 |-------|--------|----------|
 | **Browser crash during proof gen** | Proof not generated | Retry; no funds lost |
 | **Transaction reverts** | Withdrawal fails | Check error; retry with valid note |
-| **Solver doesn't fill (cross-chain)** | Withdrawal delayed | Intent expires → refund commitment created |
+| **Solver doesn't fill (crosschain)** | Withdrawal delayed | Intent expires → refund commitment created |
 | **Wrong recipient address** | Funds sent to wrong address | **Unrecoverable** — double-check before confirming |
 | **Note already spent** | Transaction fails | Note was used in another session/device |
 
@@ -178,5 +174,5 @@ Always double-check the recipient address. Withdrawals to wrong addresses **cann
 ## Next Steps
 
 - **[Privacy Pools](/concepts/privacy-pools)** — Understand the cryptography
-- **[Cross-Chain Architecture](/concepts/cross-chain)** — How OIF works
+- **[Crosschain Architecture](/concepts/cross-chain)** — How OIF works
 - **[FAQ](/faq)** — Common questions

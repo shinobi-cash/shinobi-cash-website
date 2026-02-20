@@ -1,122 +1,82 @@
 # Smart Contracts
 
-Overview of Shinobi Cash smart contract architecture.
+Overview of the Shinobi Cash smart contract architecture.
 
-## Contract Architecture
+---
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Pool Chain (Arbitrum)                    │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  ┌─────────────────────┐    ┌─────────────────────┐        │
-│  │ ShinobiCashEntrypoint│    │  ShinobiCashPool    │        │
-│  │  (orchestrator)      │───►│  (privacy pool)     │        │
-│  └─────────────────────┘    └─────────────────────┘        │
-│           │                                                 │
-│           │                                                 │
-│  ┌────────▼────────┐    ┌─────────────────────────┐        │
-│  │ShinobiInputSettler│   │ShinobiDepositOutputSettler│      │
-│  │ (escrow/refund)  │    │  (deposit fills)        │        │
-│  └─────────────────┘    └─────────────────────────┘        │
-│                                                             │
-│  ┌─────────────────────────────────────────────────┐        │
-│  │            Paymasters (ERC-4337)                │        │
-│  │  SimpleShinobiCashPoolPaymaster (same-chain)   │        │
-│  │  CrossChainWithdrawalPaymaster  (cross-chain)  │        │
-│  │  Withdraw2Paymaster             (2-note)       │        │
-│  │  CrossChainWithdraw2Paymaster   (2-note x-chain)│       │
-│  └─────────────────────────────────────────────────┘        │
-└─────────────────────────────────────────────────────────────┘
+## High-Level Architecture
 
-┌─────────────────────────────────────────────────────────────┐
-│                   Origin Chain (Base)                       │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  ┌───────────────────────────────┐                         │
-│  │ShinobiCrosschainDepositEntrypoint│                       │
-│  │  (deposit interface)            │                        │
-│  └───────────────────────────────┘                         │
-│           │                                                 │
-│  ┌────────▼────────┐    ┌─────────────────────────┐        │
-│  │ShinobiInputSettler│   │ShinobiWithdrawalOutputSettler│   │
-│  │ (escrow/refund)  │    │  (withdrawal fills)      │       │
-│  └─────────────────┘    └─────────────────────────┘        │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
-```
+Shinobi deploys contracts across **two chain types**, with a single canonical privacy pool.
 
-## Core Contracts
+### Pool Chain (Arbitrum)
 
-### ShinobiCashEntrypoint
-The central orchestrator on the pool chain. Handles:
-- Cross-chain withdrawal intent creation
-- Cross-chain deposit processing
-- Refund handling for failed intents
+| Contract | Role |
+|----------|------|
+| `ShinobiCashEntrypoint` | Orchestrates withdrawals, receives crosschain deposits |
+| `ShinobiCashPool` | Privacy pool — commitments, nullifiers, ZK verification |
+| `ShinobiInputSettler` | Escrow and refunds for withdrawal intents |
+| `ShinobiDepositOutputSettler` | Fills crosschain deposit intents |
+| `Paymasters` | ERC-4337 gas sponsorship |
 
-[Learn more →](/contracts/entrypoint)
+### Origin Chains (Base, etc.)
 
-### ShinobiCashPool
-Extended Privacy Pool with cross-chain support. Handles:
+| Contract | Role |
+|----------|------|
+| `ShinobiCrosschainDepositEntrypoint` | User deposit interface |
+| `ShinobiInputSettler` | Escrow and refunds for deposit intents |
+| `ShinobiWithdrawalOutputSettler` | Fills crosschain withdrawal intents |
+
+The **pool chain** is the source of truth for privacy state. **Origin chains** provide deposit interfaces and receive withdrawal execution. All crosschain movement is mediated via **OIF settlers and oracles**.
+
+---
+
+## Core Contract Groups
+
+### Entrypoints
+User-facing contracts that orchestrate deposits and withdrawals.
+
+- **`ShinobiCashEntrypoint`** (pool chain)  
+  Proof-verified withdrawals, pool updates, refund commitments
+
+- **`ShinobiCrosschainDepositEntrypoint`** (origin chains)  
+  User interface for crosschain deposits
+
+
+---
+
+### Privacy Pool
+Canonical privacy state.
+
 - Commitment insertion (deposits)
 - Nullifier spending (withdrawals)
-- ZK proof verification (supports 8, 9, and 10-signal proofs)
-- Spending multiple notes in a single transaction (Withdraw2)
+- Multi-note spending (`withdraw2`)
 
-[Learn more →](/contracts/pool)
 
-## OIF Settlers
+---
 
-### ShinobiInputSettler
-Manages intent creation and escrow on origin chains:
-- Escrows funds when intent is opened
-- Releases to solver after fill proof
-- Refunds on expiry
+### Shinobi × OIF (Settlers)
+Crosschain escrow, fills, and refunds using the Open Intent Framework.
 
-### ShinobiDepositOutputSettler
-Handles deposit fills on the pool chain:
-- **Mandatory** intentOracle validation
-- Calls `crosschainDeposit()` on entrypoint
+- **`ShinobiInputSettler`** — escrow and refunds on origin chains  
+- **`ShinobiDepositOutputSettler`** — deposit fills with mandatory intent validation  
+- **`ShinobiWithdrawalOutputSettler`** — optimistic withdrawal fills
 
-### ShinobiWithdrawalOutputSettler
-Handles withdrawal fills on destination chains:
-- **Optimistic** settlement (ZK proof already validated)
-- Simple ETH transfer to recipient
 
-[Learn more →](/contracts/settlers)
+---
 
-## Paymasters
+### Paymasters
+ERC-4337 paymasters for gasless withdrawals.
 
-ERC-4337 paymasters that enable withdrawals without wallet gas. Uses standard AA infrastructure (bundlers like Pimlico, Alchemy) instead of custom relayers.
+- Replace relayers and pre-funded wallets
+- Enforce fees on-chain
+- Use standard AA infrastructure
 
-| Paymaster | Use Case |
-|-----------|----------|
-| `SimpleShinobiCashPoolPaymaster` | Same-chain, single note |
-| `CrossChainWithdrawalPaymaster` | Cross-chain, single note |
-| `Withdraw2Paymaster` | Same-chain, 2 notes |
-| `CrossChainWithdraw2Paymaster` | Cross-chain, 2 notes |
 
-[Learn more →](/contracts/paymasters)
+---
 
-## Key Addresses (Testnet)
+## Next
 
-:::info[Testnet Addresses]
-See the [constants package](https://github.com/shinobi-cash/shinobi.cash-website/tree/main/packages/constants) for current deployed addresses.
-:::
-
-## Dependencies
-
-| Package | Purpose |
-|---------|---------|
-| `privacy-pools-core` | Base privacy pool implementation |
-| `oif-contracts` | Open Intent Framework |
-| `account-abstraction` | ERC-4337 implementation |
-| `@zk-kit/lean-imt.sol` | Incremental Merkle Tree |
-| `poseidon-solidity` | Poseidon hash function |
-
-## Next Steps
-
-- **[Entrypoint](/contracts/entrypoint)** — Central orchestrator details
-- **[Privacy Pool](/contracts/pool)** — Pool contract details
-- **[OIF Settlers](/contracts/settlers)** — Settlement contracts
+- **[Entrypoints](/contracts/entrypoint)** — Authority and orchestration  
+- **[Privacy Pool](/contracts/pool)** — ZK validation and state  
+- **[Shinobi x OIF](/contracts/oif)** — Crosschain settlement  
 - **[Paymasters](/contracts/paymasters)** — Gas sponsorship

@@ -1,69 +1,77 @@
 # Shinobi Cash
 
-Cross-chain privacy protocol powered by Privacy Pools and zero-knowledge proofs.
+A crosschain privacy protocol built on Privacy Pools and zero-knowledge proofs.
 
 :::warning[Status]
-Shinobi Cash is live on **testnet only** and has **not been audited**. Do not use real funds.
+Shinobi Cash is **testnet-only** and **unaudited**.
+Do not use real funds.
 :::
 
-## Who This Documentation Is For
+---
 
-- **Users** — Learn how to [deposit](/guides/deposit) and [withdraw](/guides/withdraw) privately
-- **Developers** — Integrate with the [SDK](/sdk/) or build on the [contracts](/contracts/)
-- **Security Reviewers** — Understand the [threat model](/concepts/threat-model) and [trust assumptions](/concepts/trust-assumptions)
+## What Is Shinobi Cash?
 
-## What is Shinobi Cash?
+Shinobi Cash is a **crosschain privacy protocol** that allows users to deposit on one chain and withdraw on another, while preserving privacy through a **single, shared privacy pool**.
 
-Shinobi Cash is a **cross-chain privacy protocol** that enables private transactions across the Ethereum ecosystem. Deposit from any chain, withdraw to any chain — all while maintaining privacy through a unified pool.
+Instead of deploying separate pools on each chain, Shinobi maintains **one canonical pool** and uses crosschain intents to move value in and out.
 
-**Key Features:**
-- **Cross-Chain Privacy** — Deposit on Base, withdraw on Arbitrum (or any supported chain)
-- **Unified Anonymity Set** — One pool across all chains means stronger privacy
-- **Compliant by Design** — Prove your funds came from a compliant source without revealing which deposit is yours
-- **No Gas Required** — Withdraw without ETH; gas is paid from your withdrawal via ERC-4337
+---
 
-## How It Works
+## Core Properties
 
-### For Users
+- **Crosschain privacy**
+  Deposit on any supported chain, withdraw on any supported chain.
 
-1. **Connect Wallet** — Sign in with your wallet to derive your private keys
-2. **Deposit** — Send ETH to the privacy pool from any supported chain
-3. **Wait for Activation** — Your deposit enters the anonymity set
-4. **Withdraw** — Withdraw to any address on any supported chain using a zero-knowledge proof
+- **Unified anonymity set**
+  All users share one pool, strengthening privacy as usage grows.
 
-### The Technology
+- **Compliance-aware by design**
+  Withdrawals prove funds came from an approved set without revealing which deposit.
 
-Shinobi Cash combines several cutting-edge technologies:
+- **Multi-note withdrawals**
+  Combine multiple deposits into a single withdrawal.
 
-- **Privacy Pools** — Merkle tree commitments and nullifiers for privacy
-- **Zero-Knowledge Proofs** — Groth16 SNARKs prove withdrawal validity without revealing the deposit
-- **Open Intent Framework (OIF)** — Cross-chain settlement via solvers and oracles
-- **Association Set Providers (ASPs)** — Enable compliance without surveillance
+- **Gasless withdrawals**
+  Users do not need native gas on the withdrawal chain; fees are deducted from the withdrawal itself.
 
-## Why Shinobi Cash?
+---
 
-### Unified Pool = Stronger Privacy
+## High-Level Flow
 
-Traditional privacy solutions fragment users across chains. Each chain has its own small pool, weakening the anonymity set.
+1. **Deposit**
+   Funds are deposited from any supported chain and added to the privacy pool.
 
-Shinobi Cash treats the **Ethereum ecosystem as a single privacy domain**. One pool. Every chain. Maximum anonymity.
+2. **Compliance review**
+   An Association Set Provider (ASP) approves the deposit.
 
-### Compliant, Not Shady
+3. **Withdraw**
+   The user generates a zero-knowledge proof and withdraws to any address on any supported chain.
 
-Privacy doesn't mean hiding from regulators. With ASPs, you can prove your funds came from a compliant source — without revealing *which* deposit is yours.
+At no point does the protocol reveal which deposit corresponds to which withdrawal.
 
-### Simple User Experience
+---
 
-- No complex bridging — deposit and withdraw seamlessly across chains
-- No wallet gas needed — relay fee deducted from withdrawal amount
-- One unified interface — manage all your privacy across chains
+## Why Shinobi Cash Exists
 
-## Get Started
+### One Pool, Not Many
 
-:::info[Testnet Only]
-Shinobi Cash is currently live on testnet (Arbitrum Sepolia + Base Sepolia). Use testnet ETH only.
-:::
+Most privacy systems fragment users across chains, weakening anonymity.
 
-- **[Try the App](https://testnet.shinobi.cash)** — Experience cross-chain privacy
-- **[Quick Start](/quick-start)** — Developer integration guide
-- **[How It Works](/concepts/privacy-pools)** — Deep dive into the technology
+Shinobi Cash keeps a **single pool**, so privacy improves as usage increases — regardless of chain.
+
+### Privacy Without Surveillance
+
+Compliance is enforced at the **deposit level**, while privacy is preserved at **withdrawal time**.
+
+This avoids transaction-level monitoring or retroactive deanonymization.
+
+---
+
+## Where to Go Next
+
+- **[How Privacy Pools Work](/concepts/privacy-pools)** — Core privacy mechanics
+- **[Crosschain Architecture](/concepts/cross-chain)** — How value moves between chains
+- **[Deposit Guide](/guides/deposit)** — Step-by-step usage
+- **[Withdraw Guide](/guides/withdraw)** — Step-by-step usage
+- **[SDK](/sdk/)** — Developer integration
+- **[Testnet App](https://testnet.shinobi.cash)** — Try it live

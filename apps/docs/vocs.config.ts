@@ -2,7 +2,7 @@ import { defineConfig } from 'vocs';
 
 export default defineConfig({
   title: 'Shinobi Cash',
-  description: 'Cross-chain privacy protocol powered by Privacy Pools and zero-knowledge proofs',
+  description: 'Crosschain privacy protocol powered by Privacy Pools and zero-knowledge proofs',
   logoUrl: {
     light: '/logo.svg',
     dark: '/logo.svg',
@@ -15,22 +15,14 @@ export default defineConfig({
       text: 'Getting Started',
       items: [
         { text: 'Introduction', link: '/' },
-        { text: 'Quick Start', link: '/quick-start' },
       ],
     },
     {
       text: 'How It Works',
       items: [
         { text: 'Privacy Pools', link: '/concepts/privacy-pools' },
-        { text: 'Cross-Chain Architecture', link: '/concepts/cross-chain' },
+        { text: 'Crosschain Architecture', link: '/concepts/cross-chain' },
         { text: 'Compliance', link: '/concepts/compliance' },
-      ],
-    },
-    {
-      text: 'Security & Trust',
-      items: [
-        { text: 'Threat Model', link: '/concepts/threat-model' },
-        { text: 'Trust Assumptions', link: '/concepts/trust-assumptions' },
       ],
     },
     {
@@ -44,9 +36,9 @@ export default defineConfig({
       text: 'Smart Contracts',
       items: [
         { text: 'Overview', link: '/contracts/' },
-        { text: 'Entrypoint', link: '/contracts/entrypoint' },
+        { text: 'Entrypoints', link: '/contracts/entrypoint' },
         { text: 'Privacy Pool', link: '/contracts/pool' },
-        { text: 'OIF Settlers', link: '/contracts/settlers' },
+        { text: 'Shinobi x OIF', link: '/contracts/oif' },
         { text: 'Paymasters', link: '/contracts/paymasters' },
       ],
     },
