@@ -4,7 +4,6 @@ import { StatsClient } from "./stats";
 import { StateTreeClient } from "./state-tree";
 import { IntentClient } from "./intent";
 import { PoolClient } from "./pool";
-import { GraphQLClient } from "./graphql";
 import { ASPClient } from "./asp";
 
 const DEFAULT_TIMEOUT = 30000;
@@ -18,7 +17,6 @@ export class IndexerClient {
   readonly stateTree: StateTreeClient;
   readonly intent: IntentClient;
   readonly pool: PoolClient;
-  readonly graphql: GraphQLClient;
   readonly asp: ASPClient;
 
   private endpoint: string;
@@ -41,7 +39,6 @@ export class IndexerClient {
     this.stateTree = new StateTreeClient(config);
     this.intent = new IntentClient(config);
     this.pool = new PoolClient(config);
-    this.graphql = new GraphQLClient(config);
     this.asp = new ASPClient(config);
   }
 
@@ -85,5 +82,4 @@ export { StatsClient } from "./stats";
 export { StateTreeClient } from "./state-tree";
 export { IntentClient } from "./intent";
 export { PoolClient } from "./pool";
-export { GraphQLClient } from "./graphql";
 export { ASPClient, type ASPRootInfo } from "./asp";
