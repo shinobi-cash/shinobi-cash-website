@@ -10,6 +10,8 @@ import {
   EntrypointDepositAbi,
   PoolScopeAbi,
   CrosschainDepositEntrypointAbi,
+  InputSettlerRefundAbi,
+  InputSettlerOrderStatusAbi,
 } from "../abi.js";
 import { arbitrumSepolia, baseSepolia, type Chain } from "viem/chains";
 import { SUPPORTED_CROSSCHAIN } from "../network";
@@ -151,6 +153,28 @@ export const WITHDRAW2_CROSS_CHAIN_GAS_LIMITS = {
 } as const;
 
 /**
+ * UserOperation Gas Limits for Withdrawal Refund (via crosschain paymaster)
+ * Refund is simpler than withdrawal — no ZK proof verification.
+ * Based on contract: 350k call gas + 200k verification gas.
+ */
+export const WITHDRAWAL_REFUND_GAS_LIMITS = {
+  /** Gas for executing the refund call */
+  CALL_GAS_LIMIT: BigInt(350000),
+
+  /** Gas for account verification */
+  VERIFICATION_GAS_LIMIT: BigInt(200000),
+
+  /** Pre-verification gas overhead */
+  PRE_VERIFICATION_GAS: BigInt(200000),
+
+  /** Gas for paymaster verification */
+  PAYMASTER_VERIFICATION_GAS_LIMIT: BigInt(350000),
+
+  /** Gas for paymaster post-operation */
+  POST_OP_GAS_LIMIT: BigInt(100000),
+} as const;
+
+/**
  * @deprecated Use FEE_CONFIG instead
  * Kept for backwards compatibility
  */
@@ -246,7 +270,7 @@ export const SHINOBI_CASH_WITHDRAWAL_INPUT_SETTLER: ContractConfig = {
   chain: arbitrumSepolia as Chain,
   address: "0x4385eebaC4Eab0bc93E6D43270908da07e4b3178",
   blockNumber: 243659319,
-  abi: [],
+  abi: [...InputSettlerRefundAbi, ...InputSettlerOrderStatusAbi],
 };
 
 /**
@@ -370,7 +394,7 @@ export const SHINOBI_CASH_CROSSCHAIN_CONTRACTS = {
       chain: baseSepolia as Chain,
       address: "0xCd7722864E24bF241272dF1a7237F22bCb772db2",
       blockNumber: 37835985,
-      abi: [],
+      abi: [...InputSettlerRefundAbi, ...InputSettlerOrderStatusAbi],
     },
     DEPOSIT_FILL_ORACLE: {
       chain: baseSepolia as Chain,

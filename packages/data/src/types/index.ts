@@ -401,6 +401,37 @@ export type IntentType = "DEPOSIT" | "WITHDRAWAL";
 export type IntentPhase = "ESCROWED" | "FILLED" | "FINALIZED" | "REFUNDED";
 
 /**
+ * MandateOutput from the ShinobiIntent struct
+ */
+export interface RawMandateOutput {
+  oracle: string;
+  settler: string;
+  chainId: string;
+  token: string;
+  amount: string;
+  recipient: string;
+  call: string;
+  context: string;
+}
+
+/**
+ * Raw ShinobiIntent struct fields needed for contract calls (e.g. refund).
+ * Returned by the /v2/intents/:orderId endpoint.
+ */
+export interface RawShinobiIntent {
+  user: string;
+  nonce: string;
+  originChainId: string;
+  expires: string;
+  fillDeadline: string;
+  fillOracle: string;
+  inputs: Array<[string, string]>;
+  outputs: RawMandateOutput[];
+  intentOracle: string;
+  refundCalldata: string;
+}
+
+/**
  * Intent from /v2/intents endpoint
  */
 export interface Intent {
@@ -442,6 +473,9 @@ export interface Intent {
   refundTimestamp: string | null;
   refundAmount: string | null;
   refundFee: string | null;
+
+  // Raw intent struct (returned by detail endpoint for contract calls)
+  rawIntent?: RawShinobiIntent;
 }
 
 /**

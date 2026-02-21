@@ -279,3 +279,71 @@ export const CrosschainDepositConfigAbi = [
     stateMutability: "view",
   },
 ] as const;
+
+// ============ INPUT SETTLER (REFUND) ABIs ============
+
+/**
+ * Shared ShinobiIntent tuple components used across settler ABIs.
+ * Matches ShinobiIntentType.ShinobiIntent struct from contracts.
+ */
+const ShinobiIntentComponents = [
+  { name: "user", type: "address", internalType: "address" },
+  { name: "nonce", type: "uint256", internalType: "uint256" },
+  { name: "originChainId", type: "uint256", internalType: "uint256" },
+  { name: "expires", type: "uint32", internalType: "uint32" },
+  { name: "fillDeadline", type: "uint32", internalType: "uint32" },
+  { name: "fillOracle", type: "address", internalType: "address" },
+  { name: "inputs", type: "uint256[2][]", internalType: "uint256[2][]" },
+  {
+    name: "outputs",
+    type: "tuple[]",
+    internalType: "struct MandateOutputType.MandateOutput[]",
+    components: [
+      { name: "oracle", type: "bytes32", internalType: "bytes32" },
+      { name: "settler", type: "bytes32", internalType: "bytes32" },
+      { name: "chainId", type: "uint256", internalType: "uint256" },
+      { name: "token", type: "bytes32", internalType: "bytes32" },
+      { name: "amount", type: "uint256", internalType: "uint256" },
+      { name: "recipient", type: "bytes32", internalType: "bytes32" },
+      { name: "call", type: "bytes", internalType: "bytes" },
+      { name: "context", type: "bytes", internalType: "bytes" },
+    ],
+  },
+  { name: "intentOracle", type: "address", internalType: "address" },
+  { name: "refundCalldata", type: "bytes", internalType: "bytes" },
+] as const;
+
+/**
+ * ABI for ShinobiInputSettler.refund(ShinobiIntent)
+ * Permissionless after intent.expires — anyone can call
+ */
+export const InputSettlerRefundAbi = [
+  {
+    type: "function",
+    name: "refund",
+    inputs: [
+      {
+        name: "intent",
+        type: "tuple",
+        internalType: "struct ShinobiIntentType.ShinobiIntent",
+        components: ShinobiIntentComponents,
+      },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+] as const;
+
+/**
+ * ABI for reading intent order status
+ * OrderStatus: 0=None, 1=Deposited, 2=Claimed, 3=Refunded
+ */
+export const InputSettlerOrderStatusAbi = [
+  {
+    type: "function",
+    name: "orderStatus",
+    inputs: [{ name: "orderId", type: "bytes32", internalType: "bytes32" }],
+    outputs: [{ name: "", type: "uint8", internalType: "enum OrderStatus" }],
+    stateMutability: "view",
+  },
+] as const;
