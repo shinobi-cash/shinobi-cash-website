@@ -181,8 +181,9 @@ export function NoteChainScreen({ note, noteNode, allTrees, onBack }: NoteChainS
             {pendingIntent && (
               <Button
                 onClick={() => {
-                  // TODO: Implement refund flow
-                  console.log("Refund not implemented yet");
+                  if (orderId) {
+                    router.push(`/refund?orderId=${orderId}`);
+                  }
                 }}
                 variant="outline"
                 disabled={isLoadingIntent || !refundInfo?.isAvailable}

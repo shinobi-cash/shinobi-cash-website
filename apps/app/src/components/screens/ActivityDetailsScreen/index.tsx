@@ -5,8 +5,13 @@
  * Uses app's Section/Row design pattern.
  */
 
+import { useRouter } from "next/navigation";
+import { Clock } from "lucide-react";
+import { Button } from "@workspace/ui/components/button";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";
 import { ScreenLayout } from "@/components/layout/ScreenLayout";
+import { useIntentDetails } from "@/hooks/useIntentDetails";
+import { isIntentRefundable } from "@/utils/refund";
 import type { ActivityDetailsScreenProps } from "./types";
 import {
   isDepositActivity,
@@ -36,6 +41,15 @@ export function ActivityDetailsScreen({
   onViewNoteChain,
   allTrees = [],
 }: ActivityDetailsScreenProps) {
+  const router = useRouter();
+
+  // Get orderId for refund check
+  const entryOrderId = entry && "orderId" in entry.activity ? entry.activity.orderId : undefined;
+  const { intent } = useIntentDetails(entryOrderId, {
+    enabled: !!entry?.isCrossChain && !!entryOrderId,
+  });
+  const canRefund = intent ? isIntentRefundable(intent) : false;
+
   if (!entry) return null;
 
   const { activity, isCrossChain, displayTimestamp, timeline } = entry;
@@ -87,6 +101,20 @@ export function ActivityDetailsScreen({
       }
       containerClassName="flex-1 sm:flex-none sm:h-[600px] w-full"
       contentClassName="px-4 py-4 overflow-y-auto"
+      footer={
+        canRefund && orderId ? (
+          <div className="px-4 pb-4">
+            <Button
+              onClick={() => router.push(`/refund?orderId=${orderId}`)}
+              className="h-12 w-full rounded-xl text-base font-semibold"
+              size="lg"
+            >
+              <Clock className="mr-2 h-4 w-4" />
+              Claim Refund
+            </Button>
+          </div>
+        ) : undefined
+      }
     >
       <div className="space-y-4">
         {/* Deposit Details */}
