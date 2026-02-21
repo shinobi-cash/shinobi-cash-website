@@ -76,7 +76,8 @@ export async function fetchPoolScope(): Promise<string> {
 export async function prepareWithdrawalUserOperation(
   smartAccountClient: SmartAccountClient,
   callData: `0x${string}`,
-  gasLimits: GasLimits
+  gasLimits: GasLimits,
+  targetAddress: `0x${string}` = SHINOBI_CASH_ENTRYPOINT.address as `0x${string}`
 ): Promise<UserOperation<"0.7">> {
   try {
     if (!smartAccountClient.account) {
@@ -90,7 +91,7 @@ export async function prepareWithdrawalUserOperation(
       account: smartAccountClient.account,
       calls: [
         {
-          to: SHINOBI_CASH_ENTRYPOINT.address,
+          to: targetAddress,
           data: callData,
           value: BigInt(0),
         },

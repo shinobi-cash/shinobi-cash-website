@@ -11,6 +11,7 @@ import {
   CROSS_CHAIN_GAS_LIMITS,
   WITHDRAW2_SAME_CHAIN_GAS_LIMITS,
   WITHDRAW2_CROSS_CHAIN_GAS_LIMITS,
+  WITHDRAWAL_REFUND_GAS_LIMITS,
 } from "@shinobi-cash/constants";
 import { createSmartAccountClient, type SmartAccountClient } from "permissionless";
 import { createPimlicoClient } from "permissionless/clients/pimlico";
@@ -124,5 +125,12 @@ export async function getCrosschainWithdraw2SmartAccountClient(): Promise<Withdr
   return createWithdrawalSmartAccountClient(
     SHINOBI_CASH_CROSSCHAIN_WITHDRAW2_PAYMASTER.address as `0x${string}`,
     WITHDRAW2_CROSS_CHAIN_GAS_LIMITS
+  );
+}
+
+export async function getRefundSmartAccountClient(): Promise<WithdrawalSmartAccountClient> {
+  return createWithdrawalSmartAccountClient(
+    SHINOBI_CASH_CROSSCHAIN_WITHDRAWAL_PAYMASTER.address as `0x${string}`,
+    WITHDRAWAL_REFUND_GAS_LIMITS
   );
 }
