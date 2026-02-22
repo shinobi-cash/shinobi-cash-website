@@ -9,20 +9,25 @@ import {
   deriveDepositSecret,
   derivePrecommitment,
 } from "../deposit/index.js";
-import { deriveChangeNullifier } from "../withdrawal/index.js";
+import { deriveChangeNullifier, deriveRefundNullifier } from "../withdrawal/index.js";
 
 /**
  * Derive the nullifier for a note at a given position
  * - changeIndex 0: uses deposit nullifier derivation
  * - changeIndex > 0: uses change nullifier derivation
+ * - noteType "withdrawalRefunded": uses refund nullifier derivation
  */
 export function deriveNullifier(
   accountKey: bigint,
   poolAddress: string,
   chainId: number | bigint | string,
   depositIndex: number,
-  changeIndex: number
+  changeIndex: number,
+  noteType?: string
 ): bigint {
+  if (noteType === "withdrawalRefunded") {
+    return deriveRefundNullifier(accountKey, poolAddress, chainId, depositIndex, changeIndex);
+  }
   return changeIndex === 0
     ? deriveDepositNullifier(accountKey, poolAddress, chainId, depositIndex)
     : deriveChangeNullifier(accountKey, poolAddress, chainId, depositIndex, changeIndex);
@@ -45,9 +50,10 @@ export function deriveAndHashNullifier(
   poolAddress: string,
   chainId: number | bigint | string,
   depositIndex: number,
-  changeIndex: number
+  changeIndex: number,
+  noteType?: string
 ): string {
-  const nullifier = deriveNullifier(accountKey, poolAddress, chainId, depositIndex, changeIndex);
+  const nullifier = deriveNullifier(accountKey, poolAddress, chainId, depositIndex, changeIndex, noteType);
   return hashNullifier(nullifier);
 }
 

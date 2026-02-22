@@ -175,7 +175,8 @@ export function planTreeExtensions(
       poolAddress,
       originChainId,
       depositIndex,
-      currentChangeIndex
+      currentChangeIndex,
+      currentNoteType
     );
 
     // Skip if already planned for consumption
