@@ -3,7 +3,8 @@ import { parseEther, formatEther, isAddress } from "viem/utils";
 import type { Note } from "@shinobi-cash/core/discovery";
 import { selectNotesForWithdrawal, type WithdrawalSelection } from "@shinobi-cash/core/withdrawal";
 import type { FeeQuote, WithdrawalRequest, Withdraw2Request } from "@/types/withdrawal";
-import { POOL_CHAIN, FEE_CONFIG } from "@shinobi-cash/constants";
+import { POOL_CHAIN, FEE_CONFIG, INTENT_TIMING } from "@shinobi-cash/constants";
+import { fetchWithdrawalChainConfig } from "@/utils/withdrawalChainConfig";
 import { AuthController } from "@/controllers/AuthController";
 import { NotesDiscoveryController } from "@/controllers/NotesDiscoveryController";
 import { EnginePhase, WithdrawalEngine } from "@/services/WithdrawalOrchestratorService";
@@ -43,6 +44,10 @@ interface WithdrawControllerState {
   notes: NotesContext;
   /** User-configurable solver fee in basis points (default from FEE_CONFIG) */
   solverFeeBPS: number;
+  /** Fill deadline in seconds (cross-chain, fetched from contract) */
+  fillDeadlineSeconds: number;
+  /** Expiry in seconds (cross-chain, fetched from contract) */
+  expirySeconds: number;
 }
 
 const state = proxy<WithdrawControllerState>({
@@ -56,6 +61,8 @@ const state = proxy<WithdrawControllerState>({
   lastError: null,
   notes: { notes: [], isLoading: false },
   solverFeeBPS: FEE_CONFIG.DEFAULT_SOLVER_FEE_BPS,
+  fillDeadlineSeconds: INTENT_TIMING.FILL_DEADLINE_SECONDS,
+  expirySeconds: INTENT_TIMING.EXPIRY_SECONDS,
 });
 
 export const WithdrawSelectors = {
@@ -218,10 +225,14 @@ export const WithdrawController = {
   },
 
   setDestinationChain(chainId: number): void {
+    const chainChanged = state.destinationChainId !== chainId;
     state.destinationChainId = chainId;
     state.lastError = null;
     if (state.state.status === "error") transition({ status: "idle" });
     if (state.state.status === "ready") transition({ status: "idle" });
+    if (chainChanged) {
+      this._fetchWithdrawalChainConfig();
+    }
   },
 
   /**
@@ -429,6 +440,8 @@ export const WithdrawController = {
     state.previewFeeQuote = null;
     state.lastError = null;
     state.solverFeeBPS = FEE_CONFIG.DEFAULT_SOLVER_FEE_BPS;
+    state.fillDeadlineSeconds = INTENT_TIMING.FILL_DEADLINE_SECONDS;
+    state.expirySeconds = INTENT_TIMING.EXPIRY_SECONDS;
     currentEngine = null;
     transition({ status: "idle" });
   },
@@ -450,6 +463,20 @@ export const WithdrawController = {
 
   _updateNotes(notes: NotesContext): void {
     state.notes = notes;
+  },
+
+  async _fetchWithdrawalChainConfig(): Promise<void> {
+    // Only fetch for cross-chain withdrawals
+    if (state.destinationChainId === POOL_CHAIN.id) return;
+
+    try {
+      const config = await fetchWithdrawalChainConfig(state.destinationChainId);
+      state.fillDeadlineSeconds = config.fillDeadlineSeconds;
+      state.expirySeconds = config.expirySeconds;
+    } catch (error) {
+      console.warn("[WithdrawController] Failed to fetch withdrawal chain config:", error);
+      // Keep using fallback values
+    }
   },
 
   /**

@@ -192,6 +192,8 @@ export default function DepositPage() {
         userAddress={state.wallet.address}
         isProcessing={isSubmitting}
         isCrossChain={isCrossChain}
+        fillDeadlineSeconds={state.fillDeadlineSeconds}
+        expirySeconds={state.expirySeconds}
       />
     );
   }
