@@ -422,7 +422,8 @@ export function createDepositIntent(
 export function createWithdrawalRefundedNote(
   withdrawalIntent: WithdrawalIntent,
   label: string,
-  aspStatus: ASPStatus
+  aspStatus: ASPStatus,
+  refundAmount: string
 ): WithdrawalRefundedNote {
   return {
     noteType: "withdrawalRefunded",
@@ -435,7 +436,7 @@ export function createWithdrawalRefundedNote(
     poolAddress: withdrawalIntent.poolAddress,
     depositIndex: withdrawalIntent.depositIndex,
     changeIndex: withdrawalIntent.refundChangeIndex,
-    amount: withdrawalIntent.amount,
+    amount: refundAmount,
     label,
     aspStatus,
     status: "unspent",
