@@ -280,13 +280,36 @@ export const CrosschainDepositConfigAbi = [
   },
 ] as const;
 
+// ============ ENTRYPOINT CONFIG ABIs ============
+
+/**
+ * ABI for reading withdrawal chain configuration from entrypoint
+ * Returns per-destination-chain timing and settler config
+ */
+export const WithdrawalChainConfigAbi = [
+  {
+    type: "function",
+    name: "withdrawalChainConfig",
+    inputs: [{ name: "chainId", type: "uint256", internalType: "uint256" }],
+    outputs: [
+      { name: "isConfigured", type: "bool", internalType: "bool" },
+      { name: "fillDeadline", type: "uint32", internalType: "uint32" },
+      { name: "expiry", type: "uint32", internalType: "uint32" },
+      { name: "withdrawalOutputSettler", type: "address", internalType: "address" },
+      { name: "withdrawalFillOracle", type: "address", internalType: "address" },
+      { name: "fillOracle", type: "address", internalType: "address" },
+    ],
+    stateMutability: "view",
+  },
+] as const;
+
 // ============ INPUT SETTLER (REFUND) ABIs ============
 
 /**
  * Shared ShinobiIntent tuple components used across settler ABIs.
  * Matches ShinobiIntentType.ShinobiIntent struct from contracts.
  */
-const ShinobiIntentComponents = [
+export const ShinobiIntentComponents = [
   { name: "user", type: "address", internalType: "address" },
   { name: "nonce", type: "uint256", internalType: "uint256" },
   { name: "originChainId", type: "uint256", internalType: "uint256" },
