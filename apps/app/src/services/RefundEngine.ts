@@ -8,9 +8,10 @@
 
 import type { Intent, RawShinobiIntent } from "@shinobi-cash/data";
 import type { TransactionReceipt, WalletClient, Account, Transport, Chain } from "viem";
-import { encodeFunctionData } from "viem";
+import { encodeFunctionData, decodeAbiParameters } from "viem";
 import {
   InputSettlerRefundAbi,
+  ShinobiIntentComponents,
   SHINOBI_CASH_WITHDRAWAL_INPUT_SETTLER,
   SHINOBI_CASH_CROSSCHAIN_CONTRACTS,
 } from "@shinobi-cash/constants";
@@ -89,6 +90,38 @@ function encodeRefundCallData(raw: RawShinobiIntent): `0x${string}` {
 }
 
 /**
+ * Decode raw ABI-encoded ShinobiIntent (from Open event log.data) into RawShinobiIntent
+ */
+function decodeRawIntentData(rawIntentData: string): RawShinobiIntent {
+  const [decoded] = decodeAbiParameters(
+    [{ type: "tuple", components: ShinobiIntentComponents, name: "intent" }],
+    rawIntentData as `0x${string}`
+  );
+
+  return {
+    user: decoded.user,
+    nonce: decoded.nonce.toString(),
+    originChainId: decoded.originChainId.toString(),
+    expires: String(decoded.expires),
+    fillDeadline: String(decoded.fillDeadline),
+    fillOracle: decoded.fillOracle,
+    inputs: decoded.inputs.map(([tokenId, amount]) => [tokenId.toString(), amount.toString()] as [string, string]),
+    outputs: decoded.outputs.map((o) => ({
+      oracle: o.oracle,
+      settler: o.settler,
+      chainId: o.chainId.toString(),
+      token: o.token,
+      amount: o.amount.toString(),
+      recipient: o.recipient,
+      call: o.call,
+      context: o.context,
+    })),
+    intentOracle: decoded.intentOracle,
+    refundCalldata: decoded.refundCalldata,
+  };
+}
+
+/**
  * Get the settler contract address for the given refund type and chain
  */
 function getSettlerAddress(refundType: RefundType, originChainId: number): `0x${string}` {
@@ -141,9 +174,9 @@ export class RefundEngine {
       throw Errors.indexer.fetchFailed(`Intent not found: ${request.orderId}`);
     }
 
-    if (!intent.rawIntent) {
+    if (!intent.rawIntentData) {
       throw Errors.indexer.invalidResponse(
-        new Error("Indexer did not return raw intent struct data needed for refund")
+        new Error("Indexer did not return raw intent data needed for refund")
       );
     }
 
@@ -154,9 +187,13 @@ export class RefundEngine {
       throw Errors.blockchain.contractError("Intent has not expired yet");
     }
 
+    // Decode ABI-encoded ShinobiIntent struct from event log data
+    const rawIntent = decodeRawIntentData(intent.rawIntentData);
+    intent.rawIntent = rawIntent;
+
     const refundType = getRefundType(intent);
     this.state.intent = intent;
-    this.state.rawIntent = intent.rawIntent;
+    this.state.rawIntent = rawIntent;
     this.state.refundType = refundType;
     this.state.phase = "ready";
 

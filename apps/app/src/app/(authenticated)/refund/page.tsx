@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAccount, useWalletClient, useSwitchChain } from "wagmi";
 import { RefundPreviewScreen } from "@/components/screens/RefundPreviewScreen";
@@ -9,6 +9,7 @@ import { useScreenNavigation } from "@/hooks/useScreenNavigation";
 import { useRefundController } from "@/hooks/useRefundController";
 import { RefundController, RefundSelectors } from "@/controllers/RefundController";
 import { POOL_CHAIN_ID } from "@/config/chains";
+import type { RefundType } from "@/utils/refund";
 import type { WalletClient, Account, Transport, Chain } from "viem";
 
 type RefundScreen = "preview" | "timeline";
@@ -23,6 +24,13 @@ export default function RefundPage() {
   const screens = useScreenNavigation<RefundScreen>();
   const state = useRefundController();
 
+  // Capture intent data before status transitions (intent becomes null after "ready")
+  const [timelineData, setTimelineData] = useState<{
+    refundType: RefundType;
+    chainId: number;
+    amount: string;
+  } | null>(null);
+
   const orderIdParam = searchParams.get("orderId");
 
   // Set orderId from URL and auto-prepare on mount
@@ -35,8 +43,6 @@ export default function RefundPage() {
 
   // Handle confirm from preview
   const handleConfirm = async () => {
-    screens.navigate("timeline");
-
     // Ensure intent is prepared (may already be ready from auto-prepare)
     if (RefundController.state.state.status !== "ready") {
       await RefundController.prepare();
@@ -45,14 +51,26 @@ export default function RefundPage() {
     // Check if prepare succeeded
     if (RefundController.state.state.status !== "ready") return;
 
-    const refundType = RefundSelectors.getRefundType();
+    const currentIntent = RefundSelectors.getIntent();
+    const currentRefundType = RefundSelectors.getRefundType();
+    if (!currentIntent || !currentRefundType) return;
 
-    if (refundType === "deposit") {
+    // Capture data for timeline before status transitions away from "ready"
+    setTimelineData({
+      refundType: currentRefundType,
+      chainId: currentRefundType === "deposit"
+        ? Number(currentIntent.originChainId)
+        : POOL_CHAIN_ID,
+      amount: currentIntent.inputAmount,
+    });
+
+    screens.navigate("timeline");
+
+    if (currentRefundType === "deposit") {
       if (!walletClient) return;
 
       // Switch to origin chain if needed
-      const intent = RefundSelectors.getIntent();
-      const requiredChainId = Number(intent?.originChainId);
+      const requiredChainId = Number(currentIntent.originChainId);
       if (walletChainId !== requiredChainId) {
         try {
           await switchChainAsync({ chainId: requiredChainId });
@@ -90,18 +108,13 @@ export default function RefundPage() {
   const refundType = RefundSelectors.getRefundType();
 
   // Timeline screen
-  if (screens.is("timeline")) {
-    const timelineRefundType = refundType ?? (intent?.intentType === "DEPOSIT" ? "deposit" : "withdrawal");
-    const chainId = timelineRefundType === "deposit"
-      ? Number(intent?.originChainId ?? 0)
-      : POOL_CHAIN_ID;
-
+  if (screens.is("timeline") && timelineData) {
     return (
       <RefundTimelineScreen
-        amount={intent?.inputAmount ?? "0"}
+        amount={timelineData.amount}
         status={state.state.status}
-        refundType={timelineRefundType}
-        chainId={chainId}
+        refundType={timelineData.refundType}
+        chainId={timelineData.chainId}
         txHash={txHash}
         error={error}
         onClose={handleTimelineClose}

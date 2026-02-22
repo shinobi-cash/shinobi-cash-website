@@ -9,6 +9,7 @@ import { ScreenHeader } from "@/components/shared/ScreenHeader";
 import { ScreenLayout } from "@/components/layout/ScreenLayout";
 import { Section, Row } from "@/components/shared/Section";
 import { AssetChain } from "@/components/shared/AssetChain";
+import { CopyableText } from "@/components/shared/CopyableText";
 import { LabelWithHover } from "@/components/shared/LabelWithHover";
 import { usePriceData } from "@/hooks/usePriceData";
 import { formatUsdAmount, formatSmallEthAmount, formatEthAmount, formatDisplayAmount } from "@/utils/formatters";
@@ -106,11 +107,7 @@ export function RefundPreviewScreen({
         <Row label="Chain" value={chainName} />
         <Row
           label="Order ID"
-          value={
-            <span className="max-w-[160px] truncate font-mono text-xs text-neutral-400">
-              {intent.orderId}
-            </span>
-          }
+          value={<CopyableText text={intent.orderId} className="text-xs" />}
         />
       </Section>
 

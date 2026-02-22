@@ -474,7 +474,10 @@ export interface Intent {
   refundAmount: string | null;
   refundFee: string | null;
 
-  // Raw intent struct (returned by detail endpoint for contract calls)
+  // Raw ABI-encoded ShinobiIntent struct from Open event (for contract calls)
+  rawIntentData?: string;
+
+  // Decoded raw intent struct (populated client-side from rawIntentData)
   rawIntent?: RawShinobiIntent;
 }
 

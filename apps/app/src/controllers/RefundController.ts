@@ -98,11 +98,6 @@ export const RefundController = {
       return;
     }
 
-    // Only allow prepare from idle or error states
-    if (state.state.status !== "idle" && state.state.status !== "error") {
-      return;
-    }
-
     try {
       transition({ status: "fetching" });
       currentEngine = new RefundEngine();
