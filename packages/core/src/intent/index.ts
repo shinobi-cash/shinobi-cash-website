@@ -78,7 +78,7 @@ export function getRefundFeeBps(
     const decoded = AbiFunction.decodeData(
       fn,
       rawIntent.refundCalldata as `0x${string}`
-    );
+    ) as { args: readonly [bigint, `0x${string}`, bigint, bigint] };
     if (!decoded.args) return null;
     return Number(decoded.args[2]);
   } catch {
