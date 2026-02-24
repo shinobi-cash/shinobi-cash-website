@@ -1,3 +1,6 @@
+// Factory API
+export { createIndexer, type Indexer } from "./create-indexer";
+
 // Main client
 export {
   IndexerClient,
