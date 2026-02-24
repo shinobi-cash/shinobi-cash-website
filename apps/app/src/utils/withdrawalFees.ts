@@ -1,9 +1,4 @@
-import type {
-  FeeQuote,
-  WithdrawalRequest,
-  Withdraw2Request,
-  WithdrawalKind,
-} from "@/types/withdrawal";
+import type { FeeQuote, WithdrawalRequest, Withdraw2Request } from "@/types/withdrawal";
 import {
   SAME_CHAIN_GAS_LIMITS,
   CROSS_CHAIN_GAS_LIMITS,
@@ -11,91 +6,15 @@ import {
   WITHDRAW2_CROSS_CHAIN_GAS_LIMITS,
   FEE_CONFIG,
 } from "@shinobi-cash/constants";
+import {
+  classifyWithdrawal,
+  calculateFeesFromBPS,
+  calculateTotalGas,
+  calculateRelayFeeBPS,
+  calculateSolverFeeBPS,
+} from "@shinobi-cash/core/fees";
 import { validateFeeQuote } from "@/utils/withdrawalInvariants";
 import { pimlicoClient } from "@/lib/clients";
-
-interface GasLimits {
-  CALL_GAS_LIMIT: bigint;
-  VERIFICATION_GAS_LIMIT: bigint;
-  PRE_VERIFICATION_GAS: bigint;
-  PAYMASTER_VERIFICATION_GAS_LIMIT: bigint;
-  POST_OP_GAS_LIMIT: bigint;
-}
-
-interface FeeBreakdown {
-  executionFeeWei: bigint;
-  solverFeeWei: bigint;
-  totalFeeWei: bigint;
-}
-
-/**
- * Classify a withdrawal as same-chain or cross-chain
- */
-function classifyWithdrawal(
-  destinationChainId: number | undefined,
-  poolChainId: number
-): WithdrawalKind {
-  return destinationChainId && destinationChainId !== poolChainId ? "cross-chain" : "same-chain";
-}
-
-/**
- * Calculate fees from basis points
- */
-function calculateFeesFromBPS(
-  withdrawAmountWei: bigint,
-  relayFeeBPS: number,
-  solverFeeBPS: number
-): FeeBreakdown {
-  const executionFeeWei = (withdrawAmountWei * BigInt(relayFeeBPS)) / BigInt(10000);
-  const solverFeeWei = (withdrawAmountWei * BigInt(solverFeeBPS)) / BigInt(10000);
-  const totalFeeWei = executionFeeWei + solverFeeWei;
-
-  return { executionFeeWei, solverFeeWei, totalFeeWei };
-}
-
-/**
- * Calculate total gas for a withdrawal UserOperation
- */
-function calculateTotalGas(gasLimits: GasLimits): bigint {
-  return (
-    gasLimits.CALL_GAS_LIMIT +
-    gasLimits.VERIFICATION_GAS_LIMIT +
-    gasLimits.PRE_VERIFICATION_GAS +
-    gasLimits.PAYMASTER_VERIFICATION_GAS_LIMIT +
-    gasLimits.POST_OP_GAS_LIMIT
-  );
-}
-
-/**
- * Buffer multiplier for gas price fluctuations between quote and execution.
- * 2% buffer ensures the fee covers gas even if prices increase slightly.
- */
-const GAS_PRICE_BUFFER = 1.02;
-
-/**
- * Calculate relay fee BPS from gas cost and withdrawal amount.
- * Includes a small buffer to account for gas price fluctuations.
- */
-function calculateRelayFeeBPS(
-  withdrawAmountWei: bigint,
-  estimatedGasCostWei: bigint,
-  maxBPS: number
-): number {
-  const calculatedBPS = Number((estimatedGasCostWei * BigInt(10000)) / withdrawAmountWei);
-  // Add buffer for gas price fluctuations and round up
-  const bufferedBPS = Math.ceil(calculatedBPS * GAS_PRICE_BUFFER);
-  return Math.min(Math.max(bufferedBPS, 1), maxBPS);
-}
-
-/**
- * Get solver fee BPS based on withdrawal kind
- */
-function calculateSolverFeeBPS(
-  kind: WithdrawalKind,
-  crossChainSolverFeeBPS: number = FEE_CONFIG.DEFAULT_SOLVER_FEE_BPS
-): number {
-  return kind === "cross-chain" ? crossChainSolverFeeBPS : 0;
-}
 
 export async function quoteFees(
   request: WithdrawalRequest,

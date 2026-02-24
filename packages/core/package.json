@@ -33,6 +33,11 @@
       "types": "./dist/provider.d.ts",
       "import": "./dist/provider.mjs",
       "require": "./dist/provider.js"
+    },
+    "./fees": {
+      "types": "./dist/fees.d.ts",
+      "import": "./dist/fees.mjs",
+      "require": "./dist/fees.js"
     }
   },
   "files": [

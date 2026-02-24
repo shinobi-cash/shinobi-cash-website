@@ -8,6 +8,7 @@ export default defineConfig({
     discovery: 'src/discovery/index.ts',
     proof: 'src/proof/index.ts',
     provider: 'src/provider/index.ts',
+    fees: 'src/fees/index.ts',
   },
   format: ['cjs', 'esm'],
   dts: {
