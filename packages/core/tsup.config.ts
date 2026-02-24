@@ -9,6 +9,7 @@ export default defineConfig({
     proof: 'src/proof/index.ts',
     provider: 'src/provider/index.ts',
     fees: 'src/fees/index.ts',
+    validation: 'src/validation/index.ts',
   },
   format: ['cjs', 'esm'],
   dts: {

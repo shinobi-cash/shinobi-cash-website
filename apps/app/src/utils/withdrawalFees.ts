@@ -13,7 +13,7 @@ import {
   calculateRelayFeeBPS,
   calculateSolverFeeBPS,
 } from "@shinobi-cash/core/fees";
-import { validateFeeQuote } from "@/utils/withdrawalInvariants";
+import { validateFeeQuote } from "@shinobi-cash/core/validation";
 import { pimlicoClient } from "@/lib/clients";
 
 export async function quoteFees(

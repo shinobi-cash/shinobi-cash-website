@@ -38,6 +38,11 @@
       "types": "./dist/fees.d.ts",
       "import": "./dist/fees.mjs",
       "require": "./dist/fees.js"
+    },
+    "./validation": {
+      "types": "./dist/validation.d.ts",
+      "import": "./dist/validation.mjs",
+      "require": "./dist/validation.js"
     }
   },
   "files": [

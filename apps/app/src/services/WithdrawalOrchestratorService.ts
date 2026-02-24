@@ -19,7 +19,7 @@ import {
   validateWithdrawalContext,
   validateWithdraw2Request,
   validateWithdraw2Context,
-} from "@/utils/withdrawalInvariants";
+} from "@shinobi-cash/core/validation";
 import { quoteFees, quoteWithdraw2Fees as quoteWithdraw2FeesUtil } from "@/utils/withdrawalFees";
 import { prepareUserOperation, prepareWithdraw2UserOperation } from "@/utils/withdrawalTransaction";
 import {
