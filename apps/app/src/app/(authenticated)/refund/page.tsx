@@ -9,7 +9,7 @@ import { useScreenNavigation } from "@/hooks/useScreenNavigation";
 import { useRefundController } from "@/hooks/useRefundController";
 import { RefundController, RefundSelectors } from "@/controllers/RefundController";
 import { POOL_CHAIN_ID } from "@/config/chains";
-import type { RefundType } from "@/utils/refund";
+import type { RefundType } from "@shinobi-cash/core/intent";
 import type { WalletClient, Account, Transport, Chain } from "viem";
 
 type RefundScreen = "preview" | "timeline";

@@ -11,7 +11,7 @@ import { Button } from "@workspace/ui/components/button";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";
 import { ScreenLayout } from "@/components/layout/ScreenLayout";
 import { useIntentDetails } from "@/hooks/useIntentDetails";
-import { isIntentRefundable } from "@/utils/refund";
+import { isIntentRefundable } from "@shinobi-cash/core/intent";
 import type { ActivityDetailsScreenProps } from "./types";
 import {
   isDepositActivity,

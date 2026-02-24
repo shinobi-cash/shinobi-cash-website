@@ -43,6 +43,11 @@
       "types": "./dist/validation.d.ts",
       "import": "./dist/validation.mjs",
       "require": "./dist/validation.js"
+    },
+    "./intent": {
+      "types": "./dist/intent.d.ts",
+      "import": "./dist/intent.mjs",
+      "require": "./dist/intent.js"
     }
   },
   "files": [

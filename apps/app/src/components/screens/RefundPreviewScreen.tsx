@@ -1,8 +1,7 @@
 "use client";
 
 import type { Intent } from "@shinobi-cash/data";
-import type { RefundType } from "@/utils/refund";
-import { getRefundFeeBps } from "@/utils/refund";
+import { getRefundFeeBps, type RefundType } from "@shinobi-cash/core/intent";
 import { Loader2, Info } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";

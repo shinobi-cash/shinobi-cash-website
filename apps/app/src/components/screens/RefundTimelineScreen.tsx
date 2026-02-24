@@ -15,7 +15,7 @@ import {
 import { type AppError, getUserMessage } from "@/lib/errors/errors";
 import { getTxExplorerUrl, getChainName } from "@/config/chains";
 import { formatDateTime, formatEthAmount, formatDisplayAmount } from "@/utils/formatters";
-import type { RefundType } from "@/utils/refund";
+import type { RefundType } from "@shinobi-cash/core/intent";
 
 type RefundStatus =
   | "idle"

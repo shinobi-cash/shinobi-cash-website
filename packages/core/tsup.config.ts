@@ -10,6 +10,7 @@ export default defineConfig({
     provider: 'src/provider/index.ts',
     fees: 'src/fees/index.ts',
     validation: 'src/validation/index.ts',
+    intent: 'src/intent/index.ts',
   },
   format: ['cjs', 'esm'],
   dts: {

@@ -10,7 +10,7 @@ import type { Intent } from "@shinobi-cash/data";
 import type { WalletClient, Account, Transport, Chain } from "viem";
 import { NotesDiscoveryController } from "@/controllers/NotesDiscoveryController";
 import { RefundEngine } from "@/services/RefundEngine";
-import type { RefundType } from "@/utils/refund";
+import type { RefundType } from "@shinobi-cash/core/intent";
 import { createStateMachine } from "@/utils/stateMachine";
 import { type AppError, Errors, getUserMessage } from "@/lib/errors/errors";
 
