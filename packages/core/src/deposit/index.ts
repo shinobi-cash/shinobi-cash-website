@@ -2,6 +2,7 @@
  * @shinobi-cash/core/deposit
  */
 
+import { AbiFunction } from "ox";
 import { createDeriveFn, derivePrecommitment } from "../crypto/primitives.js";
 import {
   SHINOBI_CASH_ENTRYPOINT,
@@ -110,4 +111,13 @@ export function isDepositSupported(chainId: number): boolean {
     (typeof SHINOBI_CASH_CROSSCHAIN_CONTRACTS)[keyof typeof SHINOBI_CASH_CROSSCHAIN_CONTRACTS]
   >;
   return !!crosschainContracts[chainId]?.DEPOSIT_ENTRYPOINT?.address;
+}
+
+/**
+ * ABI-encode deposit call params into raw calldata.
+ */
+export function encodeDepositCallData(params: DepositCallParams): `0x${string}` {
+  const abi = params.isCrossChain ? CrosschainDepositEntrypointAbi : EntrypointDepositAbi;
+  const fn = AbiFunction.fromAbi(abi, params.functionName as "deposit" | "depositWithCustomParams");
+  return AbiFunction.encodeData(fn, params.args as never);
 }

@@ -2,6 +2,7 @@ import { defineConfig } from 'tsup';
 
 export default defineConfig({
   entry: {
+    account: 'src/account/index.ts',
     auth: 'src/auth/index.ts',
     deposit: 'src/deposit/index.ts',
     withdrawal: 'src/withdrawal/index.ts',

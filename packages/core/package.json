@@ -4,6 +4,11 @@
   "description": "Core SDK for Shinobi Cash - note generation, discovery, and ZK proof operations",
   "sideEffects": false,
   "exports": {
+    "./account": {
+      "types": "./dist/account.d.ts",
+      "import": "./dist/account.mjs",
+      "require": "./dist/account.js"
+    },
     "./auth": {
       "types": "./dist/auth.d.ts",
       "import": "./dist/auth.mjs",
