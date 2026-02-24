@@ -2,7 +2,7 @@
  * @shinobi-cash/core/account — Type definitions
  */
 
-import type { SpendableNote, NoteTree, DiscoveryOptions, DiscoveryResult, ActivityFetcher, PersistenceCallbacks } from "../discovery/types.js";
+import type { SpendableNote, DiscoveryOptions, DiscoveryResult, ActivityFetcher, PersistenceCallbacks } from "../discovery/types.js";
 import type { ProofGenerator } from "../proof/types.js";
 import type { DepositSettings } from "../deposit/index.js";
 import type { GasLimits, WithdrawalKind } from "../fees/index.js";
@@ -71,14 +71,14 @@ export interface DepositParams {
 }
 
 export interface WithdrawQuoteParams {
-  note: SpendableNote;
   amountWei: bigint;
-  recipient: `0x${string}`;
   destinationChainId?: number;
   gasPriceWei: bigint;
 }
 
 export interface WithdrawParams extends WithdrawQuoteParams {
+  note: SpendableNote;
+  recipient: `0x${string}`;
   poolScope: bigint;
   stateCommitments: bigint[];
   aspLabels: bigint[];
@@ -102,14 +102,12 @@ export interface RagequitParams {
 }
 
 export interface RefundDepositParams {
-  orderId: string;
   rawIntent: import("@shinobi-cash/data").RawShinobiIntent;
   settlerAddress: `0x${string}`;
   originChainId: number;
 }
 
 export interface WithdrawalRefundParams {
-  orderId: string;
   rawIntent: import("@shinobi-cash/data").RawShinobiIntent;
   settlerAddress: `0x${string}`;
 }

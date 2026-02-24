@@ -168,7 +168,7 @@ export function createShinobiAccount(config: ShinobiAccountConfig): ShinobiAccou
     const route = resolveDepositRoute(chainId);
     const callParams = buildDepositCallParams(
       route,
-      BigInt(precommitment),
+      precommitment,
       settings ?? DEFAULT_DEPOSIT_SETTINGS,
       useDefaults,
     );
