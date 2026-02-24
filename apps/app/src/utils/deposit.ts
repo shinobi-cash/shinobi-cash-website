@@ -17,7 +17,7 @@ import {
   resolveDepositRoute,
   buildDepositCallParams,
   type DepositSettings,
-} from "@/utils/depositRoute";
+} from "@shinobi-cash/core/deposit";
 
 const GAS_BUFFER = BigInt(120);
 const DIVISOR = BigInt(100);

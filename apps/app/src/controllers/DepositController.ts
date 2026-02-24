@@ -1,6 +1,6 @@
 import { proxy } from "valtio";
 import { depositService, type CashNoteData, type GasEstimate } from "@/utils/deposit";
-import { isDepositSupported } from "@/utils/depositRoute";
+import { isDepositSupported } from "@shinobi-cash/core/deposit";
 import { createStateMachine } from "@/utils/stateMachine";
 import {
   FEE_CONFIG,
