@@ -9,6 +9,7 @@ import {
   WithdrawalChainConfigAbi,
   POOL_CHAIN,
 } from "@shinobi-cash/constants";
+import { getViemChain } from "@/config/chains";
 import { createPublicClient, http } from "viem";
 
 export interface WithdrawalChainConfig {
@@ -30,7 +31,7 @@ export async function fetchWithdrawalChainConfig(
   if (cached) return cached;
 
   const publicClient = createPublicClient({
-    chain: POOL_CHAIN as never,
+    chain: getViemChain(POOL_CHAIN.id),
     transport: http(),
   });
 

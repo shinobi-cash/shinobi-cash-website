@@ -11,6 +11,7 @@ import {
   SHINOBI_CASH_ETH_POOL,
   SHINOBI_CASH_ENTRYPOINT,
 } from "@shinobi-cash/constants";
+import { getViemChain } from "@/config/chains";
 import { pimlicoClient, type GasLimits } from "@/lib/clients";
 import type { SmartAccountClient } from "permissionless";
 import { Errors, logError } from "@/lib/errors/errors";
@@ -48,7 +49,7 @@ export interface SmartAccountConfig {
 }
 
 const publicClient = createPublicClient({
-  chain: POOL_CHAIN as never,
+  chain: getViemChain(POOL_CHAIN.id),
   transport: http(),
 });
 
