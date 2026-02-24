@@ -28,6 +28,11 @@
       "types": "./dist/proof.d.ts",
       "import": "./dist/proof.mjs",
       "require": "./dist/proof.js"
+    },
+    "./provider": {
+      "types": "./dist/provider.d.ts",
+      "import": "./dist/provider.mjs",
+      "require": "./dist/provider.js"
     }
   },
   "files": [

@@ -7,6 +7,7 @@ export default defineConfig({
     withdrawal: 'src/withdrawal/index.ts',
     discovery: 'src/discovery/index.ts',
     proof: 'src/proof/index.ts',
+    provider: 'src/provider/index.ts',
   },
   format: ['cjs', 'esm'],
   dts: {
