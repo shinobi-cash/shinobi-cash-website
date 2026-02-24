@@ -13,7 +13,7 @@ import {
   type StepTiming,
 } from "@/components/shared/Timeline";
 import { type AppError, getUserMessage } from "@/lib/errors/errors";
-import { getTxExplorerUrl, getChainName } from "@/config/chains";
+import { getTxExplorerUrl } from "@/config/chains";
 import { formatDateTime, formatEthAmount, formatDisplayAmount } from "@/utils/formatters";
 import type { RefundType } from "@shinobi-cash/core/intent";
 
