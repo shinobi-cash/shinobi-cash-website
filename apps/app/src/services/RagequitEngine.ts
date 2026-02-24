@@ -17,6 +17,7 @@ import {
 } from "@shinobi-cash/core/withdrawal";
 import type { RagequitCircuitWitness, RagequitProofData } from "@shinobi-cash/core/proof";
 import { SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
+import { getViemChain } from "@/config/chains";
 import { withdrawalProofGenerator } from "@/services/ProofGeneratorService";
 import { getPublicClient } from "@/lib/clients";
 import { Errors } from "@/lib/errors/errors";
@@ -152,7 +153,7 @@ export class RagequitEngine {
     const txHash = await walletClient.sendTransaction({
       to: SHINOBI_CASH_ETH_POOL.address,
       data: callData,
-      chain: SHINOBI_CASH_ETH_POOL.chain,
+      chain: getViemChain(SHINOBI_CASH_ETH_POOL.chain.id),
     });
 
     // Wait for confirmation

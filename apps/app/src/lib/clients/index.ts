@@ -6,13 +6,13 @@ import {
   SHINOBI_CASH_CROSSCHAIN_WITHDRAWAL_PAYMASTER,
   SHINOBI_CASH_WITHDRAW2_PAYMASTER,
   SHINOBI_CASH_CROSSCHAIN_WITHDRAW2_PAYMASTER,
-  SHINOBI_CASH_SUPPORTED_CHAINS,
   SAME_CHAIN_GAS_LIMITS,
   CROSS_CHAIN_GAS_LIMITS,
   WITHDRAW2_SAME_CHAIN_GAS_LIMITS,
   WITHDRAW2_CROSS_CHAIN_GAS_LIMITS,
   WITHDRAWAL_REFUND_GAS_LIMITS,
 } from "@shinobi-cash/constants";
+import { getViemChain } from "@/config/chains";
 import { createSmartAccountClient, type SmartAccountClient } from "permissionless";
 import { createPimlicoClient } from "permissionless/clients/pimlico";
 import { toSimpleSmartAccount } from "permissionless/accounts";
@@ -28,12 +28,8 @@ export interface WithdrawalSmartAccountClient {
 }
 
 export function getPublicClient(chainId: number) {
-  const chain = SHINOBI_CASH_SUPPORTED_CHAINS.find((chain) => chain.id === chainId);
-  if (!chain) {
-    throw new Error(`Unsupported chain ${chainId}`);
-  }
   return createPublicClient({
-    chain: chain as never,
+    chain: getViemChain(chainId),
     transport: http(),
   });
 }
@@ -57,7 +53,7 @@ async function createWithdrawalSmartAccountClient(
 ): Promise<WithdrawalSmartAccountClient> {
   const account = privateKeyToAccount(WITHDRAWAL_ACCOUNT_PRIVATE_KEY as `0x${string}`);
   const publicClient = createPublicClient({
-    chain: POOL_CHAIN as never,
+    chain: getViemChain(POOL_CHAIN.id),
     transport: http(),
   });
 
