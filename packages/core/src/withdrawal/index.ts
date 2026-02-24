@@ -2,7 +2,7 @@
  * @shinobi-cash/core/withdrawal
  */
 
-import { encodeAbiParameters, encodeFunctionData, keccak256 } from "viem/utils";
+import { AbiParameters, AbiFunction, Hash } from "ox";
 import { poseidon3 } from "poseidon-lite/poseidon3";
 import type { SpendableNote } from "../discovery/types.js";
 import { createDeriveFn, derivePrecommitment } from "../crypto/primitives.js";
@@ -84,7 +84,7 @@ export function createWithdrawalData(
 ): readonly [`0x${string}`, `0x${string}`] {
   return [
     SHINOBI_CASH_ENTRYPOINT.address,
-    encodeAbiParameters(
+    AbiParameters.encode(
       [
         { type: "address", name: "recipient" },
         { type: "address", name: "feeRecipient" },
@@ -105,7 +105,7 @@ export function createCrossChainWithdrawalData(
 
   return [
     SHINOBI_CASH_ENTRYPOINT.address,
-    encodeAbiParameters(
+    AbiParameters.encode(
       [
         { type: "address", name: "feeRecipient" },
         { type: "uint256", name: "solverFeeBPS" },
@@ -193,15 +193,12 @@ export function encodeRelayCallData(
   proof: ContractProof,
   scope: bigint
 ): `0x${string}` {
-  return encodeFunctionData({
-    abi: EntrypointRelayAbi,
-    functionName: "relay",
-    args: [
-      { processooor: withdrawalData.processooor, data: withdrawalData.data },
-      { pA: proof.pA, pB: proof.pB, pC: proof.pC, pubSignals: proof.pubSignals },
-      scope,
-    ],
-  });
+  const fn = AbiFunction.fromAbi(EntrypointRelayAbi, "relay");
+  return AbiFunction.encodeData(fn, [
+    { processooor: withdrawalData.processooor, data: withdrawalData.data },
+    { pA: proof.pA, pB: proof.pB, pC: proof.pC, pubSignals: proof.pubSignals },
+    scope,
+  ]);
 }
 
 export function encodeCrossChainWithdrawalCallData(
@@ -209,15 +206,12 @@ export function encodeCrossChainWithdrawalCallData(
   proof: ContractCrossChainProof,
   scope: bigint
 ): `0x${string}` {
-  return encodeFunctionData({
-    abi: EntrypointCrosschainWithdrawalAbi,
-    functionName: "crosschainWithdrawal",
-    args: [
-      { processooor: withdrawalData.processooor, data: withdrawalData.data },
-      { pA: proof.pA, pB: proof.pB, pC: proof.pC, pubSignals: proof.pubSignals },
-      scope,
-    ],
-  });
+  const fn = AbiFunction.fromAbi(EntrypointCrosschainWithdrawalAbi, "crosschainWithdrawal");
+  return AbiFunction.encodeData(fn, [
+    { processooor: withdrawalData.processooor, data: withdrawalData.data },
+    { pA: proof.pA, pB: proof.pB, pC: proof.pC, pubSignals: proof.pubSignals },
+    scope,
+  ]);
 }
 
 // ============ WITHDRAW2 (2:1) CONTRACT ENCODING ============
@@ -311,15 +305,12 @@ export function encodeWithdraw2RelayCallData(
   proof: ContractWithdraw2SameChainProof,
   scope: bigint
 ): `0x${string}` {
-  return encodeFunctionData({
-    abi: EntrypointWithdraw2RelayAbi,
-    functionName: "relay2",
-    args: [
-      { processooor: withdrawalData.processooor, data: withdrawalData.data },
-      { pA: proof.pA, pB: proof.pB, pC: proof.pC, pubSignals: proof.pubSignals },
-      scope,
-    ],
-  });
+  const fn = AbiFunction.fromAbi(EntrypointWithdraw2RelayAbi, "relay2");
+  return AbiFunction.encodeData(fn, [
+    { processooor: withdrawalData.processooor, data: withdrawalData.data },
+    { pA: proof.pA, pB: proof.pB, pC: proof.pC, pubSignals: proof.pubSignals },
+    scope,
+  ]);
 }
 
 export function encodeCrossChainWithdraw2CallData(
@@ -327,15 +318,12 @@ export function encodeCrossChainWithdraw2CallData(
   proof: ContractCrosschainWithdraw2Proof,
   scope: bigint
 ): `0x${string}` {
-  return encodeFunctionData({
-    abi: EntrypointCrosschainWithdraw2Abi,
-    functionName: "crossChainWithdrawal2",
-    args: [
-      { processooor: withdrawalData.processooor, data: withdrawalData.data },
-      { pA: proof.pA, pB: proof.pB, pC: proof.pC, pubSignals: proof.pubSignals },
-      scope,
-    ],
-  });
+  const fn = AbiFunction.fromAbi(EntrypointCrosschainWithdraw2Abi, "crossChainWithdrawal2");
+  return AbiFunction.encodeData(fn, [
+    { processooor: withdrawalData.processooor, data: withdrawalData.data },
+    { pA: proof.pA, pB: proof.pB, pC: proof.pC, pubSignals: proof.pubSignals },
+    scope,
+  ]);
 }
 
 // ============ DERIVATION FUNCTIONS ============
@@ -375,14 +363,14 @@ function deriveExistingNullifierAndSecret(
 }
 
 export function hashToBigInt(data: string): bigint {
-  return BigInt(keccak256(data as `0x${string}`)) % SNARK_SCALAR_FIELD;
+  return BigInt(Hash.keccak256(data as `0x${string}`)) % SNARK_SCALAR_FIELD;
 }
 
 export function calculateContextHash(
   poolScope: bigint,
   withdrawalData: readonly [string, string]
 ): ContextHash {
-  const encoded = encodeAbiParameters(
+  const encoded = AbiParameters.encode(
     [{ type: "tuple", components: [{ type: "address" }, { type: "bytes" }] }, { type: "uint256" }],
     [withdrawalData as readonly [`0x${string}`, `0x${string}`], poolScope]
   );
@@ -679,11 +667,8 @@ export function formatRagequitProofForContract(
  * Encode ragequit call data for the pool contract
  */
 export function encodeRagequitCallData(proof: ContractRagequitProof): `0x${string}` {
-  return encodeFunctionData({
-    abi: PoolRagequitAbi,
-    functionName: "ragequit",
-    args: [{ pA: proof.pA, pB: proof.pB, pC: proof.pC, pubSignals: proof.pubSignals }],
-  });
+  const fn = AbiFunction.fromAbi(PoolRagequitAbi, "ragequit");
+  return AbiFunction.encodeData(fn, [{ pA: proof.pA, pB: proof.pB, pC: proof.pC, pubSignals: proof.pubSignals }]);
 }
 
 /**

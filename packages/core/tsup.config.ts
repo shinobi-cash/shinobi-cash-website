@@ -23,6 +23,7 @@ export default defineConfig({
     'snarkjs',
     '@zk-kit/lean-imt',
     'bip39',
-    'viem',
+    'ox',
+    /^ox\//,
   ],
 });

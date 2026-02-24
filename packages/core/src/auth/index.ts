@@ -2,8 +2,7 @@
  * @shinobi-cash/core/auth
  */
 
-import { privateKeyToAccount } from "viem/accounts";
-import { hexToBytes, bytesToHex } from "viem/utils";
+import { Bytes, Hex, Secp256k1, PublicKey, Address as OxAddress } from "ox";
 import { SNARK_SCALAR_FIELD } from "../crypto/constants.js";
 import type {
   WalletAccountId,
@@ -146,7 +145,7 @@ export async function deriveKeysFromSignature(
   keyGenSeed: string;
   encryptionKey: Uint8Array;
 }> {
-  const signatureBytes = hexToBytes(signature as `0x${string}`);
+  const signatureBytes = Bytes.fromHex(signature as `0x${string}`);
   const signatureHash = await crypto.subtle.digest("SHA-256", signatureBytes as BufferSource);
 
   const salt = new TextEncoder().encode(
@@ -174,25 +173,26 @@ export async function deriveKeysFromSignature(
   );
 
   return {
-    keyGenSeed: bytesToHex(new Uint8Array(keyGenBits)),
+    keyGenSeed: Hex.fromBytes(new Uint8Array(keyGenBits)),
     encryptionKey: new Uint8Array(encryptionBits),
   };
 }
 
 /** Generate keys from seed */
 export function generateKeysFromRandomSeed(randomSeed: string): KeyGenerationResult {
-  const seedBytes = hexToBytes(randomSeed as `0x${string}`);
+  const seedBytes = Bytes.fromHex(randomSeed as `0x${string}`);
 
   if (seedBytes.length !== 32) {
     throw new Error(`Invalid seed length: expected 32 bytes, got ${seedBytes.length}`);
   }
 
   const privateKeyHex = randomSeed.startsWith("0x") ? randomSeed : `0x${randomSeed}`;
-  const account = privateKeyToAccount(privateKeyHex as `0x${string}`);
+  const publicKey = Secp256k1.getPublicKey({ privateKey: privateKeyHex as `0x${string}` });
+  const address = OxAddress.checksum(OxAddress.fromPublicKey(publicKey));
 
   return {
-    publicKey: account.publicKey,
+    publicKey: PublicKey.toHex(publicKey),
     privateKey: privateKeyHex,
-    address: account.address,
+    address,
   };
 }
