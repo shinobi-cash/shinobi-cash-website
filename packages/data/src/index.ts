@@ -101,3 +101,16 @@ export {
 
 // Converters
 export { toBigInt, toNumber, toDate, formatEth, parseChainId } from "./utils/converters";
+
+// Activity consolidation
+export {
+  consolidateActivities,
+  filterByCategory,
+  getActivityCounts,
+  getActivityCategory,
+  isCrossChainActivity,
+  getActivityPriority,
+  type ConsolidatedActivity,
+  type ActivityCategory,
+  type ActivityTimelineEvent,
+} from "./utils/activity-consolidation";
