@@ -130,7 +130,7 @@ export const depositService = {
       chain: walletClient.chain,
       account: walletClient.account!,
       ...gasParams,
-    });
+    } as never);
 
     return hash;
   },
