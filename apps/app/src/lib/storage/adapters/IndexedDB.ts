@@ -1,10 +1,10 @@
 const DB_NAME = "shinobi.cash";
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 const STORES = {
   NOTES: "encrypted-notes",
   ACCOUNTS: "account-metadata",
-  WRAPPED_AMK: "wrapped-amk",
+  MASTER_KEY: "wrapped-master-key",
 } as const;
 
 export type StoreName = (typeof STORES)[keyof typeof STORES];
@@ -32,8 +32,30 @@ class IndexedDBDatabase {
           db.createObjectStore(STORES.ACCOUNTS, { keyPath: "id" });
         }
 
-        if (!db.objectStoreNames.contains(STORES.WRAPPED_AMK)) {
-          db.createObjectStore(STORES.WRAPPED_AMK, { keyPath: "id" });
+        if (!db.objectStoreNames.contains(STORES.MASTER_KEY)) {
+          db.createObjectStore(STORES.MASTER_KEY, { keyPath: "id" });
+        }
+
+        // Migrate v3 → v4: rename "wrapped-amk" → "wrapped-master-key"
+        if (db.objectStoreNames.contains("wrapped-amk")) {
+          const oldStore = transaction.objectStore("wrapped-amk");
+          const newStore = db.objectStoreNames.contains(STORES.MASTER_KEY)
+            ? transaction.objectStore(STORES.MASTER_KEY)
+            : db.createObjectStore(STORES.MASTER_KEY, { keyPath: "id" });
+
+          const getAllRequest = oldStore.getAll();
+          getAllRequest.onsuccess = () => {
+            const records = getAllRequest.result;
+            records.forEach((record: { id?: string; [key: string]: unknown }) => {
+              // Rewrite storage keys: "accountId:amk:method" → "accountId:mk:method"
+              if (record.id) {
+                record.id = record.id.replace(":amk:", ":mk:");
+              }
+              newStore.put(record);
+            });
+          };
+
+          db.deleteObjectStore("wrapped-amk");
         }
 
         if (db.objectStoreNames.contains("encrypted-account")) {

@@ -20,6 +20,7 @@
     "@reown/appkit": "1.8.14",
     "@reown/appkit-adapter-wagmi": "1.8.14",
     "@sentry/react": "^10.25.0",
+    "@shinobi-cash/client": "workspace:*",
     "@shinobi-cash/constants": "workspace:*",
     "@shinobi-cash/core": "workspace:*",
     "@shinobi-cash/data": "workspace:*",

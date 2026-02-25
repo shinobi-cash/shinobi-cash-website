@@ -2,29 +2,14 @@ import { accountService } from "@/services/AccountService";
 import { accountRepo } from "@/lib/storage/repositories/AccountRepository";
 import {
   getStoredSessionInfo,
-  updateSessionLastAuth,
   clearSessionInfo,
   storeSessionInfo,
 } from "@/lib/storage/repositories/SessionRepository";
 import { keyDerivationService } from "@/services/KeyDerivationService";
-import {
-  parseUserKey,
-  deriveKeysFromSignature,
-  generateKeysFromRandomSeed,
-  getWalletAccountId,
-} from "@shinobi-cash/core/auth";
+import { deriveWalletCredentials } from "@/lib/auth";
 import { proxy } from "valtio";
-import { type AppError, logError } from "@/lib/errors/errors";
-
-/**
- * Crypto context (public key + account key)
- * Single source of truth for crypto material, owned by AuthController
- */
-export interface CryptoContext {
-  publicKey: string | null;
-  accountKey: bigint | null;
-  cryptoReady: boolean;
-}
+import { type AppError, logError, isUserCancellation } from "@/lib/errors/errors";
+import { showToast } from "@/lib/toast";
 
 type AuthSession = {
   accountId: string;
@@ -40,16 +25,10 @@ type AuthState =
 
 interface AuthControllerState {
   state: AuthState;
-  crypto: CryptoContext;
 }
 
 const state = proxy<AuthControllerState>({
   state: { status: "booting" },
-  crypto: {
-    publicKey: null,
-    accountKey: null,
-    cryptoReady: false,
-  },
 });
 
 export const AuthController = {
@@ -67,16 +46,9 @@ export const AuthController = {
 
         await accountService.loginWithPasskeyKEK(session.accountId, kek);
 
-        // If we reach here, login succeeded (would throw otherwise)
-        await updateSessionLastAuth();
-
         // Check passkey status after successful login
         const passkeyEnabled = await this.isPasskeyEnabled();
 
-        // Load crypto context immediately after successful login
-        const accountData = await accountService.getAccountData();
-
-        // Update auth state
         this.state.state = {
           status: "authenticated",
           session: {
@@ -84,13 +56,6 @@ export const AuthController = {
             authenticatedAt: Date.now(),
             passkeyEnabled,
           },
-        };
-
-        // Update crypto context atomically
-        this.state.crypto = {
-          publicKey: accountData.publicKey ?? null,
-          accountKey: parseUserKey(accountData.privateKey),
-          cryptoReady: true,
         };
 
         return;
@@ -103,7 +68,11 @@ export const AuthController = {
       // This is intentional - a failed passkey login should allow manual login
       await clearSessionInfo().catch(() => {});
       this.state.state = { status: "unauthenticated" };
-      this._clearCrypto();
+
+      // Notify user unless they cancelled the biometric prompt
+      if (!isUserCancellation(error)) {
+        showToast.info("Quick Unlock failed. Please sign in with your wallet.");
+      }
     }
   },
 
@@ -111,7 +80,6 @@ export const AuthController = {
     await clearSessionInfo();
     accountService.clearInMemorySession();
     this.state.state = { status: "unauthenticated" };
-    this._clearCrypto();
   },
 
   async signInWithWallet({
@@ -123,21 +91,18 @@ export const AuthController = {
     chainId: number;
     signature: `0x${string}`;
   }) {
-    const accountId = getWalletAccountId(walletAddress, chainId);
+    // SDK: derive account identity + private key
+    const { accountId, privateKey } = await deriveWalletCredentials(signature, chainId, walletAddress);
 
-    const { encryptionKey, keyGenSeed } = await deriveKeysFromSignature(
-      signature,
-      chainId,
-      walletAddress
-    );
+    // App: derive storage encryption key (KEK)
+    const kek = await keyDerivationService.deriveKEKFromWallet(signature, chainId, walletAddress);
 
     const exists = await accountRepo.accountExists(accountId);
 
     if (!exists) {
-      const keys = generateKeysFromRandomSeed(keyGenSeed);
-      await accountService.createWalletAccount(accountId, encryptionKey, keys.privateKey);
+      await accountService.createWalletAccount(accountId, kek, privateKey);
     } else {
-      await accountService.loginWithWalletKEK(accountId, encryptionKey);
+      await accountService.loginWithWalletKEK(accountId, kek);
     }
 
     // Load credentialId from account metadata BEFORE storing session
@@ -149,23 +114,11 @@ export const AuthController = {
       credentialId: metadata?.credentialId,
     });
 
-    // Set authenticated state with passkey status
     const passkeyEnabled = !!metadata?.credentialId;
 
-    // Load crypto context immediately after successful login
-    const accountData = await accountService.getAccountData();
-
-    // Update auth state
     this.state.state = {
       status: "authenticated",
-      session: { accountId: accountId, authenticatedAt: Date.now(), passkeyEnabled },
-    };
-
-    // Update crypto context atomically
-    this.state.crypto = {
-      publicKey: accountData.publicKey ?? null,
-      accountKey: parseUserKey(accountData.privateKey),
-      cryptoReady: true,
+      session: { accountId, authenticatedAt: Date.now(), passkeyEnabled },
     };
   },
 
@@ -215,11 +168,7 @@ export const AuthController = {
     }
   },
 
-  _clearCrypto(): void {
-    this.state.crypto = {
-      publicKey: null,
-      accountKey: null,
-      cryptoReady: false,
-    };
+  isAuthenticated(): boolean {
+    return this.state.state.status === "authenticated";
   },
 };

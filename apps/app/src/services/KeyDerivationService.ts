@@ -18,10 +18,43 @@ const CONFIG = {
 } as const;
 
 export class KeyDerivationService {
-  async deriveDataEncryptionKey(amkPrivateKey: string): Promise<CryptoKey> {
+  /**
+   * Derive KEK (Key Encryption Key) from wallet signature.
+   * Used to encrypt/decrypt the Master Key in IndexedDB.
+   */
+  async deriveKEKFromWallet(
+    signature: `0x${string}`,
+    chainId: number,
+    walletAddress: `0x${string}`
+  ): Promise<CryptoKey> {
+    const signatureBytes = Bytes.fromHex(signature);
+    const signatureHash = await crypto.subtle.digest("SHA-256", signatureBytes as BufferSource);
+
+    const salt = new TextEncoder().encode(
+      `shinobi-wallet-auth-v1:chain-${chainId}:${walletAddress.toLowerCase()}`
+    );
+
+    const keyMaterial = await crypto.subtle.importKey(
+      "raw",
+      new Uint8Array(signatureHash),
+      { name: "HKDF" },
+      false,
+      ["deriveKey"]
+    );
+
+    return crypto.subtle.deriveKey(
+      { name: "HKDF", hash: "SHA-256", salt, info: new TextEncoder().encode("shinobi-encryption") },
+      keyMaterial,
+      { name: "AES-GCM", length: CONFIG.KEY_LENGTH },
+      false,
+      ["encrypt", "decrypt"]
+    );
+  }
+
+  async deriveDataEncryptionKey(masterKey: string): Promise<CryptoKey> {
     let privateKeyBytes: Uint8Array;
     try {
-      const hexKey = amkPrivateKey.startsWith("0x") ? amkPrivateKey : `0x${amkPrivateKey}`;
+      const hexKey = masterKey.startsWith("0x") ? masterKey : `0x${masterKey}`;
       privateKeyBytes = Bytes.fromHex(hexKey as `0x${string}`);
     } catch {
       throw Errors.auth.decryptionFailed("Account key is malformed");

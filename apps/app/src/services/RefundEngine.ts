@@ -3,7 +3,7 @@
  *
  * Two execution paths:
  * - Deposit refund: direct wallet call on origin chain (user pays gas)
- * - Withdrawal refund: UserOperation via bundler on pool chain (paymaster sponsors gas)
+ * - Withdrawal refund: via ShinobiCashClient (bundler, paymaster sponsors gas)
  */
 
 import type { Intent, RawShinobiIntent } from "@shinobi-cash/data";
@@ -15,17 +15,14 @@ import {
 import {
   isIntentRefundable,
   getRefundType,
-  encodeRefundCallData,
   decodeRawIntentData,
   type RefundType,
 } from "@shinobi-cash/core/intent";
+import { getShinobiAccount } from "@/runtime/AccountSingleton";
+import { getShinobiClient } from "@/runtime/ClientSingleton";
 import { indexerClient } from "@/lib/indexer/client";
-import { getPublicClient, getRefundSmartAccountClient } from "@/lib/clients";
+import { getPublicClient } from "@/lib/clients";
 import { Errors, logError } from "@/lib/errors/errors";
-import {
-  prepareWithdrawalUserOperation,
-  executeWithdrawalUserOperation,
-} from "@/utils/withdrawalContract";
 
 export type RefundPhase =
   | "idle"
@@ -119,7 +116,6 @@ export class RefundEngine {
       throw Errors.blockchain.contractError("Intent has not expired yet");
     }
 
-    // Decode ABI-encoded ShinobiIntent struct from event log data
     const rawIntent = decodeRawIntentData(intent.rawIntentData);
     intent.rawIntent = rawIntent;
 
@@ -133,8 +129,7 @@ export class RefundEngine {
   }
 
   /**
-   * Execute deposit refund via direct wallet call on origin chain.
-   * User must be connected to the origin chain and pays gas directly.
+   * Execute deposit refund via SDK + direct wallet call on origin chain.
    */
   async executeDepositRefund(
     walletClient: WalletClient<Transport, Chain, Account>
@@ -142,13 +137,18 @@ export class RefundEngine {
     const { intent, rawIntent } = this.assertPrepared("deposit");
     const originChainId = Number(intent.originChainId);
     const settlerAddress = getSettlerAddress("deposit", originChainId);
-    const callData = encodeRefundCallData(rawIntent);
+
+    const txRequest = getShinobiAccount().refundDeposit({
+      rawIntent,
+      settlerAddress,
+      originChainId,
+    });
 
     this.state.phase = "submitting";
     try {
       const txHash = await walletClient.sendTransaction({
-        to: settlerAddress,
-        data: callData,
+        to: txRequest.to,
+        data: txRequest.data,
       });
 
       this.state.phase = "confirming";
@@ -178,30 +178,22 @@ export class RefundEngine {
   }
 
   /**
-   * Execute withdrawal refund via UserOperation on pool chain.
-   * Uses crosschain withdrawal paymaster — gasless for the user.
+   * Execute withdrawal refund via ShinobiCashClient (bundler-based).
    */
   async executeWithdrawalRefund(): Promise<RefundResult> {
     const { rawIntent } = this.assertPrepared("withdrawal");
     const settlerAddress = getSettlerAddress("withdrawal", 0);
-    const callData = encodeRefundCallData(rawIntent);
 
     this.state.phase = "submitting";
     try {
-      const { smartAccountClient, gasLimits } = await getRefundSmartAccountClient();
-      const userOperation = await prepareWithdrawalUserOperation(
-        smartAccountClient,
-        callData,
-        gasLimits,
-        settlerAddress
-      );
+      const client = getShinobiClient();
+      const prepared = await client.prepareWithdrawalRefund({
+        rawIntent,
+        settlerAddress,
+      });
 
       this.state.phase = "confirming";
-      const txHash = await executeWithdrawalUserOperation(
-        smartAccountClient,
-        userOperation,
-        gasLimits
-      );
+      const txHash = await client.submitWithdrawal(prepared);
 
       this.state.phase = "complete";
       this.state.result = { txHash, refundType: "withdrawal" };

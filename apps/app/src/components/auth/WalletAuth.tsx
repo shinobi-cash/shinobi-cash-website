@@ -5,7 +5,7 @@ import { Wallet } from "lucide-react";
 import { useAccount, useChainId, useSwitchChain, useSignTypedData, useDisconnect } from "wagmi";
 import { openWalletModal } from "@/context/wallet";
 import { AuthController } from "@/controllers/AuthController";
-import { getShinobiAuthMessage } from "@shinobi-cash/core/auth";
+import { getShinobiAuthMessage } from "@/lib/auth";
 import { showToast } from "@/lib/toast";
 import { getUserMessage, isUserCancellation } from "@/lib/errors/errors";
 import { POOL_CHAIN } from "@shinobi-cash/constants";
@@ -40,7 +40,7 @@ export function WalletAuth() {
 
         setStatus("authenticating");
 
-        AuthController.signInWithWallet({
+        await AuthController.signInWithWallet({
           chainId: POOL_CHAIN.id,
           signature,
           walletAddress,

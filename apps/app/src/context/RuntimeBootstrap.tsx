@@ -11,8 +11,8 @@ import { AuthController } from "@/controllers/AuthController";
  */
 export function RuntimeBootstrap() {
   const authState = useSnapshot(AuthController.state);
-  const { cryptoReady } = authState.crypto;
-  const prevCryptoReady = useRef(cryptoReady);
+  const isAuthenticated = authState.state.status === "authenticated";
+  const prevAuthenticated = useRef(isAuthenticated);
 
   // Start runtime on mount
   useEffect(() => {
@@ -23,21 +23,19 @@ export function RuntimeBootstrap() {
     };
   }, []);
 
-  // React to crypto state changes
+  // React to auth state changes
   useEffect(() => {
-    const wasCryptoReady = prevCryptoReady.current;
-    prevCryptoReady.current = cryptoReady;
+    const wasAuthenticated = prevAuthenticated.current;
+    prevAuthenticated.current = isAuthenticated;
 
-    // Crypto became ready (login) → bootstrap notes
-    if (!wasCryptoReady && cryptoReady) {
-      AppRuntime.onCryptoReady();
+    if (!wasAuthenticated && isAuthenticated) {
+      AppRuntime.onAuthenticated();
     }
 
-    // Crypto became unavailable (logout) → cleanup notes and workers
-    if (wasCryptoReady && !cryptoReady) {
+    if (wasAuthenticated && !isAuthenticated) {
       AppRuntime.onLogout();
     }
-  }, [cryptoReady]);
+  }, [isAuthenticated]);
 
   return null;
 }

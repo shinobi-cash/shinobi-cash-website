@@ -6,18 +6,17 @@ import {
   base64ToArrayBuffer,
 } from "../encryption";
 import {
-  NoteDiscovery,
   makeChainKey,
   serializeTree,
   deserializeTree,
-  type ActivityFetcher,
+  type PersistenceCallbacks,
   type SerializableDiscoveryState,
   type NoteTree,
   type SerializableNoteNode,
   type NullifierInfo,
   type ActivityItem,
 } from "@shinobi-cash/core/discovery";
-import type { DiscoveryResult, DiscoveryOptions } from "@shinobi-cash/core/discovery";
+import type { DiscoveryResult } from "@shinobi-cash/core/discovery";
 import {
   type IndexedDBStore,
   notesStorageAdapter,
@@ -34,21 +33,21 @@ export class NotesRepository {
   /**
    * Generate storage key
    */
-  private async getKey(publicKey: string, poolAddress: string): Promise<string> {
-    const publicKeyHash = await createHash(publicKey);
+  private async getKey(accountId: string, poolAddress: string): Promise<string> {
+    const accountIdHash = await createHash(accountId);
     const poolAddressHash = await createHash(poolAddress);
-    return `${publicKeyHash}_${poolAddressHash}`;
+    return `${accountIdHash}_${poolAddressHash}`;
   }
 
   /**
    * Get cached notes
    */
-  async getCachedNotes(publicKey: string, poolAddress: string): Promise<DiscoveryResult | null> {
+  async getCachedNotes(accountId: string, poolAddress: string): Promise<DiscoveryResult | null> {
     if (!this.encryptionService.isKeyAvailable()) {
       throw new Error("Session not initialized");
     }
 
-    const cached = await this.getCachedData(publicKey, poolAddress);
+    const cached = await this.getCachedData(accountId, poolAddress);
 
     if (cached) {
       // Deserialize trees
@@ -84,7 +83,7 @@ export class NotesRepository {
    * Store discovered notes
    */
   async storeDiscoveredTrees(
-    publicKey: string,
+    accountId: string,
     poolAddress: string,
     trees: NoteTree[],
     minOffset?: number
@@ -94,14 +93,14 @@ export class NotesRepository {
     }
 
     const serializedTrees = trees.map(serializeTree);
-    await this.storeData(publicKey, poolAddress, serializedTrees, minOffset);
+    await this.storeData(accountId, poolAddress, serializedTrees, minOffset);
   }
 
   /**
    * Store data internally
    */
   async storeData(
-    publicKey: string,
+    accountId: string,
     poolAddress: string,
     trees: SerializableNoteNode[],
     minOffset?: number,
@@ -111,7 +110,7 @@ export class NotesRepository {
   ): Promise<void> {
     const sensitiveData: CachedNoteData = {
       poolAddress,
-      publicKey,
+      accountId,
       trees,
       lastSyncTime: Date.now(),
       minOffset,
@@ -123,7 +122,7 @@ export class NotesRepository {
     const encrypted = await this.encryptionService.encrypt(sensitiveData);
 
     const storageData: EncryptedNotesData = {
-      id: await this.getKey(publicKey, poolAddress),
+      id: await this.getKey(accountId, poolAddress),
       encryptedPayload: {
         iv: arrayBufferToBase64(encrypted.iv),
         data: arrayBufferToBase64(encrypted.data),
@@ -139,10 +138,10 @@ export class NotesRepository {
    * Get cached data internally
    */
   private async getCachedData(
-    publicKey: string,
+    accountId: string,
     poolAddress: string
   ): Promise<CachedNoteData | null> {
-    const key = await this.getKey(publicKey, poolAddress);
+    const key = await this.getKey(accountId, poolAddress);
     const result = (await this.storageAdapter.get(key)) as EncryptedNotesData | null;
 
     if (result) {
@@ -165,27 +164,11 @@ export class NotesRepository {
   }
 
   /**
-   * Discover notes using NoteDiscovery
-   *
-   * Clean stateful architecture with pure state transitions.
-   * Engine handles orchestration, primitives handle logic.
-   *
-   * @param publicKey - User's public key/address
-   * @param poolAddress - Pool contract address
-   * @param accountKey - Account key for cryptographic derivation
-   * @param fetchActivities - Function to fetch activities from indexer
-   * @param options - Discovery options (progress callback, abort signal)
-   * @returns Discovery result with found notes
+   * Get persistence callbacks for SDK's createShinobiAccount.
+   * Same load/save logic as discoverNotes() but exposed for external use.
    */
-  async discoverNotes(
-    publicKey: string,
-    poolAddress: string,
-    accountKey: bigint,
-    fetchActivities: ActivityFetcher,
-    options?: DiscoveryOptions
-  ): Promise<DiscoveryResult> {
-    // Create sync engine with persistence callbacks
-    const engine = new NoteDiscovery(fetchActivities, {
+  getPersistenceCallbacks(): PersistenceCallbacks {
+    return {
       loadState: async (
         pubKey: string,
         pool: string
@@ -193,7 +176,6 @@ export class NotesRepository {
         const cached = await this.getCachedData(pubKey, pool);
         if (!cached) return null;
 
-        // Convert stored trees to the expected format with ChainKey
         const trees = cached.trees.map((tree) => {
           const chainKey = makeChainKey(tree.note.originChainId, tree.note.depositIndex);
           return { chainKey, tree };
@@ -211,7 +193,6 @@ export class NotesRepository {
       },
 
       saveState: async (pubKey: string, pool: string, state: SerializableDiscoveryState) => {
-        // Extract serialized trees from state
         const trees = state.trees.map((t) => t.tree);
 
         await this.storeData(
@@ -224,11 +205,9 @@ export class NotesRepository {
           state.activities
         );
       },
-    });
-
-    // Run sync
-    return await engine.sync(publicKey, poolAddress, accountKey, options);
+    };
   }
+
 }
 
 export const notesRepo = new NotesRepository(notesStorageAdapter, sharedEncryptionService);

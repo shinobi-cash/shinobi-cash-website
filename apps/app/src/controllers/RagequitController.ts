@@ -6,20 +6,22 @@
  */
 
 import { proxy } from "valtio";
-import type { Note } from "@shinobi-cash/core/discovery";
+import type { Note, SpendableNote } from "@shinobi-cash/core/discovery";
 import { canRagequit } from "@shinobi-cash/core/discovery";
-import type { ContractRagequitProof } from "@shinobi-cash/core/withdrawal";
+import type { TransactionRequest } from "@shinobi-cash/core/account";
 import { AuthController } from "@/controllers/AuthController";
 import { NotesDiscoveryController } from "@/controllers/NotesDiscoveryController";
-import { RagequitEngine, type RagequitPhase } from "@/services/RagequitEngine";
+import { getShinobiAccount } from "@/runtime/AccountSingleton";
+import { getPublicClient } from "@/lib/clients";
+import { SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
 import { createStateMachine } from "@/utils/stateMachine";
 import { type AppError, Errors, getUserMessage } from "@/lib/errors/errors";
 import type { WalletClient, Account, Transport, Chain } from "viem";
 
 type RagequitState =
   | { status: "idle" }
-  | { status: "preparing"; phase: RagequitPhase }
-  | { status: "ready"; proof: ContractRagequitProof }
+  | { status: "preparing" }
+  | { status: "ready"; txRequest: TransactionRequest }
   | { status: "submitting" }
   | { status: "confirming"; txHash: `0x${string}` }
   | { status: "confirmed"; txHash: `0x${string}` }
@@ -37,8 +39,6 @@ const state = proxy<RagequitControllerState>({
   lastError: null,
 });
 
-// Engine instance for current ragequit flow
-let currentEngine: RagequitEngine | null = null;
 let prepareId = 0;
 
 const { transition } = createStateMachine<RagequitState>({
@@ -60,12 +60,11 @@ const { transition } = createStateMachine<RagequitState>({
 
 export const RagequitSelectors = {
   canRagequit: () => {
-    const crypto = AuthController.state.crypto;
     return (
       state.state.status === "idle" &&
       state.selectedNote !== null &&
       canRagequit(state.selectedNote) &&
-      crypto.cryptoReady
+      AuthController.isAuthenticated()
     );
   },
 
@@ -93,19 +92,15 @@ export const RagequitController = {
     }
   },
 
-  /**
-   * Prepare the ragequit proof
-   */
   async prepare(): Promise<void> {
     const current = ++prepareId;
-    const crypto = AuthController.state.crypto;
 
     if (!state.selectedNote) {
       state.lastError = Errors.withdrawal.precondition("No note selected");
       return;
     }
 
-    if (!crypto.cryptoReady || !crypto.accountKey) {
+    if (!AuthController.isAuthenticated()) {
       state.lastError = Errors.auth.failed("Account not ready");
       return;
     }
@@ -116,73 +111,73 @@ export const RagequitController = {
     }
 
     try {
-      transition({ status: "preparing", phase: "idle" });
-      currentEngine = new RagequitEngine();
+      transition({ status: "preparing" });
 
-      const proof = await currentEngine.prepare({
-        note: state.selectedNote,
-        accountKey: crypto.accountKey,
+      const txRequest = await getShinobiAccount().ragequit({
+        poolAddress: SHINOBI_CASH_ETH_POOL.address as `0x${string}`,
+        note: state.selectedNote as SpendableNote,
       });
 
       if (current !== prepareId) return;
 
-      transition({ status: "ready", proof });
+      transition({ status: "ready", txRequest });
     } catch (error) {
       if (current !== prepareId) return;
       const appError = Errors.withdrawal.proofFailed(error);
       state.lastError = appError;
       transition({ status: "error", error: appError });
-      currentEngine = null;
     }
   },
 
-  /**
-   * Submit the ragequit transaction
-   * Requires prepare() to be called first
-   *
-   * @param walletClient - The connected wallet client from wagmi
-   */
   async submit(walletClient: WalletClient<Transport, Chain, Account>): Promise<void> {
-    if (state.state.status !== "ready" || !currentEngine) {
-      return;
-    }
+    if (state.state.status !== "ready") return;
+
+    const { txRequest } = state.state;
 
     try {
       transition({ status: "submitting" });
 
-      const result = await currentEngine.execute(walletClient);
+      const txHash = await walletClient.sendTransaction({
+        to: txRequest.to,
+        data: txRequest.data,
+        value: txRequest.value,
+        chain: walletClient.chain,
+      });
 
-      transition({ status: "confirming", txHash: result.txHash });
+      transition({ status: "confirming", txHash });
 
-      // Receipt already waited for in engine
-      transition({ status: "confirmed", txHash: result.txHash });
+      // Wait for confirmation
+      const poolChainId = SHINOBI_CASH_ETH_POOL.chain.id;
+      const publicClient = getPublicClient(poolChainId);
+      const receipt = await publicClient.waitForTransactionReceipt({
+        hash: txHash,
+        confirmations: 1,
+      });
 
-      // Trigger notes refresh
+      if (receipt.status === "reverted") {
+        throw Errors.withdrawal.transactionFailed("Ragequit transaction reverted");
+      }
+
+      transition({ status: "confirmed", txHash });
+
       NotesDiscoveryController.refresh();
     } catch (error) {
       const userMessage = getUserMessage(error, "Ragequit failed");
       const appError = Errors.withdrawal.transactionFailed(userMessage, error);
       state.lastError = appError;
       transition({ status: "error", error: appError });
-      currentEngine = null;
     }
   },
 
-  /**
-   * Prepare and submit in one call
-   */
   async confirm(walletClient: WalletClient<Transport, Chain, Account>): Promise<void> {
     await this.prepare();
-    if (state.state.status !== "ready") {
-      return;
-    }
+    if (state.state.status !== "ready") return;
     await this.submit(walletClient);
   },
 
   reset(): void {
     state.selectedNote = null;
     state.lastError = null;
-    currentEngine = null;
     if (state.state.status !== "idle") {
       transition({ status: "idle" });
     }
@@ -190,7 +185,6 @@ export const RagequitController = {
 
   retry(): void {
     if (state.state.status === "error") {
-      currentEngine = null;
       transition({ status: "idle" });
     }
   },

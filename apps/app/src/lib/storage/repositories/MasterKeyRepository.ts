@@ -1,13 +1,13 @@
 import { EncryptionService, arrayBufferToBase64, base64ToArrayBuffer } from "../encryption";
-import type { WalletAccountId } from "@shinobi-cash/core/auth";
-import { type IndexedDBStore, AMKStorageAdapter } from "../adapters/IndexedDBStore";
-import type { WrappedAMK } from "../interfaces/IDataTypes";
+import type { WalletAccountId } from "@/lib/auth";
+import { type IndexedDBStore, masterKeyStore } from "../adapters/IndexedDBStore";
+import type { WrappedMasterKey } from "../interfaces/IDataTypes";
 
-interface DecryptedAMK {
+interface DecryptedMasterKey {
   privateKey: string;
 }
 
-function isValidDecryptedAMK(value: unknown): value is DecryptedAMK {
+function isValidDecryptedMasterKey(value: unknown): value is DecryptedMasterKey {
   if (!value || typeof value !== "object") return false;
   const v = value as Record<string, unknown>;
   return (
@@ -15,37 +15,37 @@ function isValidDecryptedAMK(value: unknown): value is DecryptedAMK {
   );
 }
 
-export class WrappedAMKRepository {
+export class MasterKeyRepository {
   constructor(
     private storageAdapter: IndexedDBStore,
     private encryptionService: EncryptionService
   ) {}
 
   /**
-   * Store wrapped AMK for a specific auth method
-   * Creates a new encrypted version of the AMK wrapped with the provided KEK
+   * Store wrapped Master Key for a specific auth method.
+   * Creates a new encrypted version of the MK wrapped with the provided KEK.
    *
    * @param accountId - Wallet account ID (validated)
    * @param wrappedBy - Auth method ("wallet" or "passkey")
-   * @param amk - Account Master Key (privateKey) to wrap
+   * @param masterKey - Master Key (privateKey) to wrap
    */
-  async storeWrappedAMK(
+  async storeWrappedKey(
     accountId: WalletAccountId,
     wrappedBy: "wallet" | "passkey",
-    amk: string
+    masterKey: string
   ): Promise<void> {
     if (!this.encryptionService.isKeyAvailable()) {
       throw new Error(`KEK not initialized for ${wrappedBy} auth`);
     }
 
-    // Encrypt AMK with the active KEK
-    const encrypted = await this.encryptionService.encrypt({ privateKey: amk });
+    // Encrypt Master Key with the active KEK
+    const encrypted = await this.encryptionService.encrypt({ privateKey: masterKey });
 
     // Storage key: accountId + auth method
-    const storageKey = `${accountId}:amk:${wrappedBy}`;
+    const storageKey = `${accountId}:mk:${wrappedBy}`;
 
-    const wrappedData: WrappedAMK = {
-      id: storageKey, // Include id for keyPath
+    const wrappedData: WrappedMasterKey = {
+      id: storageKey,
       accountId,
       wrappedBy,
       encryptedPrivateKey: arrayBufferToBase64(encrypted.data),
@@ -58,21 +58,21 @@ export class WrappedAMKRepository {
   }
 
   /**
-   * Get wrapped AMK for a specific auth method
-   * Returns the encrypted AMK that can be decrypted with the appropriate KEK
+   * Get wrapped Master Key for a specific auth method.
+   * Returns the encrypted MK that can be decrypted with the appropriate KEK.
    *
    * @param accountId - Wallet account ID
    * @param wrappedBy - Auth method ("wallet" or "passkey")
-   * @returns Wrapped AMK or null if not found
+   * @returns Wrapped Master Key or null if not found
    */
-  async getWrappedAMK(
+  async getWrappedKey(
     accountId: string,
     wrappedBy: "wallet" | "passkey"
-  ): Promise<WrappedAMK | null> {
-    const storageKey = `${accountId}:amk:${wrappedBy}`;
+  ): Promise<WrappedMasterKey | null> {
+    const storageKey = `${accountId}:mk:${wrappedBy}`;
     const result = await this.storageAdapter.get(storageKey);
 
-    if (!result || !isWrappedAMK(result)) {
+    if (!result || !isWrappedMasterKey(result)) {
       return null;
     }
 
@@ -80,18 +80,18 @@ export class WrappedAMKRepository {
   }
 
   /**
-   * Unwrap (decrypt) AMK using the active KEK
+   * Unwrap (decrypt) Master Key using the active KEK.
    *
    * @param accountId - Wallet account ID
    * @param wrappedBy - Auth method ("wallet" or "passkey")
-   * @returns Decrypted AMK (privateKey) or null if not found/failed
+   * @returns Decrypted Master Key (privateKey) or null if not found/failed
    */
-  async unwrapAMK(accountId: string, wrappedBy: "wallet" | "passkey"): Promise<string | null> {
+  async unwrapKey(accountId: string, wrappedBy: "wallet" | "passkey"): Promise<string | null> {
     if (!this.encryptionService.isKeyAvailable()) {
       throw new Error(`KEK not initialized for ${wrappedBy} auth`);
     }
 
-    const wrapped = await this.getWrappedAMK(accountId, wrappedBy);
+    const wrapped = await this.getWrappedKey(accountId, wrappedBy);
     if (!wrapped) {
       return null;
     }
@@ -105,7 +105,7 @@ export class WrappedAMKRepository {
 
       const decrypted = await this.encryptionService.decrypt<unknown>(encrypted);
 
-      if (!isValidDecryptedAMK(decrypted)) {
+      if (!isValidDecryptedMasterKey(decrypted)) {
         return null;
       }
 
@@ -116,21 +116,21 @@ export class WrappedAMKRepository {
   }
 
   /**
-   * Delete wrapped AMK for a specific auth method
+   * Delete wrapped Master Key for a specific auth method.
    */
-  async deleteWrappedAMK(
+  async deleteWrappedKey(
     accountId: WalletAccountId,
     wrappedBy: "wallet" | "passkey"
   ): Promise<void> {
-    const storageKey = `${accountId}:amk:${wrappedBy}`;
+    const storageKey = `${accountId}:mk:${wrappedBy}`;
     await this.storageAdapter.remove(storageKey);
   }
 }
 
 /**
- * Type guard for WrappedAMK
+ * Type guard for WrappedMasterKey
  */
-function isWrappedAMK(value: unknown): value is WrappedAMK {
+function isWrappedMasterKey(value: unknown): value is WrappedMasterKey {
   if (!value || typeof value !== "object") return false;
   const v = value as Record<string, unknown>;
   return (
@@ -144,7 +144,7 @@ function isWrappedAMK(value: unknown): value is WrappedAMK {
   );
 }
 
-export const wrappedAMKRepo = new WrappedAMKRepository(
-  AMKStorageAdapter,
-  AMKStorageAdapter.getEncryptionService()
+export const masterKeyRepo = new MasterKeyRepository(
+  masterKeyStore,
+  masterKeyStore.getEncryptionService()
 );

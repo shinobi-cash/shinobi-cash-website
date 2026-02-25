@@ -441,7 +441,7 @@ const result = await engine.execute();
 **Key Methods**:
 | Method | Purpose |
 |--------|---------|
-| `deriveDataEncryptionKey(amkPrivateKey)` | DEK for note encryption |
+| `deriveDataEncryptionKey(masterKey)` | DEK for note encryption |
 | `deriveKEKFromPasskey(accountId, credentialId)` | KEK from WebAuthn PRF |
 | `createPasskeyCredential(accountId, publicKeyHash)` | Register new passkey |
 
@@ -461,13 +461,13 @@ Tier 1: Browser APIs (Adapters)
 Tier 2: Repositories (Domain Logic)
 ├── NotesRepository
 ├── AccountRepository
-├── WrappedAMKRepository
+├── MasterKeyRepository
 └── SessionRepository
 
 Tier 3: IndexedDB Database
 ├── encrypted-notes
 ├── account-metadata
-└── wrapped-amk
+└── wrapped-master-key
 ```
 
 ### Encryption Architecture
@@ -476,9 +476,9 @@ Tier 3: IndexedDB Database
 ```
 Wallet Signature → HKDF → KEK (Key Encryption Key)
                             ↓
-                    Encrypts AMK in IndexedDB
+                    Encrypts Master Key (MK) in IndexedDB
                             ↓
-AMK (Account Master Key) → HKDF → DEK (Data Encryption Key)
+Master Key (MK) → HKDF → DEK (Data Encryption Key)
                                     ↓
                             Encrypts notes in IndexedDB
 ```
@@ -486,7 +486,7 @@ AMK (Account Master Key) → HKDF → DEK (Data Encryption Key)
 **Key Properties**:
 - DEK and KEK are non-extractable (stay in browser crypto context)
 - Multiple auth methods (wallet + passkey) each have their own KEK
-- Both KEKs encrypt the same AMK
+- Both KEKs encrypt the same Master Key
 
 ### Storage Key Patterns
 
@@ -494,7 +494,7 @@ AMK (Account Master Key) → HKDF → DEK (Data Encryption Key)
 |-------|-------------|-------|
 | `encrypted-notes` | `SHA256(publicKey + poolAddress)` | Encrypted note cache |
 | `account-metadata` | `{accountId}` | AccountMetadata (plaintext) |
-| `wrapped-amk` | `{accountId}:amk:wallet\|passkey` | Encrypted AMK |
+| `wrapped-master-key` | `{accountId}:mk:wallet\|passkey` | Encrypted Master Key |
 | SessionStorage | `shinobi_session` | SessionInfo |
 
 ---
@@ -1078,7 +1078,7 @@ NEXT_PUBLIC_RP_ID=            # WebAuthn relying party (optional)
 ### Auth Issues
 - **"No valid session"**: Check SessionStorage, session timeout (1 hour), environment mismatch
 - **Passkey fails**: Check device PRF support, credentialId matches
-- **"AMK unwrap failed"**: Check correct KEK being used
+- **"Master Key unwrap failed"**: Check correct KEK being used
 
 ### Notes Issues
 - **Notes not appearing**: Check discovery status, filter settings, background sync

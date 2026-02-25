@@ -1,31 +1,25 @@
 import { proxy } from "valtio";
-import { depositService, type CashNoteData, type GasEstimate } from "@/utils/deposit";
 import { isDepositSupported } from "@shinobi-cash/core/deposit";
+import type { TransactionRequest } from "@shinobi-cash/core/account";
+import { getShinobiAccount } from "@/runtime/AccountSingleton";
 import { createStateMachine } from "@/utils/stateMachine";
 import {
   FEE_CONFIG,
   POOL_CHAIN,
   MIN_AMOUNT_CONFIG,
   CROSSCHAIN_DEPOSIT_FALLBACK,
+  SHINOBI_CASH_ETH_POOL,
 } from "@shinobi-cash/constants";
-import { parseEther } from "viem";
+import { parseEther, formatEther } from "viem";
+import { estimateGas, waitForTransactionReceipt } from "viem/actions";
 import { calculateDepositFeeBreakdown } from "@/utils/depositFees";
 import type { PublicClient, WalletClient } from "viem";
 import { AuthController } from "@/controllers/AuthController";
-import {
-  NotesDiscoveryController,
-  NotesDiscoverySelectors,
-} from "@/controllers/NotesDiscoveryController";
+import { NotesDiscoveryController, NotesDiscoverySelectors } from "@/controllers/NotesDiscoveryController";
 import { type AppError, Errors, getUserMessage } from "@/lib/errors/errors";
-import {
-  PREPARE_DEBOUNCE_MS,
-  DEPOSIT_COMMITMENT_MAX_RETRIES,
-  DEPOSIT_COMMITMENT_RETRY_DELAY_MS,
-} from "@/constants/timings";
-import {
-  fetchCrosschainDepositDefaults,
-  type CrosschainDepositDefaults,
-} from "@/utils/depositDefaults";
+import { PREPARE_DEBOUNCE_MS, TX_RECEIPT_TIMEOUT_MS } from "@/constants/timings";
+import type { SolverQuote } from "@shinobi-cash/client";
+import { getShinobiClient } from "@/runtime/ClientSingleton";
 
 export interface DepositAmounts {
   noteAmount: number;
@@ -33,10 +27,16 @@ export interface DepositAmounts {
   solverFee: number;
 }
 
+export interface GasEstimate {
+  gasCostEth: string;
+  gasCostWei: bigint;
+  gasLimit: bigint;
+}
+
 type DepositState =
   | { status: "idle" }
-  | { status: "preparing"; step: "crypto" | "commitment" | "gas" }
-  | { status: "ready"; amounts: DepositAmounts; gasEstimate: GasEstimate; noteData: CashNoteData }
+  | { status: "preparing"; step: "commitment" | "gas" }
+  | { status: "ready"; amounts: DepositAmounts; gasEstimate: GasEstimate; txRequest: TransactionRequest }
   | { status: "submitting" }
   | { status: "confirming"; txHash: `0x${string}` }
   | { status: "confirmed"; txHash: `0x${string}` }
@@ -65,7 +65,7 @@ interface DepositControllerState {
   /** Expiry in seconds (cross-chain only) */
   expirySeconds: number;
   /** Contract defaults fetched from chain (null for same-chain) */
-  contractDefaults: CrosschainDepositDefaults | null;
+  contractDefaults: SolverQuote | null;
 }
 
 const state = proxy<DepositControllerState>({
@@ -91,11 +91,12 @@ export const DepositSelectors = {
   canDeposit: () => state.state.status === "ready",
 
   canAutoPrepare: () => {
-    const crypto = AuthController.state.crypto;
     return (
       state.amount.trim() !== "" &&
       state.wallet.isConnected &&
-      crypto.cryptoReady &&
+      AuthController.isAuthenticated() &&
+      !!state.wallet.publicClient &&
+      !!state.wallet.gasPrice &&
       isDepositSupported(state.wallet.chainId) &&
       DepositSelectors.isAboveMinimum()
     );
@@ -185,9 +186,7 @@ export const DepositController = {
   async prepare() {
     const current = ++prepareId;
     const { amount, wallet } = state;
-    const crypto = AuthController.state.crypto;
-
-    if (!amount || !crypto.cryptoReady || !crypto.publicKey || !crypto.accountKey) {
+    if (!amount || !AuthController.isAuthenticated()) {
       transition({
         status: "error",
         error: Errors.deposit.precondition("Crypto context not ready"),
@@ -202,53 +201,48 @@ export const DepositController = {
 
     transition({ status: "preparing", step: "commitment" });
 
-    const lastUsedIndex = NotesDiscoverySelectors.getLastUsedIndex(wallet.chainId);
-    let noteData: CashNoteData | null = null;
-    let retries = 0;
-
-    while (retries < DEPOSIT_COMMITMENT_MAX_RETRIES) {
+    // Generate transaction request via SDK
+    let txRequest: TransactionRequest;
+    try {
+      const depositIndex = NotesDiscoverySelectors.getLastUsedIndex(wallet.chainId) + 1;
+      txRequest = getShinobiAccount().deposit({
+        poolAddress: SHINOBI_CASH_ETH_POOL.address as `0x${string}`,
+        amountWei: parseEther(amount),
+        chainId: wallet.chainId,
+        depositIndex,
+        settings: {
+          solverFeeBPS: state.solverFeeBPS,
+          fillDeadlineSeconds: state.fillDeadlineSeconds,
+          expirySeconds: state.expirySeconds,
+        },
+        useDefaults: DepositSelectors.isUsingDefaultSettings(),
+      });
+    } catch (error) {
       if (current !== prepareId) return;
-      try {
-        noteData = await depositService.generateCommitment(
-          crypto.accountKey,
-          crypto.publicKey,
-          wallet.chainId,
-          lastUsedIndex
-        );
-        break;
-      } catch (error) {
-        retries++;
-        if (retries >= DEPOSIT_COMMITMENT_MAX_RETRIES) {
-          if (current !== prepareId) return;
-          transition({ status: "error", error: Errors.deposit.commitmentFailed(error) });
-          return;
-        }
-        await new Promise((resolve) => setTimeout(resolve, DEPOSIT_COMMITMENT_RETRY_DELAY_MS));
-      }
+      transition({ status: "error", error: Errors.deposit.commitmentFailed(error) });
+      return;
     }
 
-    if (!noteData || current !== prepareId) return;
+    if (current !== prepareId) return;
 
     transition({ status: "preparing", step: "gas" });
 
-    const settings = {
-      solverFeeBPS: state.solverFeeBPS,
-      fillDeadlineSeconds: state.fillDeadlineSeconds,
-      expirySeconds: state.expirySeconds,
-    };
-    const useDefaults = DepositSelectors.isUsingDefaultSettings();
-
+    // Estimate gas
     let gasEstimate: GasEstimate;
     try {
-      gasEstimate = await depositService.estimateGas(
-        amount,
-        noteData,
-        wallet.chainId,
-        wallet.publicClient,
-        wallet.gasPrice,
-        settings,
-        useDefaults
-      );
+      const gasLimit = await estimateGas(wallet.publicClient, {
+        to: txRequest.to,
+        data: txRequest.data,
+        value: txRequest.value,
+        account: wallet.address as `0x${string}`,
+      });
+      const bufferedGas = (gasLimit * BigInt(120)) / BigInt(100);
+      const gasCostWei = bufferedGas * wallet.gasPrice;
+      gasEstimate = {
+        gasCostEth: formatEther(gasCostWei),
+        gasCostWei,
+        gasLimit: bufferedGas,
+      };
     } catch (error) {
       if (current !== prepareId) return;
       transition({ status: "error", error: Errors.deposit.gasEstimationFailed(error) });
@@ -264,14 +258,14 @@ export const DepositController = {
     const preparedAmounts = { ...amounts, solverFee };
     state.lastPreparedAmounts = preparedAmounts;
 
-    transition({ status: "ready", amounts: preparedAmounts, gasEstimate, noteData });
+    transition({ status: "ready", amounts: preparedAmounts, gasEstimate, txRequest });
   },
 
   async submit() {
     if (state.state.status !== "ready") return;
 
-    const { noteData } = state.state;
-    const { amount, wallet } = state;
+    const { txRequest } = state.state;
+    const { wallet } = state;
 
     if (!wallet.walletClient) {
       transition({
@@ -283,23 +277,24 @@ export const DepositController = {
 
     transition({ status: "submitting" });
 
-    const settings = {
-      solverFeeBPS: state.solverFeeBPS,
-      fillDeadlineSeconds: state.fillDeadlineSeconds,
-      expirySeconds: state.expirySeconds,
-    };
-    const useDefaults = DepositSelectors.isUsingDefaultSettings();
-
     try {
-      const txHash = await depositService.submitTransaction(
-        amount,
-        noteData,
-        wallet.chainId,
-        wallet.walletClient,
-        wallet.gasPrice,
-        settings,
-        useDefaults
-      );
+      // Add 50% buffer to gas price to handle L2 gas fluctuations
+      const gasParams = wallet.gasPrice
+        ? {
+            maxFeePerGas: (wallet.gasPrice * BigInt(150)) / BigInt(100),
+            maxPriorityFeePerGas: (wallet.gasPrice * BigInt(150)) / BigInt(100),
+          }
+        : {};
+
+      const txHash = await wallet.walletClient.sendTransaction({
+        to: txRequest.to,
+        data: txRequest.data,
+        value: txRequest.value,
+        chain: wallet.walletClient.chain,
+        account: wallet.walletClient.account!,
+        ...gasParams,
+      });
+
       transition({ status: "confirming", txHash });
       this._trackTransaction(txHash);
     } catch (error) {
@@ -316,7 +311,6 @@ export const DepositController = {
 
   setSolverFeeBPS(feeBPS: number) {
     state.solverFeeBPS = feeBPS;
-    // Re-prepare if already in ready state to update calculations
     if (state.state.status === "ready") {
       this.schedulePrepare(0);
     }
@@ -343,7 +337,6 @@ export const DepositController = {
       state.fillDeadlineSeconds = defaults.fillDeadlineSeconds;
       state.expirySeconds = defaults.expirySeconds;
     } else {
-      // Use fallback if no contract defaults available
       state.solverFeeBPS = CROSSCHAIN_DEPOSIT_FALLBACK.SOLVER_FEE_BPS;
       state.fillDeadlineSeconds = CROSSCHAIN_DEPOSIT_FALLBACK.FILL_DEADLINE_SECONDS;
       state.expirySeconds = CROSSCHAIN_DEPOSIT_FALLBACK.EXPIRY_SECONDS;
@@ -363,8 +356,7 @@ export const DepositController = {
     const chainChanged = state.wallet.chainId !== wallet.chainId;
     state.wallet = wallet;
 
-    // Fetch contract defaults when chain changes to a cross-chain
-    if (chainChanged && wallet.publicClient) {
+    if (chainChanged) {
       this._fetchContractDefaults();
     }
   },
@@ -372,23 +364,26 @@ export const DepositController = {
   async _fetchContractDefaults() {
     const { wallet } = state;
 
-    // Only fetch for cross-chain deposits
-    if (!wallet.publicClient || wallet.chainId === POOL_CHAIN.id) {
+    if (wallet.chainId === POOL_CHAIN.id) {
       state.contractDefaults = null;
       return;
     }
 
     try {
-      const defaults = await fetchCrosschainDepositDefaults(wallet.chainId, wallet.publicClient);
+      const client = getShinobiClient();
+      const defaults = await client.getSolverQuote({
+        originChainId: wallet.chainId,
+        destinationChainId: POOL_CHAIN.id,
+        amountWei: "0",
+        type: "deposit",
+      });
       state.contractDefaults = defaults;
 
-      // Reset to fetched defaults
       state.solverFeeBPS = defaults.solverFeeBPS;
       state.fillDeadlineSeconds = defaults.fillDeadlineSeconds;
       state.expirySeconds = defaults.expirySeconds;
     } catch (error) {
       console.warn("[DepositController] Failed to fetch contract defaults:", error);
-      // Keep using fallback values
     }
   },
 
@@ -400,14 +395,21 @@ export const DepositController = {
       return;
     }
 
-    await depositService.trackTransaction(txHash, wallet.publicClient, (status, reason) => {
-      if (status === "confirmed") {
+    try {
+      const receipt = await waitForTransactionReceipt(wallet.publicClient, {
+        hash: txHash,
+        timeout: TX_RECEIPT_TIMEOUT_MS,
+      });
+
+      if (receipt.status === "success") {
         transition({ status: "confirmed", txHash });
-        // Trigger notes refresh - background sync will handle indexer catching up
         NotesDiscoveryController.refresh();
-      } else if (status === "failed") {
-        transition({ status: "failed", txHash, reason: reason ?? "Unknown error" });
+      } else {
+        transition({ status: "failed", txHash, reason: "Transaction reverted" });
       }
-    });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Transaction tracking failed";
+      transition({ status: "failed", txHash, reason: errorMessage });
+    }
   },
 };
