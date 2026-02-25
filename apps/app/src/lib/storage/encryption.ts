@@ -33,11 +33,12 @@ export function arrayBufferToBase64(buffer: Uint8Array): string {
  * Convert base64 back to binary data
  */
 export function base64ToArrayBuffer(base64: string): Uint8Array {
-  return new Uint8Array(
-    atob(base64)
-      .split("")
-      .map((c) => c.charCodeAt(0))
-  );
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
 }
 
 /**

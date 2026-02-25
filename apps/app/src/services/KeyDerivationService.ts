@@ -158,6 +158,12 @@ export class KeyDerivationService {
       extensions: { prf: { eval: { first: prfProbe } } },
     });
 
+    // Verify authenticator supports PRF before returning credential
+    const extensions = credential.raw.getClientExtensionResults() as { prf?: PrfExtensionOutput };
+    if (!extensions.prf?.results?.first) {
+      throw Errors.auth.passkeyUnsupported();
+    }
+
     return { credentialId: credential.id };
   }
 

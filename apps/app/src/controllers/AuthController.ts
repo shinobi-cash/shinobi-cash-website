@@ -8,7 +8,7 @@ import {
 import { keyDerivationService } from "@/services/KeyDerivationService";
 import { deriveWalletCredentials } from "@/lib/auth";
 import { proxy } from "valtio";
-import { type AppError, logError, isUserCancellation } from "@/lib/errors/errors";
+import { logError, isUserCancellation } from "@/lib/errors/errors";
 import { showToast } from "@/lib/toast";
 
 type AuthSession = {
@@ -20,8 +20,7 @@ type AuthSession = {
 type AuthState =
   | { status: "booting" }
   | { status: "unauthenticated" }
-  | { status: "authenticated"; session: AuthSession }
-  | { status: "error"; error: AppError };
+  | { status: "authenticated"; session: AuthSession };
 
 interface AuthControllerState {
   state: AuthState;
