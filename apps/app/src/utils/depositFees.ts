@@ -4,8 +4,6 @@
 
 import { FEE_CONFIG } from "@shinobi-cash/constants";
 
-export type DepositKind = "same-chain" | "cross-chain";
-
 export interface DepositFeeBreakdown {
   depositAmount: number;
   complianceFee: number;
@@ -16,7 +14,7 @@ export interface DepositFeeBreakdown {
 /**
  * Calculate compliance fee from deposit amount
  */
-export function calculateComplianceFee(
+function calculateComplianceFee(
   depositAmount: number,
   complianceFeeBPS: number = FEE_CONFIG.VETTING_FEE_BPS
 ): number {
@@ -26,7 +24,7 @@ export function calculateComplianceFee(
 /**
  * Calculate note amount after compliance fee deduction
  */
-export function calculateDepositNoteAmount(
+function calculateDepositNoteAmount(
   depositAmount: number,
   complianceFeeBPS: number = FEE_CONFIG.VETTING_FEE_BPS
 ): number {
