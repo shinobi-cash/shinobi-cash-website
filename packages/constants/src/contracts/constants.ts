@@ -53,17 +53,6 @@ export const MIN_AMOUNT_CONFIG = {
 } as const;
 
 /**
- * @deprecated Use FEE_CONFIG and MIN_AMOUNT_CONFIG instead
- * Kept for backwards compatibility
- */
-export const WITHDRAWAL_CONFIG = {
-  MAX_RELAY_FEE_BPS: FEE_CONFIG.MAX_RELAY_FEE_BPS,
-  DEFAULT_SOLVER_FEE_BPS: FEE_CONFIG.DEFAULT_SOLVER_FEE_BPS,
-  MINIMUM_DEPOSIT_AMOUNT: MIN_AMOUNT_CONFIG.MIN_POOL_DEPOSIT,
-  VETTING_FEE_BPS: FEE_CONFIG.VETTING_FEE_BPS,
-} as const;
-
-/**
  * UserOperation Gas Limits for Same-Chain Withdrawals
  * Total: ~1,350,000 gas
  */
@@ -174,15 +163,6 @@ export const WITHDRAWAL_REFUND_GAS_LIMITS = {
 } as const;
 
 /**
- * @deprecated Use FEE_CONFIG instead
- * Kept for backwards compatibility
- */
-export const DEPOSIT_FEES = {
-  COMPLIANCE_FEE_BPS: FEE_CONFIG.VETTING_FEE_BPS,
-  DEFAULT_SOLVER_FEE_BPS: FEE_CONFIG.DEFAULT_SOLVER_FEE_BPS,
-} as const;
-
-/**
  * Cross-chain intent timing parameters
  * These values must match the contract configuration
  */
@@ -195,15 +175,6 @@ export const INTENT_TIMING = {
 } as const;
 
 /**
- * @deprecated Use INTENT_TIMING instead
- * Kept for backwards compatibility
- */
-export const CROSSCHAIN_DEPOSIT_TIMING = {
-  FILL_DEADLINE_SECONDS: INTENT_TIMING.FILL_DEADLINE_SECONDS,
-  EXPIRY_SECONDS: INTENT_TIMING.EXPIRY_SECONDS,
-} as const;
-
-/**
  * Fallback defaults for crosschain deposit (used before contract fetch)
  * These should match the typical contract configuration
  */
@@ -213,13 +184,6 @@ export const CROSSCHAIN_DEPOSIT_FALLBACK = {
   EXPIRY_SECONDS: 86400, // 24 hours
   MAX_SOLVER_FEE_BPS: 1000, // 10%
 } as const;
-
-// ============ INDEXER CONSTANTS ============
-
-/**
- * IPFS configuration
- */
-export const IPFS_GATEWAY_URL = "https://gateway.pinata.cloud/ipfs/";
 
 // ============ TYPE DEFINITIONS ============
 
