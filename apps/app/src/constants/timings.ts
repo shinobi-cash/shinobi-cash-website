@@ -12,11 +12,6 @@ export const TX_RECEIPT_TIMEOUT_MS = 60_000;
 /** Interval for polling indexer for transaction status (ms) */
 export const INDEXER_POLL_INTERVAL_MS = 5_000;
 
-// ============ NOTES DISCOVERY ============
-
-/** Interval for background notes sync (ms) */
-export const NOTES_SYNC_INTERVAL_MS = 60_000;
-
 // ============ CONTROLLER DEBOUNCING ============
 
 /** Debounce delay for withdrawal preview (ms) */
