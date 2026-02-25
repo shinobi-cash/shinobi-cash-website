@@ -117,7 +117,7 @@ export class ActivityClient {
   /**
    * Create async iterator for paginated results
    */
-  iterate(filters?: ActivityFilters, batchSize: number = 50): PaginatedIterator<ActivityItem> {
+  private iterate(filters?: ActivityFilters, batchSize: number = 50): PaginatedIterator<ActivityItem> {
     return new PaginatedIterator((pagination) => this.fetch(filters, pagination), batchSize);
   }
 
