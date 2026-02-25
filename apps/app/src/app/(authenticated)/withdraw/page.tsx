@@ -70,9 +70,7 @@ export default function WithdrawPage() {
       ? state.state.txHash
       : null;
 
-  const hasError = state.state.status === "error";
-  const timelineError = hasError ? state.state.error : null;
-  const formError = hasError ? state.state.error : state.lastError;
+  const timelineError = state.state.status === "error" ? state.state.error : null;
 
   // Show withdrawal timeline screen
   if (screens.is("timeline")) {

@@ -2,11 +2,8 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
-interface Settings {
-  // Future settings can be added here:
-  // theme: "light" | "dark" | "system";
-  // notifications: boolean;
-}
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+interface Settings {}
 
 interface SettingsContextType {
   settings: Settings;

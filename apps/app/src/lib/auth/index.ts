@@ -5,7 +5,7 @@
  * key derivation strategy) — not part of the SDK public API.
  */
 
-import { Bytes, Hex, Secp256k1, PublicKey, Address as OxAddress } from "ox";
+import { Bytes, Hex, Secp256k1, PublicKey } from "ox";
 
 // ============================================
 // Types
