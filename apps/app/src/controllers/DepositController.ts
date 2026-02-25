@@ -262,9 +262,12 @@ export const DepositController = {
 
     if (current !== prepareId) return;
 
-    const amounts = calculateDepositFeeBreakdown(amount, FEE_CONFIG.VETTING_FEE_BPS);
     const isCrossChain = wallet.chainId !== POOL_CHAIN.id;
-    const solverFee = isCrossChain ? (parseFloat(amount) * state.solverFeeBPS) / 10_000 : 0;
+    const depositAmountNum = parseFloat(amount);
+    const solverFee = isCrossChain ? (depositAmountNum * state.solverFeeBPS) / 10_000 : 0;
+    // Compliance fee applies to amount after solver deduction (solver takes cut on origin chain)
+    const netAfterSolver = (depositAmountNum - solverFee).toString();
+    const amounts = calculateDepositFeeBreakdown(netAfterSolver, FEE_CONFIG.VETTING_FEE_BPS);
 
     const preparedAmounts = { ...amounts, solverFee };
     state.lastPreparedAmounts = preparedAmounts;
@@ -279,7 +282,7 @@ export const DepositController = {
     const { txRequest } = state.state;
     const { wallet } = state;
 
-    if (!wallet.walletClient) {
+    if (!wallet.walletClient?.account) {
       transition({
         status: "error",
         error: Errors.deposit.transactionFailed("Wallet not connected"),
@@ -303,7 +306,7 @@ export const DepositController = {
         data: txRequest.data,
         value: txRequest.value,
         chain: wallet.walletClient.chain,
-        account: wallet.walletClient.account!,
+        account: wallet.walletClient.account,
         ...gasParams,
       });
 

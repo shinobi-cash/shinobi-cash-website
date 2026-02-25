@@ -11,7 +11,6 @@ import { formatUsdAmount, formatDisplayAmount } from "@/utils/formatters";
 import {
   POOL_CHAIN,
   SHINOBI_CASH_SUPPORTED_CHAINS,
-  FEE_CONFIG,
 } from "@shinobi-cash/constants";
 import { ShinobiCashNote, AssetChain } from "@/components/shared/AssetChain";
 
@@ -22,6 +21,7 @@ interface DepositPreviewScreenProps {
   complianceFee: number;
   gasCostEth: string;
   solverFee: number;
+  solverFeeBPS: number;
   originChainId: number;
   destinationChainId: number;
   poolAddress: string;
@@ -39,6 +39,7 @@ export function DepositPreviewScreen({
   complianceFee,
   gasCostEth,
   solverFee,
+  solverFeeBPS,
   originChainId,
   isProcessing,
   isCrossChain,
@@ -54,7 +55,7 @@ export function DepositPreviewScreen({
   // 3. Gas is paid separately, NOT deducted from note amount
   const netAfterSolverFee = depositAmountNum - solverFee;
   const depositNoteAmount = netAfterSolverFee - complianceFee;
-  const solverFeePercent = FEE_CONFIG.DEFAULT_SOLVER_FEE_BPS / 100;
+  const solverFeePercent = solverFeeBPS / 100;
 
   // Vetting fee is calculated on net amount after solver fee, not original deposit
   const vettingFeePercent = netAfterSolverFee > 0 ? (complianceFee / netAfterSolverFee) * 100 : 0;

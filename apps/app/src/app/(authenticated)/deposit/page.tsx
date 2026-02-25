@@ -186,6 +186,7 @@ export default function DepositPage() {
         complianceFee={depositAmounts.complianceFee}
         gasCostEth={gasEstimate.gasCostEth}
         solverFee={depositAmounts.solverFee}
+        solverFeeBPS={state.solverFeeBPS}
         originChainId={state.wallet.chainId}
         destinationChainId={POOL_CHAIN.id}
         poolAddress={SHINOBI_CASH_ETH_POOL.address}
