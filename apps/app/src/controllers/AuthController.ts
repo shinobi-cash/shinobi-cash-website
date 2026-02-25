@@ -46,7 +46,8 @@ export const AuthController = {
         await accountService.loginWithPasskeyKEK(session.accountId, kek);
 
         // Check passkey status after successful login
-        const passkeyEnabled = await this.isPasskeyEnabled();
+        const metadata = await accountService.getAccountMetadata();
+        const passkeyEnabled = !!metadata?.credentialId;
 
         this.state.state = {
           status: "authenticated",
@@ -140,30 +141,12 @@ export const AuthController = {
     }
   },
 
-  /**
-   * Enable passkey in one call (combines both steps)
-   */
-  async enablePasskey(): Promise<void> {
-    const credentialId = await this.registerPasskeyCredential();
-    await this.completePasskeySetup(credentialId);
-  },
-
   async removePasskey(): Promise<void> {
     await accountService.removePasskeyForCurrentAccount();
 
     // Update state to reflect passkey is now disabled
     if (this.state.state.status === "authenticated") {
       this.state.state.session.passkeyEnabled = false;
-    }
-  },
-
-  async isPasskeyEnabled(): Promise<boolean> {
-    try {
-      const accountData = await accountService.getAccountMetadata();
-      return !!accountData?.credentialId;
-    } catch (error) {
-      logError(error, { action: "isPasskeyEnabled", component: "AuthController" });
-      return false;
     }
   },
 
