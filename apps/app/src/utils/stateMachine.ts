@@ -34,8 +34,8 @@ export function createStateMachine<TState extends StateWithStatus>(
   const transition = (next: TState): void => {
     const current = getState().status;
 
-    if (process.env.NODE_ENV !== "production" && !canTransition(next.status)) {
-      console.warn(`[${name}] Invalid transition: ${current} → ${next.status}`);
+    if (!canTransition(next.status)) {
+      throw new Error(`[${name}] Invalid transition: ${current} → ${next.status}`);
     }
 
     setState(next);
