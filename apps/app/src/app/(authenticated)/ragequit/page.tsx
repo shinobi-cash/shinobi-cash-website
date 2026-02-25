@@ -98,8 +98,7 @@ export default function RagequitPage() {
       ? state.state.txHash
       : null;
 
-  const hasError = state.state.status === "error";
-  const error = hasError && state.state.status === "error" ? state.state.error : state.lastError;
+  const timelineError = state.state.status === "error" ? state.state.error : null;
 
   // Get selected note
   const selectedNote = RagequitSelectors.getSelectedNote();
@@ -111,7 +110,7 @@ export default function RagequitPage() {
         amount={selectedNote.amount}
         status={state.state.status}
         txHash={txHash}
-        error={error}
+        error={timelineError}
         onClose={handleTimelineClose}
       />
     );
