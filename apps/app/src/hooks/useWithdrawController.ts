@@ -26,6 +26,16 @@ import { NotesDiscoverySelectors } from "@/controllers/NotesDiscoveryController"
 export function useWithdrawController() {
   const snapshot = useSnapshot(WithdrawController.state);
 
+  // Reset controller on unmount (navigation away) — skip if transaction in flight
+  useEffect(() => {
+    return () => {
+      const { status } = WithdrawController.state.state;
+      if (status !== "submitting" && status !== "confirming") {
+        WithdrawController.reset();
+      }
+    };
+  }, []);
+
   // Notes context (from NotesDiscoveryController - single source of truth)
   const discoveryState = useNotesDiscovery();
 

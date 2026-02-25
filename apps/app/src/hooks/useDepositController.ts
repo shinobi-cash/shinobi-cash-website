@@ -33,6 +33,16 @@ export function useDepositController() {
   const config = useConfig();
   const { data: walletClient } = useWalletClient({ chainId });
 
+  // Reset controller on unmount (navigation away) — skip if transaction in flight
+  useEffect(() => {
+    return () => {
+      const { status } = DepositController.state.state;
+      if (status !== "submitting" && status !== "confirming") {
+        DepositController.reset();
+      }
+    };
+  }, []);
+
   // Sync wallet context to controller
   useEffect(() => {
     // wagmi client is compatible with viem PublicClient
