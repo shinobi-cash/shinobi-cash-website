@@ -1,4 +1,4 @@
-import type { NoteTree, NoteCategory as CoreNoteCategory } from "@shinobi-cash/core/discovery";
+import type { NoteCategory as CoreNoteCategory } from "@shinobi-cash/core/discovery";
 
 export type NoteCategory = CoreNoteCategory;
 
@@ -9,11 +9,6 @@ export type NotesError =
   | { type: "storage"; message: string }
   | { type: "network"; message: string }
   | null;
-
-export interface NoteTreeView {
-  tree: NoteTree;
-  key: string;
-}
 
 /**
  * Filter type for note list tabs

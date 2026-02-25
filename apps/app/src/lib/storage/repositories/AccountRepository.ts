@@ -1,7 +1,7 @@
 import { privateKeyToAccount } from "viem/accounts";
 import { accountStorageAdapter } from "../adapters/IndexedDBStore";
 import type { AccountMetadata, AccountData } from "../interfaces/IDataTypes";
-import { assertWalletAccountId, type WalletAccountId } from "@/lib/auth";
+import type { WalletAccountId } from "@/lib/auth";
 import { IndexedDBStore } from "../adapters/IndexedDBStore";
 
 /**
@@ -19,17 +19,10 @@ function deriveKeysFromPrivateKey(privateKey: string): {
 }
 
 /**
- * Canonical unencrypted account index
- * Used for pre-auth discovery and UX
- */
-export type AccountIndex = {
-  id: string;
-};
-
-/**
  * Full stored account record (NO Master Key)
  */
-type StorageRecord = AccountIndex & {
+type StorageRecord = {
+  id: string;
   profile: AccountMetadata;
 };
 
@@ -101,30 +94,6 @@ export class AccountRepository {
     return (await this.getStoredAccountRecord(accountId)) !== null;
   }
 
-  /**
-   * List account index (safe before auth)
-   */
-  async listAccountIndex(): Promise<AccountIndex[]> {
-    const keys = await this.storageAdapter.keys();
-    const index: AccountIndex[] = [];
-
-    for (const key of keys) {
-      try {
-        const accountId = assertWalletAccountId(key);
-        const record = await this.getStoredAccountRecord(accountId);
-        if (record) {
-          index.push({
-            id: record.id,
-          });
-        }
-      } catch {
-        // Skip invalid account IDs
-        console.warn("[AccountRepository] Skipping invalid account key");
-      }
-    }
-
-    return index;
-  }
 }
 
 export const accountRepo = new AccountRepository(accountStorageAdapter);
