@@ -244,13 +244,6 @@ export const Errors = {
     insufficientBalance: (message = "Insufficient balance") =>
       new AppError("WITHDRAWAL", ErrorCode.WITHDRAWAL.INSUFFICIENT_BALANCE, message),
   },
-
-  custom: (
-    category: ErrorCategory,
-    code: string,
-    message: string,
-    options?: { cause?: unknown; context?: Record<string, unknown> }
-  ) => new AppError(category, code, message, options),
 };
 
 export function isAppError(error: unknown): error is AppError {
