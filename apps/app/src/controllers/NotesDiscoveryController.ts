@@ -96,7 +96,7 @@ const { transition } = createStateMachine<DiscoveryState>({
   name: "NotesDiscoveryController",
   allowedTransitions: {
     idle: ["discovering", "ready"],
-    discovering: ["ready", "error"],
+    discovering: ["ready", "error", "idle"],
     ready: ["discovering"],
     error: ["idle", "discovering"],
   },
