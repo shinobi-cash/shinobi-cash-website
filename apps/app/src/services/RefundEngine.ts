@@ -24,7 +24,7 @@ import { indexerClient } from "@/lib/indexer/client";
 import { getPublicClient } from "@/lib/clients";
 import { Errors, logError } from "@/lib/errors/errors";
 
-export type RefundPhase =
+type RefundPhase =
   | "idle"
   | "fetching"
   | "ready"

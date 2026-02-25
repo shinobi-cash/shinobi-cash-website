@@ -102,7 +102,8 @@ export default function RefundPage() {
       : null;
 
   const hasError = state.state.status === "error";
-  const error = state.state.status === "error" ? state.state.error : state.lastError;
+  const timelineError = state.state.status === "error" ? state.state.error : null;
+  const formError = state.state.status === "error" ? state.state.error : state.lastError;
 
   const intent = RefundSelectors.getIntent();
   const refundType = RefundSelectors.getRefundType();
@@ -116,7 +117,7 @@ export default function RefundPage() {
         refundType={timelineData.refundType}
         chainId={timelineData.chainId}
         txHash={txHash}
-        error={error}
+        error={timelineError}
         onClose={handleTimelineClose}
       />
     );
@@ -139,7 +140,7 @@ export default function RefundPage() {
     return (
       <div className="flex h-full items-center justify-center p-8 text-center">
         <div className="space-y-4">
-          <p className="text-neutral-400">{error?.message ?? "Failed to load intent"}</p>
+          <p className="text-neutral-400">{formError?.message ?? "Failed to load intent"}</p>
           <button
             onClick={() => router.back()}
             className="text-blue-400 hover:text-blue-300"
