@@ -13,7 +13,6 @@ import { formatUsdAmount, formatHash, formatDisplayAmount } from "@/utils/format
 import {
   POOL_CHAIN,
   SHINOBI_CASH_SUPPORTED_CHAINS,
-  FEE_CONFIG,
 } from "@shinobi-cash/constants";
 import { ShinobiCashNote, AssetChain } from "@/components/shared/AssetChain";
 
@@ -23,6 +22,7 @@ interface WithdrawalPreviewScreenProps {
   withdrawAmount: string;
   executionFee: number;
   solverFee: number;
+  solverFeeBPS: number;
   youReceive: number;
   recipientAddress: string;
   destinationChainId: number;
@@ -39,6 +39,7 @@ export function WithdrawalPreviewScreen({
   withdrawAmount,
   executionFee,
   solverFee,
+  solverFeeBPS,
   youReceive,
   recipientAddress,
   destinationChainId,
@@ -72,7 +73,7 @@ export function WithdrawalPreviewScreen({
 
   const fillDeadline = formatDuration(fillDeadlineSeconds);
   const expiry = formatDuration(expirySeconds);
-  const solverFeePercent = FEE_CONFIG.DEFAULT_SOLVER_FEE_BPS / 100;
+  const solverFeePercent = solverFeeBPS / 100;
 
   return (
     <ScreenLayout

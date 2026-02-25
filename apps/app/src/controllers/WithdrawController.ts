@@ -79,6 +79,10 @@ export const WithdrawSelectors = {
   },
 
   canAutoPreview: () => {
+    const { status } = state.state;
+    if (status !== "idle" && status !== "ready" && status !== "error") {
+      return false;
+    }
     return (
       state.amount.trim() !== "" &&
       state.recipientAddress.trim() !== "" &&
@@ -179,6 +183,13 @@ export const WithdrawSelectors = {
 let prepareId = 0;
 let previewId = 0;
 let previewTimeout: ReturnType<typeof setTimeout> | null = null;
+
+function clearPreviewTimeout() {
+  if (previewTimeout) {
+    clearTimeout(previewTimeout);
+    previewTimeout = null;
+  }
+}
 
 const { transition } = createStateMachine<WithdrawState>({
   name: "WithdrawController",
@@ -291,7 +302,7 @@ export const WithdrawController = {
   },
 
   schedulePreview(delay = PREVIEW_DEBOUNCE_MS): void {
-    if (previewTimeout) clearTimeout(previewTimeout);
+    clearPreviewTimeout();
     previewTimeout = setTimeout(() => this.preview(), delay);
   },
 
@@ -328,6 +339,7 @@ export const WithdrawController = {
   },
 
   async prepare(): Promise<void> {
+    clearPreviewTimeout();
     const current = ++prepareId;
 
     if (!this._validateInputs()) {
@@ -411,6 +423,7 @@ export const WithdrawController = {
   },
 
   reset(): void {
+    clearPreviewTimeout();
     state.amount = "";
     state.recipientAddress = "";
     state.selectedNotes = [];

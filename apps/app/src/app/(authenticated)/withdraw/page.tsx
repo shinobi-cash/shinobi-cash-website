@@ -71,7 +71,8 @@ export default function WithdrawPage() {
       : null;
 
   const hasError = state.state.status === "error";
-  const error = hasError ? state.state.error : state.lastError;
+  const timelineError = hasError ? state.state.error : null;
+  const formError = hasError ? state.state.error : state.lastError;
 
   // Show withdrawal timeline screen
   if (screens.is("timeline")) {
@@ -80,7 +81,7 @@ export default function WithdrawPage() {
         amount={parseFloat(state.amount) || 0}
         status={state.state.status}
         txHash={txHash}
-        error={error}
+        error={timelineError}
         isCrossChain={WithdrawSelectors.isCrossChain()}
         onClose={handleTimelineClose}
       />
@@ -96,6 +97,7 @@ export default function WithdrawPage() {
         withdrawAmount={state.amount}
         executionFee={WithdrawSelectors.getExecutionFee()}
         solverFee={WithdrawSelectors.getSolverFee()}
+        solverFeeBPS={state.solverFeeBPS}
         youReceive={WithdrawSelectors.getYouReceive()}
         recipientAddress={state.recipientAddress}
         destinationChainId={state.destinationChainId}
