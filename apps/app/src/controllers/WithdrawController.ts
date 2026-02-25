@@ -18,6 +18,7 @@ type WithdrawState =
   | { status: "preparing" }
   | { status: "ready"; prepared: PreparedWithdrawalOp }
   | { status: "submitting" }
+  | { status: "confirming"; userOpHash: string }
   | { status: "confirmed"; txHash: `0x${string}` }
   | { status: "error"; error: AppError };
 
@@ -186,7 +187,8 @@ const { transition } = createStateMachine<WithdrawState>({
     previewing: ["idle", "preparing"],
     preparing: ["ready", "error"],
     ready: ["submitting", "preparing", "idle"],
-    submitting: ["confirmed", "error"],
+    submitting: ["confirming", "confirmed", "error"],
+    confirming: ["confirmed", "error"],
     confirmed: ["idle"],
     error: ["idle", "preparing"],
   },
@@ -387,7 +389,11 @@ export const WithdrawController = {
 
     try {
       const client = getShinobiClient();
-      const transactionHash = await client.submitWithdrawal(prepared);
+      const transactionHash = await client.submitWithdrawal(prepared, {
+        onSubmitted: (userOpHash) => {
+          transition({ status: "confirming", userOpHash });
+        },
+      });
 
       transition({
         status: "confirmed",

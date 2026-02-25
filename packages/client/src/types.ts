@@ -124,7 +124,10 @@ export interface ShinobiCashClient {
   // Withdrawal (orchestrated — fetches context, builds proof, prepares UserOp)
   prepareWithdrawal(params: ClientWithdrawParams): Promise<PreparedWithdrawalOp>;
   prepareWithdraw2(params: ClientWithdraw2Params): Promise<PreparedWithdrawalOp>;
-  submitWithdrawal(prepared: PreparedWithdrawalOp | PreparedRefundOp): Promise<string>;
+  submitWithdrawal(
+    prepared: PreparedWithdrawalOp | PreparedRefundOp,
+    options?: { onSubmitted?: (userOpHash: string) => void }
+  ): Promise<string>;
 
   // Withdrawal refund (bundler-based)
   prepareWithdrawalRefund(params: ClientWithdrawalRefundParams): Promise<PreparedRefundOp>;

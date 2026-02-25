@@ -35,7 +35,8 @@ export async function prepareUserOp(
 export async function executeUserOp(
   smartAccountClient: SmartAccountClient,
   userOp: UserOperation,
-  gasLimits: GasLimits
+  gasLimits: GasLimits,
+  onSubmitted?: (userOpHash: string) => void
 ): Promise<string> {
   // Ensure gas limits are set
   userOp.callGasLimit = gasLimits.CALL_GAS_LIMIT;
@@ -50,6 +51,8 @@ export async function executeUserOp(
     ...userOp,
     signature,
   });
+
+  onSubmitted?.(userOpHash);
 
   const receipt = await smartAccountClient.waitForUserOperationReceipt({ hash: userOpHash });
 

@@ -196,7 +196,10 @@ export function createShinobiCashClient(config: ShinobiCashClientConfig): Shinob
       return buildWithdrawalOp(prepared);
     },
 
-    async submitWithdrawal(op: PreparedWithdrawalOp | PreparedRefundOp): Promise<string> {
+    async submitWithdrawal(
+      op: PreparedWithdrawalOp | PreparedRefundOp,
+      options?: { onSubmitted?: (userOpHash: string) => void }
+    ): Promise<string> {
       const internal = getInternal(op);
 
       const { smartAccountClient } = await createSmartAccountForWithdrawal(
@@ -205,7 +208,7 @@ export function createShinobiCashClient(config: ShinobiCashClientConfig): Shinob
         internal.prepared.gasLimits
       );
 
-      return executeUserOp(smartAccountClient, internal.userOp, internal.gasLimits);
+      return executeUserOp(smartAccountClient, internal.userOp, internal.gasLimits, options?.onSubmitted);
     },
 
     async prepareWithdrawalRefund(params: ClientWithdrawalRefundParams): Promise<PreparedRefundOp> {
