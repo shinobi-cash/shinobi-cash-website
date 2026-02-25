@@ -91,6 +91,10 @@ export const DepositSelectors = {
   canDeposit: () => state.state.status === "ready",
 
   canAutoPrepare: () => {
+    const { status } = state.state;
+    if (status !== "idle" && status !== "ready" && status !== "error" && status !== "failed") {
+      return false;
+    }
     return (
       state.amount.trim() !== "" &&
       state.wallet.isConnected &&
@@ -143,6 +147,13 @@ export const DepositSelectors = {
 let prepareId = 0;
 let prepareTimeout: ReturnType<typeof setTimeout> | null = null;
 
+function clearPrepareTimeout() {
+  if (prepareTimeout) {
+    clearTimeout(prepareTimeout);
+    prepareTimeout = null;
+  }
+}
+
 const { transition } = createStateMachine<DepositState>({
   name: "DepositController",
   allowedTransitions: {
@@ -179,7 +190,7 @@ export const DepositController = {
   },
 
   schedulePrepare(delay = PREPARE_DEBOUNCE_MS) {
-    if (prepareTimeout) clearTimeout(prepareTimeout);
+    clearPrepareTimeout();
     prepareTimeout = setTimeout(() => this.prepare(), delay);
   },
 
@@ -263,6 +274,7 @@ export const DepositController = {
 
   async submit() {
     if (state.state.status !== "ready") return;
+    clearPrepareTimeout();
 
     const { txRequest } = state.state;
     const { wallet } = state;
@@ -304,6 +316,7 @@ export const DepositController = {
   },
 
   reset() {
+    clearPrepareTimeout();
     state.amount = "";
     state.lastPreparedAmounts = null;
     transition({ status: "idle" });
@@ -391,7 +404,7 @@ export const DepositController = {
     const { wallet } = state;
 
     if (!wallet.publicClient) {
-      transition({ status: "error", error: Errors.deposit.trackingFailed() });
+      transition({ status: "failed", txHash, reason: "Network connection lost" });
       return;
     }
 
