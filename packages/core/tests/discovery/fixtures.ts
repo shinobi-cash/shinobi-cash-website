@@ -16,9 +16,10 @@ import type {
   CrosschainWithdrawalRefundActivity,
   RagequitActivity,
 } from '@shinobi-cash/data';
-import type { Note, DepositNote, ChangeNote, DepositIntent, WithdrawalIntent, WithdrawalRefundedNote, RagequitNote, MergedNote, NoteTree } from '../../src/discovery/types.js';
+import type { Note, DepositNote, ChangeNote, DepositIntent, WithdrawalIntent, WithdrawalRefundedNote, RagequitNote, MergedNote, NoteTree, NoteDeriver } from '../../src/discovery/types.js';
 import { generateSerialNumber } from '../../src/discovery/types.js';
 import { deriveDepositPrecommitment, deriveAndHashNullifier } from '../../src/discovery/nullifier-utils.js';
+import { derivedNoteCommitment } from '../../src/withdrawal/index.js';
 import { createNoteTree, addChild } from '../../src/discovery/tree-utils.js';
 
 // ============================================================================
@@ -30,6 +31,20 @@ export const TEST_ACCOUNT_KEY = 12345678901234567890n;
 export const TEST_USER_ADDRESS = '0xuser1234567890123456789012345678901234567';
 export const TEST_RECIPIENT_ADDRESS = '0xrecipient12345678901234567890123456789';
 export const TEST_CHAIN_ID = '421614';
+
+/**
+ * Create an NoteDeriver provider for testing
+ */
+export function createTestNoteDeriver(accountKey: bigint = TEST_ACCOUNT_KEY): NoteDeriver {
+  return {
+    derivePrecommitment: (pool, chainId, idx) =>
+      deriveDepositPrecommitment(accountKey, pool, chainId, idx),
+    deriveNullifierHash: (pool, chainId, depIdx, chgIdx, noteType?) =>
+      deriveAndHashNullifier(accountKey, pool, chainId, depIdx, chgIdx, noteType),
+    deriveNoteCommitment: (note) =>
+      derivedNoteCommitment(accountKey, note),
+  };
+}
 
 // ============================================================================
 // Activity Factories

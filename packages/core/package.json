@@ -9,11 +9,6 @@
       "import": "./dist/account.mjs",
       "require": "./dist/account.js"
     },
-    "./auth": {
-      "types": "./dist/auth.d.ts",
-      "import": "./dist/auth.mjs",
-      "require": "./dist/auth.js"
-    },
     "./deposit": {
       "types": "./dist/deposit.d.ts",
       "import": "./dist/deposit.mjs",

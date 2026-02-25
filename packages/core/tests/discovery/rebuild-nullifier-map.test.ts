@@ -16,12 +16,15 @@ import {
   createMockNoteTree,
   createMockTreeWithWithdrawal,
   createMockWithdraw2Activity,
+  createTestNoteDeriver,
   resetActivityCounter,
   TEST_POOL_ADDRESS,
   TEST_ACCOUNT_KEY,
   TEST_CHAIN_ID,
   toEther,
 } from './fixtures.js';
+
+const TEST_CRYPTO = createTestNoteDeriver();
 
 describe('rebuildNullifierMap', () => {
   beforeEach(() => {
@@ -51,7 +54,7 @@ describe('rebuildNullifierMap', () => {
       expect(state.nullifierMap.size).toBe(0);
 
       // Rebuild
-      rebuildNullifierMap(state, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS);
+      rebuildNullifierMap(state, TEST_CRYPTO, TEST_POOL_ADDRESS);
 
       // Should have one nullifier
       expect(state.nullifierMap.size).toBe(1);
@@ -81,7 +84,7 @@ describe('rebuildNullifierMap', () => {
       state.trees.set(makeChainKey(TEST_CHAIN_ID, 0), tree0);
       state.trees.set(makeChainKey(TEST_CHAIN_ID, 1), tree1);
 
-      rebuildNullifierMap(state, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS);
+      rebuildNullifierMap(state, TEST_CRYPTO, TEST_POOL_ADDRESS);
 
       // Should have two nullifiers
       expect(state.nullifierMap.size).toBe(2);
@@ -100,7 +103,7 @@ describe('rebuildNullifierMap', () => {
       const tree = createMockTreeWithWithdrawal(0, toEther(1), toEther(0.5));
       state.trees.set(makeChainKey(TEST_CHAIN_ID, 0), tree);
 
-      rebuildNullifierMap(state, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS);
+      rebuildNullifierMap(state, TEST_CRYPTO, TEST_POOL_ADDRESS);
 
       // Should have one nullifier for the change note (the spent deposit has no nullifier)
       expect(state.nullifierMap.size).toBe(1);
@@ -118,7 +121,7 @@ describe('rebuildNullifierMap', () => {
     it('should do nothing when trees is empty', () => {
       const state = createEmptyState();
 
-      rebuildNullifierMap(state, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS);
+      rebuildNullifierMap(state, TEST_CRYPTO, TEST_POOL_ADDRESS);
 
       expect(state.nullifierMap.size).toBe(0);
     });
@@ -128,8 +131,8 @@ describe('rebuildNullifierMap', () => {
       const tree = createMockNoteTree(0, toEther(1));
       state.trees.set(makeChainKey(TEST_CHAIN_ID, 0), tree);
 
-      rebuildNullifierMap(state, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS);
-      rebuildNullifierMap(state, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS);
+      rebuildNullifierMap(state, TEST_CRYPTO, TEST_POOL_ADDRESS);
+      rebuildNullifierMap(state, TEST_CRYPTO, TEST_POOL_ADDRESS);
 
       // Map naturally deduplicates
       expect(state.nullifierMap.size).toBe(1);
@@ -148,7 +151,7 @@ describe('rebuildNullifierMap', () => {
       state.trees.set(chainKey1, tree1);
 
       // Rebuild nullifiers (this is what the fix does)
-      rebuildNullifierMap(state, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS);
+      rebuildNullifierMap(state, TEST_CRYPTO, TEST_POOL_ADDRESS);
 
       // Now create a Withdraw2 activity that merges both notes
       const withdraw2Activity = createMockWithdraw2Activity(0, 0, 1, 0, toEther(0.5));
@@ -159,7 +162,7 @@ describe('rebuildNullifierMap', () => {
         state.trees,
         state.nullifierMap,
         activityIndex,
-        TEST_ACCOUNT_KEY,
+        TEST_CRYPTO,
         TEST_POOL_ADDRESS,
       );
 
@@ -202,7 +205,7 @@ describe('rebuildNullifierMap', () => {
         trees,
         emptyNullifierMap,
         activityIndex,
-        TEST_ACCOUNT_KEY,
+        TEST_CRYPTO,
         TEST_POOL_ADDRESS,
       );
 

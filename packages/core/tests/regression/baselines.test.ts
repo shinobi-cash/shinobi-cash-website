@@ -7,7 +7,7 @@
  */
 import { describe, it, expect } from "vitest";
 import { createDeriveFn, derivePrecommitment } from "../../src/crypto/primitives.js";
-import { parseUserKey, generateKeysFromRandomSeed, getWalletAccountId } from "../../src/auth/index.js";
+import { parseUserKey } from "../../src/crypto/primitives.js";
 import {
   createWithdrawalData,
   createCrossChainWithdrawalData,
@@ -31,7 +31,6 @@ const TEST_DEPOSIT_INDEX = 0;
 const TEST_CHANGE_INDEX = 1;
 const TEST_RECIPIENT = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const TEST_FEE_RECIPIENT = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
-const TEST_SEED = "0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 
 const MOCK_SNARKJS_PROOF = {
   pi_a: ["1", "2", "3"],
@@ -94,9 +93,9 @@ describe("regression: deposit derivation", () => {
   });
 });
 
-// ============ AUTH ============
+// ============ CRYPTO: parseUserKey ============
 
-describe("regression: auth", () => {
+describe("regression: parseUserKey", () => {
   it("parseUserKey with hex string", () => {
     const result = parseUserKey("0x1234567890abcdef");
     expect(result).toBe(BigInt("0x1234567890abcdef"));
@@ -105,21 +104,6 @@ describe("regression: auth", () => {
   it("parseUserKey with bigint", () => {
     const result = parseUserKey(42n);
     expect(result).toBe(42n);
-  });
-
-  it("generateKeysFromRandomSeed produces deterministic keys", () => {
-    const result = generateKeysFromRandomSeed(TEST_SEED);
-    expect(result.privateKey).toBe(TEST_SEED);
-    expect(result.address).toMatch(/^0x[a-fA-F0-9]{40}$/);
-    expect(result.publicKey).toBeDefined();
-    // Snapshot deterministic outputs
-    expect(result.address).toMatchInlineSnapshot(`"0xFCAd0B19bB29D4674531d6f115237E16AfCE377c"`);
-    expect(result.publicKey).toMatchInlineSnapshot(`"0x044646ae5047316b4230d0086c8acec687f00b1cd9d1dc634f6cb358ac0a9a8ffffe77b4dd0a4bfb95851f3b7355c781dd60f8418fc8a65d14907aff47c903a559"`);
-  });
-
-  it("getWalletAccountId is deterministic", () => {
-    const result = getWalletAccountId(TEST_RECIPIENT, TEST_CHAIN_ID);
-    expect(result).toMatchInlineSnapshot(`"0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:chain-421614"`);
   });
 });
 

@@ -10,9 +10,8 @@ import {
   isCrosschainDepositFill,
   isCrosschainDepositIntent,
 } from "@shinobi-cash/data";
-import type { NoteTree, NullifierInfo } from "./types.js";
+import type { NoteTree, NullifierInfo, NoteDeriver } from "./types.js";
 import type { ActivityIndex } from "./activity-indexer.js";
-import { deriveDepositPrecommitment, deriveAndHashNullifier } from "./nullifier-utils.js";
 import {
   createDepositNote,
   createCrosschainDepositNote,
@@ -58,7 +57,7 @@ export interface ScanResult {
  * - Index 3+ will be discovered in subsequent syncs after index 2 appears
  *
  * @param activityIndex - Pre-built activity lookup maps
- * @param accountKey - User's account key for derivation
+ * @param deriver - Note deriver for cryptographic derivations
  * @param poolAddress - Pool contract address
  * @param chainId - Origin chain ID for per-chain scanning
  * @param startIndex - First deposit index to scan
@@ -66,7 +65,7 @@ export interface ScanResult {
  */
 export function scanForDeposits(
   activityIndex: ActivityIndex,
-  accountKey: bigint,
+  deriver: NoteDeriver,
   poolAddress: string,
   chainId: number | bigint | string,
   startIndex: number,
@@ -84,7 +83,7 @@ export function scanForDeposits(
   // Sequential scanning - stop at first gap
   for (let idx = startIndex; ; idx++) {
     // Derive precommitment for this index
-    const precommitment = deriveDepositPrecommitment(accountKey, poolAddress, chainId, idx);
+    const precommitment = deriver.derivePrecommitment(poolAddress, Number(chainId), idx);
 
     // Look up in activity index
     const activity = activityIndex.depositsByPrecommitment.get(precommitment);
@@ -125,7 +124,7 @@ export function scanForDeposits(
 
     // Add nullifier mapping for filled deposits (commitment is in pool)
     if (!isPending) {
-      const nullifierHash = deriveAndHashNullifier(accountKey, poolAddress, chainId, idx, 0);
+      const nullifierHash = deriver.deriveNullifierHash(poolAddress, Number(chainId), idx, 0);
       result.newNullifierEntries.set(nullifierHash, {
         originChainId: chainId.toString(),
         depositIndex: idx,

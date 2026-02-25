@@ -5,9 +5,15 @@
 import { poseidon2 } from "poseidon-lite/poseidon2";
 import { AbiParameters, Address, Hash } from "ox";
 import { SNARK_SCALAR_FIELD } from "./constants.js";
-import { parseUserKey } from "../auth/index.js";
 
 const modF = (x: bigint) => ((x % SNARK_SCALAR_FIELD) + SNARK_SCALAR_FIELD) % SNARK_SCALAR_FIELD;
+
+/** Parse and normalize a user key to a BN254 field element */
+export function parseUserKey(userKey: string | bigint): bigint {
+  if (typeof userKey === "bigint") return modF(userKey);
+  const s = userKey.trim();
+  return modF(BigInt(s));
+}
 const fieldFromKeccak = (bytes: `0x${string}`) => modF(BigInt(Hash.keccak256(bytes)));
 
 function contextField(

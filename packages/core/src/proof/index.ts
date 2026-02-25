@@ -20,6 +20,7 @@ import type {
   WithdrawalProofData,
   CircuitFiles,
   CircuitFileLoader,
+  CircuitFetcher,
   ProofGenerator,
   Withdraw2Intent,
   CrosschainWithdraw2Intent,
@@ -39,6 +40,7 @@ export type {
   WithdrawalProofData,
   CircuitFiles,
   CircuitFileLoader,
+  CircuitFetcher,
   ProofGenerator,
   Withdraw2Intent,
   CrosschainWithdraw2Intent,
@@ -624,4 +626,41 @@ export function createProofGenerator(config: ProofGeneratorConfig): ProofGenerat
       return { proof, publicSignals };
     },
   };
+}
+
+// ============ DEFAULT CIRCUIT FETCHER ============
+
+const CIRCUIT_PATHS = {
+  withdrawal: { wasm: "build/withdraw/withdraw.wasm", zkey: "keys/withdraw.zkey", vkey: "keys/withdraw.vkey" },
+  crosschainWithdrawal: { wasm: "build/crosschain_withdraw/crosschain_withdrawal.wasm", zkey: "keys/crosschain_withdrawal.zkey", vkey: "keys/crosschain_withdrawal.vkey" },
+  withdraw2: { wasm: "build/withdraw2/withdraw2.wasm", zkey: "keys/withdraw2.zkey", vkey: "keys/withdraw2.vkey" },
+  crosschainWithdraw2: { wasm: "build/crosschain_withdraw2/crosschain_withdraw2.wasm", zkey: "keys/crosschain_withdraw2.zkey", vkey: "keys/crosschain_withdraw2.vkey" },
+  ragequit: { wasm: "build/commitment/commitment.wasm", zkey: "keys/commitment.zkey", vkey: "keys/commitment.vkey" },
+} as const;
+
+/** Create an HTTP circuit fetcher from a base URL (like Kohaku's rgHttpFetcher) */
+export const httpCircuitFetcher = (baseUrl: string): CircuitFetcher => async (path: string) => {
+  const response = await fetch(baseUrl + path);
+  if (!response.ok) throw new Error(`Failed to fetch circuit file: ${baseUrl + path}`);
+  return new Uint8Array(await response.arrayBuffer());
+};
+
+async function loadCircuit(fetcher: CircuitFetcher, paths: { wasm: string; zkey: string; vkey: string }): Promise<CircuitFiles> {
+  const [wasmFile, zkeyFile, vkeyRaw] = await Promise.all([
+    fetcher(paths.wasm),
+    fetcher(paths.zkey),
+    fetcher(paths.vkey),
+  ]);
+  return { wasmFile, zkeyFile, vkeyData: JSON.parse(new TextDecoder().decode(vkeyRaw)) };
+}
+
+/** Create a proof generator using a circuit fetcher (defaults to HTTP from /circuits/) */
+export function createDefaultProofGenerator(fetcher: CircuitFetcher): ProofGenerator {
+  return createProofGenerator({
+    withdrawalLoader: () => loadCircuit(fetcher, CIRCUIT_PATHS.withdrawal),
+    crosschainWithdrawalLoader: () => loadCircuit(fetcher, CIRCUIT_PATHS.crosschainWithdrawal),
+    withdraw2Loader: () => loadCircuit(fetcher, CIRCUIT_PATHS.withdraw2),
+    crosschainWithdraw2Loader: () => loadCircuit(fetcher, CIRCUIT_PATHS.crosschainWithdraw2),
+    ragequitLoader: () => loadCircuit(fetcher, CIRCUIT_PATHS.ragequit),
+  });
 }

@@ -1,4 +1,11 @@
-import { FEE_CONFIG } from "@shinobi-cash/constants";
+import {
+  FEE_CONFIG,
+  POOL_CHAIN,
+  SAME_CHAIN_GAS_LIMITS,
+  CROSS_CHAIN_GAS_LIMITS,
+  WITHDRAW2_SAME_CHAIN_GAS_LIMITS,
+  WITHDRAW2_CROSS_CHAIN_GAS_LIMITS,
+} from "@shinobi-cash/constants";
 
 export type WithdrawalKind = "same-chain" | "cross-chain";
 
@@ -88,4 +95,59 @@ export function calculateSolverFeeBPS(
   crossChainSolverFeeBPS: number = FEE_CONFIG.DEFAULT_SOLVER_FEE_BPS
 ): number {
   return kind === "cross-chain" ? crossChainSolverFeeBPS : 0;
+}
+
+// ============================================================================
+// Fee Quotes (standalone, no account key needed)
+// ============================================================================
+
+export interface WithdrawalFeeQuote {
+  relayFeeBPS: number;
+  solverFeeBPS: number;
+  executionFeeWei: bigint;
+  solverFeeWei: bigint;
+  totalFeeWei: bigint;
+  netAmountWei: bigint;
+}
+
+export interface FeeQuoteParams {
+  amountWei: bigint;
+  destinationChainId?: number;
+  gasPriceWei: bigint;
+}
+
+function computeFeeQuote(params: FeeQuoteParams, gasLimitsConfig: { sameChain: GasLimits; crossChain: GasLimits }): WithdrawalFeeQuote {
+  const { amountWei, destinationChainId, gasPriceWei } = params;
+  const kind = classifyWithdrawal(destinationChainId, POOL_CHAIN.id);
+
+  const gasLimits = kind === "cross-chain" ? gasLimitsConfig.crossChain : gasLimitsConfig.sameChain;
+  const totalGas = calculateTotalGas(gasLimits);
+  const estimatedGasCostWei = totalGas * gasPriceWei;
+
+  const relayFeeBPS = calculateRelayFeeBPS(amountWei, estimatedGasCostWei, FEE_CONFIG.MAX_RELAY_FEE_BPS);
+  const solverFeeBPS = calculateSolverFeeBPS(kind);
+  const { executionFeeWei, solverFeeWei, totalFeeWei } = calculateFeesFromBPS(amountWei, relayFeeBPS, solverFeeBPS);
+  const netAmountWei = amountWei > totalFeeWei ? amountWei - totalFeeWei : 0n;
+
+  return { relayFeeBPS, solverFeeBPS, executionFeeWei, solverFeeWei, totalFeeWei, netAmountWei };
+}
+
+/**
+ * Quote fees for a 1:1 withdrawal.
+ */
+export function quoteWithdrawalFees(params: FeeQuoteParams): WithdrawalFeeQuote {
+  return computeFeeQuote(params, {
+    sameChain: SAME_CHAIN_GAS_LIMITS,
+    crossChain: CROSS_CHAIN_GAS_LIMITS,
+  });
+}
+
+/**
+ * Quote fees for a 2:1 Withdraw2 merge.
+ */
+export function quoteWithdraw2Fees(params: FeeQuoteParams): WithdrawalFeeQuote {
+  return computeFeeQuote(params, {
+    sameChain: WITHDRAW2_SAME_CHAIN_GAS_LIMITS,
+    crossChain: WITHDRAW2_CROSS_CHAIN_GAS_LIMITS,
+  });
 }

@@ -619,10 +619,16 @@ export type ActivityFetcher = (
   orderDirection?: "asc" | "desc"
 ) => Promise<ActivityPage>;
 
+export interface NoteDeriver {
+  derivePrecommitment(poolAddress: string, chainId: number, depositIndex: number): string;
+  deriveNullifierHash(poolAddress: string, chainId: number, depositIndex: number, changeIndex: number, noteType?: string): string;
+  deriveNoteCommitment(note: SpendableNote): bigint;
+}
+
 export interface PersistenceCallbacks {
-  loadState: (publicKey: string, poolAddress: string) => Promise<SerializableDiscoveryState | null>;
+  loadState: (accountId: string, poolAddress: string) => Promise<SerializableDiscoveryState | null>;
   saveState: (
-    publicKey: string,
+    accountId: string,
     poolAddress: string,
     state: SerializableDiscoveryState
   ) => Promise<void>;

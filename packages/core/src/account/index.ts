@@ -7,7 +7,6 @@
  */
 
 import {
-  SHINOBI_CASH_ETH_POOL,
   SHINOBI_CASH_ENTRYPOINT,
   POOL_CHAIN,
   FEE_CONFIG,
@@ -39,7 +38,6 @@ import {
   deriveRagequitInputs,
   createWithdrawalData,
   createCrossChainWithdrawalData,
-  calculateContextHash,
   formatProofForContract,
   formatCrossChainProofForContract,
   formatWithdraw2SameChainProofForContract,
@@ -50,6 +48,7 @@ import {
   encodeWithdraw2RelayCallData,
   encodeCrossChainWithdraw2CallData,
   encodeRagequitCallData,
+  derivedNoteCommitment,
 } from "../withdrawal/index.js";
 
 import {
@@ -57,6 +56,8 @@ import {
   buildCrosschainWithdrawalCircuitWitness,
   buildWithdraw2CircuitWitness,
   buildCrosschainWithdraw2CircuitWitness,
+  httpCircuitFetcher,
+  createDefaultProofGenerator,
 } from "../proof/index.js";
 
 import {
@@ -65,10 +66,12 @@ import {
   calculateTotalGas,
   calculateRelayFeeBPS,
   calculateSolverFeeBPS,
+  type WithdrawalFeeQuote,
 } from "../fees/index.js";
 
-import { NoteDiscovery, getSpendableNotes } from "../discovery/index.js";
-import type { NoteTree, DiscoveryResult, DiscoveryOptions } from "../discovery/types.js";
+import { poseidon1 } from "poseidon-lite/poseidon1";
+import { parseUserKey } from "../crypto/primitives.js";
+import { deriveAndHashNullifier, deriveDepositPrecommitment } from "../discovery/nullifier-utils.js";
 import type { SpendableNote } from "../discovery/types.js";
 import { isSpendableNote } from "../discovery/types.js";
 
@@ -80,9 +83,7 @@ import type {
   TransactionRequest,
   PreparedWithdrawal,
   PreparedWithdrawalRefund,
-  WithdrawalFeeQuote,
   DepositParams,
-  WithdrawQuoteParams,
   WithdrawParams,
   Withdraw2Params,
   RagequitParams,
@@ -93,6 +94,7 @@ import type {
 export type {
   ShinobiAccount,
   ShinobiAccountConfig,
+  ShinobiCredential,
   TransactionRequest,
   PreparedWithdrawal,
   PreparedWithdrawalRefund,
@@ -112,57 +114,39 @@ const DEFAULT_DEPOSIT_SETTINGS = {
   expirySeconds: 7200,
 };
 
-const NO_OP_PERSISTENCE = {
-  loadState: async () => null,
-  saveState: async () => {},
-};
-
 export function createShinobiAccount(config: ShinobiAccountConfig): ShinobiAccount {
   const {
-    accountKey,
-    publicKey,
-    poolAddress = SHINOBI_CASH_ETH_POOL.address as `0x${string}`,
-    proofGenerator,
-    activityFetcher,
-    persistence = NO_OP_PERSISTENCE,
+    credential,
+    getCircuits,
   } = config;
 
-  // Internal state from last sync
-  let trees: NoteTree[] = [];
-  let lastUsedIndexByChain = new Map<string, number>();
+  const proofGenerator = createDefaultProofGenerator(getCircuits ?? httpCircuitFetcher("/circuits/"));
 
-  const discovery = new NoteDiscovery(activityFetcher, persistence);
+  const { privateKey } = credential;
+  const accountSecret = parseUserKey(privateKey);
+  const accountId = poseidon1([accountSecret]).toString();
 
-  // ========== Discovery ==========
+  // ========== Crypto Methods (accountSecret stays in closure) ==========
 
-  async function sync(options?: DiscoveryOptions): Promise<DiscoveryResult> {
-    const result = await discovery.sync(publicKey, poolAddress, accountKey, options);
-    trees = result.trees;
-    lastUsedIndexByChain = result.lastUsedIndexByChain;
-    return result;
+  function _derivePrecommitment(pool: string, chainId: number, depositIndex: number): string {
+    return deriveDepositPrecommitment(accountSecret, pool, chainId, depositIndex);
   }
 
-  function spendableNotes(): SpendableNote[] {
-    return getSpendableNotes(trees).filter(isSpendableNote);
+  function _deriveNullifierHash(pool: string, chainId: number, depositIndex: number, changeIndex: number, noteType?: string): string {
+    return deriveAndHashNullifier(accountSecret, pool, chainId, depositIndex, changeIndex, noteType);
   }
 
-  function balance(): bigint {
-    return spendableNotes().reduce((sum, note) => sum + BigInt(note.amount), 0n);
-  }
-
-  function nextDepositIndex(chainId: number): number {
-    const lastUsed = lastUsedIndexByChain.get(chainId.toString()) ?? -1;
-    return lastUsed + 1;
+  function _deriveNoteCommitment(note: SpendableNote): bigint {
+    return derivedNoteCommitment(accountSecret, note);
   }
 
   // ========== Deposit ==========
 
   function deposit(params: DepositParams): TransactionRequest {
-    const { amountWei, chainId, settings, useDefaults = true } = params;
-    const depositIndex = nextDepositIndex(chainId);
+    const { poolAddress, amountWei, chainId, depositIndex, settings, useDefaults = true } = params;
 
-    const nullifier = deriveDepositNullifier(accountKey, poolAddress, chainId, depositIndex);
-    const secret = deriveDepositSecret(accountKey, poolAddress, chainId, depositIndex);
+    const nullifier = deriveDepositNullifier(accountSecret, poolAddress, chainId, depositIndex);
+    const secret = deriveDepositSecret(accountSecret, poolAddress, chainId, depositIndex);
     const precommitment = derivePrecommitment(nullifier, secret);
 
     const route = resolveDepositRoute(chainId);
@@ -177,29 +161,10 @@ export function createShinobiAccount(config: ShinobiAccountConfig): ShinobiAccou
     return { to: callParams.address, data, value: amountWei, chainId };
   }
 
-  // ========== Fee Quoting ==========
-
-  function quoteWithdrawal(params: WithdrawQuoteParams): WithdrawalFeeQuote {
-    const { amountWei, destinationChainId, gasPriceWei } = params;
-    const poolChainId = POOL_CHAIN.id;
-    const kind = classifyWithdrawal(destinationChainId, poolChainId);
-
-    const gasLimits = kind === "cross-chain" ? CROSS_CHAIN_GAS_LIMITS : SAME_CHAIN_GAS_LIMITS;
-    const totalGas = calculateTotalGas(gasLimits);
-    const estimatedGasCostWei = totalGas * gasPriceWei;
-
-    const relayFeeBPS = calculateRelayFeeBPS(amountWei, estimatedGasCostWei, FEE_CONFIG.MAX_RELAY_FEE_BPS);
-    const solverFeeBPS = calculateSolverFeeBPS(kind);
-    const { executionFeeWei, solverFeeWei, totalFeeWei } = calculateFeesFromBPS(amountWei, relayFeeBPS, solverFeeBPS);
-    const netAmountWei = amountWei > totalFeeWei ? amountWei - totalFeeWei : 0n;
-
-    return { relayFeeBPS, solverFeeBPS, executionFeeWei, solverFeeWei, totalFeeWei, netAmountWei };
-  }
-
   // ========== Withdrawal ==========
 
   async function prepareWithdrawal(params: WithdrawParams): Promise<PreparedWithdrawal> {
-    const { note, amountWei, recipient, destinationChainId, gasPriceWei, poolScope, stateCommitments, aspLabels } = params;
+    const { poolAddress, note, amountWei, recipient, destinationChainId, gasPriceWei, poolScope, stateCommitments, aspLabels } = params;
     const poolChainId = POOL_CHAIN.id;
     const kind = classifyWithdrawal(destinationChainId, poolChainId);
     const isCrossChain = kind === "cross-chain";
@@ -225,8 +190,8 @@ export function createShinobiAccount(config: ShinobiAccountConfig): ShinobiAccou
 
     // Derive inputs
     const derivation = isCrossChain
-      ? deriveCrosschainWithdrawalInputs(note, accountKey, poolAddress, poolScope, withdrawalData)
-      : deriveWithdrawalInputs(note, accountKey, poolAddress, poolScope, withdrawalData);
+      ? deriveCrosschainWithdrawalInputs(note, accountSecret, poolAddress, poolScope, withdrawalData)
+      : deriveWithdrawalInputs(note, accountSecret, poolAddress, poolScope, withdrawalData);
 
     // Build circuit intent
     const circuitIntent = isCrossChain
@@ -263,7 +228,7 @@ export function createShinobiAccount(config: ShinobiAccountConfig): ShinobiAccou
   // ========== Withdraw2 ==========
 
   async function prepareWithdraw2(params: Withdraw2Params): Promise<PreparedWithdrawal> {
-    const { primaryNote, secondaryNote, amountWei, recipient, destinationChainId, gasPriceWei, poolScope, stateCommitments, aspLabels, labelSelector = 0 } = params;
+    const { poolAddress, primaryNote, secondaryNote, amountWei, recipient, destinationChainId, gasPriceWei, poolScope, stateCommitments, aspLabels, labelSelector = 0 } = params;
     const poolChainId = POOL_CHAIN.id;
     const kind = classifyWithdrawal(destinationChainId, poolChainId);
     const isCrossChain = kind === "cross-chain";
@@ -289,8 +254,8 @@ export function createShinobiAccount(config: ShinobiAccountConfig): ShinobiAccou
 
     // Derive inputs
     const derivation = isCrossChain
-      ? deriveCrosschainWithdraw2Inputs(primaryNote, secondaryNote, accountKey, poolAddress, poolScope, withdrawalData, labelSelector)
-      : deriveWithdraw2Inputs(primaryNote, secondaryNote, accountKey, poolAddress, poolScope, withdrawalData, labelSelector);
+      ? deriveCrosschainWithdraw2Inputs(primaryNote, secondaryNote, accountSecret, poolAddress, poolScope, withdrawalData, labelSelector)
+      : deriveWithdraw2Inputs(primaryNote, secondaryNote, accountSecret, poolAddress, poolScope, withdrawalData, labelSelector);
 
     // Build circuit intent
     const circuitIntent = isCrossChain
@@ -341,7 +306,7 @@ export function createShinobiAccount(config: ShinobiAccountConfig): ShinobiAccou
   // ========== Ragequit ==========
 
   async function ragequit(params: RagequitParams): Promise<TransactionRequest> {
-    const { note } = params;
+    const { poolAddress, note } = params;
 
     if (!isSpendableNote(note)) {
       throw new Error("Note is not spendable");
@@ -350,7 +315,7 @@ export function createShinobiAccount(config: ShinobiAccountConfig): ShinobiAccou
       throw new Error("Note is already spent");
     }
 
-    const derivation = deriveRagequitInputs(note, accountKey, poolAddress);
+    const derivation = deriveRagequitInputs(note, accountSecret, poolAddress);
 
     const witness = {
       value: derivation.value.toString(),
@@ -367,7 +332,7 @@ export function createShinobiAccount(config: ShinobiAccountConfig): ShinobiAccou
     const data = encodeRagequitCallData(contractProof);
 
     return {
-      to: SHINOBI_CASH_ETH_POOL.address as `0x${string}`,
+      to: poolAddress,
       data,
       value: 0n,
       chainId: POOL_CHAIN.id,
@@ -394,14 +359,11 @@ export function createShinobiAccount(config: ShinobiAccountConfig): ShinobiAccou
   }
 
   return {
-    publicKey,
-    poolAddress,
-    sync,
-    getSpendableNotes: spendableNotes,
-    getBalance: balance,
-    getNextDepositIndex: nextDepositIndex,
+    accountId,
+    derivePrecommitment: _derivePrecommitment,
+    deriveNullifierHash: _deriveNullifierHash,
+    deriveNoteCommitment: _deriveNoteCommitment,
     deposit,
-    quoteWithdrawal,
     prepareWithdrawal,
     prepareWithdraw2,
     ragequit,

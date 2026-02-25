@@ -16,6 +16,7 @@ import {
   createMockWithdraw2Activity,
   createMockCrossChainWithdraw2Activity,
   createMockRagequitActivity,
+  createTestNoteDeriver,
   resetActivityCounter,
   TEST_POOL_ADDRESS,
   TEST_ACCOUNT_KEY,
@@ -23,6 +24,8 @@ import {
   toEther,
 } from './fixtures.js';
 import { derivedNoteCommitment } from '../../src/withdrawal/index.js';
+
+const TEST_CRYPTO = createTestNoteDeriver();
 import { getLeafNodes, findNodeByPosition, createNoteTree } from '../../src/discovery/tree-utils.js';
 
 describe('chain-extender', () => {
@@ -43,7 +46,7 @@ describe('chain-extender', () => {
           trees,
           nullifierMap,
           activityIndex,
-          TEST_ACCOUNT_KEY,
+          TEST_CRYPTO,
           TEST_POOL_ADDRESS,
         );
 
@@ -62,7 +65,7 @@ describe('chain-extender', () => {
           trees,
           nullifierMap,
           activityIndex,
-          TEST_ACCOUNT_KEY,
+          TEST_CRYPTO,
           TEST_POOL_ADDRESS,
         );
 
@@ -83,7 +86,7 @@ describe('chain-extender', () => {
           trees,
           nullifierMap,
           activityIndex,
-          TEST_ACCOUNT_KEY,
+          TEST_CRYPTO,
           TEST_POOL_ADDRESS,
         );
 
@@ -128,7 +131,7 @@ describe('chain-extender', () => {
           trees,
           nullifierMap,
           activityIndex,
-          TEST_ACCOUNT_KEY,
+          TEST_CRYPTO,
           TEST_POOL_ADDRESS,
         );
 
@@ -157,7 +160,7 @@ describe('chain-extender', () => {
           trees,
           nullifierMap,
           activityIndex,
-          TEST_ACCOUNT_KEY,
+          TEST_CRYPTO,
           TEST_POOL_ADDRESS,
         );
 
@@ -188,7 +191,7 @@ describe('chain-extender', () => {
           trees,
           nullifierMap,
           activityIndex,
-          TEST_ACCOUNT_KEY,
+          TEST_CRYPTO,
           TEST_POOL_ADDRESS,
         );
 
@@ -219,7 +222,7 @@ describe('chain-extender', () => {
           trees,
           nullifierMap,
           activityIndex,
-          TEST_ACCOUNT_KEY,
+          TEST_CRYPTO,
           TEST_POOL_ADDRESS,
         );
 
@@ -266,7 +269,7 @@ describe('chain-extender', () => {
           trees,
           nullifierMap,
           activityIndex,
-          TEST_ACCOUNT_KEY,
+          TEST_CRYPTO,
           TEST_POOL_ADDRESS,
         );
 
@@ -322,7 +325,7 @@ describe('chain-extender', () => {
           trees,
           nullifierMap,
           activityIndex,
-          TEST_ACCOUNT_KEY,
+          TEST_CRYPTO,
           TEST_POOL_ADDRESS,
         );
 
@@ -359,7 +362,7 @@ describe('chain-extender', () => {
           trees,
           nullifierMap,
           activityIndex,
-          TEST_ACCOUNT_KEY,
+          TEST_CRYPTO,
           TEST_POOL_ADDRESS,
         );
 
@@ -397,7 +400,7 @@ describe('chain-extender', () => {
           trees,
           nullifierMap,
           activityIndex,
-          TEST_ACCOUNT_KEY,
+          TEST_CRYPTO,
           TEST_POOL_ADDRESS,
         );
 
@@ -431,7 +434,7 @@ describe('chain-extender', () => {
           trees,
           nullifierMap,
           activityIndex,
-          TEST_ACCOUNT_KEY,
+          TEST_CRYPTO,
           TEST_POOL_ADDRESS,
         );
 
@@ -468,7 +471,7 @@ describe('chain-extender', () => {
           trees,
           nullifierMap,
           activityIndex,
-          TEST_ACCOUNT_KEY,
+          TEST_CRYPTO,
           TEST_POOL_ADDRESS,
         );
 
@@ -500,7 +503,7 @@ describe('chain-extender', () => {
           trees,
           nullifierMap,
           activityIndex,
-          TEST_ACCOUNT_KEY,
+          TEST_CRYPTO,
           TEST_POOL_ADDRESS,
         );
 
@@ -535,7 +538,7 @@ describe('chain-extender', () => {
           trees,
           nullifierMap,
           activityIndex,
-          TEST_ACCOUNT_KEY,
+          TEST_CRYPTO,
           TEST_POOL_ADDRESS,
         );
 
@@ -572,7 +575,7 @@ describe('chain-extender', () => {
           trees1,
           nullifierMap1,
           activityIndex,
-          TEST_ACCOUNT_KEY,
+          TEST_CRYPTO,
           TEST_POOL_ADDRESS,
         );
 
@@ -590,7 +593,7 @@ describe('chain-extender', () => {
           trees2,
           nullifierMap2,
           activityIndex,
-          TEST_ACCOUNT_KEY,
+          TEST_CRYPTO,
           TEST_POOL_ADDRESS,
         );
 
@@ -622,7 +625,7 @@ describe('chain-extender', () => {
           trees,
           nullifierMap,
           activityIndex,
-          TEST_ACCOUNT_KEY,
+          TEST_CRYPTO,
           TEST_POOL_ADDRESS,
         );
 

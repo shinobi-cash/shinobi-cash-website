@@ -19,12 +19,15 @@ import {
   createMockWithdraw2Activity,
   createMockCrossChainWithdraw2Activity,
   createMockRagequitActivity,
+  createTestNoteDeriver,
   resetActivityCounter,
   TEST_POOL_ADDRESS,
   TEST_ACCOUNT_KEY,
   TEST_CHAIN_ID,
   toEther,
 } from './fixtures.js';
+
+const TEST_CRYPTO = createTestNoteDeriver();
 import { createNoteTree, addChild } from '../../src/discovery/tree-utils.js';
 
 describe('chain-extension-planner', () => {
@@ -47,7 +50,7 @@ describe('chain-extension-planner', () => {
           trees,
           nullifierMap,
           activityIndex,
-          TEST_ACCOUNT_KEY,
+          TEST_CRYPTO,
           TEST_POOL_ADDRESS,
         );
 
@@ -69,7 +72,7 @@ describe('chain-extension-planner', () => {
           trees,
           nullifierMap,
           activityIndex,
-          TEST_ACCOUNT_KEY,
+          TEST_CRYPTO,
           TEST_POOL_ADDRESS,
         );
 
@@ -92,7 +95,7 @@ describe('chain-extension-planner', () => {
           trees,
           nullifierMap,
           activityIndex,
-          TEST_ACCOUNT_KEY,
+          TEST_CRYPTO,
           TEST_POOL_ADDRESS,
         );
 
@@ -115,7 +118,7 @@ describe('chain-extension-planner', () => {
           trees,
           nullifierMap,
           activityIndex,
-          TEST_ACCOUNT_KEY,
+          TEST_CRYPTO,
           TEST_POOL_ADDRESS,
         );
 
@@ -138,7 +141,7 @@ describe('chain-extension-planner', () => {
           trees,
           nullifierMap,
           activityIndex,
-          TEST_ACCOUNT_KEY,
+          TEST_CRYPTO,
           TEST_POOL_ADDRESS,
         );
 
@@ -168,7 +171,7 @@ describe('chain-extension-planner', () => {
           trees,
           nullifierMap,
           activityIndex,
-          TEST_ACCOUNT_KEY,
+          TEST_CRYPTO,
           TEST_POOL_ADDRESS,
         );
 
@@ -196,7 +199,7 @@ describe('chain-extension-planner', () => {
           trees,
           nullifierMap,
           activityIndex,
-          TEST_ACCOUNT_KEY,
+          TEST_CRYPTO,
           TEST_POOL_ADDRESS,
         );
 
@@ -231,7 +234,7 @@ describe('chain-extension-planner', () => {
           trees,
           nullifierMap,
           activityIndex,
-          TEST_ACCOUNT_KEY,
+          TEST_CRYPTO,
           TEST_POOL_ADDRESS,
         );
 
@@ -257,7 +260,7 @@ describe('chain-extension-planner', () => {
           trees,
           nullifierMap,
           activityIndex,
-          TEST_ACCOUNT_KEY,
+          TEST_CRYPTO,
           TEST_POOL_ADDRESS,
         );
 
@@ -296,7 +299,7 @@ describe('chain-extension-planner', () => {
           trees,
           nullifierMap,
           activityIndex,
-          TEST_ACCOUNT_KEY,
+          TEST_CRYPTO,
           TEST_POOL_ADDRESS,
         );
 
@@ -333,7 +336,7 @@ describe('chain-extension-planner', () => {
           trees,
           nullifierMap,
           activityIndex,
-          TEST_ACCOUNT_KEY,
+          TEST_CRYPTO,
           TEST_POOL_ADDRESS,
         );
 
@@ -368,7 +371,7 @@ describe('chain-extension-planner', () => {
           trees,
           nullifierMap,
           activityIndex,
-          TEST_ACCOUNT_KEY,
+          TEST_CRYPTO,
           TEST_POOL_ADDRESS,
         );
 
@@ -402,7 +405,7 @@ describe('chain-extension-planner', () => {
           trees,
           nullifierMap,
           activityIndex,
-          TEST_ACCOUNT_KEY,
+          TEST_CRYPTO,
           TEST_POOL_ADDRESS,
         );
 
@@ -434,7 +437,7 @@ describe('chain-extension-planner', () => {
           trees,
           nullifierMap,
           activityIndex,
-          TEST_ACCOUNT_KEY,
+          TEST_CRYPTO,
           TEST_POOL_ADDRESS,
         );
 
@@ -468,7 +471,7 @@ describe('chain-extension-planner', () => {
           trees,
           nullifierMap,
           activityIndex,
-          TEST_ACCOUNT_KEY,
+          TEST_CRYPTO,
           TEST_POOL_ADDRESS,
         );
 
@@ -503,7 +506,7 @@ describe('chain-extension-planner', () => {
           trees,
           nullifierMap,
           activityIndex,
-          TEST_ACCOUNT_KEY,
+          TEST_CRYPTO,
           TEST_POOL_ADDRESS,
         );
 
@@ -541,7 +544,7 @@ describe('chain-extension-planner', () => {
           trees,
           nullifierMap,
           activityIndex,
-          TEST_ACCOUNT_KEY,
+          TEST_CRYPTO,
           TEST_POOL_ADDRESS,
         );
 
@@ -574,7 +577,7 @@ describe('chain-extension-planner', () => {
           trees,
           nullifierMap,
           activityIndex,
-          TEST_ACCOUNT_KEY,
+          TEST_CRYPTO,
           TEST_POOL_ADDRESS,
         );
 
@@ -602,7 +605,7 @@ describe('chain-extension-planner', () => {
           trees,
           nullifierMap,
           activityIndex,
-          TEST_ACCOUNT_KEY,
+          TEST_CRYPTO,
           TEST_POOL_ADDRESS,
         );
 
@@ -635,7 +638,7 @@ describe('chain-extension-planner', () => {
           trees,
           nullifierMap,
           activityIndex,
-          TEST_ACCOUNT_KEY,
+          TEST_CRYPTO,
           TEST_POOL_ADDRESS,
         );
 
@@ -677,7 +680,7 @@ describe('chain-extension-planner', () => {
           trees,
           nullifierMap,
           activityIndex,
-          TEST_ACCOUNT_KEY,
+          TEST_CRYPTO,
           TEST_POOL_ADDRESS,
         );
 
@@ -721,7 +724,7 @@ describe('chain-extension-planner', () => {
           trees,
           nullifierMap,
           activityIndex,
-          TEST_ACCOUNT_KEY,
+          TEST_CRYPTO,
           TEST_POOL_ADDRESS,
         );
 

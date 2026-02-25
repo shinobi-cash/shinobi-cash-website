@@ -2,22 +2,25 @@
  * @shinobi-cash/core/account — Type definitions
  */
 
-import type { SpendableNote, DiscoveryOptions, DiscoveryResult, ActivityFetcher, PersistenceCallbacks } from "../discovery/types.js";
-import type { ProofGenerator } from "../proof/types.js";
+import type { SpendableNote } from "../discovery/types.js";
+import type { CircuitFetcher } from "../proof/types.js";
 import type { DepositSettings } from "../deposit/index.js";
-import type { GasLimits, WithdrawalKind } from "../fees/index.js";
+import type { GasLimits, WithdrawalKind, WithdrawalFeeQuote } from "../fees/index.js";
+
+// ============================================================================
+// Credential
+// ============================================================================
+
+export type ShinobiCredential = { type: "privateKey"; privateKey: string };
 
 // ============================================================================
 // Config
 // ============================================================================
 
 export interface ShinobiAccountConfig {
-  accountKey: bigint;
-  publicKey: string;
-  poolAddress?: `0x${string}`;
-  proofGenerator: ProofGenerator;
-  activityFetcher: ActivityFetcher;
-  persistence?: PersistenceCallbacks;
+  credential: ShinobiCredential;
+  /** Optional circuit file fetcher — defaults to HTTP from `/circuits/` */
+  getCircuits?: CircuitFetcher;
 }
 
 // ============================================================================
@@ -50,22 +53,17 @@ export interface PreparedWithdrawalRefund {
   paymasterAddress: `0x${string}`;
 }
 
-export interface WithdrawalFeeQuote {
-  relayFeeBPS: number;
-  solverFeeBPS: number;
-  executionFeeWei: bigint;
-  solverFeeWei: bigint;
-  totalFeeWei: bigint;
-  netAmountWei: bigint;
-}
+export type { WithdrawalFeeQuote } from "../fees/index.js";
 
 // ============================================================================
 // Method Params
 // ============================================================================
 
 export interface DepositParams {
+  poolAddress: `0x${string}`;
   amountWei: bigint;
   chainId: number;
+  depositIndex: number;
   settings?: DepositSettings;
   useDefaults?: boolean;
 }
@@ -77,6 +75,7 @@ export interface WithdrawQuoteParams {
 }
 
 export interface WithdrawParams extends WithdrawQuoteParams {
+  poolAddress: `0x${string}`;
   note: SpendableNote;
   recipient: `0x${string}`;
   poolScope: bigint;
@@ -85,6 +84,7 @@ export interface WithdrawParams extends WithdrawQuoteParams {
 }
 
 export interface Withdraw2Params {
+  poolAddress: `0x${string}`;
   primaryNote: SpendableNote;
   secondaryNote: SpendableNote;
   amountWei: bigint;
@@ -98,6 +98,7 @@ export interface Withdraw2Params {
 }
 
 export interface RagequitParams {
+  poolAddress: `0x${string}`;
   note: SpendableNote;
 }
 
@@ -117,20 +118,17 @@ export interface WithdrawalRefundParams {
 // ============================================================================
 
 export interface ShinobiAccount {
-  readonly publicKey: string;
-  readonly poolAddress: `0x${string}`;
+  readonly accountId: string;
 
-  // Discovery
-  sync(options?: DiscoveryOptions): Promise<DiscoveryResult>;
-  getSpendableNotes(): SpendableNote[];
-  getBalance(): bigint;
-  getNextDepositIndex(chainId: number): number;
+  // Crypto derivations (accountSecret stays in closure)
+  derivePrecommitment(poolAddress: string, chainId: number, depositIndex: number): string;
+  deriveNullifierHash(poolAddress: string, chainId: number, depositIndex: number, changeIndex: number, noteType?: string): string;
+  deriveNoteCommitment(note: SpendableNote): bigint;
 
   // Deposit → TransactionRequest
   deposit(params: DepositParams): TransactionRequest;
 
   // Withdrawal → PreparedWithdrawal (for bundler)
-  quoteWithdrawal(params: WithdrawQuoteParams): WithdrawalFeeQuote;
   prepareWithdrawal(params: WithdrawParams): Promise<PreparedWithdrawal>;
   prepareWithdraw2(params: Withdraw2Params): Promise<PreparedWithdrawal>;
 
