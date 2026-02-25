@@ -19,3 +19,6 @@ export type {
   ClientWithdraw2Params,
   ClientWithdrawalRefundParams,
 } from "./types.js";
+
+// Runtime export — typed via ShinobiCashClient interface
+export { createShinobiCashClient } from "./client.js";

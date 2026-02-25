@@ -9,11 +9,18 @@ import type {
   ShinobiAccount,
   PreparedWithdrawal,
   PreparedWithdrawalRefund,
-  WithdrawalFeeQuote,
 } from "@shinobi-cash/core/account";
-import type { SpendableNote } from "@shinobi-cash/core/discovery";
+import type { WithdrawalFeeQuote } from "@shinobi-cash/core/fees";
+import type {
+  SpendableNote,
+  NoteTree,
+  DiscoveryOptions,
+  DiscoveryResult,
+  PersistenceCallbacks,
+  ActivityItem,
+  ActivityFetcher,
+} from "@shinobi-cash/core/discovery";
 import type { RawShinobiIntent } from "@shinobi-cash/data";
-import type { UserOperation } from "viem/account-abstraction";
 
 // ============================================================================
 // Client Config
@@ -21,10 +28,12 @@ import type { UserOperation } from "viem/account-abstraction";
 
 export interface ShinobiCashClientConfig {
   account: ShinobiAccount;
+  poolAddress: `0x${string}`;
   indexer: ClientIndexer;
   bundlerUrl: string;
   rpcUrl?: string;
   solverUrl?: string;
+  persistence?: PersistenceCallbacks;
 }
 
 /**
@@ -34,6 +43,7 @@ export interface ShinobiCashClientConfig {
 export interface ClientIndexer {
   getStateTree(poolAddress: string): Promise<{ leaves: { commitment: string }[] }>;
   getApprovedLabels(): Promise<string[]>;
+  getActivities: ActivityFetcher;
 }
 
 // ============================================================================
@@ -55,17 +65,20 @@ export interface SolverQuote {
 }
 
 // ============================================================================
-// Prepared Operations
+// Prepared Operations (opaque — pass to submitWithdrawal())
 // ============================================================================
 
 export interface PreparedWithdrawalOp {
-  prepared: PreparedWithdrawal;
-  userOp: UserOperation<"0.7">;
+  readonly kind: "withdrawal";
+  readonly feeQuote: WithdrawalFeeQuote;
+  /** @internal */
+  readonly _internal: unknown;
 }
 
 export interface PreparedRefundOp {
-  prepared: PreparedWithdrawalRefund;
-  userOp: UserOperation<"0.7">;
+  readonly kind: "refund";
+  /** @internal */
+  readonly _internal: unknown;
 }
 
 // ============================================================================
@@ -99,6 +112,14 @@ export interface ClientWithdrawalRefundParams {
 
 export interface ShinobiCashClient {
   readonly account: ShinobiAccount;
+  readonly accountId: string;
+
+  // Discovery (client owns note discovery)
+  sync(options?: DiscoveryOptions): Promise<DiscoveryResult>;
+  getSpendableNotes(): SpendableNote[];
+  getBalance(): bigint;
+  getNextDepositIndex(chainId: number): number;
+  getActivities(): ActivityItem[];
 
   // Withdrawal (orchestrated — fetches context, builds proof, prepares UserOp)
   prepareWithdrawal(params: ClientWithdrawParams): Promise<PreparedWithdrawalOp>;
