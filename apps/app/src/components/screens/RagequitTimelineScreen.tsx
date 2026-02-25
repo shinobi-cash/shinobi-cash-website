@@ -82,7 +82,7 @@ export function RagequitTimelineScreen({
   // Step 1: Preparing (proof generation)
   const preparingStatus: StepStatus = isPreparationError
     ? "failed"
-    : isSubmitting || isComplete
+    : isSubmitting || isComplete || isTransactionError
       ? "completed"
       : isPreparing
         ? "active"

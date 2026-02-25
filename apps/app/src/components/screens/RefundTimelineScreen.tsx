@@ -12,7 +12,7 @@ import {
   type StepStatus,
   type StepTiming,
 } from "@/components/shared/Timeline";
-import { type AppError, getUserMessage } from "@/lib/errors/errors";
+import { type AppError, getUserMessage, ErrorCode } from "@/lib/errors/errors";
 import { getTxExplorerUrl } from "@/config/chains";
 import { formatDateTime, formatEthAmount, formatDisplayAmount } from "@/utils/formatters";
 import type { RefundType } from "@shinobi-cash/core/intent";
@@ -67,16 +67,20 @@ export function RefundTimelineScreen({
           ? "Fetching intent data"
           : "Processing refund";
 
+  // Error classification
+  const isFetchError = error && error.category === "INDEXER";
+  const isTransactionError = error && error.code === ErrorCode.BLOCKCHAIN.TRANSACTION_FAILED;
+
   // Step statuses
-  const fetchingStatus: StepStatus = hasError && !isSubmitting && !isComplete
+  const fetchingStatus: StepStatus = isFetchError
     ? "failed"
-    : isSubmitting || isComplete
+    : isSubmitting || isComplete || isTransactionError
       ? "completed"
       : isFetching
         ? "active"
         : "pending";
 
-  const submittingStatus: StepStatus = hasError && isSubmitting
+  const submittingStatus: StepStatus = isTransactionError
     ? "failed"
     : isComplete
       ? "completed"
@@ -122,7 +126,7 @@ export function RefundTimelineScreen({
       label: "Fetching intent",
       status: fetchingStatus,
       description: "Loading intent data from indexer.",
-      errorMessage: fetchingStatus === "failed" ? getUserMessage(error) : undefined,
+      errorMessage: isFetchError ? getUserMessage(error) : undefined,
       timestamp: timings["fetching"]?.displayTime,
       duration: timings["fetching"]?.duration,
     },
@@ -132,7 +136,7 @@ export function RefundTimelineScreen({
       description: isDeposit
         ? "Submitting refund transaction."
         : "Submitting refund via bundler.",
-      errorMessage: submittingStatus === "failed" ? getUserMessage(error) : undefined,
+      errorMessage: isTransactionError ? getUserMessage(error) : undefined,
       link:
         explorerUrl && submittingStatus !== "pending"
           ? { url: explorerUrl, text: "View transaction" }
