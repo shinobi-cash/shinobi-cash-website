@@ -119,7 +119,7 @@ export class AccountRepository {
         }
       } catch {
         // Skip invalid account IDs
-        console.warn(`[AccountRepository] Skipping invalid account ID: ${key}`);
+        console.warn("[AccountRepository] Skipping invalid account key");
       }
     }
 

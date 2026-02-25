@@ -126,7 +126,6 @@ export class NotesRepository {
       encryptedPayload: {
         iv: arrayBufferToBase64(encrypted.iv),
         data: arrayBufferToBase64(encrypted.data),
-        salt: arrayBufferToBase64(encrypted.salt),
       },
       lastSyncTime: sensitiveData.lastSyncTime,
     };
@@ -148,7 +147,6 @@ export class NotesRepository {
       const encryptedData: EncryptedData = {
         iv: base64ToArrayBuffer(result.encryptedPayload.iv),
         data: base64ToArrayBuffer(result.encryptedPayload.data),
-        salt: base64ToArrayBuffer(result.encryptedPayload.salt),
       };
 
       try {

@@ -50,7 +50,6 @@ export class MasterKeyRepository {
       wrappedBy,
       encryptedPrivateKey: arrayBufferToBase64(encrypted.data),
       iv: arrayBufferToBase64(encrypted.iv),
-      salt: arrayBufferToBase64(encrypted.salt),
       createdAt: Date.now(),
     };
 
@@ -100,7 +99,6 @@ export class MasterKeyRepository {
       const encrypted = {
         data: base64ToArrayBuffer(wrapped.encryptedPrivateKey),
         iv: base64ToArrayBuffer(wrapped.iv),
-        salt: base64ToArrayBuffer(wrapped.salt),
       };
 
       const decrypted = await this.encryptionService.decrypt<unknown>(encrypted);
@@ -139,7 +137,6 @@ function isWrappedMasterKey(value: unknown): value is WrappedMasterKey {
     (v.wrappedBy === "wallet" || v.wrappedBy === "passkey") &&
     typeof v.encryptedPrivateKey === "string" &&
     typeof v.iv === "string" &&
-    typeof v.salt === "string" &&
     typeof v.createdAt === "number"
   );
 }

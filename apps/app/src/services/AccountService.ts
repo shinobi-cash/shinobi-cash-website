@@ -200,9 +200,11 @@ export class AccountService {
     const accountId = this.getCurrentAccountName();
     if (!accountId) throw Errors.auth.sessionRequired();
 
-    await masterKeyRepo.deleteWrappedKey(accountId, "passkey");
+    // Clear metadata first — if deleteWrappedKey fails, we have an orphaned
+    // encrypted blob (harmless) rather than a stale credentialId (broken login)
     await accountRepo.storeAccountData({ accountId, credentialId: undefined });
     await removePasskeyFromSession();
+    await masterKeyRepo.deleteWrappedKey(accountId, "passkey");
   }
 
   async loginWithWalletKEK(accountId: WalletAccountId, kek: CryptoKey): Promise<void> {

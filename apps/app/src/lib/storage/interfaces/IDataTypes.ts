@@ -49,7 +49,6 @@ export interface EncryptedNotesData {
   encryptedPayload: {
     iv: string;
     data: string;
-    salt: string;
   };
   lastSyncTime: number;
 }
@@ -71,6 +70,5 @@ export interface WrappedMasterKey {
   wrappedBy: "wallet" | "passkey"; // Which KEK encrypted this
   encryptedPrivateKey: string; // Master Key encrypted with KEK
   iv: string; // Initialization vector
-  salt: string; // Salt used for encryption
   createdAt: number;
 }
