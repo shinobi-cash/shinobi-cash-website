@@ -23,7 +23,6 @@ import { RagequitController } from "@/controllers/RagequitController";
 import { useIntentDetails } from "@/hooks/useIntentDetails";
 import { NoteUtxoView } from "./NoteUtxoView";
 import { findNoteBySerial } from "./note-navigation";
-// import { Section, Row } from "@/components/shared/Section";
 
 interface NoteChainScreenProps {
   note: NoteOrIntent;

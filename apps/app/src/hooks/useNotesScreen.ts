@@ -14,7 +14,6 @@ import { useSnapshot } from "valtio";
 import type { Note, NoteOrIntent, NoteNode, NoteTree } from "@shinobi-cash/core/discovery";
 import type { NotesStatus, NotesError, NoteFilter } from "@/types/notes";
 import type { NoteView } from "@/controllers/NotesScreenController";
-import { useNotesDiscovery } from "./useNotesDiscovery";
 import {
   NotesDiscoveryController,
   NotesDiscoverySelectors,
@@ -84,9 +83,6 @@ export function useNotesScreen(): NotesScreenControllerAPI {
 
   // Selective subscription to screen controller
   const { activeFilter, selectedNote, selectedNoteNode } = useSnapshot(NotesScreenController.state);
-
-  // Trigger the useNotesDiscovery hook for its side effects (transaction refresh)
-  useNotesDiscovery();
 
   const viewState = useMemo(
     () => NotesDiscoverySelectors.getViewState(),
