@@ -142,8 +142,8 @@ export function createShinobiCashClient(config: ShinobiCashClientConfig): BaseSh
     },
 
     // Extend
-    extend(fn) {
-      return { ...this, ...fn(ctx) } as any;
+    extend<T extends object>(fn: (ctx: ClientContext) => T): BaseShinobiCashClient & T {
+      return { ...this, ...fn(ctx) } as BaseShinobiCashClient & T;
     },
   };
 }
