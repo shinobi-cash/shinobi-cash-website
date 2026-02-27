@@ -90,7 +90,7 @@ export default function DepositPage() {
     if (DepositSelectors.canAutoPrepare()) {
       DepositController.schedulePrepare();
     }
-  }, [state.amount, state.wallet.isConnected, isAuthenticated, state.wallet.chainId, state.wallet.gasPrice]);
+  }, [state.amount, state.wallet.isConnected, isAuthenticated, state.wallet.chainId]);
 
   const txHash =
     state.state.status === "confirming" ||

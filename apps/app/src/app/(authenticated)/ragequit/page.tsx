@@ -16,7 +16,6 @@ import {
   type NoteTree,
   type ChangeNote,
 } from "@shinobi-cash/core/discovery";
-import type { WalletClient, Account, Transport, Chain } from "viem";
 
 /** Check if a note tree has any merge history (received funds from another note) */
 function checkMergeHistory(noteTrees: NoteTree[], depositIndex: number): boolean {
@@ -76,7 +75,7 @@ export default function RagequitPage() {
 
     // Check controller state directly (not stale snapshot)
     if (RagequitController.state.state.status === "ready") {
-      await RagequitController.submit(walletClient as WalletClient<Transport, Chain, Account>);
+      await RagequitController.submit(walletClient);
     }
   };
 

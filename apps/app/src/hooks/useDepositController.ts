@@ -5,7 +5,7 @@
  */
 
 import { useEffect } from "react";
-import { useAccount, useChainId, useBalance, useConfig, useGasPrice, useWalletClient } from "wagmi";
+import { useAccount, useChainId, useBalance, useWalletClient } from "wagmi";
 import { useSnapshot } from "valtio";
 import { DepositController } from "@/controllers/DepositController";
 import { formatEther } from "viem/utils";
@@ -29,8 +29,6 @@ export function useDepositController() {
   const { isConnected, address } = useAccount();
   const chainId = useChainId();
   const { data: balance } = useBalance({ address });
-  const { data: gasPrice } = useGasPrice({ chainId });
-  const config = useConfig();
   const { data: walletClient } = useWalletClient({ chainId });
 
   // Reset controller on unmount (navigation away) — skip if transaction in flight
@@ -45,27 +43,18 @@ export function useDepositController() {
 
   // Sync wallet context to controller
   useEffect(() => {
-    // wagmi client is compatible with viem PublicClient
-    const publicClient = config.getClient({ chainId }) as unknown as Parameters<
-      typeof DepositController._updateWallet
-    >[0]["publicClient"];
-
     DepositController._updateWallet({
       isConnected,
       address,
       chainId,
       balance: balance?.value ? formatEther(balance.value) : "0",
-      publicClient,
-      walletClient: walletClient, // wagmi wallet client is compatible with viem WalletClient
-      gasPrice: gasPrice ?? undefined,
+      walletClient: walletClient,
     });
   }, [
     isConnected,
     address,
     chainId,
-    balance?.value, // Explicit: only re-run if value changes
-    gasPrice,
-    config,
+    balance?.value,
     walletClient,
   ]);
 

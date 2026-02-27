@@ -23,7 +23,6 @@ type WithdrawStatus =
   | "preparing"
   | "ready"
   | "submitting"
-  | "confirming"
   | "confirmed"
   | "error";
 
@@ -54,7 +53,6 @@ export function WithdrawalTimelineScreen({
   // Derive states from controller status directly
   const isPreparing = status === "preparing";
   const isSubmitting = status === "submitting";
-  const isConfirming = status === "confirming";
   const isConfirmed = status === "confirmed";
 
   // Complete when tx is confirmed on-chain
@@ -65,13 +63,11 @@ export function WithdrawalTimelineScreen({
     ? "Withdrawal complete"
     : hasError
       ? "Withdrawal failed"
-      : isConfirming
-        ? "Confirming withdrawal"
-        : isSubmitting
-          ? "Submitting withdrawal"
-          : isPreparing
-            ? "Preparing withdrawal"
-            : "Processing withdrawal";
+      : isSubmitting
+        ? "Submitting withdrawal"
+        : isPreparing
+          ? "Preparing withdrawal"
+          : "Processing withdrawal";
 
   // Error classification
   const isPreparationError =
@@ -90,22 +86,20 @@ export function WithdrawalTimelineScreen({
   // Step 1: Preparing (proof generation)
   const preparingStatus: StepStatus = isPreparationError
     ? "failed"
-    : isSubmitting || isConfirming || isComplete || isTransactionError
+    : isSubmitting || isComplete || isTransactionError
       ? "completed"
       : isPreparing
         ? "active"
         : "pending";
 
-  // Step 2: Submitting (UserOp sent, waiting for on-chain confirmation)
+  // Step 2: Submitting (sent to relayer, waiting for on-chain confirmation)
   const submittingStatus: StepStatus = isTransactionError
     ? "failed"
     : isComplete
       ? "completed"
-      : isConfirming
+      : isSubmitting
         ? "active"
-        : isSubmitting
-          ? "active"
-          : "pending";
+        : "pending";
 
   // Step 3: Complete
   const completeStatus: StepStatus = isComplete ? "completed" : "pending";
@@ -167,11 +161,9 @@ export function WithdrawalTimelineScreen({
       duration: timings["preparing"]?.duration,
     },
     {
-      label: isConfirming ? "Confirming" : "Submitting",
+      label: "Submitting",
       status: submittingStatus,
-      description: isConfirming
-        ? "Waiting for on-chain confirmation."
-        : "Submitting withdrawal to bundler.",
+      description: "Submitting withdrawal to relayer.",
       errorMessage: failedAtStep === "submitting" ? getErrorMessage() : undefined,
       link:
         explorerUrl && submittingStatus !== "pending"

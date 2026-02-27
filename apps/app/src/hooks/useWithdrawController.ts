@@ -30,7 +30,7 @@ export function useWithdrawController() {
   useEffect(() => {
     return () => {
       const { status } = WithdrawController.state.state;
-      if (status !== "submitting" && status !== "confirming") {
+      if (status !== "submitting") {
         WithdrawController.reset();
       }
     };

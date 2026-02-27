@@ -9,7 +9,7 @@ import {
   makeChainKey,
   serializeTree,
   deserializeTree,
-  type PersistenceCallbacks,
+  type StorageLayer,
   type SerializableDiscoveryState,
   type NoteTree,
   type SerializableNoteNode,
@@ -165,9 +165,9 @@ export class NotesRepository {
    * Get persistence callbacks for SDK's createShinobiAccount.
    * Same load/save logic as discoverNotes() but exposed for external use.
    */
-  getPersistenceCallbacks(): PersistenceCallbacks {
+  getStorageLayer(): StorageLayer {
     return {
-      loadState: async (
+      read: async (
         pubKey: string,
         pool: string
       ): Promise<SerializableDiscoveryState | null> => {
@@ -190,7 +190,7 @@ export class NotesRepository {
         };
       },
 
-      saveState: async (pubKey: string, pool: string, state: SerializableDiscoveryState) => {
+      write: async (pubKey: string, pool: string, state: SerializableDiscoveryState) => {
         const trees = state.trees.map((t) => t.tree);
 
         await this.storeData(

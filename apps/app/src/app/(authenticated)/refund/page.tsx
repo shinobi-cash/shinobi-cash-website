@@ -10,7 +10,6 @@ import { useRefundController } from "@/hooks/useRefundController";
 import { RefundController, RefundSelectors } from "@/controllers/RefundController";
 import { POOL_CHAIN_ID } from "@/config/chains";
 import type { RefundType } from "@shinobi-cash/core/intent";
-import type { WalletClient, Account, Transport, Chain } from "viem";
 
 type RefundScreen = "preview" | "timeline";
 
@@ -79,7 +78,7 @@ export default function RefundPage() {
         }
       }
 
-      await RefundController.submit(walletClient as WalletClient<Transport, Chain, Account>);
+      await RefundController.submit(walletClient);
     } else {
       await RefundController.submit();
     }
