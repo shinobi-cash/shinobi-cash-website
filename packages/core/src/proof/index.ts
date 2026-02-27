@@ -60,6 +60,20 @@ function padArray(arr: bigint[], length: number): bigint[] {
   return [...arr, ...Array(length - arr.length).fill(BigInt(0))];
 }
 
+/** Recompute LeanIMT root from a Merkle inclusion proof (mirrors the circuit logic) */
+function computeLeanIMTRoot(leaf: bigint, siblings: bigint[], leafIndex: number): bigint {
+  let current = leaf;
+  for (let i = 0; i < siblings.length; i++) {
+    const sibling = siblings[i];
+    if (sibling === 0n) continue; // empty sibling → propagate
+    const bit = (leafIndex >> i) & 1;
+    current = bit === 0
+      ? poseidon2([current, sibling])
+      : poseidon2([sibling, current]);
+  }
+  return current;
+}
+
 /**
  * Build withdrawal circuit witness using precomputed ASP proof from IPFS
  * Skips ASP tree building - uses proof directly from v2.1 format
@@ -92,6 +106,29 @@ export function buildWithdrawalCircuitWitnessWithProof(
   }
 
   const stateProof = stateTree.generateProof(stateIndex);
+
+  // Pre-verify ASP Merkle proof (mirrors circom line 82: ASPRoot === ASPRootChecker.out)
+  const aspSiblingsBigInt = aspProof.siblings.map(BigInt);
+  const computedASPRoot = computeLeanIMTRoot(intent.label, aspSiblingsBigInt, aspProof.index);
+  const claimedASPRoot = BigInt(aspProof.aspRoot);
+  if (computedASPRoot !== claimedASPRoot) {
+    throw new Error(
+      `ASP Merkle proof invalid: computed root ${computedASPRoot} does not match claimed root ${claimedASPRoot}. ` +
+      `Label: ${intent.label}, index: ${aspProof.index}, depth: ${aspProof.treeDepth}`
+    );
+  }
+
+  // Pre-verify state Merkle proof
+  const computedStateRoot = computeLeanIMTRoot(
+    existingCommitmentBigInt,
+    stateProof.siblings,
+    stateProof.index,
+  );
+  if (computedStateRoot !== stateProof.root) {
+    throw new Error(
+      `State Merkle proof invalid: computed root ${computedStateRoot} does not match claimed root ${stateProof.root}`
+    );
+  }
 
   return {
     withdrawnValue: withdrawAmount.toString(),

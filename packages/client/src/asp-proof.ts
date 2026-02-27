@@ -35,6 +35,7 @@ interface SubtreeProofFile {
   subtreeIndex: number;
   labels: string[];
   siblings: string[][];
+  indices: number[];
 }
 
 /**
@@ -130,7 +131,10 @@ async function resolveFromMainFile(
     throw new Error(`Proof not found for label ${labelStr} at index ${localIndex}`);
   }
 
-  const globalIndex = computeGlobalIndex(mainFile.subtrees, subtreeIndex, localIndex);
+  // Use the stored global index from the proof file (the position in the globally sorted tree)
+  // Falls back to computeGlobalIndex for older proof files without indices
+  const globalIndex = proofFile.indices?.[localIndex]
+    ?? computeGlobalIndex(mainFile.subtrees, subtreeIndex, localIndex);
 
   return {
     aspRoot: mainFile.root,
