@@ -14,7 +14,7 @@ import { getShinobiClient } from "@/runtime/ClientSingleton";
 import { createShinobiSolver } from "@/utils/solver";
 import { RELAYER_URL } from "@/config/constants";
 import { createStateMachine } from "@/utils/stateMachine";
-import { type AppError, Errors, getUserMessage } from "@/lib/errors/errors";
+import { type AppError, Errors, getUserMessage, logError } from "@/lib/errors/errors";
 import { PREVIEW_DEBOUNCE_MS } from "@/constants/timings";
 
 const relayer = createBundlerRelayer({ url: RELAYER_URL });
@@ -487,7 +487,7 @@ export const WithdrawController = {
       state.fillDeadlineSeconds = quote.fillDeadlineSeconds;
       state.expirySeconds = quote.expirySeconds;
     } catch (error) {
-      console.warn("[WithdrawController] Failed to fetch withdrawal chain config:", error);
+      logError(Errors.network.requestFailed("Failed to fetch withdrawal chain config", error));
     }
   },
 

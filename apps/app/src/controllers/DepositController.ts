@@ -6,7 +6,7 @@ import { parseEther, formatEther } from "viem";
 import type { WalletClient } from "viem";
 import { AuthController } from "@/controllers/AuthController";
 import { NotesDiscoveryController } from "@/controllers/NotesDiscoveryController";
-import { type AppError, Errors, getUserMessage } from "@/lib/errors/errors";
+import { type AppError, Errors, getUserMessage, logError } from "@/lib/errors/errors";
 import { PREPARE_DEBOUNCE_MS } from "@/constants/timings";
 import { withDeposit } from "@shinobi-cash/client/deposit";
 import { withCrosschainDeposit } from "@shinobi-cash/client/crosschain-deposit";
@@ -368,7 +368,7 @@ export const DepositController = {
       state.fillDeadlineSeconds = defaults.fillDeadlineSeconds;
       state.expirySeconds = defaults.expirySeconds;
     } catch (error) {
-      console.warn("[DepositController] Failed to fetch contract defaults:", error);
+      logError(Errors.network.requestFailed("Failed to fetch contract defaults", error));
     }
   },
 

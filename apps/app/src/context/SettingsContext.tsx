@@ -1,9 +1,11 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { logError } from "@/lib/errors/errors";
 
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-interface Settings {}
+interface Settings {
+  [key: string]: unknown;
+}
 
 interface SettingsContextType {
   settings: Settings;
@@ -26,7 +28,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         return { ...defaultSettings, ...JSON.parse(stored) };
       }
     } catch (error) {
-      console.error("Failed to load settings:", error);
+      logError(error);
     }
 
     return defaultSettings;
@@ -36,7 +38,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     try {
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
     } catch (error) {
-      console.error("Failed to save settings:", error);
+      logError(error);
     }
   }, [settings]);
 
