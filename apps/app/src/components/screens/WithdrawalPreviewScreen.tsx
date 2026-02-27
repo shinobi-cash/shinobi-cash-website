@@ -9,7 +9,7 @@ import { Section, Row } from "@/components/shared/Section";
 import { LabelWithHover } from "@/components/shared/LabelWithHover";
 import { NoteAvatarStack } from "@/components/shared/NoteAvatarGroup";
 import { usePriceData } from "@/hooks/usePriceData";
-import { formatUsdAmount, formatHash, formatDisplayAmount } from "@/utils/formatters";
+import { formatUsdAmount, formatHash, formatDisplayAmount, formatHumanDuration } from "@/utils/formatters";
 import {
   POOL_CHAIN,
   SHINOBI_CASH_SUPPORTED_CHAINS,
@@ -61,18 +61,8 @@ export function WithdrawalPreviewScreen({
   const destinationChain =
     SHINOBI_CASH_SUPPORTED_CHAINS.find((c) => c.id === destinationChainId) ?? POOL_CHAIN;
 
-  // Format timing for display
-  const formatDuration = (seconds: number) => {
-    if (seconds >= 3600) {
-      const hours = Math.floor(seconds / 3600);
-      return `${hours} hour${hours > 1 ? "s" : ""}`;
-    }
-    const minutes = Math.floor(seconds / 60);
-    return `${minutes} minute${minutes > 1 ? "s" : ""}`;
-  };
-
-  const fillDeadline = formatDuration(fillDeadlineSeconds);
-  const expiry = formatDuration(expirySeconds);
+  const fillDeadline = formatHumanDuration(fillDeadlineSeconds);
+  const expiry = formatHumanDuration(expirySeconds);
   const solverFeePercent = solverFeeBPS / 100;
 
   return (

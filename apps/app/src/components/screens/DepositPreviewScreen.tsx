@@ -7,7 +7,7 @@ import { ScreenLayout } from "@/components/layout/ScreenLayout";
 import { Section, Row } from "@/components/shared/Section";
 import { LabelWithHover } from "@/components/shared/LabelWithHover";
 import { usePriceData } from "@/hooks/usePriceData";
-import { formatUsdAmount, formatDisplayAmount } from "@/utils/formatters";
+import { formatUsdAmount, formatDisplayAmount, formatHumanDuration } from "@/utils/formatters";
 import {
   POOL_CHAIN,
   SHINOBI_CASH_SUPPORTED_CHAINS,
@@ -71,18 +71,8 @@ export function DepositPreviewScreen({
   const originChain =
     SHINOBI_CASH_SUPPORTED_CHAINS.find((c) => c.id === originChainId) ?? POOL_CHAIN;
 
-  // Format timing for display
-  const formatDuration = (seconds: number) => {
-    if (seconds >= 3600) {
-      const hours = Math.floor(seconds / 3600);
-      return `${hours} hour${hours > 1 ? "s" : ""}`;
-    }
-    const minutes = Math.floor(seconds / 60);
-    return `${minutes} minute${minutes > 1 ? "s" : ""}`;
-  };
-
-  const fillDeadline = formatDuration(fillDeadlineSeconds);
-  const expiry = formatDuration(expirySeconds);
+  const fillDeadline = formatHumanDuration(fillDeadlineSeconds);
+  const expiry = formatHumanDuration(expirySeconds);
 
   return (
     <ScreenLayout
