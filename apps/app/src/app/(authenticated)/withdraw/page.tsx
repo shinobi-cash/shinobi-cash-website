@@ -123,8 +123,8 @@ export default function WithdrawPage() {
 
     return (
       <NoteSelectionScreen
-        availableNotes={[...state.notes.notes]}
-        selectedNotes={[...state.selectedNotes]}
+        availableNotes={state.notes.notes}
+        selectedNotes={state.selectedNotes}
         onToggleNote={handleToggleNote}
         onClearSelection={() => WithdrawController.clearNotes()}
         onBack={screens.close}
@@ -223,7 +223,7 @@ export default function WithdrawPage() {
                 </span>
               )}
               <NoteAvatarGroup
-                notes={[...state.selectedNotes]}
+                notes={state.selectedNotes}
                 maxNotes={2}
                 onClick={() => screens.navigate("noteSelection")}
                 disabled={isProcessing}

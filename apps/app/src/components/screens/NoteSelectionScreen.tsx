@@ -15,9 +15,9 @@ import { Button } from "@workspace/ui/components/button";
 import { NoteAvatarStack } from "@/components/shared/NoteAvatarGroup";
 
 interface NoteSelectionScreenProps {
-  availableNotes: Note[];
+  availableNotes: readonly Note[];
   /** Currently selected notes (supports 1-2 for Withdraw2) */
-  selectedNotes: Note[];
+  selectedNotes: readonly Note[];
   /** Toggle a note's selection state */
   onToggleNote: (note: Note) => void;
   /** Clear all selections */
@@ -30,7 +30,7 @@ interface NoteSelectionScreenProps {
 
 /** Legacy single-note props for backward compatibility */
 interface LegacyNoteSelectionScreenProps {
-  availableNotes: Note[];
+  availableNotes: readonly Note[];
   selectedNote: Note | null;
   onSelectNote: (note: Note) => void;
   onBack: () => void;
