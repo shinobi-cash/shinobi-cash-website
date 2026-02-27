@@ -25,7 +25,7 @@ import { getShinobiClient } from "@/runtime/ClientSingleton";
 import { createShinobiSolver } from "@/utils/solver";
 import { RELAYER_URL } from "@/config/constants";
 import { indexerClient } from "@/lib/indexer/client";
-import { Errors, logError } from "@/lib/errors/errors";
+import { Errors, logError, isUserCancellation } from "@/lib/errors/errors";
 
 const relayer = createBundlerRelayer({ url: RELAYER_URL });
 const solver = createShinobiSolver();
@@ -168,11 +168,8 @@ export class RefundEngine {
       this.state.result = { txHash, refundType: "deposit" };
       return this.state.result;
     } catch (error) {
-      if (error instanceof Error) {
-        const msg = error.message.toLowerCase();
-        if (msg.includes("user rejected") || msg.includes("user denied")) {
-          throw Errors.blockchain.userRejected(error);
-        }
+      if (isUserCancellation(error)) {
+        throw Errors.blockchain.userRejected(error);
       }
       logError(error, { action: "executeDepositRefund" });
       throw Errors.blockchain.transactionFailed("Deposit refund failed", error);
