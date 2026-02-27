@@ -289,7 +289,9 @@ export const DepositController = {
     clearPrepareTimeout();
     state.amount = "";
     state.lastPreparedAmounts = null;
-    transition({ status: "idle" });
+    if (state.state.status !== "idle") {
+      transition({ status: "idle" });
+    }
   },
 
   setSolverFeeBPS(feeBPS: number) {

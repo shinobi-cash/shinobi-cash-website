@@ -451,7 +451,9 @@ export const WithdrawController = {
     state.solverFeeBPS = FEE_CONFIG.DEFAULT_SOLVER_FEE_BPS;
     state.fillDeadlineSeconds = INTENT_TIMING.FILL_DEADLINE_SECONDS;
     state.expirySeconds = INTENT_TIMING.EXPIRY_SECONDS;
-    transition({ status: "idle" });
+    if (state.state.status !== "idle") {
+      transition({ status: "idle" });
+    }
   },
 
   setSolverFeeBPS(feeBPS: number): void {

@@ -97,7 +97,7 @@ const { transition } = createStateMachine<DiscoveryState>({
   allowedTransitions: {
     idle: ["discovering", "ready"],
     discovering: ["ready", "error", "idle"],
-    ready: ["discovering"],
+    ready: ["discovering", "idle"],
     error: ["idle", "discovering"],
   },
   getState: () => state.state,
@@ -368,7 +368,9 @@ export const NotesDiscoveryController = {
     }
 
     // Reset state
-    transition({ status: "idle" });
+    if (state.state.status !== "idle") {
+      transition({ status: "idle" });
+    }
     state.noteTrees = [];
     state.activities = [];
     state.progress = null;
