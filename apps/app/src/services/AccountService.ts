@@ -45,12 +45,22 @@ export class AccountService {
 
   async initializeAccountSession(accountId: WalletAccountId, masterKey: string): Promise<void> {
     if (!masterKey || masterKey.length !== 66) {
-      throw new Error("CRITICAL: initializeAccountSession called without valid Master Key");
+      throw Errors.auth.failed("initializeAccountSession called without valid Master Key");
     }
 
     // Derive DEK first (can throw) - don't set state until all async ops succeed
-    const dek = await keyDerivationService.deriveDataEncryptionKey(masterKey);
-    await notesStorageAdapter.initializeSession(dek);
+    let dek: CryptoKey;
+    try {
+      dek = await keyDerivationService.deriveDataEncryptionKey(masterKey);
+    } catch (error) {
+      throw Errors.auth.failed("Failed to derive data encryption key", error);
+    }
+
+    try {
+      await notesStorageAdapter.initializeSession(dek);
+    } catch (error) {
+      throw Errors.auth.failed("Failed to initialize encrypted storage", error);
+    }
 
     // All async operations succeeded - now set state
     this.currentAccountName = accountId;
@@ -61,7 +71,7 @@ export class AccountService {
       // Rollback on final validation failure
       this.currentAccountName = null;
       this.masterKey = null;
-      throw new Error("CRITICAL: Session initialization incomplete (DEK missing)");
+      throw Errors.auth.failed("Session initialization incomplete (DEK missing)");
     }
   }
 
