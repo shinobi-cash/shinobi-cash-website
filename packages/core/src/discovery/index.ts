@@ -21,7 +21,7 @@ import type {
   Note,
   SpendableNote,
   ActivityFetcher,
-  PersistenceCallbacks,
+  StorageLayer,
   SerializableDiscoveryState,
   ChainKey,
 } from "./types.js";
@@ -137,9 +137,9 @@ export type {
   DiscoveryOptions,
   // Crypto provider for discovery derivations
   NoteDeriver,
-  // For implementing persistence callbacks
+  // I/O interfaces
   ActivityFetcher,
-  PersistenceCallbacks,
+  StorageLayer,
   SerializableDiscoveryState,
   SerializableNoteNode,
   NullifierInfo,
@@ -149,7 +149,7 @@ export type {
 // Re-export ActivityItem type for consumers
 export type { ActivityItem } from "@shinobi-cash/data";
 
-// For persistence callback implementation
+// For storage layer implementation
 export { makeChainKey } from "./types.js";
 
 // ============================================================================
@@ -161,14 +161,14 @@ export { makeChainKey } from "./types.js";
  *
  * Usage:
  * ```typescript
- * const discovery = new NoteDiscovery(activityFetcher, persistenceCallbacks);
+ * const discovery = new NoteDiscovery(activityFetcher, storage);
  * const result = await discovery.sync(accountId, poolAddress, accountKey, options);
  * ```
  */
 export class NoteDiscovery {
   constructor(
     private readonly fetcher: ActivityFetcher,
-    private readonly persistence: PersistenceCallbacks
+    private readonly storage: StorageLayer
   ) {}
 
   /**
@@ -339,7 +339,7 @@ export class NoteDiscovery {
   }
 
   private async loadOrInitState(accountId: string, poolAddress: string): Promise<DiscoveryState> {
-    const cached = await this.persistence.loadState(accountId, poolAddress);
+    const cached = await this.storage.read(accountId, poolAddress);
     if (cached) {
       return deserializeDiscoveryState(cached);
     }
@@ -360,7 +360,7 @@ export class NoteDiscovery {
     state: DiscoveryState
   ): Promise<void> {
     const serializable = serializeDiscoveryState(state);
-    await this.persistence.saveState(accountId, poolAddress, serializable);
+    await this.storage.write(accountId, poolAddress, serializable);
   }
 
   private buildResult(state: DiscoveryState): DiscoveryResult {

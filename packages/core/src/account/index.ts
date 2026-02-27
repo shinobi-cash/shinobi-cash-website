@@ -1,25 +1,12 @@
 /**
  * @shinobi-cash/core/account
  *
- * Account-centric SDK API. Simple operations (deposit, ragequit, deposit refund)
- * return { to, data, value, chainId } that any wallet can send. Complex operations
- * (withdrawal) return prepared call data for bundler/UserOp submission.
+ * ShinobiAccount = protocol encoder. Given pre-built inputs, derives crypto,
+ * generates proofs, returns Call { to, value, data }. Zero knowledge of
+ * indexer, bundler, solver, IPFS, fees, paymasters, gas limits.
  */
 
-import {
-  SHINOBI_CASH_ENTRYPOINT,
-  POOL_CHAIN,
-  FEE_CONFIG,
-  SAME_CHAIN_GAS_LIMITS,
-  CROSS_CHAIN_GAS_LIMITS,
-  WITHDRAW2_SAME_CHAIN_GAS_LIMITS,
-  WITHDRAW2_CROSS_CHAIN_GAS_LIMITS,
-  WITHDRAWAL_REFUND_GAS_LIMITS,
-  SHINOBI_CASH_RELAY_WITHDRAWAL_PAYMASTER,
-  SHINOBI_CASH_CROSSCHAIN_WITHDRAWAL_PAYMASTER,
-  SHINOBI_CASH_WITHDRAW2_PAYMASTER,
-  SHINOBI_CASH_CROSSCHAIN_WITHDRAW2_PAYMASTER,
-} from "@shinobi-cash/constants";
+import { SHINOBI_CASH_ENTRYPOINT, FEE_CONFIG, POOL_CHAIN } from "@shinobi-cash/constants";
 
 import {
   deriveDepositNullifier,
@@ -36,8 +23,6 @@ import {
   deriveWithdraw2Inputs,
   deriveCrosschainWithdraw2Inputs,
   deriveRagequitInputs,
-  createWithdrawalData,
-  createCrossChainWithdrawalData,
   formatProofForContract,
   formatCrossChainProofForContract,
   formatWithdraw2SameChainProofForContract,
@@ -51,23 +36,7 @@ import {
   derivedNoteCommitment,
 } from "../withdrawal/index.js";
 
-import {
-  buildWithdrawalCircuitWitness,
-  buildCrosschainWithdrawalCircuitWitness,
-  buildWithdraw2CircuitWitness,
-  buildCrosschainWithdraw2CircuitWitness,
-  httpCircuitFetcher,
-  createDefaultProofGenerator,
-} from "../proof/index.js";
-
-import {
-  classifyWithdrawal,
-  calculateFeesFromBPS,
-  calculateTotalGas,
-  calculateRelayFeeBPS,
-  calculateSolverFeeBPS,
-  type WithdrawalFeeQuote,
-} from "../fees/index.js";
+import type { ProofGenerator } from "../proof/types.js";
 
 import { poseidon1 } from "poseidon-lite/poseidon1";
 import { parseUserKey } from "../crypto/primitives.js";
@@ -80,32 +49,26 @@ import { encodeRefundCallData } from "../intent/index.js";
 import type {
   ShinobiAccount,
   ShinobiAccountConfig,
-  TransactionRequest,
-  PreparedWithdrawal,
-  PreparedWithdrawalRefund,
-  DepositParams,
-  WithdrawParams,
-  Withdraw2Params,
-  RagequitParams,
-  RefundDepositParams,
-  WithdrawalRefundParams,
+  Call,
+  EncodeDepositParams,
+  EncodeCrosschainDepositParams,
+  EncodeWithdrawalParams,
+  EncodeWithdraw2Params,
+  EncodeRagequitParams,
+  EncodeRefundParams,
 } from "./types.js";
 
 export type {
   ShinobiAccount,
   ShinobiAccountConfig,
   ShinobiCredential,
-  TransactionRequest,
-  PreparedWithdrawal,
-  PreparedWithdrawalRefund,
-  WithdrawalFeeQuote,
-  DepositParams,
-  WithdrawQuoteParams,
-  WithdrawParams,
-  Withdraw2Params,
-  RagequitParams,
-  RefundDepositParams,
-  WithdrawalRefundParams,
+  Call,
+  EncodeDepositParams,
+  EncodeCrosschainDepositParams,
+  EncodeWithdrawalParams,
+  EncodeWithdraw2Params,
+  EncodeRagequitParams,
+  EncodeRefundParams,
 } from "./types.js";
 
 const DEFAULT_DEPOSIT_SETTINGS = {
@@ -115,12 +78,23 @@ const DEFAULT_DEPOSIT_SETTINGS = {
 };
 
 export function createShinobiAccount(config: ShinobiAccountConfig): ShinobiAccount {
-  const {
-    credential,
-    getCircuits,
-  } = config;
+  const { credential, getCircuits } = config;
 
-  const proofGenerator = createDefaultProofGenerator(getCircuits ?? httpCircuitFetcher("/circuits/"));
+  // Proof module loaded lazily — only when encodeWithdrawal/encodeWithdraw2/encodeRagequit is called
+  let _proofModule: typeof import("../proof/index.js") | null = null;
+  async function loadProofModule() {
+    if (!_proofModule) _proofModule = await import("../proof/index.js");
+    return _proofModule;
+  }
+
+  let _proofGenerator: ProofGenerator | null = null;
+  async function getProofGenerator() {
+    if (!_proofGenerator) {
+      const { createDefaultProofGenerator, httpCircuitFetcher } = await loadProofModule();
+      _proofGenerator = createDefaultProofGenerator(getCircuits ?? httpCircuitFetcher("/circuits/"));
+    }
+    return _proofGenerator;
+  }
 
   const { privateKey } = credential;
   const accountSecret = parseUserKey(privateKey);
@@ -142,170 +116,103 @@ export function createShinobiAccount(config: ShinobiAccountConfig): ShinobiAccou
 
   // ========== Deposit ==========
 
-  function deposit(params: DepositParams): TransactionRequest {
-    const { poolAddress, amountWei, chainId, depositIndex, settings, useDefaults = true } = params;
-
+  function _deriveDepositPrecommitment(poolAddress: string, chainId: number, depositIndex: number): bigint {
     const nullifier = deriveDepositNullifier(accountSecret, poolAddress, chainId, depositIndex);
     const secret = deriveDepositSecret(accountSecret, poolAddress, chainId, depositIndex);
-    const precommitment = derivePrecommitment(nullifier, secret);
+    return derivePrecommitment(nullifier, secret);
+  }
 
-    const route = resolveDepositRoute(chainId);
-    const callParams = buildDepositCallParams(
-      route,
-      precommitment,
-      settings ?? DEFAULT_DEPOSIT_SETTINGS,
-      useDefaults,
-    );
+  function encodeDeposit(params: EncodeDepositParams): Call {
+    const { poolAddress, amountWei, depositIndex } = params;
+
+    const precommitment = _deriveDepositPrecommitment(poolAddress, POOL_CHAIN.id, depositIndex);
+    const route = resolveDepositRoute(POOL_CHAIN.id);
+    const callParams = buildDepositCallParams(route, precommitment, DEFAULT_DEPOSIT_SETTINGS, true);
     const data = encodeDepositCallData(callParams);
 
-    return { to: callParams.address, data, value: amountWei, chainId };
+    return { to: callParams.address, data, value: amountWei };
+  }
+
+  function encodeCrosschainDeposit(params: EncodeCrosschainDepositParams): Call {
+    const { poolAddress, amountWei, chainId, depositIndex, settings, useDefaults = true } = params;
+
+    const precommitment = _deriveDepositPrecommitment(poolAddress, chainId, depositIndex);
+    const route = resolveDepositRoute(chainId);
+    const callParams = buildDepositCallParams(route, precommitment, settings ?? DEFAULT_DEPOSIT_SETTINGS, useDefaults);
+    const data = encodeDepositCallData(callParams);
+
+    return { to: callParams.address, data, value: amountWei };
   }
 
   // ========== Withdrawal ==========
 
-  async function prepareWithdrawal(params: WithdrawParams): Promise<PreparedWithdrawal> {
-    const { poolAddress, note, amountWei, recipient, destinationChainId, gasPriceWei, poolScope, stateCommitments, aspLabels } = params;
-    const poolChainId = POOL_CHAIN.id;
-    const kind = classifyWithdrawal(destinationChainId, poolChainId);
-    const isCrossChain = kind === "cross-chain";
-
-    // Fee quote
-    const gasLimits = isCrossChain ? CROSS_CHAIN_GAS_LIMITS : SAME_CHAIN_GAS_LIMITS;
-    const totalGas = calculateTotalGas(gasLimits);
-    const estimatedGasCostWei = totalGas * gasPriceWei;
-    const relayFeeBPS = calculateRelayFeeBPS(amountWei, estimatedGasCostWei, FEE_CONFIG.MAX_RELAY_FEE_BPS);
-    const solverFeeBPS = calculateSolverFeeBPS(kind);
-    const { executionFeeWei, solverFeeWei, totalFeeWei } = calculateFeesFromBPS(amountWei, relayFeeBPS, solverFeeBPS);
-    const netAmountWei = amountWei > totalFeeWei ? amountWei - totalFeeWei : 0n;
-    const feeQuote: WithdrawalFeeQuote = { relayFeeBPS, solverFeeBPS, executionFeeWei, solverFeeWei, totalFeeWei, netAmountWei };
-
-    const paymasterAddress = isCrossChain
-      ? SHINOBI_CASH_CROSSCHAIN_WITHDRAWAL_PAYMASTER.address as `0x${string}`
-      : SHINOBI_CASH_RELAY_WITHDRAWAL_PAYMASTER.address as `0x${string}`;
-
-    // Withdrawal data
-    const withdrawalData = isCrossChain
-      ? createCrossChainWithdrawalData(recipient, destinationChainId!, paymasterAddress, BigInt(solverFeeBPS))
-      : createWithdrawalData(recipient, paymasterAddress, BigInt(relayFeeBPS));
-
-    // Derive inputs
-    const derivation = isCrossChain
-      ? deriveCrosschainWithdrawalInputs(note, accountSecret, poolAddress, poolScope, withdrawalData)
-      : deriveWithdrawalInputs(note, accountSecret, poolAddress, poolScope, withdrawalData);
-
-    // Build circuit intent
-    const circuitIntent = isCrossChain
-      ? { withdrawAmount: amountWei, noteAmount: BigInt(note.amount), label: BigInt(note.label), relayFeeBPS: BigInt(relayFeeBPS), refundFeeBPS: BigInt(relayFeeBPS) }
-      : { withdrawAmount: amountWei, noteAmount: BigInt(note.amount), label: BigInt(note.label) };
-
-    // Build witness
-    const circuitWitness = isCrossChain
-      ? buildCrosschainWithdrawalCircuitWitness(derivation as Parameters<typeof buildCrosschainWithdrawalCircuitWitness>[0], stateCommitments, aspLabels, circuitIntent as Parameters<typeof buildCrosschainWithdrawalCircuitWitness>[3])
-      : buildWithdrawalCircuitWitness(derivation as Parameters<typeof buildWithdrawalCircuitWitness>[0], stateCommitments, aspLabels, circuitIntent);
-
-    // Generate proof
-    const proofData = isCrossChain
-      ? await proofGenerator.generateCrosschainWithdrawalProof(circuitWitness as Parameters<typeof proofGenerator.generateCrosschainWithdrawalProof>[0])
-      : await proofGenerator.generateWithdrawalProof(circuitWitness);
-
-    // Format proof and encode calldata
+  async function encodeWithdrawal(params: EncodeWithdrawalParams): Promise<Call> {
+    const { note, poolAddress, poolScope, stateCommitments, aspProof, withdrawalData, amountWei, isCrossChain, relayFeeBPS, refundFeeBPS } = params;
     const [processooor, data] = withdrawalData;
     const wd = { processooor, data };
-    const callData = isCrossChain
-      ? encodeCrossChainWithdrawalCallData(wd, formatCrossChainProofForContract(proofData.proof, proofData.publicSignals), poolScope)
-      : encodeRelayCallData(wd, formatProofForContract(proofData.proof, proofData.publicSignals), poolScope);
+    const baseIntent = { withdrawAmount: amountWei, noteAmount: BigInt(note.amount), label: BigInt(note.label) };
 
-    return {
-      callData,
-      to: SHINOBI_CASH_ENTRYPOINT.address as `0x${string}`,
-      feeQuote,
-      gasLimits,
-      paymasterAddress,
-      kind,
-    };
+    const proof = await loadProofModule();
+    const pg = await getProofGenerator();
+
+    let callData: `0x${string}`;
+    if (isCrossChain) {
+      const derivation = deriveCrosschainWithdrawalInputs(note, accountSecret, poolAddress, poolScope, withdrawalData);
+      const witness = proof.buildCrosschainWithdrawalCircuitWitnessWithProof(
+        derivation, stateCommitments, aspProof,
+        { ...baseIntent, relayFeeBPS: relayFeeBPS!, refundFeeBPS: refundFeeBPS! },
+      );
+      const proofData = await pg.generateCrosschainWithdrawalProof(witness);
+      callData = encodeCrossChainWithdrawalCallData(wd, formatCrossChainProofForContract(proofData.proof, proofData.publicSignals), poolScope);
+    } else {
+      const derivation = deriveWithdrawalInputs(note, accountSecret, poolAddress, poolScope, withdrawalData);
+      const witness = proof.buildWithdrawalCircuitWitnessWithProof(derivation, stateCommitments, aspProof, baseIntent);
+      const proofData = await pg.generateWithdrawalProof(witness);
+      callData = encodeRelayCallData(wd, formatProofForContract(proofData.proof, proofData.publicSignals), poolScope);
+    }
+
+    return { to: SHINOBI_CASH_ENTRYPOINT.address as `0x${string}`, value: 0n, data: callData };
   }
 
   // ========== Withdraw2 ==========
 
-  async function prepareWithdraw2(params: Withdraw2Params): Promise<PreparedWithdrawal> {
-    const { poolAddress, primaryNote, secondaryNote, amountWei, recipient, destinationChainId, gasPriceWei, poolScope, stateCommitments, aspLabels, labelSelector = 0 } = params;
-    const poolChainId = POOL_CHAIN.id;
-    const kind = classifyWithdrawal(destinationChainId, poolChainId);
-    const isCrossChain = kind === "cross-chain";
-
-    // Fee quote
-    const gasLimits = isCrossChain ? WITHDRAW2_CROSS_CHAIN_GAS_LIMITS : WITHDRAW2_SAME_CHAIN_GAS_LIMITS;
-    const totalGas = calculateTotalGas(gasLimits);
-    const estimatedGasCostWei = totalGas * gasPriceWei;
-    const relayFeeBPS = calculateRelayFeeBPS(amountWei, estimatedGasCostWei, FEE_CONFIG.MAX_RELAY_FEE_BPS);
-    const solverFeeBPS = calculateSolverFeeBPS(kind);
-    const { executionFeeWei, solverFeeWei, totalFeeWei } = calculateFeesFromBPS(amountWei, relayFeeBPS, solverFeeBPS);
-    const netAmountWei = amountWei > totalFeeWei ? amountWei - totalFeeWei : 0n;
-    const feeQuote: WithdrawalFeeQuote = { relayFeeBPS, solverFeeBPS, executionFeeWei, solverFeeWei, totalFeeWei, netAmountWei };
-
-    const paymasterAddress = isCrossChain
-      ? SHINOBI_CASH_CROSSCHAIN_WITHDRAW2_PAYMASTER.address as `0x${string}`
-      : SHINOBI_CASH_WITHDRAW2_PAYMASTER.address as `0x${string}`;
-
-    // Withdrawal data — use feeRecipient = paymaster for relay, solver fee for crosschain
-    const withdrawalData = isCrossChain
-      ? createCrossChainWithdrawalData(recipient, destinationChainId!, paymasterAddress, BigInt(solverFeeBPS))
-      : createWithdrawalData(recipient, paymasterAddress, BigInt(relayFeeBPS));
-
-    // Derive inputs
-    const derivation = isCrossChain
-      ? deriveCrosschainWithdraw2Inputs(primaryNote, secondaryNote, accountSecret, poolAddress, poolScope, withdrawalData, labelSelector)
-      : deriveWithdraw2Inputs(primaryNote, secondaryNote, accountSecret, poolAddress, poolScope, withdrawalData, labelSelector);
-
-    // Build circuit intent
-    const circuitIntent = isCrossChain
-      ? {
-          withdrawAmount: amountWei,
-          primaryNoteAmount: BigInt(primaryNote.amount),
-          primaryLabel: BigInt(primaryNote.label),
-          secondaryNoteAmount: BigInt(secondaryNote.amount),
-          secondaryLabel: BigInt(secondaryNote.label),
-          relayFeeBPS: BigInt(relayFeeBPS),
-          refundFeeBPS: BigInt(relayFeeBPS),
-        }
-      : {
-          withdrawAmount: amountWei,
-          primaryNoteAmount: BigInt(primaryNote.amount),
-          primaryLabel: BigInt(primaryNote.label),
-          secondaryNoteAmount: BigInt(secondaryNote.amount),
-          secondaryLabel: BigInt(secondaryNote.label),
-        };
-
-    // Build witness
-    const circuitWitness = isCrossChain
-      ? buildCrosschainWithdraw2CircuitWitness(derivation as Parameters<typeof buildCrosschainWithdraw2CircuitWitness>[0], stateCommitments, aspLabels, circuitIntent as Parameters<typeof buildCrosschainWithdraw2CircuitWitness>[3])
-      : buildWithdraw2CircuitWitness(derivation as Parameters<typeof buildWithdraw2CircuitWitness>[0], stateCommitments, aspLabels, circuitIntent);
-
-    // Generate proof
-    const proofData = isCrossChain
-      ? await proofGenerator.generateCrosschainWithdraw2Proof(circuitWitness as Parameters<typeof proofGenerator.generateCrosschainWithdraw2Proof>[0])
-      : await proofGenerator.generateWithdraw2Proof(circuitWitness);
-
-    // Format proof and encode calldata
+  async function encodeWithdraw2(params: EncodeWithdraw2Params): Promise<Call> {
+    const { primaryNote, secondaryNote, poolAddress, poolScope, stateCommitments, primaryASPProof, secondaryASPProof, withdrawalData, amountWei, labelSelector = 0, isCrossChain, relayFeeBPS, refundFeeBPS } = params;
     const [processooor, data] = withdrawalData;
     const wd = { processooor, data };
-    const callData = isCrossChain
-      ? encodeCrossChainWithdraw2CallData(wd, formatWithdraw2CrossChainProofForContract(proofData.proof, proofData.publicSignals), poolScope)
-      : encodeWithdraw2RelayCallData(wd, formatWithdraw2SameChainProofForContract(proofData.proof, proofData.publicSignals), poolScope);
-
-    return {
-      callData,
-      to: SHINOBI_CASH_ENTRYPOINT.address as `0x${string}`,
-      feeQuote,
-      gasLimits,
-      paymasterAddress,
-      kind,
+    const baseIntent = {
+      withdrawAmount: amountWei,
+      primaryNoteAmount: BigInt(primaryNote.amount),
+      primaryLabel: BigInt(primaryNote.label),
+      secondaryNoteAmount: BigInt(secondaryNote.amount),
+      secondaryLabel: BigInt(secondaryNote.label),
     };
+
+    const proof = await loadProofModule();
+    const pg = await getProofGenerator();
+
+    let callData: `0x${string}`;
+    if (isCrossChain) {
+      const derivation = deriveCrosschainWithdraw2Inputs(primaryNote, secondaryNote, accountSecret, poolAddress, poolScope, withdrawalData, labelSelector);
+      const witness = proof.buildCrosschainWithdraw2CircuitWitnessWithProof(
+        derivation, stateCommitments, primaryASPProof, secondaryASPProof,
+        { ...baseIntent, relayFeeBPS: relayFeeBPS!, refundFeeBPS: refundFeeBPS! },
+      );
+      const proofData = await pg.generateCrosschainWithdraw2Proof(witness);
+      callData = encodeCrossChainWithdraw2CallData(wd, formatWithdraw2CrossChainProofForContract(proofData.proof, proofData.publicSignals), poolScope);
+    } else {
+      const derivation = deriveWithdraw2Inputs(primaryNote, secondaryNote, accountSecret, poolAddress, poolScope, withdrawalData, labelSelector);
+      const witness = proof.buildWithdraw2CircuitWitnessWithProof(derivation, stateCommitments, primaryASPProof, secondaryASPProof, baseIntent);
+      const proofData = await pg.generateWithdraw2Proof(witness);
+      callData = encodeWithdraw2RelayCallData(wd, formatWithdraw2SameChainProofForContract(proofData.proof, proofData.publicSignals), poolScope);
+    }
+
+    return { to: SHINOBI_CASH_ENTRYPOINT.address as `0x${string}`, value: 0n, data: callData };
   }
 
   // ========== Ragequit ==========
 
-  async function ragequit(params: RagequitParams): Promise<TransactionRequest> {
+  async function encodeRagequit(params: EncodeRagequitParams): Promise<Call> {
     const { poolAddress, note } = params;
 
     if (!isSpendableNote(note)) {
@@ -324,38 +231,23 @@ export function createShinobiAccount(config: ShinobiAccountConfig): ShinobiAccou
       secret: derivation.existingSecret.toString(),
     };
 
-    if (!proofGenerator.generateRagequitProof) {
+    const pg = await getProofGenerator();
+    if (!pg.generateRagequitProof) {
       throw new Error("Ragequit proof generator not available");
     }
-    const proofData = await proofGenerator.generateRagequitProof(witness);
+    const proofData = await pg.generateRagequitProof(witness);
     const contractProof = formatRagequitProofForContract(proofData.proof, proofData.publicSignals);
     const data = encodeRagequitCallData(contractProof);
 
-    return {
-      to: poolAddress,
-      data,
-      value: 0n,
-      chainId: POOL_CHAIN.id,
-    };
+    return { to: poolAddress, value: 0n, data };
   }
 
-  // ========== Refunds ==========
+  // ========== Refund ==========
 
-  function refundDeposit(params: RefundDepositParams): TransactionRequest {
-    const { rawIntent, settlerAddress, originChainId } = params;
-    const data = encodeRefundCallData(rawIntent);
-    return { to: settlerAddress, data, value: 0n, chainId: originChainId };
-  }
-
-  function prepareWithdrawalRefund(params: WithdrawalRefundParams): PreparedWithdrawalRefund {
+  function encodeRefund(params: EncodeRefundParams): Call {
     const { rawIntent, settlerAddress } = params;
-    const callData = encodeRefundCallData(rawIntent);
-    return {
-      callData,
-      to: settlerAddress,
-      gasLimits: WITHDRAWAL_REFUND_GAS_LIMITS,
-      paymasterAddress: SHINOBI_CASH_CROSSCHAIN_WITHDRAWAL_PAYMASTER.address as `0x${string}`,
-    };
+    const data = encodeRefundCallData(rawIntent);
+    return { to: settlerAddress, value: 0n, data };
   }
 
   return {
@@ -363,11 +255,11 @@ export function createShinobiAccount(config: ShinobiAccountConfig): ShinobiAccou
     derivePrecommitment: _derivePrecommitment,
     deriveNullifierHash: _deriveNullifierHash,
     deriveNoteCommitment: _deriveNoteCommitment,
-    deposit,
-    prepareWithdrawal,
-    prepareWithdraw2,
-    ragequit,
-    refundDeposit,
-    prepareWithdrawalRefund,
+    encodeDeposit,
+    encodeCrosschainDeposit,
+    encodeWithdrawal,
+    encodeWithdraw2,
+    encodeRagequit,
+    encodeRefund,
   };
 }

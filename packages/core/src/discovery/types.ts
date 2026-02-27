@@ -625,9 +625,9 @@ export interface NoteDeriver {
   deriveNoteCommitment(note: SpendableNote): bigint;
 }
 
-export interface PersistenceCallbacks {
-  loadState: (accountId: string, poolAddress: string) => Promise<SerializableDiscoveryState | null>;
-  saveState: (
+export interface StorageLayer {
+  read: (accountId: string, poolAddress: string) => Promise<SerializableDiscoveryState | null>;
+  write: (
     accountId: string,
     poolAddress: string,
     state: SerializableDiscoveryState

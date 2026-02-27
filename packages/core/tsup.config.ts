@@ -18,7 +18,7 @@ export default defineConfig({
   },
   clean: true,
   sourcemap: true,
-  splitting: false,
+  splitting: true,
   external: [
     '@shinobi-cash/constants',
     '@shinobi-cash/data',

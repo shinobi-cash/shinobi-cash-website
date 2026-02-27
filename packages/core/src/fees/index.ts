@@ -151,3 +151,38 @@ export function quoteWithdraw2Fees(params: FeeQuoteParams): WithdrawalFeeQuote {
     crossChain: WITHDRAW2_CROSS_CHAIN_GAS_LIMITS,
   });
 }
+
+// ============================================================================
+// Deposit Fee Quotes
+// ============================================================================
+
+export interface DepositFeeQuote {
+  complianceFeeBPS: number;
+  solverFeeBPS: number;
+  complianceFeeWei: bigint;
+  solverFeeWei: bigint;
+  totalFeeWei: bigint;
+  noteAmountWei: bigint;
+}
+
+/**
+ * Quote fees for a deposit.
+ * Fee order: solver fee deducted first (cross-chain), then compliance on remainder.
+ */
+export function quoteDepositFees(params: {
+  amountWei: bigint;
+  isCrossChain: boolean;
+  solverFeeBPS?: number;
+}): DepositFeeQuote {
+  const { amountWei, isCrossChain } = params;
+  const complianceFeeBPS = FEE_CONFIG.VETTING_FEE_BPS;
+  const solverFeeBPS = isCrossChain ? (params.solverFeeBPS ?? FEE_CONFIG.DEFAULT_SOLVER_FEE_BPS) : 0;
+
+  const solverFeeWei = (amountWei * BigInt(solverFeeBPS)) / 10000n;
+  const afterSolver = amountWei - solverFeeWei;
+  const complianceFeeWei = (afterSolver * BigInt(complianceFeeBPS)) / 10000n;
+  const totalFeeWei = solverFeeWei + complianceFeeWei;
+  const noteAmountWei = amountWei - totalFeeWei;
+
+  return { complianceFeeBPS, solverFeeBPS, complianceFeeWei, solverFeeWei, totalFeeWei, noteAmountWei };
+}

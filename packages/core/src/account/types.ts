@@ -1,11 +1,14 @@
 /**
  * @shinobi-cash/core/account — Type definitions
+ *
+ * ShinobiAccount = protocol encoder. Given pre-built inputs, derives crypto,
+ * generates proofs, returns Call { to, value, data }. Zero knowledge of
+ * indexer, bundler, solver, IPFS, fees, paymasters, gas limits.
  */
 
 import type { SpendableNote } from "../discovery/types.js";
-import type { CircuitFetcher } from "../proof/types.js";
+import type { CircuitFetcher, PrecomputedASPProof } from "../proof/types.js";
 import type { DepositSettings } from "../deposit/index.js";
-import type { GasLimits, WithdrawalKind, WithdrawalFeeQuote } from "../fees/index.js";
 
 // ============================================================================
 // Credential
@@ -24,42 +27,27 @@ export interface ShinobiAccountConfig {
 }
 
 // ============================================================================
-// Return Types
+// Return Type
 // ============================================================================
 
-/** Framework-agnostic transaction request — any wallet can send this */
-export interface TransactionRequest {
+/** Protocol action encoded as a contract call — any wallet or bundler can send */
+export interface Call {
   to: `0x${string}`;
-  data: `0x${string}`;
   value: bigint;
-  chainId: number;
+  data: `0x${string}`;
 }
-
-/** Prepared withdrawal for bundler submission (ERC-4337) */
-export interface PreparedWithdrawal {
-  callData: `0x${string}`;
-  to: `0x${string}`;
-  feeQuote: WithdrawalFeeQuote;
-  gasLimits: GasLimits;
-  paymasterAddress: `0x${string}`;
-  kind: WithdrawalKind;
-}
-
-/** Prepared withdrawal refund for bundler submission */
-export interface PreparedWithdrawalRefund {
-  callData: `0x${string}`;
-  to: `0x${string}`;
-  gasLimits: GasLimits;
-  paymasterAddress: `0x${string}`;
-}
-
-export type { WithdrawalFeeQuote } from "../fees/index.js";
 
 // ============================================================================
-// Method Params
+// Encode Params
 // ============================================================================
 
-export interface DepositParams {
+export interface EncodeDepositParams {
+  poolAddress: `0x${string}`;
+  amountWei: bigint;
+  depositIndex: number;
+}
+
+export interface EncodeCrosschainDepositParams {
   poolAddress: `0x${string}`;
   amountWei: bigint;
   chainId: number;
@@ -68,47 +56,41 @@ export interface DepositParams {
   useDefaults?: boolean;
 }
 
-export interface WithdrawQuoteParams {
-  amountWei: bigint;
-  destinationChainId?: number;
-  gasPriceWei: bigint;
-}
-
-export interface WithdrawParams extends WithdrawQuoteParams {
-  poolAddress: `0x${string}`;
+export interface EncodeWithdrawalParams {
   note: SpendableNote;
-  recipient: `0x${string}`;
+  poolAddress: `0x${string}`;
   poolScope: bigint;
   stateCommitments: bigint[];
-  aspLabels: bigint[];
+  aspProof: PrecomputedASPProof;
+  withdrawalData: readonly [`0x${string}`, `0x${string}`];
+  amountWei: bigint;
+  isCrossChain: boolean;
+  relayFeeBPS?: bigint;
+  refundFeeBPS?: bigint;
 }
 
-export interface Withdraw2Params {
-  poolAddress: `0x${string}`;
+export interface EncodeWithdraw2Params {
   primaryNote: SpendableNote;
   secondaryNote: SpendableNote;
-  amountWei: bigint;
-  recipient: `0x${string}`;
-  destinationChainId?: number;
-  gasPriceWei: bigint;
+  poolAddress: `0x${string}`;
   poolScope: bigint;
   stateCommitments: bigint[];
-  aspLabels: bigint[];
+  primaryASPProof: PrecomputedASPProof;
+  secondaryASPProof: PrecomputedASPProof;
+  withdrawalData: readonly [`0x${string}`, `0x${string}`];
+  amountWei: bigint;
   labelSelector?: 0 | 1;
+  isCrossChain: boolean;
+  relayFeeBPS?: bigint;
+  refundFeeBPS?: bigint;
 }
 
-export interface RagequitParams {
-  poolAddress: `0x${string}`;
+export interface EncodeRagequitParams {
   note: SpendableNote;
+  poolAddress: `0x${string}`;
 }
 
-export interface RefundDepositParams {
-  rawIntent: import("@shinobi-cash/data").RawShinobiIntent;
-  settlerAddress: `0x${string}`;
-  originChainId: number;
-}
-
-export interface WithdrawalRefundParams {
+export interface EncodeRefundParams {
   rawIntent: import("@shinobi-cash/data").RawShinobiIntent;
   settlerAddress: `0x${string}`;
 }
@@ -125,17 +107,11 @@ export interface ShinobiAccount {
   deriveNullifierHash(poolAddress: string, chainId: number, depositIndex: number, changeIndex: number, noteType?: string): string;
   deriveNoteCommitment(note: SpendableNote): bigint;
 
-  // Deposit → TransactionRequest
-  deposit(params: DepositParams): TransactionRequest;
-
-  // Withdrawal → PreparedWithdrawal (for bundler)
-  prepareWithdrawal(params: WithdrawParams): Promise<PreparedWithdrawal>;
-  prepareWithdraw2(params: Withdraw2Params): Promise<PreparedWithdrawal>;
-
-  // Ragequit → TransactionRequest
-  ragequit(params: RagequitParams): Promise<TransactionRequest>;
-
-  // Refund → TransactionRequest or PreparedRefund
-  refundDeposit(params: RefundDepositParams): TransactionRequest;
-  prepareWithdrawalRefund(params: WithdrawalRefundParams): PreparedWithdrawalRefund;
+  // Encode protocol actions → Call
+  encodeDeposit(params: EncodeDepositParams): Call;
+  encodeCrosschainDeposit(params: EncodeCrosschainDepositParams): Call;
+  encodeWithdrawal(params: EncodeWithdrawalParams): Promise<Call>;
+  encodeWithdraw2(params: EncodeWithdraw2Params): Promise<Call>;
+  encodeRagequit(params: EncodeRagequitParams): Promise<Call>;
+  encodeRefund(params: EncodeRefundParams): Call;
 }
