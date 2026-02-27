@@ -8,20 +8,24 @@
 import { proxy } from "valtio";
 import type { Note, SpendableNote } from "@shinobi-cash/core/discovery";
 import { canRagequit } from "@shinobi-cash/core/discovery";
-import type { TransactionRequest } from "@shinobi-cash/core/account";
+import type { Call } from "@shinobi-cash/core/account";
+import type { WalletClient } from "viem";
+import { POOL_CHAIN } from "@shinobi-cash/constants";
+import { withDeposit } from "@shinobi-cash/client/deposit";
 import { AuthController } from "@/controllers/AuthController";
 import { NotesDiscoveryController } from "@/controllers/NotesDiscoveryController";
-import { getShinobiAccount } from "@/runtime/AccountSingleton";
-import { getPublicClient } from "@/lib/clients";
-import { SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
+import { getShinobiClient } from "@/runtime/ClientSingleton";
 import { createStateMachine } from "@/utils/stateMachine";
 import { type AppError, Errors, getUserMessage } from "@/lib/errors/errors";
-import type { WalletClient, Account, Transport, Chain } from "viem";
+
+function getRagequitClient() {
+  return getShinobiClient().extend(withDeposit());
+}
 
 type RagequitState =
   | { status: "idle" }
   | { status: "preparing" }
-  | { status: "ready"; txRequest: TransactionRequest }
+  | { status: "ready"; txRequest: Call }
   | { status: "submitting" }
   | { status: "confirming"; txHash: `0x${string}` }
   | { status: "confirmed"; txHash: `0x${string}` }
@@ -113,8 +117,7 @@ export const RagequitController = {
     try {
       transition({ status: "preparing" });
 
-      const txRequest = await getShinobiAccount().ragequit({
-        poolAddress: SHINOBI_CASH_ETH_POOL.address as `0x${string}`,
+      const txRequest = await getRagequitClient().prepareRagequit({
         note: state.selectedNote as SpendableNote,
       });
 
@@ -129,7 +132,7 @@ export const RagequitController = {
     }
   },
 
-  async submit(walletClient: WalletClient<Transport, Chain, Account>): Promise<void> {
+  async submit(signer: WalletClient): Promise<void> {
     if (state.state.status !== "ready") return;
 
     const { txRequest } = state.state;
@@ -137,24 +140,13 @@ export const RagequitController = {
     try {
       transition({ status: "submitting" });
 
-      const txHash = await walletClient.sendTransaction({
-        to: txRequest.to,
-        data: txRequest.data,
-        value: txRequest.value,
-        chain: walletClient.chain,
-      });
+      const client = getRagequitClient();
+      const txHash = await client.ragequit(txRequest, signer);
 
       transition({ status: "confirming", txHash });
 
-      // Wait for confirmation
-      const poolChainId = SHINOBI_CASH_ETH_POOL.chain.id;
-      const publicClient = getPublicClient(poolChainId);
-      const receipt = await publicClient.waitForTransactionReceipt({
-        hash: txHash,
-        confirmations: 1,
-      });
-
-      if (receipt.status === "reverted") {
+      const result = await client.waitForTransaction(txHash, POOL_CHAIN.id);
+      if (result.status === "reverted") {
         throw Errors.withdrawal.transactionFailed("Ragequit transaction reverted");
       }
 
@@ -169,10 +161,10 @@ export const RagequitController = {
     }
   },
 
-  async confirm(walletClient: WalletClient<Transport, Chain, Account>): Promise<void> {
+  async confirm(signer: WalletClient): Promise<void> {
     await this.prepare();
     if (state.state.status !== "ready") return;
-    await this.submit(walletClient);
+    await this.submit(signer);
   },
 
   reset(): void {

@@ -7,7 +7,7 @@
  */
 
 import type { Intent, RawShinobiIntent } from "@shinobi-cash/data";
-import type { TransactionReceipt, WalletClient, Account, Transport, Chain } from "viem";
+import type { WalletClient } from "viem";
 import {
   SHINOBI_CASH_WITHDRAWAL_INPUT_SETTLER,
   SHINOBI_CASH_CROSSCHAIN_CONTRACTS,
@@ -18,11 +18,25 @@ import {
   decodeRawIntentData,
   type RefundType,
 } from "@shinobi-cash/core/intent";
-import { getShinobiAccount } from "@/runtime/AccountSingleton";
+import { withCrosschainDeposit } from "@shinobi-cash/client/crosschain-deposit";
+import { withCrosschainWithdrawal } from "@shinobi-cash/client/crosschain-withdrawal";
+import { createBundlerRelayer } from "@shinobi-cash/client/relayer";
 import { getShinobiClient } from "@/runtime/ClientSingleton";
+import { createShinobiSolver } from "@/utils/solver";
+import { RELAYER_URL } from "@/config/constants";
 import { indexerClient } from "@/lib/indexer/client";
-import { getPublicClient } from "@/lib/clients";
 import { Errors, logError } from "@/lib/errors/errors";
+
+const relayer = createBundlerRelayer({ url: RELAYER_URL });
+const solver = createShinobiSolver();
+
+function getDepositRefundClient() {
+  return getShinobiClient().extend(withCrosschainDeposit(solver));
+}
+
+function getWithdrawalRefundClient() {
+  return getShinobiClient().extend(withCrosschainWithdrawal(relayer, solver));
+}
 
 type RefundPhase =
   | "idle"
@@ -129,36 +143,24 @@ export class RefundEngine {
   }
 
   /**
-   * Execute deposit refund via SDK + direct wallet call on origin chain.
+   * Execute deposit refund via client + direct wallet call on origin chain.
    */
-  async executeDepositRefund(
-    walletClient: WalletClient<Transport, Chain, Account>
-  ): Promise<RefundResult> {
+  async executeDepositRefund(signer: WalletClient): Promise<RefundResult> {
     const { intent, rawIntent } = this.assertPrepared("deposit");
     const originChainId = Number(intent.originChainId);
     const settlerAddress = getSettlerAddress("deposit", originChainId);
 
-    const txRequest = getShinobiAccount().refundDeposit({
-      rawIntent,
-      settlerAddress,
-      originChainId,
-    });
+    const client = getDepositRefundClient();
+    const txRequest = client.prepareDepositRefund({ rawIntent, settlerAddress });
 
     this.state.phase = "submitting";
     try {
-      const txHash = await walletClient.sendTransaction({
-        to: txRequest.to,
-        data: txRequest.data,
-      });
+      const txHash = await client.depositRefund(txRequest, signer);
 
       this.state.phase = "confirming";
-      const publicClient = getPublicClient(originChainId);
-      const receipt: TransactionReceipt = await publicClient.waitForTransactionReceipt({
-        hash: txHash,
-        confirmations: 1,
-      });
+      const result = await getShinobiClient().waitForTransaction(txHash, originChainId);
 
-      if (receipt.status === "reverted") {
+      if (result.status === "reverted") {
         throw Errors.blockchain.transactionReverted("Refund transaction reverted");
       }
 
@@ -186,14 +188,14 @@ export class RefundEngine {
 
     this.state.phase = "submitting";
     try {
-      const client = getShinobiClient();
-      const prepared = await client.prepareWithdrawalRefund({
+      const client = getWithdrawalRefundClient();
+      const call = client.prepareWithdrawalRefund({
         rawIntent,
         settlerAddress,
       });
 
       this.state.phase = "confirming";
-      const txHash = await client.submitWithdrawal(prepared);
+      const txHash = await client.submitWithdrawalRefund(call);
 
       this.state.phase = "complete";
       this.state.result = { txHash, refundType: "withdrawal" };

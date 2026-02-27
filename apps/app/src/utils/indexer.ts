@@ -1,3 +1,4 @@
+import type { ShinobiIndexer } from "@shinobi-cash/client";
 import type { StateTreeLeaf } from "@shinobi-cash/data";
 import { Errors, AppError, logError } from "@/lib/errors/errors";
 import { AuthController } from "@/controllers/AuthController";
@@ -19,38 +20,29 @@ function assertAuthenticated() {
   }
 }
 
-/**
- * Internal fetch activities - no auth check
- * Used by web workers which can't access main thread auth state
- * Worker lifecycle is managed by AppRuntime (only runs when authenticated)
- */
-async function fetchActivitiesInternal(poolAddress?: string, limit = 100, offset?: number) {
-  const params = new URLSearchParams();
-  if (poolAddress) params.set("pool", poolAddress);
-  params.set("limit", String(limit));
-  if (offset !== undefined) params.set("offset", String(offset));
-
-  const response = await fetch(`/api/indexer/activities?${params}`);
-  const result = await response.json();
-
-  if (!result.success) {
-    throw new Error(result.error || "Failed to fetch activities");
-  }
-
-  return result.data;
-}
-
-export async function fetchActivities(poolAddress?: string, limit = 100, offset?: number) {
+async function fetchActivities(poolAddress?: string, limit = 100, offset?: number) {
   assertAuthenticated();
   try {
-    return await fetchActivitiesInternal(poolAddress, limit, offset);
+    const params = new URLSearchParams();
+    if (poolAddress) params.set("pool", poolAddress);
+    params.set("limit", String(limit));
+    if (offset !== undefined) params.set("offset", String(offset));
+
+    const response = await fetch(`/api/indexer/activities?${params}`);
+    const result = await response.json();
+
+    if (!result.success) {
+      throw new Error(result.error || "Failed to fetch activities");
+    }
+
+    return result.data;
   } catch (error) {
     logError(error, { action: "fetchActivities", poolId: poolAddress });
     throw Errors.indexer.fetchFailed("Failed to fetch activities", error);
   }
 }
 
-export async function fetchStateTreeLeaves(poolId: string): Promise<StateTreeLeaf[]> {
+async function fetchStateTreeLeaves(poolId: string): Promise<StateTreeLeaf[]> {
   assertAuthenticated();
   try {
     const params = new URLSearchParams();
@@ -70,26 +62,38 @@ export async function fetchStateTreeLeaves(poolId: string): Promise<StateTreeLea
   }
 }
 
-/**
- * Fetch ASP approved labels directly from indexer
- * No longer needs IPFS - labels are stored in database
- */
-export async function fetchASPData(): Promise<{ approvalList: string[] }> {
+async function fetchASPRootInfo(): Promise<{ aspRoot: string; ipfsCid: string } | null> {
   assertAuthenticated();
   try {
-    const response = await fetch("/api/indexer/asp-labels");
+    const response = await fetch("/api/indexer/asp-root");
     const result = await response.json();
 
     if (!result.success) {
-      throw new Error(result.error || "Failed to fetch ASP labels");
+      throw new Error(result.error || "Failed to fetch ASP root info");
     }
 
-    return { approvalList: result.data.labels };
+    return result.data;
   } catch (error) {
     if (error instanceof AppError) throw error;
-    logError(error, { action: "fetchASPData" });
-    throw Errors.indexer.fetchFailed("Failed to fetch ASP data", error);
+    logError(error, { action: "fetchASPRootInfo" });
+    throw Errors.indexer.fetchFailed("Failed to fetch ASP root info", error);
   }
+}
+
+export function createShinobiIndexer(): ShinobiIndexer {
+  return {
+    async getStateTree(poolAddress: string) {
+      const leaves = await fetchStateTreeLeaves(poolAddress);
+      return { leaves };
+    },
+    async getASPRootInfo() {
+      return fetchASPRootInfo();
+    },
+    async getActivities(pool, limit, offset) {
+      const result = await fetchActivities(pool, limit, offset);
+      return { items: result.items, pageInfo: result.pageInfo };
+    },
+  };
 }
 
 export async function checkIndexerHealth(): Promise<boolean> {

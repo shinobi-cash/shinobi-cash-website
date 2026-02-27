@@ -2,15 +2,29 @@ import { proxy } from "valtio";
 import { parseEther, formatEther, isAddress } from "viem/utils";
 import type { Note, SpendableNote } from "@shinobi-cash/core/discovery";
 import { selectNotesForWithdrawal, type WithdrawalSelection } from "@shinobi-cash/core/withdrawal";
-import type { WithdrawalFeeQuote } from "@shinobi-cash/core/account";
+import type { WithdrawalFeeQuote } from "@shinobi-cash/core/fees";
+import { withWithdrawal } from "@shinobi-cash/client/withdrawal";
+import { withCrosschainWithdrawal } from "@shinobi-cash/client/crosschain-withdrawal";
 import type { PreparedWithdrawalOp } from "@shinobi-cash/client";
+import { createBundlerRelayer } from "@shinobi-cash/client/relayer";
 import { POOL_CHAIN, FEE_CONFIG, INTENT_TIMING } from "@shinobi-cash/constants";
 import { AuthController } from "@/controllers/AuthController";
 import { NotesDiscoveryController } from "@/controllers/NotesDiscoveryController";
 import { getShinobiClient } from "@/runtime/ClientSingleton";
+import { createShinobiSolver } from "@/utils/solver";
+import { RELAYER_URL } from "@/config/constants";
 import { createStateMachine } from "@/utils/stateMachine";
 import { type AppError, Errors, getUserMessage } from "@/lib/errors/errors";
 import { PREVIEW_DEBOUNCE_MS } from "@/constants/timings";
+
+const relayer = createBundlerRelayer({ url: RELAYER_URL });
+const solver = createShinobiSolver();
+
+function getWithdrawClient() {
+  return getShinobiClient()
+    .extend(withWithdrawal(relayer))
+    .extend(withCrosschainWithdrawal(relayer, solver));
+}
 
 type WithdrawState =
   | { status: "idle" }
@@ -18,7 +32,6 @@ type WithdrawState =
   | { status: "preparing" }
   | { status: "ready"; prepared: PreparedWithdrawalOp }
   | { status: "submitting" }
-  | { status: "confirming"; userOpHash: string }
   | { status: "confirmed"; txHash: `0x${string}` }
   | { status: "error"; error: AppError };
 
@@ -127,11 +140,6 @@ export const WithdrawSelectors = {
     return null;
   },
 
-  /** Legacy getter for backward compatibility */
-  get selectedNote(): Note | null {
-    return WithdrawSelectors.getPrimaryNote();
-  },
-
   getRemainingBalance: (): number | null => {
     if (state.selectedNotes.length === 0 || !state.amount) return null;
     try {
@@ -198,8 +206,7 @@ const { transition } = createStateMachine<WithdrawState>({
     previewing: ["idle", "preparing"],
     preparing: ["ready", "error"],
     ready: ["submitting", "preparing", "idle"],
-    submitting: ["confirming", "confirmed", "error"],
-    confirming: ["confirmed", "error"],
+    submitting: ["confirmed", "error"],
     confirmed: ["idle"],
     error: ["idle", "preparing"],
   },
@@ -321,12 +328,21 @@ export const WithdrawController = {
     transition({ status: "previewing" });
 
     try {
-      const client = getShinobiClient();
+      const client = getWithdrawClient();
       const amountWei = parseEther(state.amount);
 
-      const sdkQuote = this._isWithdraw2()
-        ? await client.quoteWithdraw2({ amountWei, destinationChainId: state.destinationChainId })
-        : await client.quoteWithdrawal({ amountWei, destinationChainId: state.destinationChainId });
+      const isCrossChain = WithdrawSelectors.isCrossChain();
+      let sdkQuote: WithdrawalFeeQuote;
+
+      if (isCrossChain) {
+        sdkQuote = this._isWithdraw2()
+          ? await client.quoteCrosschainWithdraw2({ amountWei, destinationChainId: state.destinationChainId })
+          : await client.quoteCrosschainWithdrawal({ amountWei, destinationChainId: state.destinationChainId });
+      } else {
+        sdkQuote = this._isWithdraw2()
+          ? await client.quoteWithdraw2({ amountWei })
+          : await client.quoteWithdrawal({ amountWei });
+      }
 
       if (current !== previewId) return;
       state.previewFeeQuote = sdkQuote;
@@ -350,31 +366,37 @@ export const WithdrawController = {
     try {
       transition({ status: "preparing" });
 
-      const client = getShinobiClient();
+      const client = getWithdrawClient();
       const amountWei = parseEther(state.amount);
       const recipient = state.recipientAddress as `0x${string}`;
 
+      const isCrossChain = WithdrawSelectors.isCrossChain();
       let prepared: PreparedWithdrawalOp;
+
       if (this._isWithdraw2()) {
         const selection = state.selection!;
         if (selection.type !== "withdraw2") throw new Error("Invalid selection");
-        prepared = await client.prepareWithdraw2({
+        const w2Params = {
           primaryNote: selection.primaryInput.note as SpendableNote,
           secondaryNote: selection.secondaryInput.note as SpendableNote,
           amountWei,
           recipient,
-          destinationChainId: state.destinationChainId,
           labelSelector: selection.labelSelector,
-        });
+        };
+        prepared = isCrossChain
+          ? await client.prepareCrosschainWithdraw2({ ...w2Params, destinationChainId: state.destinationChainId })
+          : await client.prepareWithdraw2(w2Params);
       } else {
         const selection = state.selection!;
         if (selection.type !== "standard") throw new Error("Invalid selection");
-        prepared = await client.prepareWithdrawal({
+        const wParams = {
           note: selection.input.note as SpendableNote,
           amountWei,
           recipient,
-          destinationChainId: state.destinationChainId,
-        });
+        };
+        prepared = isCrossChain
+          ? await client.prepareCrosschainWithdrawal({ ...wParams, destinationChainId: state.destinationChainId })
+          : await client.prepareWithdrawal(wParams);
       }
 
       if (current !== prepareId) return;
@@ -400,16 +422,12 @@ export const WithdrawController = {
     transition({ status: "submitting" });
 
     try {
-      const client = getShinobiClient();
-      const transactionHash = await client.submitWithdrawal(prepared, {
-        onSubmitted: (userOpHash) => {
-          transition({ status: "confirming", userOpHash });
-        },
-      });
+      const client = getWithdrawClient();
+      const txHash = await client.submitWithdrawal(prepared);
 
       transition({
         status: "confirmed",
-        txHash: transactionHash as `0x${string}`,
+        txHash,
       });
 
       NotesDiscoveryController.refresh();
@@ -457,7 +475,7 @@ export const WithdrawController = {
     if (state.destinationChainId === POOL_CHAIN.id) return;
 
     try {
-      const client = getShinobiClient();
+      const client = getWithdrawClient();
       const quote = await client.getSolverQuote({
         originChainId: POOL_CHAIN.id,
         destinationChainId: state.destinationChainId,

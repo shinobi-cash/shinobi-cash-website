@@ -5,7 +5,6 @@
 
 import { AuthController } from "@/controllers/AuthController";
 import { NotesDiscoveryController } from "@/controllers/NotesDiscoveryController";
-import { createAccount, destroyAccount } from "@/runtime/AccountSingleton";
 import { createClient, destroyClient } from "@/runtime/ClientSingleton";
 import { accountService } from "@/services/AccountService";
 
@@ -19,7 +18,6 @@ const log = {
 function _teardown() {
   NotesDiscoveryController.reset();
   destroyClient();
-  destroyAccount();
 }
 
 export const AppRuntime = {
@@ -68,9 +66,8 @@ export const AppRuntime = {
     }
 
     try {
-      log.debug("Creating SDK account + client...");
-      const account = createAccount(privateKey);
-      createClient(account);
+      log.debug("Creating client...");
+      createClient(privateKey);
 
       // Fire-and-forget — discovery handles its own errors
       NotesDiscoveryController.bootstrap();
