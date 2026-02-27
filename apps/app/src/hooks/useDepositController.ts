@@ -8,6 +8,7 @@ import { useEffect } from "react";
 import { useAccount, useChainId, useBalance, useWalletClient } from "wagmi";
 import { useSnapshot } from "valtio";
 import { DepositController } from "@/controllers/DepositController";
+import { useControllerCleanup } from "@/hooks/useControllerCleanup";
 import { formatEther } from "viem/utils";
 
 /**
@@ -31,15 +32,7 @@ export function useDepositController() {
   const { data: balance } = useBalance({ address });
   const { data: walletClient } = useWalletClient({ chainId });
 
-  // Reset controller on unmount (navigation away) — skip if transaction in flight
-  useEffect(() => {
-    return () => {
-      const { status } = DepositController.state.state;
-      if (status !== "submitting" && status !== "confirming") {
-        DepositController.reset();
-      }
-    };
-  }, []);
+  useControllerCleanup(DepositController);
 
   // Sync wallet context to controller
   useEffect(() => {

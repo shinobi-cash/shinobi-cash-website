@@ -3,9 +3,9 @@
  * Provides read-only snapshot of controller state
  */
 
-import { useEffect } from "react";
 import { useSnapshot } from "valtio";
 import { RagequitController, RagequitSelectors } from "@/controllers/RagequitController";
+import { useControllerCleanup } from "@/hooks/useControllerCleanup";
 
 /**
  * Read-only snapshot of RagequitController state
@@ -15,15 +15,7 @@ import { RagequitController, RagequitSelectors } from "@/controllers/RagequitCon
 export function useRagequitController() {
   const snapshot = useSnapshot(RagequitController.state);
 
-  // Reset controller on unmount (navigation away) — skip if transaction in flight
-  useEffect(() => {
-    return () => {
-      const { status } = RagequitController.state.state;
-      if (status !== "submitting" && status !== "confirming") {
-        RagequitController.reset();
-      }
-    };
-  }, []);
+  useControllerCleanup(RagequitController);
 
   return {
     ...snapshot,
