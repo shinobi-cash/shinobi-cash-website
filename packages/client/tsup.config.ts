@@ -1,7 +1,14 @@
 import { defineConfig } from 'tsup';
 
 export default defineConfig({
-  entry: ['src/index.ts'],
+  entry: [
+    'src/index.ts',
+    'src/relayer/index.ts',
+    'src/actions/deposit.ts',
+    'src/actions/crosschain-deposit.ts',
+    'src/actions/withdrawal.ts',
+    'src/actions/crosschain-withdrawal.ts',
+  ],
   format: ['cjs', 'esm'],
   dts: false,
   splitting: false,

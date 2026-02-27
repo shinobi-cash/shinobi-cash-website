@@ -11,6 +11,31 @@
       "types": "./src/index.ts",
       "import": "./dist/index.mjs",
       "require": "./dist/index.js"
+    },
+    "./relayer": {
+      "types": "./src/relayer/index.ts",
+      "import": "./dist/relayer/index.mjs",
+      "require": "./dist/relayer/index.js"
+    },
+    "./deposit": {
+      "types": "./src/actions/deposit.ts",
+      "import": "./dist/actions/deposit.mjs",
+      "require": "./dist/actions/deposit.js"
+    },
+    "./crosschain-deposit": {
+      "types": "./src/actions/crosschain-deposit.ts",
+      "import": "./dist/actions/crosschain-deposit.mjs",
+      "require": "./dist/actions/crosschain-deposit.js"
+    },
+    "./withdrawal": {
+      "types": "./src/actions/withdrawal.ts",
+      "import": "./dist/actions/withdrawal.mjs",
+      "require": "./dist/actions/withdrawal.js"
+    },
+    "./crosschain-withdrawal": {
+      "types": "./src/actions/crosschain-withdrawal.ts",
+      "import": "./dist/actions/crosschain-withdrawal.mjs",
+      "require": "./dist/actions/crosschain-withdrawal.js"
     }
   },
   "files": [
@@ -36,7 +61,9 @@
   "dependencies": {
     "@shinobi-cash/core": "workspace:*",
     "@shinobi-cash/constants": "workspace:*",
-    "@shinobi-cash/data": "workspace:*",
+    "@shinobi-cash/data": "workspace:*"
+  },
+  "peerDependencies": {
     "permissionless": "^0.2.0",
     "viem": "^2.0.0"
   },
