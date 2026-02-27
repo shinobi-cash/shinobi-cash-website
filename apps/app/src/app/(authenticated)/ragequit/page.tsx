@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAccount, useWalletClient } from "wagmi";
 import { RagequitPreviewScreen } from "@/components/screens/RagequitPreviewScreen";
@@ -24,7 +24,6 @@ function checkMergeHistory(noteTrees: NoteTree[], depositIndex: number): boolean
 
   let hasMerge = false;
   traverseTree(tree, (node) => {
-    // Check if this is a ChangeNote with merge history
     const item = node.note;
     if (isNote(item) && item.noteType === "change") {
       const changeNote = item as ChangeNote;
@@ -39,6 +38,14 @@ function checkMergeHistory(noteTrees: NoteTree[], depositIndex: number): boolean
 type RagequitScreen = "preview" | "timeline";
 
 export default function RagequitPage() {
+  return (
+    <Suspense>
+      <RagequitPageContent />
+    </Suspense>
+  );
+}
+
+function RagequitPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   useAccount();

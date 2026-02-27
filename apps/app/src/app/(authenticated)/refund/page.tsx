@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAccount, useWalletClient, useSwitchChain } from "wagmi";
 import { RefundPreviewScreen } from "@/components/screens/RefundPreviewScreen";
@@ -14,6 +14,14 @@ import type { RefundType } from "@shinobi-cash/core/intent";
 type RefundScreen = "preview" | "timeline";
 
 export default function RefundPage() {
+  return (
+    <Suspense>
+      <RefundPageContent />
+    </Suspense>
+  );
+}
+
+function RefundPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { chainId: walletChainId } = useAccount();
