@@ -1,4 +1,4 @@
-import type { ActivityItem } from "../types";
+import type { ActivityItem } from "../types/index.js";
 
 export type ActivityCategory = "deposit" | "withdrawal" | "refund" | "ragequit";
 

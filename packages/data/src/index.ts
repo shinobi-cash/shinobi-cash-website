@@ -8,7 +8,7 @@ export {
   PoolClient,
   ASPClient,
   type ASPRootInfo,
-} from "./client";
+} from "./client/index.js";
 
 // Types
 export type {
@@ -66,10 +66,10 @@ export type {
 
   // Client types
   IndexerClientOptions,
-} from "./types";
+} from "./types/index.js";
 
 // Pagination utilities
-export { PaginatedIterator } from "./pagination/iterator";
+export { PaginatedIterator } from "./pagination/iterator.js";
 
 // Type guards
 export {
@@ -94,10 +94,10 @@ export {
   isCrossChain,
   isSameChain,
   isAnyCrosschainWithdrawal,
-} from "./utils/guards";
+} from "./utils/guards.js";
 
 // Converters
-export { toBigInt, toNumber, toDate, formatEth, parseChainId } from "./utils/converters";
+export { toBigInt, toNumber, toDate, formatEth, parseChainId } from "./utils/converters.js";
 
 // Activity consolidation
 export {
@@ -110,4 +110,4 @@ export {
   type ConsolidatedActivity,
   type ActivityCategory,
   type ActivityTimelineEvent,
-} from "./utils/activity-consolidation";
+} from "./utils/activity-consolidation.js";

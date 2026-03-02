@@ -3,8 +3,8 @@ import type {
   ActivityDetailResponse,
   PaginatedResponse,
   PaginationOptions,
-} from "../types";
-import { PaginatedIterator } from "../pagination/iterator";
+} from "../types/index.js";
+import { PaginatedIterator } from "../pagination/iterator.js";
 
 interface ActivityClientConfig {
   endpoint: string;

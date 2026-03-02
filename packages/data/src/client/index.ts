@@ -1,10 +1,10 @@
-import type { IndexerClientOptions } from "../types";
-import { ActivityClient } from "./activity";
-import { StatsClient } from "./stats";
-import { StateTreeClient } from "./state-tree";
-import { IntentClient } from "./intent";
-import { PoolClient } from "./pool";
-import { ASPClient } from "./asp";
+import type { IndexerClientOptions } from "../types/index.js";
+import { ActivityClient } from "./activity.js";
+import { StatsClient } from "./stats.js";
+import { StateTreeClient } from "./state-tree.js";
+import { IntentClient } from "./intent.js";
+import { PoolClient } from "./pool.js";
+import { ASPClient } from "./asp.js";
 
 const DEFAULT_TIMEOUT = 30000;
 
@@ -77,9 +77,9 @@ export class IndexerClient {
   }
 }
 
-export { ActivityClient } from "./activity";
-export { StatsClient } from "./stats";
-export { StateTreeClient } from "./state-tree";
-export { IntentClient } from "./intent";
-export { PoolClient } from "./pool";
-export { ASPClient, type ASPRootInfo } from "./asp";
+export { ActivityClient } from "./activity.js";
+export { StatsClient } from "./stats.js";
+export { StateTreeClient } from "./state-tree.js";
+export { IntentClient } from "./intent.js";
+export { PoolClient } from "./pool.js";
+export { ASPClient, type ASPRootInfo } from "./asp.js";

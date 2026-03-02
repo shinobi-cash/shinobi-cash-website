@@ -11,7 +11,7 @@ import type {
   CrosschainWithdrawalFillActivity,
   CrosschainWithdrawalRefundActivity,
   RagequitActivity,
-} from "../types";
+} from "../types/index.js";
 
 // ============================================
 // Individual Type Guards

@@ -1,4 +1,4 @@
-import type { PaginatedResponse, PaginationOptions } from "../types";
+import type { PaginatedResponse, PaginationOptions } from "../types/index.js";
 
 /**
  * Async iterator for paginated API responses (offset-based)
