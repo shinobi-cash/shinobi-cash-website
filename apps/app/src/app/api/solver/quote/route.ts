@@ -14,13 +14,8 @@ import {
   SHINOBI_CASH_CROSSCHAIN_CONTRACTS,
   CrosschainDepositConfigAbi,
 } from "@shinobi-cash/constants";
-import { createPublicClient, http, type Chain } from "viem";
-import { arbitrumSepolia, baseSepolia } from "viem/chains";
-
-const CHAINS: Record<number, Chain> = {
-  [arbitrumSepolia.id]: arbitrumSepolia,
-  [baseSepolia.id]: baseSepolia,
-};
+import { createPublicClient, http } from "viem";
+import { getChain } from "@shinobi-cash/constants/chains";
 
 interface QuoteRequest {
   originChainId: number;
@@ -55,8 +50,10 @@ export async function POST(request: Request) {
       );
     }
 
-    const chain = CHAINS[body.originChainId];
-    if (!chain) {
+    let chain;
+    try {
+      chain = getChain(body.originChainId);
+    } catch {
       return NextResponse.json(
         { error: `Unsupported chain ${body.originChainId}` },
         { status: 400 }

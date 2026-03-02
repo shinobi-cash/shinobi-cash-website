@@ -35,7 +35,7 @@ export interface CachedNoteData {
   accountId: string;
   trees: SerializableNoteNode[];
   lastSyncTime: number;
-  minOffset?: number;
+  lastSyncedOffset?: number;
   /** Full discovery state for proper resumption. NullifierInfo includes originChainId. */
   nullifierMap?: Array<{ hash: string; info: NullifierInfo }>;
   /** Next deposit index per chain (keyed by chainId string) */

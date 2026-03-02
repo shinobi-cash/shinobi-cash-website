@@ -72,7 +72,7 @@ export class NotesRepository {
         lastUsedIndexByChain,
         activities,
         newNotesFound: 0,
-        minOffset: cached.minOffset ?? 0,
+        lastSyncedOffset: cached.lastSyncedOffset ?? (cached as any).minOffset ?? 0,
       };
     }
 
@@ -86,14 +86,14 @@ export class NotesRepository {
     accountId: string,
     poolAddress: string,
     trees: NoteTree[],
-    minOffset?: number
+    lastSyncedOffset?: number
   ): Promise<void> {
     if (!this.encryptionService.isKeyAvailable()) {
       throw new Error("Session not initialized");
     }
 
     const serializedTrees = trees.map(serializeTree);
-    await this.storeData(accountId, poolAddress, serializedTrees, minOffset);
+    await this.storeData(accountId, poolAddress, serializedTrees, lastSyncedOffset);
   }
 
   /**
@@ -103,7 +103,7 @@ export class NotesRepository {
     accountId: string,
     poolAddress: string,
     trees: SerializableNoteNode[],
-    minOffset?: number,
+    lastSyncedOffset?: number,
     nullifierMap?: Array<{ hash: string; info: NullifierInfo }>,
     nextDepositIndex?: Array<{ chainId: string; index: number }>,
     activities?: ActivityItem[]
@@ -113,7 +113,7 @@ export class NotesRepository {
       accountId,
       trees,
       lastSyncTime: Date.now(),
-      minOffset,
+      lastSyncedOffset,
       nullifierMap,
       nextDepositIndex,
       activities,
@@ -184,7 +184,7 @@ export class NotesRepository {
           nullifierMap: cached.nullifierMap ?? [],
           nextDepositIndex: cached.nextDepositIndex ?? [],
           activities: cached.activities ?? [],
-          minOffset: cached.minOffset ?? 0,
+          lastSyncedOffset: cached.lastSyncedOffset ?? (cached as any).minOffset ?? 0,
           newFilledDepositsFound: 0,
           newPendingDepositsFound: 0,
         };
@@ -197,7 +197,7 @@ export class NotesRepository {
           pubKey,
           pool,
           trees,
-          state.minOffset,
+          state.lastSyncedOffset,
           state.nullifierMap,
           state.nextDepositIndex,
           state.activities

@@ -1,36 +1,15 @@
 /**
  * Chain Configuration
  *
- * Maps ShinobiChain metadata from constants to full viem Chain objects for
- * wagmi/viem operations (RPC, signing, etc). Display-only consumers should
- * use SHINOBI_CASH_SUPPORTED_CHAINS directly.
+ * Re-exports viem Chain objects from constants and provides
+ * display-only helpers (chain name, explorer URL).
  */
 
-import { arbitrumSepolia, baseSepolia, type Chain } from "viem/chains";
+import type { Chain } from "viem";
 import { POOL_CHAIN, SHINOBI_CASH_SUPPORTED_CHAINS } from "@shinobi-cash/constants";
+import { getChain, SUPPORTED_CHAINS } from "@shinobi-cash/constants/chains";
 
-const VIEM_CHAINS: Record<number, Chain> = {
-  [arbitrumSepolia.id]: arbitrumSepolia,
-  [baseSepolia.id]: baseSepolia,
-};
-
-/**
- * Resolve a full viem Chain object from a chain ID.
- * Needed for createPublicClient, sendTransaction, WagmiAdapter, etc.
- */
-export function getViemChain(chainId: number): Chain {
-  const chain = VIEM_CHAINS[chainId];
-  if (!chain) throw new Error(`No viem chain for id ${chainId}`);
-  return chain;
-}
-
-/**
- * All supported chains as viem Chain objects (for WagmiAdapter / wagmi config).
- */
-export const VIEM_SUPPORTED_CHAINS: [Chain, ...Chain[]] = [
-  getViemChain(POOL_CHAIN.id),
-  ...SHINOBI_CASH_SUPPORTED_CHAINS.filter((c) => c.id !== POOL_CHAIN.id).map((c) => getViemChain(c.id)),
-];
+export { getChain, SUPPORTED_CHAINS };
 
 /**
  * Pool chain ID for easy reference
