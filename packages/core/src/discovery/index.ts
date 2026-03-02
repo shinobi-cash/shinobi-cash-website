@@ -213,9 +213,9 @@ export class NoteDiscovery {
 
     let hasNext = true;
     let pagesProcessed = 0;
-    let currentOffset = state.minOffset;
+    let currentOffset = state.lastSyncedOffset;
 
-    // Process pages starting from minOffset
+    // Process pages starting from last synced offset
     while (hasNext && (!maxPages || pagesProcessed < maxPages)) {
       if (signal?.aborted) {
         throw new DOMException("Aborted", "AbortError");
@@ -233,14 +233,14 @@ export class NoteDiscovery {
       onProgress?.(progress);
 
       if (pagesProcessed % policy.persistEveryPages === 0) {
-        state.minOffset = calculateMinOffset(state.trees);
+        state.lastSyncedOffset = currentOffset;
         await this.saveState(accountId, poolAddress, state);
       }
 
       hasNext = page.pageInfo.hasNextPage;
     }
 
-    state.minOffset = calculateMinOffset(state.trees);
+    state.lastSyncedOffset = currentOffset;
     await this.saveState(accountId, poolAddress, state);
 
     progress.complete = true;
@@ -348,7 +348,7 @@ export class NoteDiscovery {
       nullifierMap: new Map(),
       nextDepositIndex: new Map(),
       activities: new Map(),
-      minOffset: 0,
+      lastSyncedOffset: 0,
       newFilledDepositsFound: 0,
       newPendingDepositsFound: 0,
     };
@@ -380,7 +380,7 @@ export class NoteDiscovery {
       lastUsedIndexByChain,
       activities,
       newNotesFound: state.newFilledDepositsFound,
-      minOffset: state.minOffset,
+      lastSyncedOffset: state.lastSyncedOffset,
     };
   }
 }
@@ -437,7 +437,7 @@ function serializeDiscoveryState(state: DiscoveryState): SerializableDiscoverySt
       index,
     })),
     activities: Array.from(state.activities.values()),
-    minOffset: state.minOffset,
+    lastSyncedOffset: state.lastSyncedOffset,
     newFilledDepositsFound: state.newFilledDepositsFound,
     newPendingDepositsFound: state.newPendingDepositsFound,
   };
@@ -452,26 +452,8 @@ function deserializeDiscoveryState(serialized: SerializableDiscoveryState): Disc
     nullifierMap: new Map(serialized.nullifierMap.map((n) => [n.hash, n.info])),
     nextDepositIndex: new Map(serialized.nextDepositIndex.map((n) => [n.chainId, n.index])),
     activities,
-    minOffset: serialized.minOffset,
+    lastSyncedOffset: serialized.lastSyncedOffset ?? (serialized as any).minOffset ?? 0,
     newFilledDepositsFound: serialized.newFilledDepositsFound ?? 0,
     newPendingDepositsFound: serialized.newPendingDepositsFound ?? 0,
   };
-}
-
-function calculateMinOffset(trees: Map<ChainKey, NoteTree>): number {
-  let minOffset = Number.MAX_SAFE_INTEGER;
-  let hasUnspentNotes = false;
-
-  for (const [, tree] of trees) {
-    const spendableLeaves = getSpendableLeaves(tree);
-    if (spendableLeaves.length > 0) {
-      hasUnspentNotes = true;
-      const rootNote = tree.root.note;
-      if (rootNote.discoveredAtOffset !== undefined) {
-        minOffset = Math.min(minOffset, rootNote.discoveredAtOffset);
-      }
-    }
-  }
-
-  return hasUnspentNotes ? minOffset : 0;
 }

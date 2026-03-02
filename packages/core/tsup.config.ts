@@ -12,7 +12,7 @@ export default defineConfig({
     validation: 'src/validation/index.ts',
     intent: 'src/intent/index.ts',
   },
-  format: ['cjs', 'esm'],
+  format: ['esm'],
   dts: {
     resolve: ['@shinobi-cash/constants', '@shinobi-cash/data'],
   },
