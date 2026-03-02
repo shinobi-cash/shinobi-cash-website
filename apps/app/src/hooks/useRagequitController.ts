@@ -5,6 +5,7 @@
 
 import { useSnapshot } from "valtio";
 import { RagequitController, RagequitSelectors } from "@/controllers/RagequitController";
+import { useControllerCleanup } from "@/hooks/useControllerCleanup";
 
 /**
  * Read-only snapshot of RagequitController state
@@ -13,6 +14,8 @@ import { RagequitController, RagequitSelectors } from "@/controllers/RagequitCon
  */
 export function useRagequitController() {
   const snapshot = useSnapshot(RagequitController.state);
+
+  useControllerCleanup(RagequitController);
 
   return {
     ...snapshot,

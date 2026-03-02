@@ -73,16 +73,6 @@ export const ACTIVITY_FILTER_LABELS: Record<ActivityFilter, string> = {
 };
 
 /**
- * Activity type labels for UI
- */
-export const ACTIVITY_TYPE_LABELS: Record<ActivityType, string> = {
-  deposit: "Deposit",
-  withdrawal: "Withdrawal",
-  refund: "Refund",
-  ragequit: "Ragequit",
-};
-
-/**
  * Get unique ID for an activity entry.
  * Uses the activity's txHash from indexer.
  */

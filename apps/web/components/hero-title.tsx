@@ -4,7 +4,7 @@ import { WordRotate } from "@workspace/ui/components/word-rotate";
 
 export default function HeroTitle() {
   return (
-    <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold flex flex-wrap sm:flex-nowrap items-center justify-center gap-x-1 sm:gap-x-2 gap-y-2">
+    <h1 className="flex flex-wrap items-center justify-center gap-x-1 gap-y-2 text-4xl font-bold sm:flex-nowrap sm:gap-x-2 sm:text-5xl md:text-6xl lg:text-7xl">
       <WordRotate
         words={["Simple", "Borderless", "Compliant"]}
         duration={3000}

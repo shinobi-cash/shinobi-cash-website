@@ -83,5 +83,5 @@ export class IndexedDBStore<T = unknown> implements IEncryptedStorageAdapter<T> 
 
 export const notesStorageAdapter = new IndexedDBStore(STORES.NOTES);
 export const accountStorageAdapter = new IndexedDBStore(STORES.ACCOUNTS);
-export const AMKStorageAdapter = new IndexedDBStore(STORES.WRAPPED_AMK);
+export const masterKeyStore = new IndexedDBStore(STORES.MASTER_KEY);
 export const sharedEncryptionService = new EncryptionService();

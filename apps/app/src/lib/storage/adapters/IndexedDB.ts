@@ -1,10 +1,10 @@
 const DB_NAME = "shinobi.cash";
-const DB_VERSION = 3;
+const DB_VERSION = 1;
 
 const STORES = {
   NOTES: "encrypted-notes",
   ACCOUNTS: "account-metadata",
-  WRAPPED_AMK: "wrapped-amk",
+  MASTER_KEY: "wrapped-master-key",
 } as const;
 
 export type StoreName = (typeof STORES)[keyof typeof STORES];
@@ -20,42 +20,11 @@ class IndexedDBDatabase {
 
       req.onerror = () => reject(req.error);
 
-      req.onupgradeneeded = (event) => {
+      req.onupgradeneeded = () => {
         const db = req.result;
-        const transaction = (event.target as IDBOpenDBRequest).transaction!;
-
-        if (!db.objectStoreNames.contains(STORES.NOTES)) {
-          db.createObjectStore(STORES.NOTES, { keyPath: "id" });
-        }
-
-        if (!db.objectStoreNames.contains(STORES.ACCOUNTS)) {
-          db.createObjectStore(STORES.ACCOUNTS, { keyPath: "id" });
-        }
-
-        if (!db.objectStoreNames.contains(STORES.WRAPPED_AMK)) {
-          db.createObjectStore(STORES.WRAPPED_AMK, { keyPath: "id" });
-        }
-
-        if (db.objectStoreNames.contains("encrypted-account")) {
-          const oldStore = transaction.objectStore("encrypted-account");
-          const newStore = db.objectStoreNames.contains(STORES.ACCOUNTS)
-            ? transaction.objectStore(STORES.ACCOUNTS)
-            : db.createObjectStore(STORES.ACCOUNTS, { keyPath: "id" });
-
-          const getAllRequest = oldStore.getAll();
-          getAllRequest.onsuccess = () => {
-            const records = getAllRequest.result;
-            records.forEach((record) => {
-              newStore.put(record);
-            });
-          };
-
-          db.deleteObjectStore("encrypted-account");
-        }
-
-        if (db.objectStoreNames.contains("passkey-credentials")) {
-          db.deleteObjectStore("passkey-credentials");
-        }
+        db.createObjectStore(STORES.NOTES, { keyPath: "id" });
+        db.createObjectStore(STORES.ACCOUNTS, { keyPath: "id" });
+        db.createObjectStore(STORES.MASTER_KEY, { keyPath: "id" });
       };
 
       req.onsuccess = () => {

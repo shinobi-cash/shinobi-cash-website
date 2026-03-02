@@ -15,7 +15,7 @@
  */
 
 import type { ActivityItem, RagequitActivity } from "@shinobi-cash/data";
-import type { NoteTree, NullifierInfo, SpendableNote } from "./types.js";
+import type { NoteTree, NullifierInfo, SpendableNote, NoteDeriver } from "./types.js";
 import type { ChainKey } from "./types.js";
 import { isNote, isSpendableNote } from "./types.js";
 import type { ActivityIndex } from "./activity-indexer.js";
@@ -73,7 +73,7 @@ export function extendAllTrees(
   trees: Map<ChainKey, NoteTree>,
   nullifierMap: Map<string, NullifierInfo>,
   activityIndex: ActivityIndex,
-  accountKey: bigint,
+  deriver: NoteDeriver,
   poolAddress: string
 ): ExtensionResult {
   const updatedTrees = new Map(trees);
@@ -93,7 +93,7 @@ export function extendAllTrees(
       updatedTrees,
       updatedNullifierMap,
       activityIndex,
-      accountKey,
+      deriver,
       poolAddress
     );
     if (plans.length > 0) {

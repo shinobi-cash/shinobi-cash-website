@@ -16,11 +16,12 @@ import type {
   DiscoveryProgress,
   DiscoveryOptions,
   DiscoveryPolicy,
+  NoteDeriver,
   NoteTree,
   Note,
   SpendableNote,
   ActivityFetcher,
-  PersistenceCallbacks,
+  StorageLayer,
   SerializableDiscoveryState,
   ChainKey,
 } from "./types.js";
@@ -29,7 +30,6 @@ import { buildActivityIndex } from "./activity-indexer.js";
 import { scanForDeposits } from "./deposit-scanner.js";
 import { extendAllTrees } from "./chain-extender.js";
 import { reconcileTrees } from "./reconciler.js";
-import { deriveAndHashNullifier } from "./nullifier-utils.js";
 import { serializeTree, deserializeTree, getSpendableLeaves } from "./tree-utils.js";
 
 // ============================================================================
@@ -135,9 +135,11 @@ export type {
   DiscoveryResult,
   DiscoveryProgress,
   DiscoveryOptions,
-  // For implementing persistence callbacks
+  // Crypto provider for discovery derivations
+  NoteDeriver,
+  // I/O interfaces
   ActivityFetcher,
-  PersistenceCallbacks,
+  StorageLayer,
   SerializableDiscoveryState,
   SerializableNoteNode,
   NullifierInfo,
@@ -147,7 +149,7 @@ export type {
 // Re-export ActivityItem type for consumers
 export type { ActivityItem } from "@shinobi-cash/data";
 
-// For persistence callback implementation
+// For storage layer implementation
 export { makeChainKey } from "./types.js";
 
 // ============================================================================
@@ -159,28 +161,28 @@ export { makeChainKey } from "./types.js";
  *
  * Usage:
  * ```typescript
- * const discovery = new NoteDiscovery(activityFetcher, persistenceCallbacks);
- * const result = await discovery.sync(publicKey, poolAddress, accountKey, options);
+ * const discovery = new NoteDiscovery(activityFetcher, storage);
+ * const result = await discovery.sync(accountId, poolAddress, accountKey, options);
  * ```
  */
 export class NoteDiscovery {
   constructor(
     private readonly fetcher: ActivityFetcher,
-    private readonly persistence: PersistenceCallbacks
+    private readonly storage: StorageLayer
   ) {}
 
   /**
    * Sync notes for a user's account
    *
-   * @param publicKey - User's public key (for persistence key)
+   * @param accountId - Account identifier (for persistence key)
    * @param poolAddress - Pool contract address
-   * @param accountKey - User's account key (for derivation)
+   * @param deriver - Note deriver for cryptographic derivations
    * @param options - Discovery options
    */
   async sync(
-    publicKey: string,
+    accountId: string,
     poolAddress: string,
-    accountKey: bigint,
+    deriver: NoteDeriver,
     options?: DiscoveryOptions
   ): Promise<DiscoveryResult> {
     const {
@@ -192,11 +194,11 @@ export class NoteDiscovery {
     } = options || {};
 
     // Load or initialize state
-    let state = await this.loadOrInitState(publicKey, poolAddress);
+    let state = await this.loadOrInitState(accountId, poolAddress);
 
     // Rebuild nullifier map if empty (migration for old cached data)
     if (state.nullifierMap.size === 0 && state.trees.size > 0) {
-      rebuildNullifierMap(state, accountKey, poolAddress);
+      rebuildNullifierMap(state, deriver, poolAddress);
     }
 
     // Progress tracking
@@ -211,16 +213,16 @@ export class NoteDiscovery {
 
     let hasNext = true;
     let pagesProcessed = 0;
-    let currentOffset = state.minOffset;
+    let currentOffset = state.lastSyncedOffset;
 
-    // Process pages starting from minOffset
+    // Process pages starting from last synced offset
     while (hasNext && (!maxPages || pagesProcessed < maxPages)) {
       if (signal?.aborted) {
         throw new DOMException("Aborted", "AbortError");
       }
 
       const page = await this.fetcher(poolAddress, pageSize, currentOffset, "asc");
-      state = this.processPage(state, page.items, accountKey, poolAddress, policy, currentOffset);
+      state = this.processPage(state, page.items, deriver, poolAddress, policy, currentOffset);
 
       currentOffset += page.items.length;
       pagesProcessed++;
@@ -231,15 +233,15 @@ export class NoteDiscovery {
       onProgress?.(progress);
 
       if (pagesProcessed % policy.persistEveryPages === 0) {
-        state.minOffset = calculateMinOffset(state.trees);
-        await this.saveState(publicKey, poolAddress, state);
+        state.lastSyncedOffset = currentOffset;
+        await this.saveState(accountId, poolAddress, state);
       }
 
       hasNext = page.pageInfo.hasNextPage;
     }
 
-    state.minOffset = calculateMinOffset(state.trees);
-    await this.saveState(publicKey, poolAddress, state);
+    state.lastSyncedOffset = currentOffset;
+    await this.saveState(accountId, poolAddress, state);
 
     progress.complete = true;
     onProgress?.(progress);
@@ -250,7 +252,7 @@ export class NoteDiscovery {
   private processPage(
     state: DiscoveryState,
     activities: import("@shinobi-cash/data").ActivityItem[],
-    accountKey: bigint,
+    deriver: NoteDeriver,
     poolAddress: string,
     policy: DiscoveryPolicy,
     currentOffset: number
@@ -273,7 +275,7 @@ export class NoteDiscovery {
       const startIndex = state.nextDepositIndex.get(chainId) ?? 0;
       const scanResult = scanForDeposits(
         activityIndex,
-        accountKey,
+        deriver,
         poolAddress,
         chainId,
         startIndex,
@@ -301,10 +303,9 @@ export class NoteDiscovery {
     const reconcileResult = reconcileTrees(state.trees, activities, activityIndex);
 
     for (const filled of reconcileResult.filledDepositIndices) {
-      const nullifierHash = deriveAndHashNullifier(
-        accountKey,
+      const nullifierHash = deriver.deriveNullifierHash(
         filled.poolAddress,
-        filled.originChainId,
+        Number(filled.originChainId),
         filled.depositIndex,
         0
       );
@@ -324,7 +325,7 @@ export class NoteDiscovery {
       state.trees,
       state.nullifierMap,
       activityIndex,
-      accountKey,
+      deriver,
       poolAddress
     );
     state.trees = extensionResult.updatedTrees;
@@ -337,8 +338,8 @@ export class NoteDiscovery {
     return state;
   }
 
-  private async loadOrInitState(publicKey: string, poolAddress: string): Promise<DiscoveryState> {
-    const cached = await this.persistence.loadState(publicKey, poolAddress);
+  private async loadOrInitState(accountId: string, poolAddress: string): Promise<DiscoveryState> {
+    const cached = await this.storage.read(accountId, poolAddress);
     if (cached) {
       return deserializeDiscoveryState(cached);
     }
@@ -347,19 +348,19 @@ export class NoteDiscovery {
       nullifierMap: new Map(),
       nextDepositIndex: new Map(),
       activities: new Map(),
-      minOffset: 0,
+      lastSyncedOffset: 0,
       newFilledDepositsFound: 0,
       newPendingDepositsFound: 0,
     };
   }
 
   private async saveState(
-    publicKey: string,
+    accountId: string,
     poolAddress: string,
     state: DiscoveryState
   ): Promise<void> {
     const serializable = serializeDiscoveryState(state);
-    await this.persistence.saveState(publicKey, poolAddress, serializable);
+    await this.storage.write(accountId, poolAddress, serializable);
   }
 
   private buildResult(state: DiscoveryState): DiscoveryResult {
@@ -379,7 +380,7 @@ export class NoteDiscovery {
       lastUsedIndexByChain,
       activities,
       newNotesFound: state.newFilledDepositsFound,
-      minOffset: state.minOffset,
+      lastSyncedOffset: state.lastSyncedOffset,
     };
   }
 }
@@ -398,7 +399,7 @@ export class NoteDiscovery {
  */
 export function rebuildNullifierMap(
   state: DiscoveryState,
-  accountKey: bigint,
+  deriver: NoteDeriver,
   poolAddress: string
 ): void {
   for (const tree of state.trees.values()) {
@@ -407,10 +408,9 @@ export function rebuildNullifierMap(
     for (const leaf of spendableLeaves) {
       // getSpendableLeaves guarantees spendable notes (filtered by isNote + isSpendableNote)
       const note = leaf.note as SpendableNote;
-      const nullifierHash = deriveAndHashNullifier(
-        accountKey,
+      const nullifierHash = deriver.deriveNullifierHash(
         poolAddress,
-        note.originChainId,
+        Number(note.originChainId),
         note.depositIndex,
         note.changeIndex,
         note.noteType
@@ -437,7 +437,7 @@ function serializeDiscoveryState(state: DiscoveryState): SerializableDiscoverySt
       index,
     })),
     activities: Array.from(state.activities.values()),
-    minOffset: state.minOffset,
+    lastSyncedOffset: state.lastSyncedOffset,
     newFilledDepositsFound: state.newFilledDepositsFound,
     newPendingDepositsFound: state.newPendingDepositsFound,
   };
@@ -452,26 +452,8 @@ function deserializeDiscoveryState(serialized: SerializableDiscoveryState): Disc
     nullifierMap: new Map(serialized.nullifierMap.map((n) => [n.hash, n.info])),
     nextDepositIndex: new Map(serialized.nextDepositIndex.map((n) => [n.chainId, n.index])),
     activities,
-    minOffset: serialized.minOffset,
+    lastSyncedOffset: serialized.lastSyncedOffset ?? 0,
     newFilledDepositsFound: serialized.newFilledDepositsFound ?? 0,
     newPendingDepositsFound: serialized.newPendingDepositsFound ?? 0,
   };
-}
-
-function calculateMinOffset(trees: Map<ChainKey, NoteTree>): number {
-  let minOffset = Number.MAX_SAFE_INTEGER;
-  let hasUnspentNotes = false;
-
-  for (const [, tree] of trees) {
-    const spendableLeaves = getSpendableLeaves(tree);
-    if (spendableLeaves.length > 0) {
-      hasUnspentNotes = true;
-      const rootNote = tree.root.note;
-      if (rootNote.discoveredAtOffset !== undefined) {
-        minOffset = Math.min(minOffset, rootNote.discoveredAtOffset);
-      }
-    }
-  }
-
-  return hasUnspentNotes ? minOffset : 0;
 }

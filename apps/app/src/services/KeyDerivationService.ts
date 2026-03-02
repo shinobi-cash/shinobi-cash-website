@@ -1,12 +1,5 @@
-import { hexToBytes } from "viem/utils";
+import { Bytes, Hex, WebAuthnP256 } from "ox";
 import { Errors } from "@/lib/errors/errors";
-
-interface PrfExtensionInput {
-  eval: {
-    first: BufferSource;
-    second?: BufferSource;
-  };
-}
 
 interface PrfExtensionOutput {
   results: {
@@ -25,11 +18,44 @@ const CONFIG = {
 } as const;
 
 export class KeyDerivationService {
-  async deriveDataEncryptionKey(amkPrivateKey: string): Promise<CryptoKey> {
+  /**
+   * Derive KEK (Key Encryption Key) from wallet signature.
+   * Used to encrypt/decrypt the Master Key in IndexedDB.
+   */
+  async deriveKEKFromWallet(
+    signature: `0x${string}`,
+    chainId: number,
+    walletAddress: `0x${string}`
+  ): Promise<CryptoKey> {
+    const signatureBytes = Bytes.fromHex(signature);
+    const signatureHash = await crypto.subtle.digest("SHA-256", signatureBytes as BufferSource);
+
+    const salt = new TextEncoder().encode(
+      `shinobi-wallet-auth-v1:chain-${chainId}:${walletAddress.toLowerCase()}`
+    );
+
+    const keyMaterial = await crypto.subtle.importKey(
+      "raw",
+      new Uint8Array(signatureHash),
+      { name: "HKDF" },
+      false,
+      ["deriveKey"]
+    );
+
+    return crypto.subtle.deriveKey(
+      { name: "HKDF", hash: "SHA-256", salt, info: new TextEncoder().encode("shinobi-encryption") },
+      keyMaterial,
+      { name: "AES-GCM", length: CONFIG.KEY_LENGTH },
+      false,
+      ["encrypt", "decrypt"]
+    );
+  }
+
+  async deriveDataEncryptionKey(masterKey: string): Promise<CryptoKey> {
     let privateKeyBytes: Uint8Array;
     try {
-      const hexKey = amkPrivateKey.startsWith("0x") ? amkPrivateKey : `0x${amkPrivateKey}`;
-      privateKeyBytes = hexToBytes(hexKey as `0x${string}`);
+      const hexKey = masterKey.startsWith("0x") ? masterKey : `0x${masterKey}`;
+      privateKeyBytes = Bytes.fromHex(hexKey as `0x${string}`);
     } catch {
       throw Errors.auth.decryptionFailed("Account key is malformed");
     }
@@ -91,27 +117,17 @@ export class KeyDerivationService {
     credentialId: string
   ): Promise<Uint8Array> {
     const prfInput = new TextEncoder().encode(`shinobi-prf:${accountId.toLowerCase().trim()}`);
+    const challenge = Hex.fromBytes(crypto.getRandomValues(new Uint8Array(32)));
 
-    const cred = await navigator.credentials.get({
-      publicKey: {
-        challenge: crypto.getRandomValues(new Uint8Array(32)),
-        allowCredentials: [
-          {
-            id: this.base64urlToBytes(credentialId),
-            type: "public-key",
-          },
-        ],
-        userVerification: "required",
-        extensions: {
-          prf: { eval: { first: prfInput } } as PrfExtensionInput,
-        },
-      },
+    // Use WebAuthnP256.sign to evaluate PRF during authentication
+    const result = await WebAuthnP256.sign({
+      credentialId,
+      challenge,
+      userVerification: "required",
+      extensions: { prf: { eval: { first: prfInput } } },
     });
 
-    if (!cred) throw Errors.auth.cancelled();
-
-    // @ts-expect-error PRF extension types not in standard lib
-    const extensions = cred.getClientExtensionResults() as { prf?: PrfExtensionOutput };
+    const extensions = result.raw.getClientExtensionResults() as { prf?: PrfExtensionOutput };
 
     if (!extensions.prf?.results?.first) {
       throw Errors.auth.passkeyUnsupported();
@@ -128,45 +144,24 @@ export class KeyDerivationService {
     const rpId = process.env.NEXT_PUBLIC_RP_ID || window.location.hostname;
     const prfProbe = new TextEncoder().encode("shinobi-prf:probe");
 
-    const credential = (await navigator.credentials.create({
-      publicKey: {
-        challenge: crypto.getRandomValues(new Uint8Array(32)),
-
-        rp: {
-          name: "Shinobi Privacy Pool",
-          id: rpId,
-        },
-
-        user: {
-          id: userId,
-          name: accountId,
-          displayName: accountId,
-        },
-
-        pubKeyCredParams: [
-          { alg: -7, type: "public-key" },
-          { alg: -257, type: "public-key" },
-        ],
-
-        authenticatorSelection: {
-          authenticatorAttachment: "platform",
-          userVerification: "required",
-          residentKey: "preferred",
-        },
-
-        timeout: 60_000,
-        attestation: "none",
-
-        extensions: {
-          prf: {
-            eval: { first: prfProbe },
-          } as PrfExtensionInput,
-        },
+    const credential = await WebAuthnP256.createCredential({
+      name: accountId,
+      rp: { name: "Shinobi Privacy Pool", id: rpId },
+      user: { id: userId, name: accountId, displayName: accountId },
+      authenticatorSelection: {
+        authenticatorAttachment: "platform",
+        userVerification: "required",
+        residentKey: "preferred",
       },
-    })) as PublicKeyCredential | null;
+      challenge: Hex.fromBytes(crypto.getRandomValues(new Uint8Array(32))),
+      attestation: "none",
+      extensions: { prf: { eval: { first: prfProbe } } },
+    });
 
-    if (!credential) {
-      throw Errors.auth.passkeyFailed("Passkey creation was cancelled or failed");
+    // Verify authenticator supports PRF before returning credential
+    const extensions = credential.raw.getClientExtensionResults() as { prf?: PrfExtensionOutput };
+    if (!extensions.prf?.results?.first) {
+      throw Errors.auth.passkeyUnsupported();
     }
 
     return { credentialId: credential.id };
@@ -179,17 +174,6 @@ export class KeyDerivationService {
       new TextEncoder().encode(saltInput)
     );
     return new Uint8Array(hash);
-  }
-
-  private base64urlToBytes(base64url: string): ArrayBuffer {
-    const base64 = base64url.replace(/-/g, "+").replace(/_/g, "/");
-    const binString = atob(base64);
-
-    const bytes = new Uint8Array(binString.length);
-    for (let i = 0; i < binString.length; i++) {
-      bytes[i] = binString.charCodeAt(i);
-    }
-    return bytes.buffer;
   }
 }
 

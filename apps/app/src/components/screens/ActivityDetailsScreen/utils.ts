@@ -82,10 +82,7 @@ export function getNoteDisplayAmount(note: Note): string {
 /**
  * Get activity title, handling Withdraw2 fills specially.
  */
-export function getActivityTitle(
-  activity: ActivityItem,
-  isMergedWithdrawal: boolean
-): string {
+export function getActivityTitle(activity: ActivityItem, isMergedWithdrawal: boolean): string {
   if (activity.type === "CROSSCHAIN_WITHDRAWAL_FILL" && isMergedWithdrawal) {
     return "Crosschain Withdraw2";
   }
@@ -99,10 +96,7 @@ export function getActivityTitle(
 /**
  * Find the created deposit note by label.
  */
-export function findCreatedNote(
-  label: string | null,
-  allTrees: NoteTree[]
-): Note | null {
+export function findCreatedNote(label: string | null, allTrees: NoteTree[]): Note | null {
   if (!label) return null;
 
   const result = findNoteByLabel(label, allTrees);
@@ -134,8 +128,7 @@ function addInputNotesFromChangeNode(
   if (!changeResult || !isNote(changeResult.note)) return null;
 
   const changeNote = changeResult.note;
-  const hasmergedFrom =
-    "mergedFrom" in changeNote && Object.keys(changeNote.mergedFrom).length > 0;
+  const hasmergedFrom = "mergedFrom" in changeNote && Object.keys(changeNote.mergedFrom).length > 0;
 
   // Add parent note (winner for Withdraw2, source for 1:1)
   const parentNote = changeResult.node.parent?.note;
@@ -214,10 +207,7 @@ export function findWithdrawalNotes(
       }
 
       // Fallback: try WithdrawalIntent lookup
-      const intentResult = findWithdrawalIntentByTxHash(
-        intentEvent.activity.txHash,
-        allTrees
-      );
+      const intentResult = findWithdrawalIntentByTxHash(intentEvent.activity.txHash, allTrees);
       if (intentResult) {
         const parentNote = intentResult.node.parent?.note;
         if (parentNote && isNote(parentNote)) {
@@ -269,8 +259,7 @@ export function findWithdrawalNotes(
 
   // Final fallback: try spentNullifiers from main activity
   if (inputNotes.length === 0) {
-    const spentNullifiers =
-      "spentNullifiers" in activity ? activity.spentNullifiers : null;
+    const spentNullifiers = "spentNullifiers" in activity ? activity.spentNullifiers : null;
     if (spentNullifiers && spentNullifiers.length > 0) {
       const sourceResult = findNoteBySpentNullifier(spentNullifiers[0], allTrees);
       if (sourceResult && isNote(sourceResult.note)) {
@@ -319,14 +308,11 @@ export function getRefundCommitment(
   activity: ActivityItem,
   timeline?: ActivityTimelineEvent[]
 ): string | null {
-  const refundCommit =
-    "refundCommitment" in activity ? activity.refundCommitment : null;
+  const refundCommit = "refundCommitment" in activity ? activity.refundCommitment : null;
   if (refundCommit) return refundCommit;
 
   if (timeline) {
-    const intentWithRefund = timeline.find(
-      (e) => "refundCommitment" in e.activity
-    )?.activity;
+    const intentWithRefund = timeline.find((e) => "refundCommitment" in e.activity)?.activity;
     if (intentWithRefund && "refundCommitment" in intentWithRefund) {
       return intentWithRefund.refundCommitment ?? null;
     }

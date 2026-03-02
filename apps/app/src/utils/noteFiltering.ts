@@ -6,33 +6,14 @@
 
 import type { NoteOrIntent } from "@shinobi-cash/core/discovery";
 import type { ActivityItem } from "@shinobi-cash/data";
-import {
-  isIntent,
-  isNote,
-  isMergedNote,
-  isRagequitNote,
-  isWithdrawalNote,
-  isCrosschainWithdrawalNote,
-  isSpendableNote,
-} from "@shinobi-cash/core/discovery";
-
-/** Check if item is a terminal note (no further actions possible) */
-function isTerminalNote(item: NoteOrIntent): boolean {
-  if (!isNote(item)) return false;
-  return (
-    isMergedNote(item) ||
-    isRagequitNote(item) ||
-    isWithdrawalNote(item) ||
-    isCrosschainWithdrawalNote(item)
-  );
-}
+import { isIntent, isNote, isTerminalNote, isSpendableNote } from "@shinobi-cash/core/discovery";
 
 /**
  * Get Tailwind background color class for note status dot.
  * UI-specific - returns CSS class strings.
  */
 export function getStatusDotColor(item: NoteOrIntent): string {
-  if (isTerminalNote(item)) return "bg-neutral-500";
+  if (isNote(item) && isTerminalNote(item)) return "bg-neutral-500";
   if (isIntent(item)) return "bg-amber-400";
 
   if (isNote(item) && isSpendableNote(item)) {

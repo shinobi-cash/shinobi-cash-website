@@ -10,23 +10,12 @@
     "ALCHEMY_API_KEY",
     "NEXT_PUBLIC_SENTRY_ENABLED"
   ],
-  "globalDependencies": [
-    ".env",
-    ".env.local"
-  ],
+  "globalDependencies": [".env", ".env.local"],
   "tasks": {
     "build": {
-      "dependsOn": [
-        "^build"
-      ],
-      "inputs": [
-        "$TURBO_DEFAULT$",
-        ".env*"
-      ],
-      "outputs": [
-        ".next/**",
-        "!.next/cache/**"
-      ],
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "outputs": [".next/**", "!.next/cache/**"],
       "env": [
         "NODE_ENV",
         "INDEXER_URL_DEV",
@@ -38,14 +27,10 @@
       ]
     },
     "lint": {
-      "dependsOn": [
-        "^lint"
-      ]
+      "dependsOn": ["^lint"]
     },
     "check-types": {
-      "dependsOn": [
-        "^check-types"
-      ]
+      "dependsOn": ["^check-types"]
     },
     "dev": {
       "cache": false,

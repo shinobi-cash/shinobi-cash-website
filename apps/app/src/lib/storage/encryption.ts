@@ -16,26 +16,29 @@ export interface EncryptedData {
   iv: Uint8Array;
   /** Encrypted ciphertext */
   data: Uint8Array;
-  /** Salt for key derivation */
-  salt: Uint8Array;
 }
 
 /**
  * Convert binary data to base64 for storage
  */
 export function arrayBufferToBase64(buffer: Uint8Array): string {
-  return btoa(String.fromCharCode(...buffer));
+  let binary = "";
+  for (let i = 0; i < buffer.length; i++) {
+    binary += String.fromCharCode(buffer[i]);
+  }
+  return btoa(binary);
 }
 
 /**
  * Convert base64 back to binary data
  */
 export function base64ToArrayBuffer(base64: string): Uint8Array {
-  return new Uint8Array(
-    atob(base64)
-      .split("")
-      .map((c) => c.charCodeAt(0))
-  );
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
 }
 
 /**
@@ -79,7 +82,6 @@ export class EncryptionService {
   }
 
   async encrypt<T>(data: T): Promise<EncryptedData> {
-    const salt = crypto.getRandomValues(new Uint8Array(32));
     const iv = crypto.getRandomValues(new Uint8Array(12));
     const key = this.getEncryptionKey();
 
@@ -95,7 +97,6 @@ export class EncryptionService {
     return {
       iv,
       data: new Uint8Array(encryptedData),
-      salt,
     };
   }
 

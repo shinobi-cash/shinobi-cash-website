@@ -2,7 +2,7 @@
  * App-Specific Data Type Interfaces
  */
 
-import type { WalletAccountId } from "@shinobi-cash/core/auth";
+import type { WalletAccountId } from "@/lib/auth";
 import type {
   SerializableNoteNode,
   NullifierInfo,
@@ -22,7 +22,7 @@ export interface AccountMetadata {
  * This is NEVER persisted to storage
  */
 export interface AccountData extends AccountMetadata {
-  privateKey: string; // AMK - in memory only (from wrapped-amk store)
+  privateKey: string; // Master Key - in memory only (from wrapped-master-key store)
   publicKey: string; // Derived from privateKey at runtime
 }
 
@@ -32,10 +32,10 @@ export interface AccountData extends AccountMetadata {
  */
 export interface CachedNoteData {
   poolAddress: string;
-  publicKey: string;
+  accountId: string;
   trees: SerializableNoteNode[];
   lastSyncTime: number;
-  minOffset?: number;
+  lastSyncedOffset?: number;
   /** Full discovery state for proper resumption. NullifierInfo includes originChainId. */
   nullifierMap?: Array<{ hash: string; info: NullifierInfo }>;
   /** Next deposit index per chain (keyed by chainId string) */
@@ -49,28 +49,26 @@ export interface EncryptedNotesData {
   encryptedPayload: {
     iv: string;
     data: string;
-    salt: string;
   };
   lastSyncTime: number;
 }
 
-// Session types - from keyDerivation.ts
+// Session types
+// No timeout needed — sessionStorage is tab-scoped (cleared on tab close)
 export interface SessionInfo {
   accountId: WalletAccountId;
-  lastAuthTime: number;
   environment: "iframe" | "native";
   credentialId?: string; // Only for passkey auth
 }
 
-// Wrapped AMK (Account Master Key) storage
-// Envelope encryption: AMK is encrypted with each KEK separately
-// This allows multiple auth methods to unlock the same AMK
-export interface WrappedAMK {
-  id: string; // Storage key: "accountId:amk:wallet" or "accountId:amk:passkey"
+// Wrapped Master Key (MK) storage
+// Envelope encryption: MK is encrypted with each KEK separately
+// This allows multiple auth methods to unlock the same Master Key
+export interface WrappedMasterKey {
+  id: string; // Storage key: "accountId:mk:wallet" or "accountId:mk:passkey"
   accountId: WalletAccountId; // Wallet account ID
   wrappedBy: "wallet" | "passkey"; // Which KEK encrypted this
-  encryptedPrivateKey: string; // AMK encrypted with KEK
+  encryptedPrivateKey: string; // Master Key encrypted with KEK
   iv: string; // Initialization vector
-  salt: string; // Salt used for encryption
   createdAt: number;
 }

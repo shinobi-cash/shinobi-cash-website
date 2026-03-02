@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAccount, useWalletClient, useSwitchChain } from "wagmi";
 import { RefundPreviewScreen } from "@/components/screens/RefundPreviewScreen";
@@ -9,12 +9,19 @@ import { useScreenNavigation } from "@/hooks/useScreenNavigation";
 import { useRefundController } from "@/hooks/useRefundController";
 import { RefundController, RefundSelectors } from "@/controllers/RefundController";
 import { POOL_CHAIN_ID } from "@/config/chains";
-import type { RefundType } from "@/utils/refund";
-import type { WalletClient, Account, Transport, Chain } from "viem";
+import type { RefundType } from "@shinobi-cash/core/intent";
 
 type RefundScreen = "preview" | "timeline";
 
 export default function RefundPage() {
+  return (
+    <Suspense>
+      <RefundPageContent />
+    </Suspense>
+  );
+}
+
+function RefundPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { chainId: walletChainId } = useAccount();
@@ -58,9 +65,8 @@ export default function RefundPage() {
     // Capture data for timeline before status transitions away from "ready"
     setTimelineData({
       refundType: currentRefundType,
-      chainId: currentRefundType === "deposit"
-        ? Number(currentIntent.originChainId)
-        : POOL_CHAIN_ID,
+      chainId:
+        currentRefundType === "deposit" ? Number(currentIntent.originChainId) : POOL_CHAIN_ID,
       amount: currentIntent.inputAmount,
     });
 
@@ -79,7 +85,7 @@ export default function RefundPage() {
         }
       }
 
-      await RefundController.submit(walletClient as WalletClient<Transport, Chain, Account>);
+      await RefundController.submit(walletClient);
     } else {
       await RefundController.submit();
     }
@@ -102,7 +108,8 @@ export default function RefundPage() {
       : null;
 
   const hasError = state.state.status === "error";
-  const error = state.state.status === "error" ? state.state.error : state.lastError;
+  const timelineError = state.state.status === "error" ? state.state.error : null;
+  const formError = state.state.status === "error" ? state.state.error : state.lastError;
 
   const intent = RefundSelectors.getIntent();
   const refundType = RefundSelectors.getRefundType();
@@ -116,7 +123,7 @@ export default function RefundPage() {
         refundType={timelineData.refundType}
         chainId={timelineData.chainId}
         txHash={txHash}
-        error={error}
+        error={timelineError}
         onClose={handleTimelineClose}
       />
     );
@@ -139,11 +146,8 @@ export default function RefundPage() {
     return (
       <div className="flex h-full items-center justify-center p-8 text-center">
         <div className="space-y-4">
-          <p className="text-neutral-400">{error?.message ?? "Failed to load intent"}</p>
-          <button
-            onClick={() => router.back()}
-            className="text-blue-400 hover:text-blue-300"
-          >
+          <p className="text-neutral-400">{formError?.message ?? "Failed to load intent"}</p>
+          <button onClick={() => router.back()} className="text-blue-400 hover:text-blue-300">
             Go back
           </button>
         </div>

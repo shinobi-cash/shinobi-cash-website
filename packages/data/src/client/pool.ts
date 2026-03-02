@@ -1,4 +1,4 @@
-import type { Pool, PaginatedResponse, PaginationOptions } from "../types";
+import type { Pool, PaginatedResponse, PaginationOptions } from "../types/index.js";
 
 interface PoolClientConfig {
   endpoint: string;

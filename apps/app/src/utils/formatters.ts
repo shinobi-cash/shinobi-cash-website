@@ -1,4 +1,4 @@
-import { formatDistance } from "date-fns";
+import { formatDistance, formatDuration, intervalToDuration } from "date-fns";
 import { formatEther, parseEther } from "viem/utils";
 import { DISPLAY_DECIMALS } from "@/constants/withdraw";
 
@@ -195,4 +195,9 @@ export function formatDisplayAmount(amount: string | number | bigint | null | un
   // Format and remove trailing zeros
   const formatted = num.toFixed(decimals);
   return formatted.replace(/\.?0+$/, "") || "0";
+}
+
+export function formatHumanDuration(seconds: number): string {
+  const duration = intervalToDuration({ start: 0, end: seconds * 1000 });
+  return formatDuration(duration, { format: seconds >= 3600 ? ["hours"] : ["minutes"] });
 }

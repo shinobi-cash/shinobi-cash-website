@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Banknote } from "lucide-react";
 import { Badge } from "@workspace/ui/components/badge";
@@ -14,6 +14,14 @@ import { traverseTree } from "@shinobi-cash/core/discovery";
 import { useNotesScreen } from "@/hooks/useNotesScreen";
 
 export default function NotesPage() {
+  return (
+    <Suspense>
+      <NotesPageContent />
+    </Suspense>
+  );
+}
+
+function NotesPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const controller = useNotesScreen();

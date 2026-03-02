@@ -20,6 +20,7 @@ import type {
   WithdrawalProofData,
   CircuitFiles,
   CircuitFileLoader,
+  CircuitFetcher,
   ProofGenerator,
   Withdraw2Intent,
   CrosschainWithdraw2Intent,
@@ -39,6 +40,7 @@ export type {
   WithdrawalProofData,
   CircuitFiles,
   CircuitFileLoader,
+  CircuitFetcher,
   ProofGenerator,
   Withdraw2Intent,
   CrosschainWithdraw2Intent,
@@ -53,99 +55,22 @@ const MAX_TREE_DEPTH = 32;
 
 // ============ WITNESS BUILDING ============
 
-interface WithdrawalTrees {
-  stateTree: LeanIMT<bigint>;
-  aspTree: LeanIMT<bigint>;
-}
-
 function padArray(arr: bigint[], length: number): bigint[] {
   if (arr.length >= length) return arr;
   return [...arr, ...Array(length - arr.length).fill(BigInt(0))];
 }
 
-function buildWithdrawalTrees(stateCommitments: bigint[], aspLabels: bigint[]): WithdrawalTrees {
-  const hash = (a: bigint, b: bigint) => poseidon2([a, b]);
-
-  const stateTree = new LeanIMT<bigint>(hash);
-  for (const commitment of stateCommitments) {
-    stateTree.insert(commitment);
+/** Recompute LeanIMT root from a Merkle inclusion proof (mirrors the circuit logic) */
+function computeLeanIMTRoot(leaf: bigint, siblings: bigint[], leafIndex: number): bigint {
+  let current = leaf;
+  for (let i = 0; i < siblings.length; i++) {
+    const sibling = siblings[i];
+    if (sibling === 0n) continue; // empty sibling → propagate
+    const bit = (leafIndex >> i) & 1;
+    current = bit === 0 ? poseidon2([current, sibling]) : poseidon2([sibling, current]);
   }
-
-  const aspTree = new LeanIMT<bigint>(hash);
-  for (const label of aspLabels) {
-    aspTree.insert(label);
-  }
-
-  return { stateTree, aspTree };
+  return current;
 }
-
-export function buildWithdrawalCircuitWitness(
-  derivation: WithdrawalDerivation,
-  stateCommitments: bigint[],
-  aspLabels: bigint[],
-  intent: WithdrawalIntent
-): WithdrawalCircuitWitness {
-  const { withdrawAmount, noteAmount, label } = intent;
-
-  const { stateTree, aspTree } = buildWithdrawalTrees(stateCommitments, aspLabels);
-
-  const existingCommitmentBigInt = BigInt(derivation.existingCommitment);
-  const stateIndex = stateCommitments.indexOf(existingCommitmentBigInt);
-  const aspIndex = aspLabels.indexOf(label);
-
-  if (stateIndex === -1) {
-    throw new Error(`Commitment ${derivation.existingCommitment} not found in state tree`);
-  }
-  if (aspIndex === -1) {
-    throw new Error(`Label ${label.toString()} not approved by ASP`);
-  }
-
-  const stateProof = stateTree.generateProof(stateIndex);
-  const aspProof = aspTree.generateProof(aspIndex);
-
-  return {
-    withdrawnValue: withdrawAmount.toString(),
-    stateRoot: stateProof.root.toString(),
-    ASPRoot: aspProof.root.toString(),
-    stateTreeDepth: stateTree.depth.toString(),
-    ASPTreeDepth: aspTree.depth.toString(),
-    context: derivation.contextHash,
-    label: label.toString(),
-    existingValue: noteAmount.toString(),
-    existingNullifier: derivation.existingNullifier.toString(),
-    existingSecret: derivation.existingSecret.toString(),
-    newNullifier: derivation.newNullifier.toString(),
-    newSecret: derivation.newSecret.toString(),
-    stateSiblings: padArray(stateProof.siblings, MAX_TREE_DEPTH).map((s) => s.toString()),
-    ASPSiblings: padArray(aspProof.siblings, MAX_TREE_DEPTH).map((s) => s.toString()),
-    stateIndex: Object.is(stateProof.index, Number.NaN) ? 0 : stateProof.index,
-    ASPIndex: Object.is(aspProof.index, Number.NaN) ? 0 : aspProof.index,
-  };
-}
-
-export function buildCrosschainWithdrawalCircuitWitness(
-  derivation: CrosschainWithdrawalDerivation,
-  stateCommitments: bigint[],
-  aspLabels: bigint[],
-  intent: CrosschainWithdrawalIntent
-): CrosschainWithdrawalCircuitWitness {
-  const baseWitness = buildWithdrawalCircuitWitness(
-    derivation,
-    stateCommitments,
-    aspLabels,
-    intent
-  );
-
-  return {
-    ...baseWitness,
-    refundNullifier: derivation.refundNullifier.toString(),
-    refundSecret: derivation.refundSecret.toString(),
-    relayFeeBPS: intent.relayFeeBPS.toString(),
-    refundFeeBPS: intent.refundFeeBPS.toString(),
-  };
-}
-
-// ============ WITNESS BUILDING WITH PRECOMPUTED ASP PROOFS ============
 
 /**
  * Build withdrawal circuit witness using precomputed ASP proof from IPFS
@@ -179,6 +104,29 @@ export function buildWithdrawalCircuitWitnessWithProof(
   }
 
   const stateProof = stateTree.generateProof(stateIndex);
+
+  // Pre-verify ASP Merkle proof (mirrors circom line 82: ASPRoot === ASPRootChecker.out)
+  const aspSiblingsBigInt = aspProof.siblings.map(BigInt);
+  const computedASPRoot = computeLeanIMTRoot(intent.label, aspSiblingsBigInt, aspProof.index);
+  const claimedASPRoot = BigInt(aspProof.aspRoot);
+  if (computedASPRoot !== claimedASPRoot) {
+    throw new Error(
+      `ASP Merkle proof invalid: computed root ${computedASPRoot} does not match claimed root ${claimedASPRoot}. ` +
+        `Label: ${intent.label}, index: ${aspProof.index}, depth: ${aspProof.treeDepth}`
+    );
+  }
+
+  // Pre-verify state Merkle proof
+  const computedStateRoot = computeLeanIMTRoot(
+    existingCommitmentBigInt,
+    stateProof.siblings,
+    stateProof.index
+  );
+  if (computedStateRoot !== stateProof.root) {
+    throw new Error(
+      `State Merkle proof invalid: computed root ${computedStateRoot} does not match claimed root ${stateProof.root}`
+    );
+  }
 
   return {
     withdrawnValue: withdrawAmount.toString(),
@@ -215,120 +163,6 @@ export function buildCrosschainWithdrawalCircuitWitnessWithProof(
     aspProof,
     intent
   );
-
-  return {
-    ...baseWitness,
-    refundNullifier: derivation.refundNullifier.toString(),
-    refundSecret: derivation.refundSecret.toString(),
-    relayFeeBPS: intent.relayFeeBPS.toString(),
-    refundFeeBPS: intent.refundFeeBPS.toString(),
-  };
-}
-
-// ============ WITHDRAW2 (2:1) WITNESS BUILDING ============
-
-/**
- * Build circuit witness for Withdraw2 (2:1 merge) withdrawal
- *
- * @param derivation - Cryptographic derivation data for both inputs
- * @param stateCommitments - All commitments in the state tree
- * @param aspLabels - All approved labels in the ASP tree
- * @param intent - Withdrawal intent with amounts and labels
- */
-export function buildWithdraw2CircuitWitness(
-  derivation: Withdraw2Derivation,
-  stateCommitments: bigint[],
-  aspLabels: bigint[],
-  intent: Withdraw2Intent
-): Withdraw2CircuitWitness {
-  const { withdrawAmount, primaryNoteAmount, primaryLabel, secondaryNoteAmount, secondaryLabel } =
-    intent;
-
-  const { stateTree, aspTree } = buildWithdrawalTrees(stateCommitments, aspLabels);
-
-  // Find primary input in trees
-  const primaryCommitmentBigInt = BigInt(derivation.primary.existingCommitment);
-  const primaryStateIndex = stateCommitments.indexOf(primaryCommitmentBigInt);
-  const primaryASPIndex = aspLabels.indexOf(primaryLabel);
-
-  if (primaryStateIndex === -1) {
-    throw new Error(
-      `Primary commitment ${derivation.primary.existingCommitment} not found in state tree`
-    );
-  }
-  if (primaryASPIndex === -1) {
-    throw new Error(`Primary label ${primaryLabel.toString()} not approved by ASP`);
-  }
-
-  // Find secondary input in trees
-  const secondaryCommitmentBigInt = BigInt(derivation.secondary.existingCommitment);
-  const secondaryStateIndex = stateCommitments.indexOf(secondaryCommitmentBigInt);
-  const secondaryASPIndex = aspLabels.indexOf(secondaryLabel);
-
-  if (secondaryStateIndex === -1) {
-    throw new Error(
-      `Secondary commitment ${derivation.secondary.existingCommitment} not found in state tree`
-    );
-  }
-  if (secondaryASPIndex === -1) {
-    throw new Error(`Secondary label ${secondaryLabel.toString()} not approved by ASP`);
-  }
-
-  // Generate merkle proofs for both inputs
-  const primaryStateProof = stateTree.generateProof(primaryStateIndex);
-  const primaryASPProof = aspTree.generateProof(primaryASPIndex);
-  const secondaryStateProof = stateTree.generateProof(secondaryStateIndex);
-  const secondaryASPProof = aspTree.generateProof(secondaryASPIndex);
-
-  return {
-    // Public inputs
-    withdrawnValue: withdrawAmount.toString(),
-    stateRoot: primaryStateProof.root.toString(),
-    stateTreeDepth: stateTree.depth.toString(),
-    ASPRoot: primaryASPProof.root.toString(),
-    ASPTreeDepth: aspTree.depth.toString(),
-    context: derivation.contextHash,
-
-    // Primary input (input0)
-    existingValue0: primaryNoteAmount.toString(),
-    label0: primaryLabel.toString(),
-    existingNullifier0: derivation.primary.existingNullifier.toString(),
-    existingSecret0: derivation.primary.existingSecret.toString(),
-    stateSiblings0: padArray(primaryStateProof.siblings, MAX_TREE_DEPTH).map((s) => s.toString()),
-    stateIndex0: Object.is(primaryStateProof.index, Number.NaN) ? 0 : primaryStateProof.index,
-    ASPSiblings0: padArray(primaryASPProof.siblings, MAX_TREE_DEPTH).map((s) => s.toString()),
-    ASPIndex0: Object.is(primaryASPProof.index, Number.NaN) ? 0 : primaryASPProof.index,
-
-    // Secondary input (input1)
-    existingValue1: secondaryNoteAmount.toString(),
-    label1: secondaryLabel.toString(),
-    existingNullifier1: derivation.secondary.existingNullifier.toString(),
-    existingSecret1: derivation.secondary.existingSecret.toString(),
-    stateSiblings1: padArray(secondaryStateProof.siblings, MAX_TREE_DEPTH).map((s) => s.toString()),
-    stateIndex1: Object.is(secondaryStateProof.index, Number.NaN) ? 0 : secondaryStateProof.index,
-    ASPSiblings1: padArray(secondaryASPProof.siblings, MAX_TREE_DEPTH).map((s) => s.toString()),
-    ASPIndex1: Object.is(secondaryASPProof.index, Number.NaN) ? 0 : secondaryASPProof.index,
-
-    // Output (change note)
-    outputNullifier: derivation.primary.newNullifier.toString(),
-    outputSecret: derivation.primary.newSecret.toString(),
-
-    // Label selector
-    labelSelector: derivation.labelSelector,
-  };
-}
-
-/**
- * Build circuit witness for cross-chain Withdraw2 withdrawal
- * Includes refund commitment inputs and fee inputs for failure recovery
- */
-export function buildCrosschainWithdraw2CircuitWitness(
-  derivation: CrosschainWithdraw2Derivation,
-  stateCommitments: bigint[],
-  aspLabels: bigint[],
-  intent: CrosschainWithdraw2Intent
-): CrosschainWithdraw2CircuitWitness {
-  const baseWitness = buildWithdraw2CircuitWitness(derivation, stateCommitments, aspLabels, intent);
 
   return {
     ...baseWitness,
@@ -624,4 +458,66 @@ export function createProofGenerator(config: ProofGeneratorConfig): ProofGenerat
       return { proof, publicSignals };
     },
   };
+}
+
+// ============ DEFAULT CIRCUIT FETCHER ============
+
+const CIRCUIT_PATHS = {
+  withdrawal: {
+    wasm: "build/withdraw/withdraw.wasm",
+    zkey: "keys/withdraw.zkey",
+    vkey: "keys/withdraw.vkey",
+  },
+  crosschainWithdrawal: {
+    wasm: "build/crosschain_withdraw/crosschain_withdrawal.wasm",
+    zkey: "keys/crosschain_withdrawal.zkey",
+    vkey: "keys/crosschain_withdrawal.vkey",
+  },
+  withdraw2: {
+    wasm: "build/withdraw2/withdraw2.wasm",
+    zkey: "keys/withdraw2.zkey",
+    vkey: "keys/withdraw2.vkey",
+  },
+  crosschainWithdraw2: {
+    wasm: "build/crosschain_withdraw2/crosschain_withdraw2.wasm",
+    zkey: "keys/crosschain_withdraw2.zkey",
+    vkey: "keys/crosschain_withdraw2.vkey",
+  },
+  ragequit: {
+    wasm: "build/commitment/commitment.wasm",
+    zkey: "keys/commitment.zkey",
+    vkey: "keys/commitment.vkey",
+  },
+} as const;
+
+/** Create an HTTP circuit fetcher from a base URL (like Kohaku's rgHttpFetcher) */
+export const httpCircuitFetcher =
+  (baseUrl: string): CircuitFetcher =>
+  async (path: string) => {
+    const response = await fetch(baseUrl + path);
+    if (!response.ok) throw new Error(`Failed to fetch circuit file: ${baseUrl + path}`);
+    return new Uint8Array(await response.arrayBuffer());
+  };
+
+async function loadCircuit(
+  fetcher: CircuitFetcher,
+  paths: { wasm: string; zkey: string; vkey: string }
+): Promise<CircuitFiles> {
+  const [wasmFile, zkeyFile, vkeyRaw] = await Promise.all([
+    fetcher(paths.wasm),
+    fetcher(paths.zkey),
+    fetcher(paths.vkey),
+  ]);
+  return { wasmFile, zkeyFile, vkeyData: JSON.parse(new TextDecoder().decode(vkeyRaw)) };
+}
+
+/** Create a proof generator using a circuit fetcher (defaults to HTTP from /circuits/) */
+export function createDefaultProofGenerator(fetcher: CircuitFetcher): ProofGenerator {
+  return createProofGenerator({
+    withdrawalLoader: () => loadCircuit(fetcher, CIRCUIT_PATHS.withdrawal),
+    crosschainWithdrawalLoader: () => loadCircuit(fetcher, CIRCUIT_PATHS.crosschainWithdrawal),
+    withdraw2Loader: () => loadCircuit(fetcher, CIRCUIT_PATHS.withdraw2),
+    crosschainWithdraw2Loader: () => loadCircuit(fetcher, CIRCUIT_PATHS.crosschainWithdraw2),
+    ragequitLoader: () => loadCircuit(fetcher, CIRCUIT_PATHS.ragequit),
+  });
 }

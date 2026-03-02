@@ -1,4 +1,9 @@
-import type { Intent, IntentFilters, PaginatedResponse, PaginationOptions } from "../types";
+import type {
+  Intent,
+  IntentFilters,
+  PaginatedResponse,
+  PaginationOptions,
+} from "../types/index.js";
 
 interface IntentClientConfig {
   endpoint: string;

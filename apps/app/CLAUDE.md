@@ -62,26 +62,25 @@ Controllers own business logic and state using Valtio proxies. React components 
 ```
 AuthController (root - no dependencies)
     ↑
-    ├── DepositController (reads crypto)
-    ├── WithdrawController (reads crypto)
-    └── NotesDiscoveryController (reads crypto)
+    ├── DepositController (checks isAuthenticated)
+    ├── WithdrawController (checks isAuthenticated)
+    └── NotesDiscoveryController (checks isAuthenticated)
               ↑
-              ├── ActivityDiscoveryController (derives from notes)
               ├── DepositController (gets lastUsedIndex)
-              └── TransactionTrackingController (triggers refresh)
+              └── All controllers call refresh() after transactions
 ```
 
 ### 1. AuthController
 
 **File**: `src/controllers/AuthController.ts`
 
-**Purpose**: Authentication and cryptographic material management.
+**Purpose**: Authentication and session management.
 
 **State Shape**:
+
 ```typescript
 interface AuthControllerState {
   state: AuthState;
-  crypto: CryptoContext;
 }
 
 type AuthState =
@@ -90,20 +89,20 @@ type AuthState =
   | { status: "authenticated"; session: AuthSession }
   | { status: "error"; error: AppError };
 
-interface CryptoContext {
-  publicKey: string | null;
-  accountKey: bigint | null;
-  cryptoReady: boolean;  // TRUE = downstream can proceed
-}
+type AuthSession = {
+  accountId: string;
+  authenticatedAt: number;
+  passkeyEnabled: boolean;
+};
 ```
 
 **State Transitions**:
+
 ```
 booting → unauthenticated (no session)
 booting → authenticated (passkey auto-login)
 unauthenticated → authenticated (wallet sign-in)
 authenticated → unauthenticated (logout)
-any → error (critical failure)
 ```
 
 **Key Methods**:
@@ -111,11 +110,12 @@ any → error (critical failure)
 |--------|---------|
 | `bootstrap()` | Restore session on app load |
 | `signInWithWallet({walletAddress, chainId, signature})` | Wallet authentication |
-| `enablePasskey()` | Enable passwordless login |
+| `enablePasskey()` | Enable passwordless login (two biometric prompts) |
 | `removePasskey()` | Disable passkey |
-| `logout()` | Clear session and crypto |
+| `logout()` | Clear session |
+| `isAuthenticated()` | Guard for downstream operations |
 
-**Critical Invariant**: `cryptoReady` is the gate for all downstream operations.
+**Critical Invariant**: `isAuthenticated()` is the gate for all downstream operations. RuntimeBootstrap reacts to `state.status === "authenticated"` transitions.
 
 ---
 
@@ -126,12 +126,15 @@ any → error (critical failure)
 **Purpose**: Privacy note discovery and caching.
 
 **State Shape**:
+
 ```typescript
 interface NotesDiscoveryControllerState {
   state: DiscoveryState;
-  noteChains: NoteChain[];
+  noteTrees: NoteTree[];
+  activities: ActivityItem[];
   progress: DiscoveryProgress | null;
   lastError: NotesError | null;
+  lastSyncedAt: number | null;
 }
 
 type DiscoveryState =
@@ -142,8 +145,10 @@ type DiscoveryState =
 ```
 
 **State Transitions**:
+
 ```
 idle → discovering (bootstrap/discover called)
+idle → ready (cache loaded)
 discovering → ready (success)
 discovering → error (failure)
 ready → discovering (refresh)
@@ -153,25 +158,28 @@ error → discovering (retry)
 **Key Methods**:
 | Method | Purpose |
 |--------|---------|
-| `bootstrap()` | Load cache, trigger discovery |
-| `discover()` | Full discovery from indexer |
+| `bootstrap()` | Load cache, trigger discovery (fire-and-forget) |
+| `discover()` | Full discovery via `getShinobiClient().sync()` |
 | `refresh()` | Debounced re-discovery (500ms) |
-| `startBackgroundSync(poolAddress)` | Spawn Web Worker for polling |
-| `stopBackgroundSync()` | Terminate worker |
 | `reset()` | Clear all state |
 
-**Selectors**:
+**Sync triggers** (no background polling):
+
+1. On authentication (`bootstrap()` via AppRuntime)
+2. After transactions (controllers call `refresh()`)
+3. Manual user trigger (NotesSyncIndicator button)
+
+**Selectors** (`NotesDiscoverySelectors`):
 | Selector | Returns |
 |----------|---------|
-| `getNoteChains()` | All note chains |
-| `getAvailableNotes()` | Withdrawable notes |
-| `getCounts()` | `{ available, pending, spent }` |
-| `getLastUsedIndex()` | For new deposit index |
-| `getViewState()` | UI-friendly status |
+| `getNoteTrees()` | All note trees |
+| `getSpendableNotes()` | Notes available for balance display |
+| `getWithdrawableNotes()` | ASP-approved notes for private withdrawal |
+| `getCounts()` | `{ spendable, pending, spent }` |
+| `getLastUsedIndex(chainId?)` | Highest deposit index for a chain |
+| `getViewState()` | UI-friendly status with sync error handling |
 
 **Concurrency**: Uses `discoveryId` counter and `abortController` to prevent race conditions.
-
-**Withdraw2 Support**: Discovery handles `WITHDRAW2` activities with dual nullifiers (`spentNullifier` + `spentNullifier1`), marking both source notes as spent.
 
 ---
 
@@ -182,34 +190,33 @@ error → discovering (retry)
 **Purpose**: Deposit flow orchestration.
 
 **State Shape**:
+
 ```typescript
 interface DepositControllerState {
   state: DepositState;
   amount: string;
   lastPreparedAmounts: DepositAmounts | null;
   wallet: WalletContext;
+  solverFeeBPS: number;
+  fillDeadlineSeconds: number;
+  expirySeconds: number;
+  contractDefaults: SolverQuote | null;
 }
 
 type DepositState =
   | { status: "idle" }
-  | { status: "preparing"; step: "crypto" | "commitment" | "gas" }
-  | { status: "ready"; amounts: DepositAmounts; gasEstimate: GasEstimate; noteData: CashNoteData }
+  | { status: "preparing"; step: "commitment" | "gas" }
+  | {
+      status: "ready";
+      amounts: DepositAmounts;
+      gasEstimate: GasEstimate;
+      txRequest: TransactionRequest;
+    }
   | { status: "submitting" }
   | { status: "confirming"; txHash: `0x${string}` }
-  | { status: "confirmed-onchain"; txHash: `0x${string}` }
-  | { status: "indexed"; txHash: `0x${string}` }
+  | { status: "confirmed"; txHash: `0x${string}` }
   | { status: "failed"; txHash: `0x${string}`; reason: string }
   | { status: "error"; error: AppError };
-```
-
-**State Transitions**:
-```
-idle → preparing (auto-prepare triggers)
-preparing → ready (commitment + gas done)
-ready → submitting (user confirms)
-submitting → confirming (tx submitted)
-confirming → confirmed-onchain (receipt success)
-confirmed-onchain → indexed (indexer synced)
 ```
 
 **Key Methods**:
@@ -217,17 +224,18 @@ confirmed-onchain → indexed (indexer synced)
 |--------|---------|
 | `setAmount(amount)` | Update deposit amount |
 | `schedulePrepare(delay)` | Debounced prepare (1s default) |
-| `prepare()` | Generate commitment, estimate gas |
-| `submit()` | Submit transaction to chain |
-| `markIndexed()` | Called when indexer confirms |
+| `prepare()` | Generate commitment via `getShinobiAccount().deposit()`, estimate gas |
+| `submit()` | Submit transaction via wallet |
 | `reset()` | Clear all state |
+| `setSolverFeeBPS(bps)` | Configure cross-chain solver fee |
 
-**Selectors**:
+**Selectors** (`DepositSelectors`):
 | Selector | Returns |
 |----------|---------|
 | `canDeposit()` | status === "ready" |
-| `canAutoPrepare()` | Valid inputs + connected + crypto ready |
+| `canAutoPrepare()` | Valid inputs + connected + authenticated |
 | `isCrossChain()` | chainId !== POOL_CHAIN.id |
+| `isAboveMinimum()` | Amount meets minimum threshold |
 
 ---
 
@@ -238,33 +246,31 @@ confirmed-onchain → indexed (indexer synced)
 **Purpose**: Withdrawal with ZK proofs. Supports both 1:1 withdrawals and 2:1 Withdraw2 merges.
 
 **State Shape**:
+
 ```typescript
 interface WithdrawControllerState {
   state: WithdrawState;
   amount: string;
   recipientAddress: string;
   destinationChainId: number;
-  selectedNote: Note | null;
-  selectedNotes: Note[];             // For Withdraw2 (2 notes)
-  previewFeeQuote: FeeQuote | null;
+  selectedNotes: Note[];
+  selection: WithdrawalSelection | null;
+  previewFeeQuote: WithdrawalFeeQuote | null;
   lastError: AppError | null;
   notes: NotesContext;
+  solverFeeBPS: number;
+  fillDeadlineSeconds: number;
+  expirySeconds: number;
 }
 
 type WithdrawState =
   | { status: "idle" }
   | { status: "previewing" }
-  | { status: "preparing"; phase: EnginePhase }
-  | { status: "ready"; preparedUserOp: PreparedUserOperation }
+  | { status: "preparing" }
+  | { status: "ready"; prepared: PreparedWithdrawalOp }
   | { status: "submitting" }
-  | { status: "confirmed"; txHash; executionResult }
-  | { status: "indexed"; txHash; executionResult }
+  | { status: "confirmed"; txHash: `0x${string}` }
   | { status: "error"; error: AppError };
-```
-
-**Prepare Phases** (during `preparing`):
-```
-quoted → context-built → witness-built → proof-generated → prepared
 ```
 
 **Key Methods**:
@@ -272,27 +278,32 @@ quoted → context-built → witness-built → proof-generated → prepared
 |--------|---------|
 | `setAmount(amount)` | Update withdrawal amount |
 | `setRecipientAddress(address)` | Set destination address |
-| `selectNote(note)` | Select note to withdraw from |
-| `setMax()` | Set amount to note balance |
+| `selectNote(note)` | Select single note (replaces selection) |
+| `addNote(note)` | Add note to selection (max 2 for Withdraw2) |
+| `removeNote(note)` | Remove note from selection |
+| `setMax()` | Set amount to total selected notes balance |
 | `schedulePreview(delay)` | Debounced fee quote (500ms) |
-| `preview()` | Get fee quote only |
-| `prepare()` | Full pipeline (proof generation) |
+| `preview()` | Get fee quote via `client.quoteWithdrawal()` |
+| `prepare()` | Full pipeline via `client.prepareWithdrawal()` (proof + UserOp) |
 | `confirm()` | prepare() + submit() |
-| `submit()` | Submit to bundler |
+| `submit()` | Submit via `client.submitWithdrawal()` (bundler) |
 
-**Selectors**:
+**Selectors** (`WithdrawSelectors`):
 | Selector | Returns |
 |----------|---------|
-| `canWithdraw()` | Valid inputs + crypto ready |
+| `canWithdraw()` | Valid inputs + authenticated |
 | `isCrossChain()` | destination !== pool chain |
 | `getNetAmount()` | Amount after fees |
-| `isWithdraw2()` | selectedNotes.length === 2 |
-| `getSelectedNotesTotal()` | Sum of selected notes balances |
+| `isWithdraw2()` | `selection.type === "withdraw2"` |
+| `getTotalInputAmount()` | Sum of selected notes |
+| `getWithdrawalMode()` | `"standard"` or `"withdraw2"` |
 
-**Withdraw2 Support**:
-- **Multi-note selection**: `selectNote()` handles toggling notes in `selectedNotes[]`
-- **Automatic routing**: Controller routes to Withdraw2Engine when 2 notes selected
-- **Combined balance**: `getSelectedNotesTotal()` returns sum for max calculation
+**Note Selection & Routing**:
+
+- `selectNotesForWithdrawal()` from `@shinobi-cash/core/withdrawal` determines routing
+- 1 note → standard withdrawal via `client.prepareWithdrawal()`
+- 2 notes → Withdraw2 merge via `client.prepareWithdraw2()`
+- `WithdrawalSelection` carries primary/secondary inputs + label selector
 
 ---
 
@@ -303,6 +314,7 @@ quoted → context-built → witness-built → proof-generated → prepared
 **Purpose**: Monitor transaction lifecycle from submission to indexer confirmation.
 
 **State Shape**:
+
 ```typescript
 interface TransactionTrackingState {
   status: "idle" | "pending" | "waiting" | "synced" | "failed";
@@ -311,6 +323,7 @@ interface TransactionTrackingState {
 ```
 
 **Flow**:
+
 ```
 trackTransaction(txHash) → pending → waiting (receipt confirmed) → synced (indexed)
                                    ↓
@@ -329,15 +342,54 @@ trackTransaction(txHash) → pending → waiting (receipt confirmed) → synced 
 ### 6. Screen Controllers (UI State Only)
 
 **NotesScreenController** (`src/controllers/NotesScreenController.ts`):
+
 - `activeFilter`: "available" | "pending" | "spent"
 - `selectedNoteChain`: NoteChain | null
 
 **ActivityScreenController** (`src/controllers/ActivityScreenController.ts`):
+
 - `activeFilter`: "all" | "deposit" | "withdrawal" | "refund"
 - `selectedActivityId`: string | null
 
 **ActivityDiscoveryController** (`src/controllers/ActivityDiscoveryController.ts`):
+
 - Derives activities from note chains (passive, no fetching)
+
+---
+
+## SDK Architecture
+
+### Package Boundaries
+
+```
+ShinobiAccount (@shinobi-cash/core/account)
+  = Pure crypto encoder (closure pattern)
+  = deposit(), prepareWithdrawal(), prepareWithdraw2(), ragequit()
+  = No I/O, no state, no pool config
+
+ShinobiCashClient (@shinobi-cash/client)
+  = Chain interaction layer
+  = sync(), prepareWithdrawal(), submitWithdrawal(), quoteWithdrawal()
+  = Wraps account with bundler (Pimlico), indexer, contract reads
+```
+
+### Singletons
+
+**AccountSingleton** (`src/runtime/AccountSingleton.ts`):
+
+```typescript
+createAccount(privateKey); // Called in AppRuntime.onAuthenticated()
+getShinobiAccount(); // Used by DepositController, RagequitController
+destroyAccount(); // Called in _teardown()
+```
+
+**ClientSingleton** (`src/runtime/ClientSingleton.ts`):
+
+```typescript
+createClient(account); // Called in AppRuntime.onAuthenticated()
+getShinobiClient(); // Used by WithdrawController, NotesDiscoveryController
+destroyClient(); // Called in _teardown()
+```
 
 ---
 
@@ -345,73 +397,7 @@ trackTransaction(txHash) → pending → waiting (receipt confirmed) → synced 
 
 Services are stateless singletons for external operations.
 
-### 1. WithdrawalOrchestratorService (WithdrawalEngine & Withdraw2Engine)
-
-**File**: `src/services/WithdrawalOrchestratorService.ts`
-
-**Purpose**: Orchestrate the complete withdrawal pipeline. Two engine variants:
-- **WithdrawalEngine**: 1:1 withdrawal (single note)
-- **Withdraw2Engine**: 2:1 JoinSplit merge (two notes → one output + change)
-
-**Engine Phases**:
-```
-idle → quoted → context-built → witness-built → proof-generated → prepared → executed
-```
-
-**Pipeline Steps**:
-
-| Phase | Method | Description |
-|-------|--------|-------------|
-| 1 | `quoteFees(request)` | Calculate fees (gas + relay + solver) |
-| 2 | `buildContext()` | Fetch pool scope, derive withdrawal inputs |
-| 3 | `buildWitness()` | Fetch merkle trees (state + ASP) |
-| 4 | `generateProof()` | ZK proof via snarkjs (5-15 seconds) |
-| 5 | `prepareUserOperation()` | Build ERC-4337 UserOperation |
-| 6 | `execute()` | Submit via Pimlico bundler |
-
-**Usage**:
-```typescript
-const engine = new WithdrawalEngine();
-const preparedUserOp = await engine.prepare(request);
-const result = await engine.execute();
-```
-
----
-
-### 2. ProofGeneratorService
-
-**File**: `src/services/ProofGeneratorService.ts`
-
-**Purpose**: Browser-specific ZK proof generation with circuit loading.
-
-**Circuit Files** (loaded from `/public/circuits/`):
-```
-# 1:1 Withdrawal (8 signals)
-/circuits/build/withdraw/withdraw.wasm
-/circuits/keys/withdraw.zkey
-/circuits/keys/withdraw.vkey
-
-# 1:1 Cross-chain Withdrawal (9 signals)
-/circuits/build/crosschain_withdraw/crosschain_withdrawal.wasm
-/circuits/keys/crosschain_withdrawal.zkey
-/circuits/keys/crosschain_withdrawal.vkey
-
-# 2:1 Withdraw2 Merge (9 signals)
-/circuits/build/withdraw2/withdraw2.wasm
-/circuits/keys/withdraw2.zkey
-/circuits/keys/withdraw2.vkey
-
-# 2:1 Cross-chain Withdraw2 Merge (10 signals)
-/circuits/build/crosschain_withdraw2/crosschain_withdraw2.wasm
-/circuits/keys/crosschain_withdraw2.zkey
-/circuits/keys/crosschain_withdraw2.vkey
-```
-
-**Singleton**: `withdrawalProofGenerator`
-
----
-
-### 3. AccountService
+### 1. AccountService
 
 **File**: `src/services/AccountService.ts`
 
@@ -441,7 +427,7 @@ const result = await engine.execute();
 **Key Methods**:
 | Method | Purpose |
 |--------|---------|
-| `deriveDataEncryptionKey(amkPrivateKey)` | DEK for note encryption |
+| `deriveDataEncryptionKey(masterKey)` | DEK for note encryption |
 | `deriveKEKFromPasskey(accountId, credentialId)` | KEK from WebAuthn PRF |
 | `createPasskeyCredential(accountId, publicKeyHash)` | Register new passkey |
 
@@ -461,41 +447,43 @@ Tier 1: Browser APIs (Adapters)
 Tier 2: Repositories (Domain Logic)
 ├── NotesRepository
 ├── AccountRepository
-├── WrappedAMKRepository
+├── MasterKeyRepository
 └── SessionRepository
 
 Tier 3: IndexedDB Database
 ├── encrypted-notes
 ├── account-metadata
-└── wrapped-amk
+└── wrapped-master-key
 ```
 
 ### Encryption Architecture
 
 **Envelope Encryption Pattern**:
+
 ```
 Wallet Signature → HKDF → KEK (Key Encryption Key)
                             ↓
-                    Encrypts AMK in IndexedDB
+                    Encrypts Master Key (MK) in IndexedDB
                             ↓
-AMK (Account Master Key) → HKDF → DEK (Data Encryption Key)
+Master Key (MK) → HKDF → DEK (Data Encryption Key)
                                     ↓
                             Encrypts notes in IndexedDB
 ```
 
 **Key Properties**:
+
 - DEK and KEK are non-extractable (stay in browser crypto context)
 - Multiple auth methods (wallet + passkey) each have their own KEK
-- Both KEKs encrypt the same AMK
+- Both KEKs encrypt the same Master Key
 
 ### Storage Key Patterns
 
-| Store | Key Pattern | Value |
-|-------|-------------|-------|
-| `encrypted-notes` | `SHA256(publicKey + poolAddress)` | Encrypted note cache |
-| `account-metadata` | `{accountId}` | AccountMetadata (plaintext) |
-| `wrapped-amk` | `{accountId}:amk:wallet\|passkey` | Encrypted AMK |
-| SessionStorage | `shinobi_session` | SessionInfo |
+| Store                | Key Pattern                       | Value                       |
+| -------------------- | --------------------------------- | --------------------------- |
+| `encrypted-notes`    | `SHA256(publicKey + poolAddress)` | Encrypted note cache        |
+| `account-metadata`   | `{accountId}`                     | AccountMetadata (plaintext) |
+| `wrapped-master-key` | `{accountId}:mk:wallet\|passkey`  | Encrypted Master Key        |
+| SessionStorage       | `shinobi_session`                 | SessionInfo                 |
 
 ---
 
@@ -505,18 +493,21 @@ AMK (Account Master Key) → HKDF → DEK (Data Encryption Key)
 
 **File**: `src/runtime/AppRuntime.ts`
 
-**Three Phases**:
-```
-Phase 1: AuthController.bootstrap()
-  └── Restore session (passkey or wallet), derive crypto keys
+**Two Phases**:
 
-Phase 2: NotesDiscoveryController.bootstrap() (if cryptoReady)
-  ├── Load cached notes from IndexedDB
-  └── Trigger background discovery
-
-Phase 3: NotesDiscoveryController.startBackgroundSync()
-  └── Spawn Web Worker for 60s polling
 ```
+Phase 1: AppRuntime.start()
+  └── AuthController.bootstrap() → Restore session (passkey or wallet)
+
+Phase 2: AppRuntime.onAuthenticated() (triggered by RuntimeBootstrap)
+  ├── createAccount(privateKey) → ShinobiAccount singleton
+  ├── createClient(account) → ShinobiCashClient singleton
+  └── NotesDiscoveryController.bootstrap() (fire-and-forget)
+      ├── Load cached notes from IndexedDB
+      └── Trigger discovery via client.sync()
+```
+
+**Teardown** (`_teardown()`): `reset discovery → destroy client → destroy account`
 
 ### RuntimeBootstrap (React Bridge)
 
@@ -526,8 +517,9 @@ Phase 3: NotesDiscoveryController.startBackgroundSync()
 
 ```typescript
 export function RuntimeBootstrap() {
-  const { cryptoReady } = useSnapshot(AuthController.state.crypto);
-  const prevCryptoReady = useRef(cryptoReady);
+  const authState = useSnapshot(AuthController.state);
+  const isAuthenticated = authState.state.status === "authenticated";
+  const prevAuthenticated = useRef(isAuthenticated);
 
   // Start runtime on mount
   useEffect(() => {
@@ -535,13 +527,13 @@ export function RuntimeBootstrap() {
     return () => AppRuntime.stop();
   }, []);
 
-  // React to crypto state changes
+  // React to auth state changes
   useEffect(() => {
-    if (!prev && cryptoReady) AppRuntime.onCryptoReady();  // Login
-    if (prev && !cryptoReady) AppRuntime.onLogout();       // Logout
-  }, [cryptoReady]);
+    if (!prev && isAuthenticated) AppRuntime.onAuthenticated();
+    if (prev && !isAuthenticated) AppRuntime.onLogout();
+  }, [isAuthenticated]);
 
-  return null;  // No visual output
+  return null;
 }
 ```
 
@@ -577,14 +569,16 @@ AuthController.bootstrap()
 ├── If credentialId exists → Passkey auto-login
 │   ├── keyDerivationService.deriveKEKFromPasskey()
 │   ├── accountService.loginWithPasskeyKEK()
-│   └── Set crypto.cryptoReady = true
-└── If no session → state.status = "unauthenticated"
+│   └── state = "authenticated"
+├── If passkey fails → toast + state = "unauthenticated"
+└── If no session → state = "unauthenticated"
        ↓
-RuntimeBootstrap detects cryptoReady transition
+RuntimeBootstrap detects isAuthenticated transition
        ↓
-AppRuntime.onCryptoReady()
-├── NotesDiscoveryController.bootstrap()
-└── startBackgroundSync()
+AppRuntime.onAuthenticated()
+├── createAccount(privateKey) → ShinobiAccount
+├── createClient(account) → ShinobiCashClient
+└── NotesDiscoveryController.bootstrap() (fire-and-forget)
 ```
 
 ### Wallet Sign-In Flow
@@ -599,11 +593,12 @@ WalletAuth Component
 └── AuthController.signInWithWallet({ walletAddress, chainId, signature })
        ↓
 AuthController
-├── deriveKeysFromSignature(signature, chainId, walletAddress)
-│   └── HKDF → keyGenSeed + encryptionKey (KEK)
-├── generateKeysFromWalletSignature() → { publicKey, privateKey }
+├── deriveWalletCredentials(signature, chainId, walletAddress)
+│   └── HKDF → accountId + privateKey
+├── deriveKEKFromWallet(signature, chainId, walletAddress) → KEK
 ├── accountService.createWalletAccount() or loginWithWalletKEK()
-└── Set crypto = { publicKey, accountKey, cryptoReady: true }
+├── storeSessionInfo(accountId)
+└── state = "authenticated" (triggers onAuthenticated via RuntimeBootstrap)
 ```
 
 ### Deposit Flow
@@ -615,27 +610,19 @@ DepositController.schedulePrepare() (debounced 1s)
        ↓
 DepositController.prepare()
 ├── status = "preparing"
-├── Generate commitment (nullifier, secret, precommitment)
+├── getShinobiAccount().deposit() → TransactionRequest
 ├── Estimate gas
-├── Calculate fees (1% compliance + 5% solver for cross-chain)
+├── Calculate fees (1% compliance + solver for cross-chain)
 └── status = "ready"
        ↓
 User clicks "Confirm Deposit"
        ↓
 DepositController.submit()
 ├── status = "submitting"
-├── Submit tx to contract
-│   ├── Same-chain: SHINOBI_CASH_ENTRYPOINT.deposit(precommitment)
-│   └── Cross-chain: Solver fills intent on pool chain
+├── wallet.sendTransaction(txRequest)
 ├── status = "confirming" (wait for receipt)
-└── status = "confirmed-onchain"
-       ↓
-TransactionTrackingController.trackTransaction()
-├── Poll indexer for block confirmation
-└── Dispatch "indexed" event
-       ↓
-DepositController.markIndexed()
-NotesDiscoveryController.refresh()
+├── status = "confirmed"
+└── NotesDiscoveryController.refresh()
 ```
 
 ### Withdrawal Flow
@@ -646,32 +633,25 @@ User selects note + enters amount + recipient
 WithdrawController.schedulePreview() (debounced 500ms)
        ↓
 WithdrawController.preview()
-├── quoteFees() → Fee quote for display
+├── client.quoteWithdrawal() → Fee quote for display
 └── previewFeeQuote updated
        ↓
 User clicks "Confirm Withdrawal"
        ↓
 WithdrawController.confirm() → prepare() + submit()
        ↓
-WithdrawalEngine.prepare(request)
-├── Phase 1: quoteFees() → Get fee quote
-├── Phase 2: buildContext() → Fetch pool scope, derive inputs
-├── Phase 3: buildWitness() → Fetch merkle trees from indexer
-├── Phase 4: generateProof() → ZK proof via snarkjs (5-15s)
-└── Phase 5: prepareUserOperation() → Build ERC-4337 UserOp
+WithdrawController.prepare()
+├── client.prepareWithdrawal() or client.prepareWithdraw2()
+│   ├── Fetch pool scope, state tree, ASP labels, gas prices
+│   ├── account.prepareWithdrawal() → ZK proof (5-15s)
+│   └── Build ERC-4337 UserOp via Pimlico
+└── status = "ready" with PreparedWithdrawalOp
        ↓
 WithdrawController.submit()
-├── WithdrawalEngine.execute()
-│   └── Submit via Pimlico bundler (gasless)
+├── client.submitWithdrawal(prepared)
+│   └── Submit UserOp via Pimlico bundler (gasless)
 ├── status = "confirmed"
-└── Track transaction
-       ↓
-TransactionTrackingController
-├── Wait for indexer
-└── Dispatch "indexed" event
-       ↓
-WithdrawController.markIndexed()
-NotesDiscoveryController.refresh()
+└── NotesDiscoveryController.refresh()
 ```
 
 ### Note Discovery Flow
@@ -683,22 +663,24 @@ Load cached notes from IndexedDB (instant UI)
        ↓
 NotesDiscoveryController.discover()
        ↓
-NoteDiscovery.sync() (from @shinobi-cash/core)
-├── Phase 1: Reconciliation
-│   └── Update known deposits with on-chain state
-├── Phase 2: Live Deposit Extension
-│   └── Check for new change notes
-└── Phase 3: New Deposit Discovery
-    └── Scan for unknown deposits via precommitment matching
+getShinobiClient().sync()
+  └── NoteDiscovery.sync() (from @shinobi-cash/core)
+      ├── Phase 1: Reconciliation
+      │   └── Update known deposits with on-chain state
+      ├── Phase 2: Live Deposit Extension
+      │   └── Check for new change notes
+      └── Phase 3: New Deposit Discovery
+          └── Scan for unknown deposits via precommitment matching
        ↓
-Store notes in encrypted IndexedDB
-Update noteChains state
-       ↓
-Background Sync (Web Worker)
-├── Poll every 60s
-├── Fetch latest activities
-└── Trigger refresh() on changes
+Update noteTrees + activities state
+Store notes in encrypted IndexedDB (via persistence callbacks)
 ```
+
+**No background polling** — syncs are explicit:
+
+1. On authentication (`bootstrap()`)
+2. After transactions (controllers call `refresh()`)
+3. Manual user trigger (NotesSyncIndicator button)
 
 ---
 
@@ -706,18 +688,18 @@ Background Sync (Web Worker)
 
 ### Deposit Fees
 
-| Fee | Amount | When |
-|-----|--------|------|
-| Compliance Fee | 1% | Always |
-| Solver Fee | 5% | Cross-chain only |
-| Gas | Variable | Paid separately |
+| Fee            | Amount   | When             |
+| -------------- | -------- | ---------------- |
+| Compliance Fee | 1%       | Always           |
+| Solver Fee     | 5%       | Cross-chain only |
+| Gas            | Variable | Paid separately  |
 
 ### Withdrawal Fees
 
-| Fee | Amount | When |
-|-----|--------|------|
-| Relay Fee | Up to 15% (dynamic) | Covers gas |
-| Solver Fee | 5% | Cross-chain only |
+| Fee        | Amount              | When             |
+| ---------- | ------------------- | ---------------- |
+| Relay Fee  | Up to 15% (dynamic) | Covers gas       |
+| Solver Fee | 5%                  | Cross-chain only |
 
 **Note**: Withdrawals use Account Abstraction (ERC-4337) - users don't need ETH for gas.
 
@@ -746,6 +728,7 @@ Background Sync (Web Worker)
 ### Overview
 
 Withdraw2 enables merging two notes into a single withdrawal + change output. This is useful for:
+
 - **Note Consolidation**: Combine fragmented small notes
 - **Privacy Enhancement**: Single output instead of multiple withdrawals
 - **Gas Efficiency**: One transaction instead of two
@@ -755,34 +738,37 @@ Withdraw2 enables merging two notes into a single withdrawal + change output. Th
 **File**: `src/app/(authenticated)/withdraw/page.tsx`
 
 The withdrawal page supports selecting up to 2 notes:
+
 ```typescript
 // Toggle note selection
 const toggleNote = (note: Note) => {
-  WithdrawController.selectNote(note);  // Adds/removes from selectedNotes[]
+  WithdrawController.selectNote(note); // Adds/removes from selectedNotes[]
 };
 
 // Display mode changes based on selection count
 const isWithdraw2 = selectedNotes.length === 2;
 ```
 
-### Engine Routing
+### SDK Routing
 
-The WithdrawController automatically routes to the correct engine:
+The WithdrawController routes to the correct SDK method:
+
 ```typescript
 // In prepare()
-const engine = selectedNotes.length === 2
-  ? new Withdraw2Engine()  // 2:1 merge
-  : new WithdrawalEngine(); // 1:1 standard
+const prepared = isWithdraw2
+  ? await client.prepareWithdraw2({ primaryNote, secondaryNote, ... })
+  : await client.prepareWithdrawal({ note, ... });
 ```
 
 ### Proof Structures
 
-| Circuit | Signals | Description |
-|---------|---------|-------------|
-| withdraw2 | 9 | Same-chain 2:1 merge |
-| crosschain_withdraw2 | 10 | Cross-chain 2:1 merge (includes refundCommitment) |
+| Circuit              | Signals | Description                                       |
+| -------------------- | ------- | ------------------------------------------------- |
+| withdraw2            | 9       | Same-chain 2:1 merge                              |
+| crosschain_withdraw2 | 10      | Cross-chain 2:1 merge (includes refundCommitment) |
 
 **Signal Layout (Withdraw2 - 9 signals)**:
+
 ```
 [0] newCommitmentHash   - Change note commitment
 [1] nullifierHash0      - First note nullifier
@@ -796,6 +782,7 @@ const engine = selectedNotes.length === 2
 ```
 
 **Signal Layout (CrosschainWithdraw2 - 10 signals)**:
+
 ```
 [0-8] Same as Withdraw2
 [9] refundCommitment    - For failed cross-chain refund
@@ -817,14 +804,14 @@ type Note = DepositNote | ChangeNote | RefundNote;
 interface DepositNote {
   type: "deposit";
   depositIndex: number;
-  changeIndex: 0;  // Always 0
+  changeIndex: 0; // Always 0
   // ...
 }
 
 interface ChangeNote {
   type: "change";
   depositIndex: number;
-  changeIndex: number;  // > 0
+  changeIndex: number; // > 0
   // ...
 }
 
@@ -833,18 +820,18 @@ interface RefundNote {
   // For failed cross-chain
 }
 
-type NoteChain = Note[];  // Full deposit history
+type NoteChain = Note[]; // Full deposit history
 ```
 
 ### Note States
 
-| State | Condition | Can Withdraw |
-|-------|-----------|--------------|
-| Available | unspent + activated + ASP approved | Yes |
+| State                 | Condition                           | Can Withdraw            |
+| --------------------- | ----------------------------------- | ----------------------- |
+| Available             | unspent + activated + ASP approved  | Yes                     |
 | Pending (Cross-chain) | unspent + !activated + isCrossChain | No (waiting for solver) |
-| Pending (ASP) | unspent + activated + ASP pending | No |
-| Rejected | unspent + activated + ASP rejected | Only ragequit |
-| Spent | spent | No |
+| Pending (ASP)         | unspent + activated + ASP pending   | No                      |
+| Rejected              | unspent + activated + ASP rejected  | Only ragequit           |
+| Spent                 | spent                               | No                      |
 
 ---
 
@@ -863,17 +850,19 @@ type NoteChain = Note[];  // Full deposit history
 | `WITHDRAWAL` | Withdrawal errors |
 
 **Usage**:
+
 ```typescript
-Errors.auth.failed("Custom message", cause)
-Errors.blockchain.userRejected(cause)
-Errors.withdrawal.proofFailed(cause)
+Errors.auth.failed("Custom message", cause);
+Errors.blockchain.userRejected(cause);
+Errors.withdrawal.proofFailed(cause);
 ```
 
 **Utilities**:
+
 ```typescript
-isUserCancellation(error)  // Don't show toast
-getUserMessage(error)      // User-friendly message
-logError(error)            // Deduplicated logging
+isUserCancellation(error); // Don't show toast
+getUserMessage(error); // User-friendly message
+logError(error); // Deduplicated logging
 ```
 
 ---
@@ -934,37 +923,37 @@ src/components/
 
 Full-screen components used for multi-step flows. Each screen manages its own state presentation.
 
-| Component | Purpose |
-|-----------|---------|
-| `DepositTimelineScreen` | Deposit transaction progress (3-step timeline) |
+| Component                  | Purpose                                           |
+| -------------------------- | ------------------------------------------------- |
+| `DepositTimelineScreen`    | Deposit transaction progress (3-step timeline)    |
 | `WithdrawalTimelineScreen` | Withdrawal transaction progress (3-step timeline) |
-| `DepositPreviewScreen` | Review deposit details before confirmation |
-| `WithdrawalPreviewScreen` | Review withdrawal details before confirmation |
-| `NoteSelectionScreen` | Select note for withdrawal |
-| `AssetChainSelectorScreen` | Select destination chain |
-| `NoteChainScreen` | View note history chain |
-| `ActivityDetailsScreen` | View activity details |
-| `AuthScreen` | Authentication flow |
+| `DepositPreviewScreen`     | Review deposit details before confirmation        |
+| `WithdrawalPreviewScreen`  | Review withdrawal details before confirmation     |
+| `NoteSelectionScreen`      | Select note for withdrawal                        |
+| `AssetChainSelectorScreen` | Select destination chain                          |
+| `NoteChainScreen`          | View note history chain                           |
+| `ActivityDetailsScreen`    | View activity details                             |
+| `AuthScreen`               | Authentication flow                               |
 
 ### Shared Components (`components/shared/`)
 
 Atomic, reusable UI components for forms and displays.
 
-| Component | Purpose |
-|-----------|---------|
-| `Timeline` | Shared timeline types, icons, and `TimelineSteps` component |
-| `ScreenHeader` | Consistent header with back button and title |
-| `CardContainer` | Styled card wrapper |
-| `AmountInput` | Numeric input for amounts |
-| `AmountDisplay` | Formatted amount display |
-| `AmountUsd` | USD value display |
-| `AssetPill` | Asset + chain badge |
-| `AssetChain` | Chain icon and name |
-| `PriceDisplay` | Current price display |
-| `FeeBreakdown` | Fee breakdown table |
-| `QuickAmountButtons` | 25%, 50%, Max buttons |
-| `SectionDivider` | Visual divider between sections |
-| `LabelWithHover` | Label with tooltip |
+| Component            | Purpose                                                     |
+| -------------------- | ----------------------------------------------------------- |
+| `Timeline`           | Shared timeline types, icons, and `TimelineSteps` component |
+| `ScreenHeader`       | Consistent header with back button and title                |
+| `CardContainer`      | Styled card wrapper                                         |
+| `AmountInput`        | Numeric input for amounts                                   |
+| `AmountDisplay`      | Formatted amount display                                    |
+| `AmountUsd`          | USD value display                                           |
+| `AssetPill`          | Asset + chain badge                                         |
+| `AssetChain`         | Chain icon and name                                         |
+| `PriceDisplay`       | Current price display                                       |
+| `FeeBreakdown`       | Fee breakdown table                                         |
+| `QuickAmountButtons` | 25%, 50%, Max buttons                                       |
+| `SectionDivider`     | Visual divider between sections                             |
+| `LabelWithHover`     | Label with tooltip                                          |
 
 ### Timeline Components
 
@@ -991,12 +980,12 @@ interface StepTiming {
 }
 
 // Components
-StepIcon        // Individual step status icon
-StatusIcon      // Hero status icon (complete/error/pending)
-TimelineSteps   // Full timeline rendering
+StepIcon; // Individual step status icon
+StatusIcon; // Hero status icon (complete/error/pending)
+TimelineSteps; // Full timeline rendering
 
 // Utilities
-formatDuration(startTime, endTime)  // "5s", "2m 30s"
+formatDuration(startTime, endTime); // "5s", "2m 30s"
 ```
 
 ### Timeline Screen Pattern
@@ -1010,6 +999,7 @@ Both deposit and withdrawal timelines follow the same 3-step pattern:
 ```
 
 Each step tracks:
+
 - `timestamp`: When step started (formatted via `formatDateTime`)
 - `duration`: Time taken to complete (formatted via `formatDuration`)
 - `errorMessage`: Failure reason if step failed
@@ -1017,8 +1007,8 @@ Each step tracks:
 
 ### Layout Components (`components/layout/`)
 
-| Component | Purpose |
-|-----------|---------|
+| Component      | Purpose                                          |
+| -------------- | ------------------------------------------------ |
 | `ScreenLayout` | Standard screen wrapper with header/footer slots |
 
 ```typescript
@@ -1036,17 +1026,19 @@ Each step tracks:
 
 ## Monorepo Packages
 
-| Package | Purpose |
-|---------|---------|
-| `@shinobi-cash/core` | Crypto primitives, note discovery, proof generation |
-| `@shinobi-cash/constants` | Chain configs, addresses, ABIs, fee constants |
-| `@shinobi-cash/data` | IndexerClient with fluent query builder |
-| `@workspace/ui` | Shared shadcn/ui components |
+| Package                   | Purpose                                                             |
+| ------------------------- | ------------------------------------------------------------------- |
+| `@shinobi-cash/core`      | Crypto primitives, note discovery, proof generation, ShinobiAccount |
+| `@shinobi-cash/client`    | Chain interaction layer (ShinobiCashClient, bundler, solver)        |
+| `@shinobi-cash/constants` | Chain configs, addresses, ABIs, fee constants                       |
+| `@shinobi-cash/data`      | IndexerClient with fluent query builder                             |
+| `@workspace/ui`           | Shared shadcn/ui components                                         |
 
-### Core SDK Highlights
+### SDK Highlights
 
-- **Pure functions**: `deriveDepositNullifier()`, `derivePrecommitment()`, `parseUserKey()`
-- **Classes (when needed)**: `WithdrawalProofGenerator`, `EncryptionService`, `NoteDiscovery`
+- **ShinobiAccount** (`@shinobi-cash/core/account`): Pure crypto encoder, closure pattern. `deposit()`, `prepareWithdrawal()`, `ragequit()`. No I/O.
+- **ShinobiCashClient** (`@shinobi-cash/client`): Chain interaction. `sync()`, `prepareWithdrawal()`, `submitWithdrawal()`, `quoteWithdrawal()`. Wraps account with bundler + indexer.
+- **NoteDiscovery** (`@shinobi-cash/core/discovery`): Stateful discovery with `NoteDeriver` interface.
 - **Hash format**: Decimal strings (BigInt.toString()), never 0x-prefixed hex
 
 ---
@@ -1076,16 +1068,19 @@ NEXT_PUBLIC_RP_ID=            # WebAuthn relying party (optional)
 ## Common Debugging
 
 ### Auth Issues
-- **"No valid session"**: Check SessionStorage, session timeout (1 hour), environment mismatch
+
+- **"No valid session"**: Check SessionStorage (tab-scoped, cleared on close)
 - **Passkey fails**: Check device PRF support, credentialId matches
-- **"AMK unwrap failed"**: Check correct KEK being used
+- **"Master Key unwrap failed"**: Check correct KEK being used
 
 ### Notes Issues
-- **Notes not appearing**: Check discovery status, filter settings, background sync
+
+- **Notes not appearing**: Check discovery status, filter settings, try manual sync
 - **Note stuck in pending**: Check isActivated, aspStatus, cross-chain solver
 - **Cannot withdraw**: Check `canWithdraw(note)` conditions
 
 ### Transaction Issues
+
 - **Stuck in pending**: Check network, transaction on explorer
 - **Not indexed**: Check indexer health, poll interval
 - **Proof generation slow**: Normal (5-15s), keep tab active
@@ -1094,23 +1089,23 @@ NEXT_PUBLIC_RP_ID=            # WebAuthn relying party (optional)
 
 ## Key Files Reference
 
-| File | Purpose |
-|------|---------|
-| `src/controllers/AuthController.ts` | Auth state machine |
-| `src/controllers/DepositController.ts` | Deposit state machine |
-| `src/controllers/WithdrawController.ts` | Withdrawal state machine |
-| `src/controllers/NotesDiscoveryController.ts` | Notes discovery |
-| `src/services/WithdrawalOrchestratorService.ts` | Withdrawal + Withdraw2 pipelines |
-| `src/services/ProofGeneratorService.ts` | ZK proof generation |
-| `src/services/AccountService.ts` | Account lifecycle |
-| `src/services/KeyDerivationService.ts` | Key derivation |
-| `src/runtime/AppRuntime.ts` | Lifecycle orchestration |
-| `src/context/RuntimeBootstrap.tsx` | React-AppRuntime bridge |
-| `src/lib/storage/repositories/` | Storage repositories |
-| `src/lib/errors/errors.ts` | Error handling |
-| `src/components/shared/Timeline.tsx` | Shared timeline components |
-| `src/components/screens/DepositTimelineScreen.tsx` | Deposit progress UI |
-| `src/components/screens/WithdrawalTimelineScreen.tsx` | Withdrawal progress UI |
-| `src/components/layout/ScreenLayout.tsx` | Screen layout wrapper |
-| `src/hooks/useScreenNavigation.ts` | Screen navigation hook |
-| `src/utils/formatters.ts` | Formatting utilities |
+| File                                               | Purpose                               |
+| -------------------------------------------------- | ------------------------------------- |
+| `src/controllers/AuthController.ts`                | Auth state machine                    |
+| `src/controllers/DepositController.ts`             | Deposit state machine                 |
+| `src/controllers/WithdrawController.ts`            | Withdrawal state machine              |
+| `src/controllers/NotesDiscoveryController.ts`      | Notes discovery                       |
+| `src/controllers/RagequitController.ts`            | Emergency exit (public withdrawal)    |
+| `src/runtime/AppRuntime.ts`                        | Lifecycle orchestration               |
+| `src/runtime/AccountSingleton.ts`                  | ShinobiAccount singleton              |
+| `src/runtime/ClientSingleton.ts`                   | ShinobiCashClient singleton           |
+| `src/context/RuntimeBootstrap.tsx`                 | React-AppRuntime bridge               |
+| `src/services/AccountService.ts`                   | Account lifecycle (KEK, MK, DEK)      |
+| `src/services/KeyDerivationService.ts`             | Key derivation (HKDF, WebAuthn PRF)   |
+| `src/services/RefundEngine.ts`                     | Cross-chain withdrawal refund         |
+| `src/lib/storage/repositories/`                    | Storage repositories                  |
+| `src/lib/storage/encryption.ts`                    | AES-GCM encryption for IndexedDB      |
+| `src/lib/errors/errors.ts`                         | Error handling                        |
+| `src/components/shared/Timeline.tsx`               | Shared timeline components            |
+| `src/components/indicators/NotesSyncIndicator.tsx` | Manual sync button                    |
+| `src/utils/stateMachine.ts`                        | FSM with strict transition validation |

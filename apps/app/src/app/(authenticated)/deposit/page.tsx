@@ -64,7 +64,7 @@ export default function DepositPage() {
   const { usdPrice } = usePriceData("ETH");
 
   const authState = useSnapshot(AuthController.state);
-  const cryptoReady = authState.crypto.cryptoReady;
+  const isAuthenticated = authState.state.status === "authenticated";
 
   const handleCopyAddress = async () => {
     if (!state.wallet.address) return;
@@ -90,7 +90,7 @@ export default function DepositPage() {
     if (DepositSelectors.canAutoPrepare()) {
       DepositController.schedulePrepare();
     }
-  }, [state.amount, state.wallet.isConnected, cryptoReady, state.wallet.chainId]);
+  }, [state.amount, state.wallet.isConnected, isAuthenticated, state.wallet.chainId]);
 
   const txHash =
     state.state.status === "confirming" ||
@@ -186,6 +186,7 @@ export default function DepositPage() {
         complianceFee={depositAmounts.complianceFee}
         gasCostEth={gasEstimate.gasCostEth}
         solverFee={depositAmounts.solverFee}
+        solverFeeBPS={state.solverFeeBPS}
         originChainId={state.wallet.chainId}
         destinationChainId={POOL_CHAIN.id}
         poolAddress={SHINOBI_CASH_ETH_POOL.address}

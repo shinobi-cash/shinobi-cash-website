@@ -17,14 +17,14 @@ function FAQItem({ question, answer, isOpen, onToggle }: FAQItemProps) {
     <div className="border-b border-white/[0.05] last:border-b-0">
       <button
         onClick={onToggle}
-        className="w-full py-5 sm:py-6 flex items-center justify-between text-left gap-4 group"
+        className="group flex w-full items-center justify-between gap-4 py-5 text-left sm:py-6"
       >
-        <span className="text-base sm:text-lg font-medium text-white group-hover:text-orange-400 transition-colors">
+        <span className="text-base font-medium text-white transition-colors group-hover:text-orange-400 sm:text-lg">
           {question}
         </span>
         <ChevronDown
           className={cn(
-            "w-5 h-5 text-neutral-400 transition-transform duration-200 flex-shrink-0",
+            "h-5 w-5 flex-shrink-0 text-neutral-400 transition-transform duration-200",
             isOpen && "rotate-180"
           )}
         />
@@ -35,9 +35,7 @@ function FAQItem({ question, answer, isOpen, onToggle }: FAQItemProps) {
           isOpen ? "max-h-96 pb-5 sm:pb-6" : "max-h-0"
         )}
       >
-        <p className="text-neutral-400 text-sm sm:text-base leading-relaxed pr-8">
-          {answer}
-        </p>
+        <p className="pr-8 text-sm leading-relaxed text-neutral-400 sm:text-base">{answer}</p>
       </div>
     </div>
   );
@@ -95,8 +93,8 @@ export function FAQSection() {
         subtitle="Everything you need to know about Shinobi.Cash"
       />
 
-      <div className="max-w-3xl mx-auto">
-        <div className="rounded-2xl bg-white/[0.02] border border-white/[0.05] px-6 sm:px-8">
+      <div className="mx-auto max-w-3xl">
+        <div className="rounded-2xl border border-white/[0.05] bg-white/[0.02] px-6 sm:px-8">
           {FAQ_ITEMS.map((item, index) => (
             <FAQItem
               key={item.question}

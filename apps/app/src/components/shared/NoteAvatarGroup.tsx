@@ -10,7 +10,7 @@ import type { Note } from "@shinobi-cash/core/discovery";
 import { cn } from "@workspace/ui/lib/utils";
 
 interface NoteAvatarGroupProps {
-  notes: Note[];
+  notes: readonly Note[];
   maxNotes?: number;
   onClick?: () => void;
   disabled?: boolean;

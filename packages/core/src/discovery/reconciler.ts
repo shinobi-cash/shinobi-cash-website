@@ -30,7 +30,14 @@ import {
   createDepositRefundedNote,
 } from "./note-factory.js";
 import { traverseTree, addChild, markTerminal } from "./tree-utils.js";
-import { isNote, isIntent, isDepositIntent, isWithdrawalIntent, isTerminalNote, isSpendableNote } from "./types.js";
+import {
+  isNote,
+  isIntent,
+  isDepositIntent,
+  isWithdrawalIntent,
+  isTerminalNote,
+  isSpendableNote,
+} from "./types.js";
 
 // ============================================================================
 // Helpers
@@ -227,7 +234,12 @@ function reconcileIntentNotes(
         // Check for refund activity
         const refundActivity = activityIndex.withdrawalRefundsByOrderId.get(item.orderId);
         if (refundActivity) {
-          const wasReconciled = reconcileWithdrawalIntentWithRefund(item, refundActivity, node, childrenToAdd);
+          const wasReconciled = reconcileWithdrawalIntentWithRefund(
+            item,
+            refundActivity,
+            node,
+            childrenToAdd
+          );
           if (wasReconciled && !addedActivityTxHashes.has(refundActivity.txHash)) {
             result.matchedActivities.push(refundActivity);
             addedActivityTxHashes.add(refundActivity.txHash);
@@ -352,7 +364,12 @@ function reconcileWithdrawalIntentWithRefund(
   // Use the refund activity's amount (netRefundAmount from contract) instead of
   // the withdrawal intent's amount (escrowAmount - solverFee), since the actual
   // pool deposit is escrowAmount - refundFee.
-  const refundNote = createWithdrawalRefundedNote(withdrawalIntent, label, aspStatus, refundActivity.amount);
+  const refundNote = createWithdrawalRefundedNote(
+    withdrawalIntent,
+    label,
+    aspStatus,
+    refundActivity.amount
+  );
   childrenToAdd.push({ parent: node, child: refundNote });
 
   return true;

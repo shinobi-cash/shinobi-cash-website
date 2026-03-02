@@ -7,10 +7,10 @@
 
 import { proxy } from "valtio";
 import type { Intent } from "@shinobi-cash/data";
-import type { WalletClient, Account, Transport, Chain } from "viem";
+import type { WalletClient } from "viem";
 import { NotesDiscoveryController } from "@/controllers/NotesDiscoveryController";
 import { RefundEngine } from "@/services/RefundEngine";
-import type { RefundType } from "@/utils/refund";
+import type { RefundType } from "@shinobi-cash/core/intent";
 import { createStateMachine } from "@/utils/stateMachine";
 import { type AppError, Errors, getUserMessage } from "@/lib/errors/errors";
 
@@ -124,7 +124,7 @@ export const RefundController = {
    * For deposit refunds: requires walletClient (user pays gas on origin chain).
    * For withdrawal refunds: walletClient not needed (gasless via paymaster).
    */
-  async submit(walletClient?: WalletClient<Transport, Chain, Account>): Promise<void> {
+  async submit(signer?: WalletClient): Promise<void> {
     if (state.state.status !== "ready" || !currentEngine) return;
 
     const { refundType } = state.state;
@@ -134,10 +134,10 @@ export const RefundController = {
 
       let result;
       if (refundType === "deposit") {
-        if (!walletClient) {
-          throw Errors.blockchain.contractError("Wallet client required for deposit refund");
+        if (!signer) {
+          throw Errors.blockchain.contractError("Signer required for deposit refund");
         }
-        result = await currentEngine.executeDepositRefund(walletClient);
+        result = await currentEngine.executeDepositRefund(signer);
       } else {
         result = await currentEngine.executeWithdrawalRefund();
       }
@@ -161,10 +161,10 @@ export const RefundController = {
   /**
    * Prepare and submit in one call
    */
-  async confirm(walletClient?: WalletClient<Transport, Chain, Account>): Promise<void> {
+  async confirm(signer?: WalletClient): Promise<void> {
     await this.prepare();
     if (state.state.status !== "ready") return;
-    await this.submit(walletClient);
+    await this.submit(signer);
   },
 
   reset(): void {

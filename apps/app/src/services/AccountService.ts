@@ -1,69 +1,77 @@
 import { keyDerivationService } from "@/services/KeyDerivationService";
 import { accountRepo } from "@/lib/storage/repositories/AccountRepository";
-import { wrappedAMKRepo } from "@/lib/storage/repositories/WrappedAMKRepository";
+import { masterKeyRepo } from "@/lib/storage/repositories/MasterKeyRepository";
 import {
   addPasskeyToSession,
   removePasskeyFromSession,
 } from "@/lib/storage/repositories/SessionRepository";
 import {
-  AMKStorageAdapter,
+  masterKeyStore,
   notesStorageAdapter,
   sharedEncryptionService,
 } from "@/lib/storage/adapters/IndexedDBStore";
 import { AccountData, AccountMetadata } from "@/lib/storage/interfaces/IDataTypes";
 import { createHash } from "@/lib/storage/encryption";
-import type { WalletAccountId } from "@shinobi-cash/core/auth";
+import type { WalletAccountId } from "@/lib/auth";
 import { Errors, logError, isUserCancellation } from "@/lib/errors/errors";
 
 export class AccountService {
   private currentAccountName: WalletAccountId | null = null;
-  private currentAMK: string | null = null;
+  private masterKey: string | null = null;
 
-  async importWalletKEK(encryptionKey: Uint8Array): Promise<CryptoKey> {
-    const keyBytes = new Uint8Array(encryptionKey);
-    return await crypto.subtle.importKey("raw", keyBytes, { name: "AES-GCM" }, false, [
-      "encrypt",
-      "decrypt",
-    ]);
-  }
-
-  // KEKs only encrypt the AMK, not account data directly
+  // KEKs only encrypt the Master Key, not account data directly
   async createWalletAccount(
     accountId: WalletAccountId,
-    encryptionKey: Uint8Array,
+    kek: CryptoKey,
     privateKey: string
   ): Promise<void> {
+    await masterKeyStore.initializeSession(kek);
+    await masterKeyRepo.storeWrappedKey(accountId, "wallet", privateKey);
+    await accountRepo.storeAccountData({ accountId });
+
     try {
-      const kekCryptoKey: CryptoKey = await this.importWalletKEK(encryptionKey);
-      await AMKStorageAdapter.initializeSession(kekCryptoKey);
-      await wrappedAMKRepo.storeWrappedAMK(accountId, "wallet", privateKey);
-      await accountRepo.storeAccountData({ accountId });
       await this.initializeAccountSession(accountId, privateKey);
     } catch (error) {
+      // Rollback IndexedDB writes + in-memory state
       this.clearInMemorySession();
+      try {
+        await masterKeyRepo.deleteWrappedKey(accountId, "wallet");
+      } catch {
+        // Best-effort cleanup
+      }
       throw error;
     }
   }
 
-  async initializeAccountSession(accountId: WalletAccountId, amkPrivateKey: string): Promise<void> {
-    if (!amkPrivateKey || amkPrivateKey.length !== 66) {
-      throw new Error("CRITICAL: initializeAccountSession called without valid AMK");
+  async initializeAccountSession(accountId: WalletAccountId, masterKey: string): Promise<void> {
+    if (!masterKey || masterKey.length !== 66) {
+      throw Errors.auth.failed("initializeAccountSession called without valid Master Key");
     }
 
     // Derive DEK first (can throw) - don't set state until all async ops succeed
-    const dek = await keyDerivationService.deriveDataEncryptionKey(amkPrivateKey);
-    await notesStorageAdapter.initializeSession(dek);
+    let dek: CryptoKey;
+    try {
+      dek = await keyDerivationService.deriveDataEncryptionKey(masterKey);
+    } catch (error) {
+      throw Errors.auth.failed("Failed to derive data encryption key", error);
+    }
+
+    try {
+      await notesStorageAdapter.initializeSession(dek);
+    } catch (error) {
+      throw Errors.auth.failed("Failed to initialize encrypted storage", error);
+    }
 
     // All async operations succeeded - now set state
     this.currentAccountName = accountId;
-    this.currentAMK = amkPrivateKey;
+    this.masterKey = masterKey;
     sharedEncryptionService.setEncryptionKey(dek);
 
     if (!sharedEncryptionService.isKeyAvailable()) {
       // Rollback on final validation failure
       this.currentAccountName = null;
-      this.currentAMK = null;
-      throw new Error("CRITICAL: Session initialization incomplete (DEK missing)");
+      this.masterKey = null;
+      throw Errors.auth.failed("Session initialization incomplete (DEK missing)");
     }
   }
 
@@ -76,16 +84,16 @@ export class AccountService {
     return record ? record.profile : null;
   }
 
-  async getAccountData(amk?: string): Promise<AccountData> {
+  async getAccountData(mk?: string): Promise<AccountData> {
     const accountId = this.getCurrentAccountName();
     if (!accountId) {
       throw Errors.auth.sessionRequired();
     }
-    const useAMK = amk || this.getCurrentAMK();
-    if (!useAMK) {
+    const useMK = mk || this.getMasterKey();
+    if (!useMK) {
       throw Errors.auth.sessionRequired();
     }
-    const data = await accountRepo.getAccountMetadata(accountId, useAMK);
+    const data = await accountRepo.getAccountMetadata(accountId, useMK);
     if (!data) {
       throw Errors.auth.accountNotFound();
     }
@@ -102,8 +110,8 @@ export class AccountService {
     }
   }
 
-  public getCurrentAMK() {
-    return this.currentAMK;
+  public getMasterKey() {
+    return this.masterKey;
   }
 
   public getCurrentAccountName() {
@@ -162,12 +170,8 @@ export class AccountService {
     await addPasskeyToSession(credentialId);
 
     try {
-      await AMKStorageAdapter.initializeSession(passkeyKEK);
-      await wrappedAMKRepo.storeWrappedAMK(
-        accountData.accountId,
-        "passkey",
-        accountData.privateKey
-      );
+      await masterKeyStore.initializeSession(passkeyKEK);
+      await masterKeyRepo.storeWrappedKey(accountData.accountId, "passkey", accountData.privateKey);
       const updatedMetadata: AccountMetadata = {
         accountId: accountData.accountId,
         credentialId,
@@ -178,7 +182,7 @@ export class AccountService {
 
       try {
         await removePasskeyFromSession();
-        await wrappedAMKRepo.deleteWrappedAMK(accountData.accountId, "passkey");
+        await masterKeyRepo.deleteWrappedKey(accountData.accountId, "passkey");
         await accountRepo.storeAccountData(originalMetadata);
       } catch (rollbackError) {
         logError(rollbackError, {
@@ -202,38 +206,39 @@ export class AccountService {
     const accountId = this.getCurrentAccountName();
     if (!accountId) throw Errors.auth.sessionRequired();
 
-    await wrappedAMKRepo.deleteWrappedAMK(accountId, "passkey");
+    // Clear metadata first — if deleteWrappedKey fails, we have an orphaned
+    // encrypted blob (harmless) rather than a stale credentialId (broken login)
     await accountRepo.storeAccountData({ accountId, credentialId: undefined });
     await removePasskeyFromSession();
+    await masterKeyRepo.deleteWrappedKey(accountId, "passkey");
   }
 
-  async loginWithWalletKEK(accountId: WalletAccountId, encryptionKey: Uint8Array): Promise<void> {
-    const kek = await this.importWalletKEK(encryptionKey);
-    await AMKStorageAdapter.initializeSession(kek);
+  async loginWithWalletKEK(accountId: WalletAccountId, kek: CryptoKey): Promise<void> {
+    await masterKeyStore.initializeSession(kek);
 
-    const amk = await wrappedAMKRepo.unwrapAMK(accountId, "wallet");
-    if (!amk) throw Errors.auth.decryptionFailed("Failed to unwrap account key");
+    const mk = await masterKeyRepo.unwrapKey(accountId, "wallet");
+    if (!mk) throw Errors.auth.decryptionFailed("Failed to unwrap Master Key");
 
-    await this.initializeAccountSession(accountId, amk);
+    await this.initializeAccountSession(accountId, mk);
   }
 
   async loginWithPasskeyKEK(accountId: WalletAccountId, kek: CryptoKey): Promise<void> {
-    await AMKStorageAdapter.initializeSession(kek);
+    await masterKeyStore.initializeSession(kek);
 
-    const amk = await wrappedAMKRepo.unwrapAMK(accountId, "passkey");
+    const mk = await masterKeyRepo.unwrapKey(accountId, "passkey");
 
-    if (!amk) {
-      throw Errors.auth.decryptionFailed("Failed to unwrap account key with passkey");
+    if (!mk) {
+      throw Errors.auth.decryptionFailed("Failed to unwrap Master Key with passkey");
     }
 
-    await this.initializeAccountSession(accountId, amk);
+    await this.initializeAccountSession(accountId, mk);
   }
 
   clearInMemorySession(): void {
     sharedEncryptionService.clearEncryptionKey();
-    AMKStorageAdapter.clearSession();
+    masterKeyStore.clearSession();
     this.currentAccountName = null;
-    this.currentAMK = null;
+    this.masterKey = null;
   }
 }
 

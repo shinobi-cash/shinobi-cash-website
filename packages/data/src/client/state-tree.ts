@@ -1,4 +1,4 @@
-import type { StateTreeResponse, StateTreeLeaf, PaginationOptions } from "../types";
+import type { StateTreeResponse, StateTreeLeaf, PaginationOptions } from "../types/index.js";
 
 interface StateTreeClientConfig {
   endpoint: string;

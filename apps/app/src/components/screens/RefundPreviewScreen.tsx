@@ -1,8 +1,7 @@
 "use client";
 
 import type { Intent } from "@shinobi-cash/data";
-import type { RefundType } from "@/utils/refund";
-import { getRefundFeeBps } from "@/utils/refund";
+import { getRefundFeeBps, type RefundType } from "@shinobi-cash/core/intent";
 import { Loader2, Info } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
 import { ScreenHeader } from "@/components/shared/ScreenHeader";
@@ -12,7 +11,12 @@ import { AssetChain } from "@/components/shared/AssetChain";
 import { CopyableText } from "@/components/shared/CopyableText";
 import { LabelWithHover } from "@/components/shared/LabelWithHover";
 import { usePriceData } from "@/hooks/usePriceData";
-import { formatUsdAmount, formatSmallEthAmount, formatEthAmount, formatDisplayAmount } from "@/utils/formatters";
+import {
+  formatUsdAmount,
+  formatSmallEthAmount,
+  formatEthAmount,
+  formatDisplayAmount,
+} from "@/utils/formatters";
 import { getChainName, POOL_CHAIN_ID } from "@/config/chains";
 
 interface RefundPreviewScreenProps {
@@ -41,7 +45,7 @@ export function RefundPreviewScreen({
   // Decode refund fee from raw intent calldata (withdrawal refunds only)
   const refundFeeBps = getRefundFeeBps(intent.rawIntent);
   const refundFeePercent = refundFeeBps !== null ? refundFeeBps / 100 : null;
-  const refundFeeAmount = refundFeeBps !== null ? amount * refundFeeBps / 10000 : 0;
+  const refundFeeAmount = refundFeeBps !== null ? (amount * refundFeeBps) / 10000 : 0;
   const refundFeeUsd = usdPrice !== null ? refundFeeAmount * usdPrice : null;
   const netAmount = amount - refundFeeAmount;
   const netAmountUsd = usdPrice !== null ? netAmount * usdPrice : null;
@@ -105,10 +109,7 @@ export function RefundPreviewScreen({
       <Section title="Details">
         <Row label="Type" value={isDeposit ? "Deposit refund" : "Withdrawal refund"} />
         <Row label="Chain" value={chainName} />
-        <Row
-          label="Order ID"
-          value={<CopyableText text={intent.orderId} className="text-xs" />}
-        />
+        <Row label="Order ID" value={<CopyableText text={intent.orderId} className="text-xs" />} />
       </Section>
 
       {/* Fees */}
@@ -130,7 +131,10 @@ export function RefundPreviewScreen({
         {isDeposit ? (
           <Row label="Paid by" value={<span className="text-neutral-300">You (wallet)</span>} />
         ) : (
-          <Row label="Paid by" value={<span className="text-emerald-400">Paymaster (gasless)</span>} />
+          <Row
+            label="Paid by"
+            value={<span className="text-emerald-400">Paymaster (gasless)</span>}
+          />
         )}
       </Section>
     </ScreenLayout>

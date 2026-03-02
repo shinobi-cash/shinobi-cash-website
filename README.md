@@ -35,7 +35,7 @@ pnpm dlx shadcn@latest add <component-name> -c apps/web
 ### Using Components
 
 ```tsx
-import { Button } from "@workspace/ui/components/button"
+import { Button } from "@workspace/ui/components/button";
 ```
 
 ## License

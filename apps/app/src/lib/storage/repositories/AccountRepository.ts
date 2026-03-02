@@ -1,11 +1,11 @@
 import { privateKeyToAccount } from "viem/accounts";
 import { accountStorageAdapter } from "../adapters/IndexedDBStore";
 import type { AccountMetadata, AccountData } from "../interfaces/IDataTypes";
-import { assertWalletAccountId, type WalletAccountId } from "@shinobi-cash/core/auth";
+import type { WalletAccountId } from "@/lib/auth";
 import { IndexedDBStore } from "../adapters/IndexedDBStore";
 
 /**
- * Derive publicKey from AMK
+ * Derive publicKey from Master Key
  * Must remain deterministic and pure
  */
 function deriveKeysFromPrivateKey(privateKey: string): {
@@ -19,17 +19,10 @@ function deriveKeysFromPrivateKey(privateKey: string): {
 }
 
 /**
- * Canonical unencrypted account index
- * Used for pre-auth discovery and UX
+ * Full stored account record (NO Master Key)
  */
-export type AccountIndex = {
+type StorageRecord = {
   id: string;
-};
-
-/**
- * Full stored account record (NO AMK)
- */
-type StorageRecord = AccountIndex & {
   profile: AccountMetadata;
 };
 
@@ -43,8 +36,8 @@ export class AccountRepository {
   constructor(private storageAdapter: IndexedDBStore) {}
 
   /**
-   * Store account metadata (WITHOUT AMK or derived fields)
-   * AMK is stored separately in wrapped-amk store
+   * Store account metadata (WITHOUT Master Key or derived fields)
+   * Master Key is stored separately in wrapped-master-key store
    *
    * IMPORTANT: This method MERGES metadata to preserve existing fields.
    * This ensures partial updates don't drop other fields (forward-compatible).
@@ -66,7 +59,7 @@ export class AccountRepository {
   }
 
   /**
-   * Get raw stored account record (NO AMK)
+   * Get raw stored account record (NO Master Key)
    */
   async getStoredAccountRecord(accountId: WalletAccountId): Promise<StorageRecord | null> {
     const result = (await this.storageAdapter.get(accountId)) as unknown;
@@ -74,22 +67,25 @@ export class AccountRepository {
   }
 
   /**
-   * Get full account data by accountId using provided AMK
-   * Reconstructs runtime AccountData from stored metadata + AMK
+   * Get full account data by accountId using provided Master Key.
+   * Reconstructs runtime AccountData from stored metadata + Master Key.
    *
    * @param accountId - Account identifier (validated)
-   * @param amk - Account Master Key (for deriving publicKey/address)
+   * @param masterKey - Master Key (for deriving publicKey/address)
    * @returns Full account data with secrets and derived fields
    */
-  async getAccountMetadata(accountId: WalletAccountId, amk: string): Promise<AccountData | null> {
+  async getAccountMetadata(
+    accountId: WalletAccountId,
+    masterKey: string
+  ): Promise<AccountData | null> {
     const record = await this.getStoredAccountRecord(accountId);
     if (!record) return null;
 
-    const { publicKey } = deriveKeysFromPrivateKey(amk);
+    const { publicKey } = deriveKeysFromPrivateKey(masterKey);
 
     return {
       ...record.profile,
-      privateKey: amk,
+      privateKey: masterKey,
       publicKey,
     };
   }
@@ -99,31 +95,6 @@ export class AccountRepository {
    */
   async accountExists(accountId: WalletAccountId): Promise<boolean> {
     return (await this.getStoredAccountRecord(accountId)) !== null;
-  }
-
-  /**
-   * List account index (safe before auth)
-   */
-  async listAccountIndex(): Promise<AccountIndex[]> {
-    const keys = await this.storageAdapter.keys();
-    const index: AccountIndex[] = [];
-
-    for (const key of keys) {
-      try {
-        const accountId = assertWalletAccountId(key);
-        const record = await this.getStoredAccountRecord(accountId);
-        if (record) {
-          index.push({
-            id: record.id,
-          });
-        }
-      } catch {
-        // Skip invalid account IDs
-        console.warn(`[AccountRepository] Skipping invalid account ID: ${key}`);
-      }
-    }
-
-    return index;
   }
 }
 

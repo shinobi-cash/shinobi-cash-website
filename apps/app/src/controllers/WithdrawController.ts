@@ -1,25 +1,38 @@
 import { proxy } from "valtio";
 import { parseEther, formatEther, isAddress } from "viem/utils";
-import type { Note } from "@shinobi-cash/core/discovery";
+import type { Note, SpendableNote } from "@shinobi-cash/core/discovery";
 import { selectNotesForWithdrawal, type WithdrawalSelection } from "@shinobi-cash/core/withdrawal";
-import type { FeeQuote, WithdrawalRequest, Withdraw2Request } from "@/types/withdrawal";
+import type { WithdrawalFeeQuote } from "@shinobi-cash/core/fees";
+import { withWithdrawal } from "@shinobi-cash/client/withdrawal";
+import { withCrosschainWithdrawal } from "@shinobi-cash/client/crosschain-withdrawal";
+import type { PreparedWithdrawalOp } from "@shinobi-cash/client";
+import { createBundlerRelayer } from "@shinobi-cash/client/relayer";
 import { POOL_CHAIN, FEE_CONFIG, INTENT_TIMING } from "@shinobi-cash/constants";
-import { fetchWithdrawalChainConfig } from "@/utils/withdrawalChainConfig";
 import { AuthController } from "@/controllers/AuthController";
 import { NotesDiscoveryController } from "@/controllers/NotesDiscoveryController";
-import { EnginePhase, WithdrawalEngine } from "@/services/WithdrawalOrchestratorService";
+import { getShinobiClient } from "@/runtime/ClientSingleton";
+import { createShinobiSolver } from "@/utils/solver";
+import { RELAYER_URL } from "@/config/constants";
 import { createStateMachine } from "@/utils/stateMachine";
-import { ExecutionResult, PreparedUserOperation } from "@/types/withdrawal";
-import { type AppError, Errors, getUserMessage } from "@/lib/errors/errors";
+import { type AppError, Errors, getUserMessage, logError } from "@/lib/errors/errors";
 import { PREVIEW_DEBOUNCE_MS } from "@/constants/timings";
+
+const relayer = createBundlerRelayer({ url: RELAYER_URL });
+const solver = createShinobiSolver();
+
+function getWithdrawClient() {
+  return getShinobiClient()
+    .extend(withWithdrawal(relayer))
+    .extend(withCrosschainWithdrawal(relayer, solver));
+}
 
 type WithdrawState =
   | { status: "idle" }
   | { status: "previewing" }
-  | { status: "preparing"; phase: EnginePhase }
-  | { status: "ready"; preparedUserOp: PreparedUserOperation }
+  | { status: "preparing" }
+  | { status: "ready"; prepared: PreparedWithdrawalOp }
   | { status: "submitting" }
-  | { status: "confirmed"; txHash: `0x${string}`; executionResult: ExecutionResult }
+  | { status: "confirmed"; txHash: `0x${string}` }
   | { status: "error"; error: AppError };
 
 export interface NotesContext {
@@ -39,7 +52,7 @@ interface WithdrawControllerState {
   selectedNotes: Note[];
   /** Computed withdrawal selection result */
   selection: WithdrawalSelection | null;
-  previewFeeQuote: FeeQuote | null;
+  previewFeeQuote: WithdrawalFeeQuote | null;
   lastError: AppError | null;
   notes: NotesContext;
   /** User-configurable solver fee in basis points (default from FEE_CONFIG) */
@@ -67,7 +80,6 @@ const state = proxy<WithdrawControllerState>({
 
 export const WithdrawSelectors = {
   canWithdraw: () => {
-    const crypto = AuthController.state.crypto;
     return (
       state.state.status === "idle" &&
       state.selectedNotes.length > 0 &&
@@ -75,18 +87,21 @@ export const WithdrawSelectors = {
       state.amount.trim() !== "" &&
       state.recipientAddress.trim() !== "" &&
       isAddress(state.recipientAddress) &&
-      crypto.cryptoReady
+      AuthController.isAuthenticated()
     );
   },
 
   canAutoPreview: () => {
-    const crypto = AuthController.state.crypto;
+    const { status } = state.state;
+    if (status !== "idle" && status !== "ready" && status !== "error") {
+      return false;
+    }
     return (
       state.amount.trim() !== "" &&
       state.recipientAddress.trim() !== "" &&
       state.selectedNotes.length > 0 &&
       isAddress(state.recipientAddress) &&
-      crypto.cryptoReady
+      AuthController.isAuthenticated()
     );
   },
 
@@ -125,11 +140,6 @@ export const WithdrawSelectors = {
     return null;
   },
 
-  /** Legacy getter for backward compatibility */
-  get selectedNote(): Note | null {
-    return WithdrawSelectors.getPrimaryNote();
-  },
-
   getRemainingBalance: (): number | null => {
     if (state.selectedNotes.length === 0 || !state.amount) return null;
     try {
@@ -144,27 +154,21 @@ export const WithdrawSelectors = {
 
   getNetAmount: () => {
     const feeQuote =
-      state.state.status === "ready"
-        ? state.state.preparedUserOp.context.feeQuote
-        : state.previewFeeQuote;
+      state.state.status === "ready" ? state.state.prepared.feeQuote : state.previewFeeQuote;
     if (!feeQuote) return 0;
     return parseFloat(formatEther(feeQuote.netAmountWei));
   },
 
   getExecutionFee: () => {
     const feeQuote =
-      state.state.status === "ready"
-        ? state.state.preparedUserOp.context.feeQuote
-        : state.previewFeeQuote;
+      state.state.status === "ready" ? state.state.prepared.feeQuote : state.previewFeeQuote;
     if (!feeQuote) return 0;
     return parseFloat(formatEther(feeQuote.executionFeeWei));
   },
 
   getSolverFee: () => {
     const feeQuote =
-      state.state.status === "ready"
-        ? state.state.preparedUserOp.context.feeQuote
-        : state.previewFeeQuote;
+      state.state.status === "ready" ? state.state.prepared.feeQuote : state.previewFeeQuote;
     if (!feeQuote) return 0;
     return parseFloat(formatEther(feeQuote.solverFeeWei));
   },
@@ -178,13 +182,16 @@ export const WithdrawSelectors = {
   },
 };
 
-// Engine instance for current withdrawal flow
-// Created fresh for each prepare() call, used by submit()
-let currentEngine: WithdrawalEngine | null = null;
-
 let prepareId = 0;
 let previewId = 0;
 let previewTimeout: ReturnType<typeof setTimeout> | null = null;
+
+function clearPreviewTimeout() {
+  if (previewTimeout) {
+    clearTimeout(previewTimeout);
+    previewTimeout = null;
+  }
+}
 
 const { transition } = createStateMachine<WithdrawState>({
   name: "WithdrawController",
@@ -235,9 +242,6 @@ export const WithdrawController = {
     }
   },
 
-  /**
-   * Select a single note for withdrawal (replaces any existing selection)
-   */
   selectNote(note: Note | null): void {
     state.selectedNotes = note ? [note] : [];
     state.selection = null;
@@ -247,15 +251,11 @@ export const WithdrawController = {
     if (state.state.status === "ready") transition({ status: "idle" });
   },
 
-  /**
-   * Add a note to selection for Withdraw2 (max 2 notes)
-   */
   addNote(note: Note): void {
     if (state.selectedNotes.length >= 2) {
       state.lastError = Errors.withdrawal.precondition("Maximum 2 notes can be selected");
       return;
     }
-    // Don't add duplicate
     if (
       state.selectedNotes.some(
         (n) => n.depositIndex === note.depositIndex && n.changeIndex === note.changeIndex
@@ -271,9 +271,6 @@ export const WithdrawController = {
     if (state.state.status === "ready") transition({ status: "idle" });
   },
 
-  /**
-   * Remove a note from selection
-   */
   removeNote(note: Note): void {
     state.selectedNotes = state.selectedNotes.filter(
       (n) => !(n.depositIndex === note.depositIndex && n.changeIndex === note.changeIndex)
@@ -285,9 +282,6 @@ export const WithdrawController = {
     if (state.state.status === "ready") transition({ status: "idle" });
   },
 
-  /**
-   * Clear all selected notes
-   */
   clearNotes(): void {
     state.selectedNotes = [];
     state.selection = null;
@@ -309,7 +303,7 @@ export const WithdrawController = {
   },
 
   schedulePreview(delay = PREVIEW_DEBOUNCE_MS): void {
-    if (previewTimeout) clearTimeout(previewTimeout);
+    clearPreviewTimeout();
     previewTimeout = setTimeout(() => this.preview(), delay);
   },
 
@@ -328,22 +322,30 @@ export const WithdrawController = {
     transition({ status: "previewing" });
 
     try {
-      // Use fresh engine for preview (stateless quote)
-      const previewEngine = new WithdrawalEngine();
+      const client = getWithdrawClient();
+      const amountWei = parseEther(state.amount);
 
-      // Route based on withdrawal type
-      if (this._isWithdraw2()) {
-        const request = this._buildWithdraw2Request();
-        const feeQuote = await previewEngine.quoteWithdraw2Fees(request);
-        if (current !== previewId) return;
-        state.previewFeeQuote = feeQuote;
+      const isCrossChain = WithdrawSelectors.isCrossChain();
+      let sdkQuote: WithdrawalFeeQuote;
+
+      if (isCrossChain) {
+        sdkQuote = this._isWithdraw2()
+          ? await client.quoteCrosschainWithdraw2({
+              amountWei,
+              destinationChainId: state.destinationChainId,
+            })
+          : await client.quoteCrosschainWithdrawal({
+              amountWei,
+              destinationChainId: state.destinationChainId,
+            });
       } else {
-        const request = this._buildRequest();
-        const feeQuote = await previewEngine.quoteFees(request);
-        if (current !== previewId) return;
-        state.previewFeeQuote = feeQuote;
+        sdkQuote = this._isWithdraw2()
+          ? await client.quoteWithdraw2({ amountWei })
+          : await client.quoteWithdrawal({ amountWei });
       }
 
+      if (current !== previewId) return;
+      state.previewFeeQuote = sdkQuote;
       transition({ status: "idle" });
     } catch (error) {
       if (current !== previewId) return;
@@ -353,74 +355,87 @@ export const WithdrawController = {
   },
 
   async prepare(): Promise<void> {
+    clearPreviewTimeout();
     const current = ++prepareId;
 
     if (!this._validateInputs()) {
       transition({ status: "error", error: Errors.withdrawal.precondition("Invalid inputs") });
-      currentEngine = null;
       return;
     }
 
     try {
-      transition({ status: "preparing", phase: "idle" });
-      // Create fresh engine for this withdrawal flow
-      currentEngine = new WithdrawalEngine();
+      transition({ status: "preparing" });
 
-      // Route based on withdrawal type
-      let preparedUserOp;
+      const client = getWithdrawClient();
+      const amountWei = parseEther(state.amount);
+      const recipient = state.recipientAddress as `0x${string}`;
+
+      const isCrossChain = WithdrawSelectors.isCrossChain();
+      let prepared: PreparedWithdrawalOp;
+
       if (this._isWithdraw2()) {
-        const request = this._buildWithdraw2Request();
-        preparedUserOp = await currentEngine.prepareWithdraw2(request);
+        const selection = state.selection!;
+        if (selection.type !== "withdraw2") throw new Error("Invalid selection");
+        const w2Params = {
+          primaryNote: selection.primaryInput.note as SpendableNote,
+          secondaryNote: selection.secondaryInput.note as SpendableNote,
+          amountWei,
+          recipient,
+          labelSelector: selection.labelSelector,
+        };
+        prepared = isCrossChain
+          ? await client.prepareCrosschainWithdraw2({
+              ...w2Params,
+              destinationChainId: state.destinationChainId,
+            })
+          : await client.prepareWithdraw2(w2Params);
       } else {
-        const request = this._buildRequest();
-        preparedUserOp = await currentEngine.prepare(request);
+        const selection = state.selection!;
+        if (selection.type !== "standard") throw new Error("Invalid selection");
+        const wParams = {
+          note: selection.input.note as SpendableNote,
+          amountWei,
+          recipient,
+        };
+        prepared = isCrossChain
+          ? await client.prepareCrosschainWithdrawal({
+              ...wParams,
+              destinationChainId: state.destinationChainId,
+            })
+          : await client.prepareWithdrawal(wParams);
       }
 
       if (current !== prepareId) return;
-      transition({ status: "ready", preparedUserOp });
+
+      transition({ status: "ready", prepared });
     } catch (error) {
       if (current !== prepareId) return;
       transition({ status: "error", error: Errors.withdrawal.proofFailed(error) });
-      currentEngine = null;
     }
   },
 
   async confirm(): Promise<void> {
     await this.prepare();
-    if (state.state.status !== "ready") {
-      currentEngine = null;
-      return;
-    }
+    if (state.state.status !== "ready") return;
     await this.submit();
   },
 
   async submit(): Promise<void> {
-    if (state.state.status !== "ready" || !currentEngine) {
-      currentEngine = null;
-      return;
-    }
+    if (state.state.status !== "ready") return;
+
+    const { prepared } = state.state;
 
     transition({ status: "submitting" });
 
     try {
-      const result = await currentEngine.execute();
-
-      if (!result?.transactionHash) {
-        throw new Error("Transaction submission failed");
-      }
-
-      const engineState = currentEngine.getState();
-      if (!engineState.executionResult) {
-        throw new Error("Execution result missing");
-      }
+      const client = getWithdrawClient();
+      const txHash = await client.submitWithdrawal(prepared);
 
       transition({
         status: "confirmed",
-        txHash: result.transactionHash as `0x${string}`,
-        executionResult: engineState.executionResult,
+        txHash,
       });
 
-      // Trigger notes refresh - background sync will handle indexer catching up
       NotesDiscoveryController.refresh();
     } catch (error) {
       const userMessage = getUserMessage(error, "Withdrawal failed");
@@ -428,11 +443,11 @@ export const WithdrawController = {
         status: "error",
         error: Errors.withdrawal.transactionFailed(userMessage, error),
       });
-      currentEngine = null;
     }
   },
 
   reset(): void {
+    clearPreviewTimeout();
     state.amount = "";
     state.recipientAddress = "";
     state.selectedNotes = [];
@@ -442,13 +457,13 @@ export const WithdrawController = {
     state.solverFeeBPS = FEE_CONFIG.DEFAULT_SOLVER_FEE_BPS;
     state.fillDeadlineSeconds = INTENT_TIMING.FILL_DEADLINE_SECONDS;
     state.expirySeconds = INTENT_TIMING.EXPIRY_SECONDS;
-    currentEngine = null;
-    transition({ status: "idle" });
+    if (state.state.status !== "idle") {
+      transition({ status: "idle" });
+    }
   },
 
   setSolverFeeBPS(feeBPS: number): void {
     state.solverFeeBPS = feeBPS;
-    // Re-preview if we have valid inputs to update fee calculations
     if (WithdrawSelectors.canAutoPreview()) {
       this.schedulePreview(0);
     }
@@ -456,7 +471,6 @@ export const WithdrawController = {
 
   async retry(): Promise<void> {
     if (state.state.status === "error") {
-      currentEngine = null;
       await this.prepare();
     }
   },
@@ -466,22 +480,23 @@ export const WithdrawController = {
   },
 
   async _fetchWithdrawalChainConfig(): Promise<void> {
-    // Only fetch for cross-chain withdrawals
     if (state.destinationChainId === POOL_CHAIN.id) return;
 
     try {
-      const config = await fetchWithdrawalChainConfig(state.destinationChainId);
-      state.fillDeadlineSeconds = config.fillDeadlineSeconds;
-      state.expirySeconds = config.expirySeconds;
+      const client = getWithdrawClient();
+      const quote = await client.getSolverQuote({
+        originChainId: POOL_CHAIN.id,
+        destinationChainId: state.destinationChainId,
+        amountWei: "0",
+        type: "withdrawal",
+      });
+      state.fillDeadlineSeconds = quote.fillDeadlineSeconds;
+      state.expirySeconds = quote.expirySeconds;
     } catch (error) {
-      console.warn("[WithdrawController] Failed to fetch withdrawal chain config:", error);
-      // Keep using fallback values
+      logError(Errors.network.requestFailed("Failed to fetch withdrawal chain config", error));
     }
   },
 
-  /**
-   * Update the selection based on current notes and amount
-   */
   _updateSelection(): void {
     if (state.selectedNotes.length === 0 || !state.amount) {
       state.selection = null;
@@ -497,7 +512,6 @@ export const WithdrawController = {
         state.lastError = null;
       } else {
         state.selection = null;
-        // Map selection error to AppError
         switch (result.error.code) {
           case "INSUFFICIENT_BALANCE":
             state.lastError = Errors.withdrawal.insufficientBalance(result.error.message);
@@ -516,18 +530,15 @@ export const WithdrawController = {
 
   _validateInputs(): boolean {
     const { amount, recipientAddress, selectedNotes } = state;
-    const crypto = AuthController.state.crypto;
 
     if (!amount || !recipientAddress || selectedNotes.length === 0) return false;
-    if (!crypto.cryptoReady || !crypto.accountKey) return false;
+    if (!AuthController.isAuthenticated()) return false;
     if (!isAddress(recipientAddress)) return false;
 
-    // Update selection if not already done
     if (!state.selection) {
       this._updateSelection();
     }
 
-    // Check selection is valid
     if (!state.selection) {
       return false;
     }
@@ -535,53 +546,6 @@ export const WithdrawController = {
     return true;
   },
 
-  /**
-   * Build request for standard 1:1 withdrawal
-   */
-  _buildRequest(): WithdrawalRequest {
-    const crypto = AuthController.state.crypto;
-    const selection = state.selection;
-
-    if (!selection || selection.type !== "standard") {
-      throw new Error("Invalid selection for standard withdrawal");
-    }
-
-    return {
-      note: selection.input.note,
-      withdrawAmountWei: selection.withdrawAmount,
-      recipient: state.recipientAddress as `0x${string}`,
-      accountKey: crypto.accountKey!,
-      destinationChainId: state.destinationChainId,
-      solverFeeBPS: state.solverFeeBPS,
-    };
-  },
-
-  /**
-   * Build request for Withdraw2 (2:1 merge)
-   */
-  _buildWithdraw2Request(): Withdraw2Request {
-    const crypto = AuthController.state.crypto;
-    const selection = state.selection;
-
-    if (!selection || selection.type !== "withdraw2") {
-      throw new Error("Invalid selection for withdraw2");
-    }
-
-    return {
-      primaryNote: selection.primaryInput.note,
-      secondaryNote: selection.secondaryInput.note,
-      withdrawAmountWei: selection.withdrawAmount,
-      recipient: state.recipientAddress as `0x${string}`,
-      accountKey: crypto.accountKey!,
-      destinationChainId: state.destinationChainId,
-      labelSelector: selection.labelSelector,
-      solverFeeBPS: state.solverFeeBPS,
-    };
-  },
-
-  /**
-   * Check if current selection requires Withdraw2
-   */
   _isWithdraw2(): boolean {
     return state.selection?.type === "withdraw2";
   },

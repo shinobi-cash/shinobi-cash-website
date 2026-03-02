@@ -1,0 +1,75 @@
+{
+  "name": "@shinobi-cash/client",
+  "version": "0.0.1",
+  "description": "Chain interaction client for Shinobi Cash — bundler, solver, and contract operations",
+  "type": "module",
+  "sideEffects": false,
+  "types": "src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./dist/index.js"
+    },
+    "./relayer": {
+      "types": "./src/relayer/index.ts",
+      "import": "./dist/relayer/index.js"
+    },
+    "./deposit": {
+      "types": "./src/actions/deposit.ts",
+      "import": "./dist/actions/deposit.js"
+    },
+    "./crosschain-deposit": {
+      "types": "./src/actions/crosschain-deposit.ts",
+      "import": "./dist/actions/crosschain-deposit.js"
+    },
+    "./withdrawal": {
+      "types": "./src/actions/withdrawal.ts",
+      "import": "./dist/actions/withdrawal.js"
+    },
+    "./crosschain-withdrawal": {
+      "types": "./src/actions/crosschain-withdrawal.ts",
+      "import": "./dist/actions/crosschain-withdrawal.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/",
+    "format": "prettier --write src/",
+    "format:check": "prettier --check src/",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "shinobi-cash",
+    "bundler",
+    "erc-4337",
+    "account-abstraction",
+    "privacy"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@shinobi-cash/core": "workspace:*",
+    "@shinobi-cash/constants": "workspace:*",
+    "@shinobi-cash/data": "workspace:*"
+  },
+  "peerDependencies": {
+    "permissionless": "^0.2.0",
+    "viem": "^2.0.0"
+  },
+  "devDependencies": {
+    "@workspace/eslint-config": "workspace:*",
+    "@workspace/typescript-config": "workspace:*",
+    "eslint": "^9.17.0",
+    "prettier": "^3.4.2",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.3"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}

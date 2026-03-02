@@ -2,8 +2,8 @@
  * Note Selection Tests
  */
 
-import { describe, it, expect } from 'vitest';
-import type { Note, DepositNote } from '../src/discovery-v2/types.js';
+import { describe, it, expect } from "vitest";
+import type { Note, DepositNote } from "../src/discovery-v2/types.js";
 import {
   selectSingleNote,
   selectTwoNotes,
@@ -11,7 +11,7 @@ import {
   isWithdraw2Selection,
   getTotalInputAmount,
   getChangeNoteLabel,
-} from '../src/withdrawal/note-selection.js';
+} from "../src/withdrawal/note-selection.js";
 
 // ============================================================================
 // Test Fixtures
@@ -19,19 +19,19 @@ import {
 
 function createMockNote(overrides: Partial<Note> = {}): Note {
   return {
-    poolAddress: '0x1234567890123456789012345678901234567890',
+    poolAddress: "0x1234567890123456789012345678901234567890",
     depositIndex: 0,
     changeIndex: 0,
-    amount: '1000000000000000000', // 1 ETH
-    label: 'test-label',
-    status: 'unspent',
-    noteType: 'deposit',
-    precommitmentHash: '0xprecommit',
-    blockNumber: '1000',
-    timestamp: '1234567890',
-    originTransactionHash: '0xtx',
-    originChainId: '421614',
-    aspStatus: 'approved',
+    amount: "1000000000000000000", // 1 ETH
+    label: "test-label",
+    status: "unspent",
+    noteType: "deposit",
+    precommitmentHash: "0xprecommit",
+    blockNumber: "1000",
+    timestamp: "1234567890",
+    originTransactionHash: "0xtx",
+    originChainId: "421614",
+    aspStatus: "approved",
     activityData: {},
     ...overrides,
   } as Note;
@@ -41,23 +41,23 @@ function createMockNote(overrides: Partial<Note> = {}): Note {
 // Single Note Selection Tests
 // ============================================================================
 
-describe('selectSingleNote', () => {
-  it('should select a note with sufficient balance', () => {
-    const note = createMockNote({ amount: '1000000000000000000' }); // 1 ETH
+describe("selectSingleNote", () => {
+  it("should select a note with sufficient balance", () => {
+    const note = createMockNote({ amount: "1000000000000000000" }); // 1 ETH
     const withdrawAmount = 500000000000000000n; // 0.5 ETH
 
     const result = selectSingleNote(note, withdrawAmount);
 
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.selection.type).toBe('standard');
+      expect(result.selection.type).toBe("standard");
       expect(result.selection.withdrawAmount).toBe(withdrawAmount);
       expect(result.selection.changeAmount).toBe(500000000000000000n);
     }
   });
 
-  it('should select a note for exact amount withdrawal', () => {
-    const note = createMockNote({ amount: '1000000000000000000' });
+  it("should select a note for exact amount withdrawal", () => {
+    const note = createMockNote({ amount: "1000000000000000000" });
     const withdrawAmount = 1000000000000000000n;
 
     const result = selectSingleNote(note, withdrawAmount);
@@ -68,51 +68,51 @@ describe('selectSingleNote', () => {
     }
   });
 
-  it('should reject insufficient balance', () => {
-    const note = createMockNote({ amount: '500000000000000000' }); // 0.5 ETH
+  it("should reject insufficient balance", () => {
+    const note = createMockNote({ amount: "500000000000000000" }); // 0.5 ETH
     const withdrawAmount = 1000000000000000000n; // 1 ETH
 
     const result = selectSingleNote(note, withdrawAmount);
 
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.code).toBe('INSUFFICIENT_BALANCE');
+      expect(result.error.code).toBe("INSUFFICIENT_BALANCE");
     }
   });
 
-  it('should reject spent notes', () => {
-    const note = createMockNote({ status: 'spent' });
+  it("should reject spent notes", () => {
+    const note = createMockNote({ status: "spent" });
     const withdrawAmount = 500000000000000000n;
 
     const result = selectSingleNote(note, withdrawAmount);
 
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.code).toBe('NOTE_NOT_SPENDABLE');
+      expect(result.error.code).toBe("NOTE_NOT_SPENDABLE");
     }
   });
 
-  it('should reject merged notes', () => {
-    const note = createMockNote({ status: 'merged' });
+  it("should reject merged notes", () => {
+    const note = createMockNote({ status: "merged" });
     const withdrawAmount = 500000000000000000n;
 
     const result = selectSingleNote(note, withdrawAmount);
 
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.code).toBe('NOTE_NOT_SPENDABLE');
+      expect(result.error.code).toBe("NOTE_NOT_SPENDABLE");
     }
   });
 
-  it('should reject zero-balance notes', () => {
-    const note = createMockNote({ amount: '0' });
+  it("should reject zero-balance notes", () => {
+    const note = createMockNote({ amount: "0" });
     const withdrawAmount = 500000000000000000n;
 
     const result = selectSingleNote(note, withdrawAmount);
 
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.code).toBe('NOTE_NOT_SPENDABLE');
+      expect(result.error.code).toBe("NOTE_NOT_SPENDABLE");
     }
   });
 });
@@ -121,18 +121,26 @@ describe('selectSingleNote', () => {
 // Two Note Selection Tests (Withdraw2)
 // ============================================================================
 
-describe('selectTwoNotes', () => {
-  it('should select two notes with latest deposit as primary', () => {
-    const note1 = createMockNote({ depositIndex: 0, amount: '500000000000000000', label: 'label-0' });
-    const note2 = createMockNote({ depositIndex: 1, amount: '700000000000000000', label: 'label-1' });
+describe("selectTwoNotes", () => {
+  it("should select two notes with latest deposit as primary", () => {
+    const note1 = createMockNote({
+      depositIndex: 0,
+      amount: "500000000000000000",
+      label: "label-0",
+    });
+    const note2 = createMockNote({
+      depositIndex: 1,
+      amount: "700000000000000000",
+      label: "label-1",
+    });
     const withdrawAmount = 800000000000000000n;
 
     const result = selectTwoNotes(note1, note2, withdrawAmount);
 
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.selection.type).toBe('withdraw2');
-      if (result.selection.type === 'withdraw2') {
+      expect(result.selection.type).toBe("withdraw2");
+      if (result.selection.type === "withdraw2") {
         // Note with depositIndex 1 should be primary (latest)
         expect(result.selection.primaryInput.depositIndex).toBe(1);
         expect(result.selection.secondaryInput.depositIndex).toBe(0);
@@ -144,36 +152,36 @@ describe('selectTwoNotes', () => {
     }
   });
 
-  it('should handle notes in reverse order', () => {
+  it("should handle notes in reverse order", () => {
     // Pass note with larger depositIndex first
-    const note1 = createMockNote({ depositIndex: 5, amount: '300000000000000000' });
-    const note2 = createMockNote({ depositIndex: 2, amount: '400000000000000000' });
+    const note1 = createMockNote({ depositIndex: 5, amount: "300000000000000000" });
+    const note2 = createMockNote({ depositIndex: 2, amount: "400000000000000000" });
     const withdrawAmount = 500000000000000000n;
 
     const result = selectTwoNotes(note1, note2, withdrawAmount);
 
     expect(result.success).toBe(true);
-    if (result.success && result.selection.type === 'withdraw2') {
+    if (result.success && result.selection.type === "withdraw2") {
       // Note with depositIndex 5 should still be primary
       expect(result.selection.primaryInput.depositIndex).toBe(5);
       expect(result.selection.secondaryInput.depositIndex).toBe(2);
     }
   });
 
-  it('should reject insufficient combined balance', () => {
-    const note1 = createMockNote({ depositIndex: 0, amount: '300000000000000000' });
-    const note2 = createMockNote({ depositIndex: 1, amount: '400000000000000000' });
+  it("should reject insufficient combined balance", () => {
+    const note1 = createMockNote({ depositIndex: 0, amount: "300000000000000000" });
+    const note2 = createMockNote({ depositIndex: 1, amount: "400000000000000000" });
     const withdrawAmount = 1000000000000000000n; // More than combined
 
     const result = selectTwoNotes(note1, note2, withdrawAmount);
 
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.code).toBe('INSUFFICIENT_BALANCE');
+      expect(result.error.code).toBe("INSUFFICIENT_BALANCE");
     }
   });
 
-  it('should reject same note twice', () => {
+  it("should reject same note twice", () => {
     const note = createMockNote({ depositIndex: 0, changeIndex: 0 });
     const withdrawAmount = 500000000000000000n;
 
@@ -181,12 +189,12 @@ describe('selectTwoNotes', () => {
 
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.code).toBe('SAME_NOTE');
+      expect(result.error.code).toBe("SAME_NOTE");
     }
   });
 
-  it('should reject if first note is not spendable', () => {
-    const note1 = createMockNote({ depositIndex: 0, status: 'spent' });
+  it("should reject if first note is not spendable", () => {
+    const note1 = createMockNote({ depositIndex: 0, status: "spent" });
     const note2 = createMockNote({ depositIndex: 1 });
     const withdrawAmount = 500000000000000000n;
 
@@ -194,20 +202,20 @@ describe('selectTwoNotes', () => {
 
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.code).toBe('NOTE_NOT_SPENDABLE');
+      expect(result.error.code).toBe("NOTE_NOT_SPENDABLE");
     }
   });
 
-  it('should reject if second note is not spendable', () => {
+  it("should reject if second note is not spendable", () => {
     const note1 = createMockNote({ depositIndex: 0 });
-    const note2 = createMockNote({ depositIndex: 1, status: 'merged' });
+    const note2 = createMockNote({ depositIndex: 1, status: "merged" });
     const withdrawAmount = 500000000000000000n;
 
     const result = selectTwoNotes(note1, note2, withdrawAmount);
 
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.code).toBe('NOTE_NOT_SPENDABLE');
+      expect(result.error.code).toBe("NOTE_NOT_SPENDABLE");
     }
   });
 });
@@ -216,38 +224,38 @@ describe('selectTwoNotes', () => {
 // selectNotesForWithdrawal Tests
 // ============================================================================
 
-describe('selectNotesForWithdrawal', () => {
-  it('should handle single note', () => {
-    const note = createMockNote({ amount: '1000000000000000000' });
+describe("selectNotesForWithdrawal", () => {
+  it("should handle single note", () => {
+    const note = createMockNote({ amount: "1000000000000000000" });
     const result = selectNotesForWithdrawal([note], 500000000000000000n);
 
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.selection.type).toBe('standard');
+      expect(result.selection.type).toBe("standard");
     }
   });
 
-  it('should handle two notes', () => {
-    const note1 = createMockNote({ depositIndex: 0, amount: '500000000000000000' });
-    const note2 = createMockNote({ depositIndex: 1, amount: '500000000000000000' });
+  it("should handle two notes", () => {
+    const note1 = createMockNote({ depositIndex: 0, amount: "500000000000000000" });
+    const note2 = createMockNote({ depositIndex: 1, amount: "500000000000000000" });
     const result = selectNotesForWithdrawal([note1, note2], 800000000000000000n);
 
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.selection.type).toBe('withdraw2');
+      expect(result.selection.type).toBe("withdraw2");
     }
   });
 
-  it('should reject empty notes array', () => {
+  it("should reject empty notes array", () => {
     const result = selectNotesForWithdrawal([], 500000000000000000n);
 
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.code).toBe('INVALID_NOTES');
+      expect(result.error.code).toBe("INVALID_NOTES");
     }
   });
 
-  it('should reject more than 2 notes', () => {
+  it("should reject more than 2 notes", () => {
     const notes = [
       createMockNote({ depositIndex: 0 }),
       createMockNote({ depositIndex: 1 }),
@@ -257,7 +265,7 @@ describe('selectNotesForWithdrawal', () => {
 
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.code).toBe('INVALID_NOTES');
+      expect(result.error.code).toBe("INVALID_NOTES");
     }
   });
 });
@@ -266,10 +274,10 @@ describe('selectNotesForWithdrawal', () => {
 // Utility Function Tests
 // ============================================================================
 
-describe('Utility Functions', () => {
-  it('isWithdraw2Selection should correctly identify selection type', () => {
-    const note1 = createMockNote({ depositIndex: 0, amount: '500000000000000000' });
-    const note2 = createMockNote({ depositIndex: 1, amount: '500000000000000000' });
+describe("Utility Functions", () => {
+  it("isWithdraw2Selection should correctly identify selection type", () => {
+    const note1 = createMockNote({ depositIndex: 0, amount: "500000000000000000" });
+    const note2 = createMockNote({ depositIndex: 1, amount: "500000000000000000" });
 
     const singleResult = selectSingleNote(note1, 300000000000000000n);
     const twoResult = selectTwoNotes(note1, note2, 800000000000000000n);
@@ -282,9 +290,9 @@ describe('Utility Functions', () => {
     }
   });
 
-  it('getTotalInputAmount should return correct amount', () => {
-    const note1 = createMockNote({ depositIndex: 0, amount: '500000000000000000' });
-    const note2 = createMockNote({ depositIndex: 1, amount: '700000000000000000' });
+  it("getTotalInputAmount should return correct amount", () => {
+    const note1 = createMockNote({ depositIndex: 0, amount: "500000000000000000" });
+    const note2 = createMockNote({ depositIndex: 1, amount: "700000000000000000" });
 
     const singleResult = selectSingleNote(note1, 300000000000000000n);
     const twoResult = selectTwoNotes(note1, note2, 800000000000000000n);
@@ -297,19 +305,19 @@ describe('Utility Functions', () => {
     }
   });
 
-  it('getChangeNoteLabel should return correct label', () => {
-    const note1 = createMockNote({ depositIndex: 0, label: 'label-older' });
-    const note2 = createMockNote({ depositIndex: 1, label: 'label-latest' });
+  it("getChangeNoteLabel should return correct label", () => {
+    const note1 = createMockNote({ depositIndex: 0, label: "label-older" });
+    const note2 = createMockNote({ depositIndex: 1, label: "label-latest" });
 
     const singleResult = selectSingleNote(note1, 300000000000000000n);
     const twoResult = selectTwoNotes(note1, note2, 800000000000000000n);
 
     if (singleResult.success) {
-      expect(getChangeNoteLabel(singleResult.selection)).toBe('label-older');
+      expect(getChangeNoteLabel(singleResult.selection)).toBe("label-older");
     }
     if (twoResult.success) {
       // Default labelSelector is 0 (primary = latest deposit)
-      expect(getChangeNoteLabel(twoResult.selection)).toBe('label-latest');
+      expect(getChangeNoteLabel(twoResult.selection)).toBe("label-latest");
     }
   });
 });

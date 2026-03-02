@@ -13,7 +13,7 @@ import type {
   CrosschainWithdrawIntentActivity,
   CrosschainWithdraw2IntentActivity,
 } from "@shinobi-cash/data";
-import type { NoteTree, NullifierInfo, ChainKey } from "./types.js";
+import type { NoteTree, NullifierInfo, ChainKey, NoteDeriver } from "./types.js";
 import { makeChainKey, isNote, isSpendableNote } from "./types.js";
 import type { ActivityIndex } from "./activity-indexer.js";
 import {
@@ -22,8 +22,6 @@ import {
   isSameChainWithdraw2,
   isCrosschainWithdraw2Intent,
 } from "./activity-indexer.js";
-import { deriveAndHashNullifier } from "./nullifier-utils.js";
-import { derivedNoteCommitment } from "../withdrawal/index.js";
 import { getLastSpendableLeaf } from "./tree-utils.js";
 
 // ============================================================================
@@ -133,7 +131,7 @@ export function planTreeExtensions(
   allTrees: Map<ChainKey, NoteTree>,
   nullifierMap: Map<string, NullifierInfo>,
   activityIndex: ActivityIndex,
-  accountKey: bigint,
+  deriver: NoteDeriver,
   poolAddress: string
 ): PlannedExtension[] {
   const plans: PlannedExtension[] = [];
@@ -170,10 +168,9 @@ export function planTreeExtensions(
     }
 
     // Derive nullifier hash for current (virtual) tip
-    const nullifierHash = deriveAndHashNullifier(
-      accountKey,
+    const nullifierHash = deriver.deriveNullifierHash(
       poolAddress,
-      originChainId,
+      Number(originChainId),
       depositIndex,
       currentChangeIndex,
       currentNoteType
@@ -197,7 +194,7 @@ export function planTreeExtensions(
         currentAmount,
         withdrawal,
         nullifierHash,
-        accountKey,
+        deriver,
         poolAddress
       );
       plans.push(plan);
@@ -238,7 +235,7 @@ export function planTreeExtensions(
         allTrees,
         nullifierMap,
         ctx,
-        accountKey,
+        deriver,
         poolAddress
       );
 
@@ -283,7 +280,7 @@ export function planTreeExtensions(
     // Also check that lastLeaf is a spendable note since derivedNoteCommitment requires it
     if (currentNoteType === "deposit" || currentNoteType === "change") {
       if (lastLeaf && isNote(lastLeaf.note) && isSpendableNote(lastLeaf.note)) {
-        const commitment = derivedNoteCommitment(accountKey, lastLeaf.note).toString();
+        const commitment = deriver.deriveNoteCommitment(lastLeaf.note).toString();
         const ragequit = activityIndex.ragequitByCommitment.get(commitment);
         if (ragequit) {
           plans.push({
@@ -323,7 +320,7 @@ function plan1x1Withdrawal(
   currentAmount: bigint,
   activity: WithdrawActivity | CrosschainWithdrawIntentActivity,
   oldNullifierHash: string,
-  accountKey: bigint,
+  deriver: NoteDeriver,
   poolAddress: string
 ): Planned1x1Extension {
   // Use withdrawnValue (the actual value spent from the note in the circuit)
@@ -338,7 +335,12 @@ function plan1x1Withdrawal(
 
   const newNullifierHash =
     remaining > 0n
-      ? deriveAndHashNullifier(accountKey, poolAddress, originChainId, depositIndex, newChangeIndex)
+      ? deriver.deriveNullifierHash(
+          poolAddress,
+          Number(originChainId),
+          depositIndex,
+          newChangeIndex
+        )
       : null;
 
   return {
@@ -372,7 +374,7 @@ function planWithdraw2(
   allTrees: Map<ChainKey, NoteTree>,
   nullifierMap: Map<string, NullifierInfo>,
   ctx: PlanningContext,
-  accountKey: bigint,
+  deriver: NoteDeriver,
   poolAddress: string
 ): PlannedWithdraw2Extension | null {
   // Get nullifiers array from activity
@@ -450,10 +452,9 @@ function planWithdraw2(
 
   const primaryNewNullifierHash =
     remaining > 0n
-      ? deriveAndHashNullifier(
-          accountKey,
+      ? deriver.deriveNullifierHash(
           poolAddress,
-          primaryOriginChainId,
+          Number(primaryOriginChainId),
           primaryDepositIndex,
           primaryNewChangeIndex
         )

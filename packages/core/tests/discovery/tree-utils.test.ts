@@ -3,7 +3,7 @@
  * Tree utilities for NoteTree operations
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from "vitest";
 import {
   createNoteTree,
   createNoteNode,
@@ -20,7 +20,7 @@ import {
   serializeTree,
   deserializeTree,
   selectWinnerChain,
-} from '../../src/discovery/tree-utils.js';
+} from "../../src/discovery/tree-utils.js";
 import {
   createMockDepositNote,
   createMockChangeNote,
@@ -28,12 +28,12 @@ import {
   createMockWithdrawalRefundedNote,
   createMockRagequitNote,
   createMockMergedNote,
-} from './fixtures.js';
+} from "./fixtures.js";
 
-describe('tree-utils', () => {
-  describe('createNoteTree', () => {
-    it('should create a tree with root node', () => {
-      const deposit = createMockDepositNote(0, '1000000000000000000');
+describe("tree-utils", () => {
+  describe("createNoteTree", () => {
+    it("should create a tree with root node", () => {
+      const deposit = createMockDepositNote(0, "1000000000000000000");
       const tree = createNoteTree(deposit);
 
       expect(tree.root).toBeDefined();
@@ -43,25 +43,25 @@ describe('tree-utils', () => {
       expect(tree.root.isTerminal).toBe(false);
     });
 
-    it('should create terminal root for ragequit note', () => {
-      const ragequit = createMockRagequitNote(0, 0, '1000000000000000000');
+    it("should create terminal root for ragequit note", () => {
+      const ragequit = createMockRagequitNote(0, 0, "1000000000000000000");
       const tree = createNoteTree(ragequit);
 
       expect(tree.root.isTerminal).toBe(true);
     });
 
-    it('should create terminal root for merged note', () => {
-      const merged = createMockMergedNote(0, 0, '1000000000000000000', 'ARB-002-00-0-00');
+    it("should create terminal root for merged note", () => {
+      const merged = createMockMergedNote(0, 0, "1000000000000000000", "ARB-002-00-0-00");
       const tree = createNoteTree(merged);
 
       expect(tree.root.isTerminal).toBe(true);
     });
   });
 
-  describe('createNoteNode', () => {
-    it('should create node with parent reference', () => {
-      const deposit = createMockDepositNote(0, '1000000000000000000');
-      const change = createMockChangeNote(0, 1, '500000000000000000');
+  describe("createNoteNode", () => {
+    it("should create node with parent reference", () => {
+      const deposit = createMockDepositNote(0, "1000000000000000000");
+      const change = createMockChangeNote(0, 1, "500000000000000000");
 
       const parentNode = createNoteNode(deposit, null);
       const childNode = createNoteNode(change, parentNode);
@@ -71,10 +71,10 @@ describe('tree-utils', () => {
     });
   });
 
-  describe('addChild', () => {
-    it('should add child to parent node', () => {
-      const deposit = createMockDepositNote(0, '1000000000000000000');
-      const change = createMockChangeNote(0, 1, '500000000000000000');
+  describe("addChild", () => {
+    it("should add child to parent node", () => {
+      const deposit = createMockDepositNote(0, "1000000000000000000");
+      const change = createMockChangeNote(0, 1, "500000000000000000");
 
       const tree = createNoteTree(deposit);
       const childNode = addChild(tree.root, change);
@@ -84,19 +84,19 @@ describe('tree-utils', () => {
       expect(childNode.parent).toBe(tree.root);
     });
 
-    it('should throw when adding child to terminal node', () => {
-      const ragequit = createMockRagequitNote(0, 0, '1000000000000000000');
-      const change = createMockChangeNote(0, 1, '500000000000000000');
+    it("should throw when adding child to terminal node", () => {
+      const ragequit = createMockRagequitNote(0, 0, "1000000000000000000");
+      const change = createMockChangeNote(0, 1, "500000000000000000");
 
       const tree = createNoteTree(ragequit);
 
-      expect(() => addChild(tree.root, change)).toThrow('Cannot add child to terminal node');
+      expect(() => addChild(tree.root, change)).toThrow("Cannot add child to terminal node");
     });
 
-    it('should support multiple children (siblings)', () => {
-      const deposit = createMockDepositNote(0, '1000000000000000000', { status: 'spent' });
-      const change = createMockChangeNote(0, 1, '500000000000000000');
-      const intent = createMockWithdrawalIntentNote(0, 0, '500000000000000000');
+    it("should support multiple children (siblings)", () => {
+      const deposit = createMockDepositNote(0, "1000000000000000000", { status: "spent" });
+      const change = createMockChangeNote(0, 1, "500000000000000000");
+      const intent = createMockWithdrawalIntentNote(0, 0, "500000000000000000");
 
       const tree = createNoteTree(deposit);
       const changeNode = addChild(tree.root, change);
@@ -108,10 +108,10 @@ describe('tree-utils', () => {
     });
   });
 
-  describe('findNode', () => {
-    it('should find node by predicate', () => {
-      const deposit = createMockDepositNote(0, '1000000000000000000', { status: 'spent' });
-      const change = createMockChangeNote(0, 1, '500000000000000000');
+  describe("findNode", () => {
+    it("should find node by predicate", () => {
+      const deposit = createMockDepositNote(0, "1000000000000000000", { status: "spent" });
+      const change = createMockChangeNote(0, 1, "500000000000000000");
 
       const tree = createNoteTree(deposit);
       addChild(tree.root, change);
@@ -121,8 +121,8 @@ describe('tree-utils', () => {
       expect(found?.note).toEqual(change);
     });
 
-    it('should return null when not found', () => {
-      const deposit = createMockDepositNote(0, '1000000000000000000');
+    it("should return null when not found", () => {
+      const deposit = createMockDepositNote(0, "1000000000000000000");
       const tree = createNoteTree(deposit);
 
       const found = findNode(tree, (node) => node.note.changeIndex === 99);
@@ -130,11 +130,11 @@ describe('tree-utils', () => {
     });
   });
 
-  describe('findNodeByPosition', () => {
-    it('should find node by depositIndex and changeIndex', () => {
-      const deposit = createMockDepositNote(0, '1000000000000000000', { status: 'spent' });
-      const change1 = createMockChangeNote(0, 1, '500000000000000000', { status: 'spent' });
-      const change2 = createMockChangeNote(0, 2, '300000000000000000');
+  describe("findNodeByPosition", () => {
+    it("should find node by depositIndex and changeIndex", () => {
+      const deposit = createMockDepositNote(0, "1000000000000000000", { status: "spent" });
+      const change1 = createMockChangeNote(0, 1, "500000000000000000", { status: "spent" });
+      const change2 = createMockChangeNote(0, 2, "300000000000000000");
 
       const tree = createNoteTree(deposit);
       const change1Node = addChild(tree.root, change1);
@@ -146,29 +146,29 @@ describe('tree-utils', () => {
     });
   });
 
-  describe('findNodeByOrderId', () => {
-    it('should find withdrawal intent by orderId', () => {
-      const deposit = createMockDepositNote(0, '1000000000000000000', { status: 'spent' });
-      const change = createMockChangeNote(0, 1, '500000000000000000');
-      const intent = createMockWithdrawalIntentNote(0, 0, '500000000000000000', {
-        orderId: 'test-order-123',
+  describe("findNodeByOrderId", () => {
+    it("should find withdrawal intent by orderId", () => {
+      const deposit = createMockDepositNote(0, "1000000000000000000", { status: "spent" });
+      const change = createMockChangeNote(0, 1, "500000000000000000");
+      const intent = createMockWithdrawalIntentNote(0, 0, "500000000000000000", {
+        orderId: "test-order-123",
       });
 
       const tree = createNoteTree(deposit);
       addChild(tree.root, change);
       addChild(tree.root, intent);
 
-      const found = findNodeByOrderId(tree, 'test-order-123');
+      const found = findNodeByOrderId(tree, "test-order-123");
       expect(found).toBeDefined();
-      expect(found?.note.orderId).toBe('test-order-123');
+      expect(found?.note.orderId).toBe("test-order-123");
     });
   });
 
-  describe('getLeafNodes', () => {
-    it('should return all leaf nodes', () => {
-      const deposit = createMockDepositNote(0, '1000000000000000000', { status: 'spent' });
-      const change = createMockChangeNote(0, 1, '500000000000000000');
-      const intent = createMockWithdrawalIntentNote(0, 0, '500000000000000000');
+  describe("getLeafNodes", () => {
+    it("should return all leaf nodes", () => {
+      const deposit = createMockDepositNote(0, "1000000000000000000", { status: "spent" });
+      const change = createMockChangeNote(0, 1, "500000000000000000");
+      const intent = createMockWithdrawalIntentNote(0, 0, "500000000000000000");
 
       const tree = createNoteTree(deposit);
       addChild(tree.root, change);
@@ -178,8 +178,8 @@ describe('tree-utils', () => {
       expect(leaves).toHaveLength(2);
     });
 
-    it('should return root if no children', () => {
-      const deposit = createMockDepositNote(0, '1000000000000000000');
+    it("should return root if no children", () => {
+      const deposit = createMockDepositNote(0, "1000000000000000000");
       const tree = createNoteTree(deposit);
 
       const leaves = getLeafNodes(tree);
@@ -188,12 +188,14 @@ describe('tree-utils', () => {
     });
   });
 
-  describe('getSpendableLeaves', () => {
-    it('should return only spendable leaves', () => {
-      const deposit = createMockDepositNote(0, '1000000000000000000', { status: 'spent' });
-      const change = createMockChangeNote(0, 1, '500000000000000000', { status: 'unspent' });
-      const intent = createMockWithdrawalIntentNote(0, 0, '500000000000000000');
-      const refund = createMockWithdrawalRefundedNote(0, 1, '500000000000000000', { status: 'unspent' });
+  describe("getSpendableLeaves", () => {
+    it("should return only spendable leaves", () => {
+      const deposit = createMockDepositNote(0, "1000000000000000000", { status: "spent" });
+      const change = createMockChangeNote(0, 1, "500000000000000000", { status: "unspent" });
+      const intent = createMockWithdrawalIntentNote(0, 0, "500000000000000000");
+      const refund = createMockWithdrawalRefundedNote(0, 1, "500000000000000000", {
+        status: "unspent",
+      });
 
       const tree = createNoteTree(deposit);
       addChild(tree.root, change);
@@ -204,12 +206,15 @@ describe('tree-utils', () => {
 
       // Both change and withdrawalRefunded are spendable (unspent with positive balance)
       expect(spendable).toHaveLength(2);
-      expect(spendable.map((n) => n.note.noteType).sort()).toEqual(['change', 'withdrawalRefunded']);
+      expect(spendable.map((n) => n.note.noteType).sort()).toEqual([
+        "change",
+        "withdrawalRefunded",
+      ]);
     });
 
-    it('should exclude zero balance notes', () => {
-      const deposit = createMockDepositNote(0, '1000000000000000000', { status: 'spent' });
-      const change = createMockChangeNote(0, 1, '0', { status: 'unspent' });
+    it("should exclude zero balance notes", () => {
+      const deposit = createMockDepositNote(0, "1000000000000000000", { status: "spent" });
+      const change = createMockChangeNote(0, 1, "0", { status: "unspent" });
 
       const tree = createNoteTree(deposit);
       addChild(tree.root, change);
@@ -218,8 +223,8 @@ describe('tree-utils', () => {
       expect(spendable).toHaveLength(0);
     });
 
-    it('should exclude terminal nodes', () => {
-      const deposit = createMockDepositNote(0, '1000000000000000000', { status: 'ragequit' });
+    it("should exclude terminal nodes", () => {
+      const deposit = createMockDepositNote(0, "1000000000000000000", { status: "ragequit" });
       const tree = createNoteTree(deposit);
 
       const spendable = getSpendableLeaves(tree);
@@ -227,17 +232,17 @@ describe('tree-utils', () => {
     });
   });
 
-  describe('getLastSpendableLeaf', () => {
-    it('should return most recent spendable leaf by timestamp', () => {
-      const deposit = createMockDepositNote(0, '1000000000000000000', { status: 'spent' });
-      const change = createMockChangeNote(0, 1, '500000000000000000', {
-        status: 'unspent',
-        originTimestamp: '1700000000',
+  describe("getLastSpendableLeaf", () => {
+    it("should return most recent spendable leaf by timestamp", () => {
+      const deposit = createMockDepositNote(0, "1000000000000000000", { status: "spent" });
+      const change = createMockChangeNote(0, 1, "500000000000000000", {
+        status: "unspent",
+        originTimestamp: "1700000000",
       });
-      const intent = createMockWithdrawalIntentNote(0, 0, '500000000000000000');
-      const refund = createMockWithdrawalRefundedNote(0, 1, '500000000000000000', {
-        status: 'unspent',
-        originTimestamp: '1700001000', // More recent
+      const intent = createMockWithdrawalIntentNote(0, 0, "500000000000000000");
+      const refund = createMockWithdrawalRefundedNote(0, 1, "500000000000000000", {
+        status: "unspent",
+        originTimestamp: "1700001000", // More recent
       });
 
       const tree = createNoteTree(deposit);
@@ -247,11 +252,11 @@ describe('tree-utils', () => {
 
       const lastSpendable = getLastSpendableLeaf(tree);
       expect(lastSpendable).toBeDefined();
-      expect(lastSpendable?.note.noteType).toBe('withdrawalRefunded');
+      expect(lastSpendable?.note.noteType).toBe("withdrawalRefunded");
     });
 
-    it('should return null if no spendable leaves', () => {
-      const deposit = createMockDepositNote(0, '1000000000000000000', { status: 'spent' });
+    it("should return null if no spendable leaves", () => {
+      const deposit = createMockDepositNote(0, "1000000000000000000", { status: "spent" });
       const tree = createNoteTree(deposit);
 
       const lastSpendable = getLastSpendableLeaf(tree);
@@ -259,12 +264,14 @@ describe('tree-utils', () => {
     });
   });
 
-  describe('getTotalSpendableBalance', () => {
-    it('should sum all spendable leaf balances', () => {
-      const deposit = createMockDepositNote(0, '1000000000000000000', { status: 'spent' });
-      const change = createMockChangeNote(0, 1, '500000000000000000', { status: 'unspent' });
-      const intent = createMockWithdrawalIntentNote(0, 0, '300000000000000000');
-      const refund = createMockWithdrawalRefundedNote(0, 1, '300000000000000000', { status: 'unspent' });
+  describe("getTotalSpendableBalance", () => {
+    it("should sum all spendable leaf balances", () => {
+      const deposit = createMockDepositNote(0, "1000000000000000000", { status: "spent" });
+      const change = createMockChangeNote(0, 1, "500000000000000000", { status: "unspent" });
+      const intent = createMockWithdrawalIntentNote(0, 0, "300000000000000000");
+      const refund = createMockWithdrawalRefundedNote(0, 1, "300000000000000000", {
+        status: "unspent",
+      });
 
       const tree = createNoteTree(deposit);
       addChild(tree.root, change);
@@ -273,15 +280,15 @@ describe('tree-utils', () => {
 
       const total = getTotalSpendableBalance(tree);
       // 0.5 ETH + 0.3 ETH = 0.8 ETH
-      expect(total).toBe(BigInt('800000000000000000'));
+      expect(total).toBe(BigInt("800000000000000000"));
     });
   });
 
-  describe('traverseTree', () => {
-    it('should traverse in depth-first order', () => {
-      const deposit = createMockDepositNote(0, '1000000000000000000', { status: 'spent' });
-      const change1 = createMockChangeNote(0, 1, '500000000000000000', { status: 'spent' });
-      const change2 = createMockChangeNote(0, 2, '300000000000000000');
+  describe("traverseTree", () => {
+    it("should traverse in depth-first order", () => {
+      const deposit = createMockDepositNote(0, "1000000000000000000", { status: "spent" });
+      const change1 = createMockChangeNote(0, 1, "500000000000000000", { status: "spent" });
+      const change2 = createMockChangeNote(0, 2, "300000000000000000");
 
       const tree = createNoteTree(deposit);
       const change1Node = addChild(tree.root, change1);
@@ -300,9 +307,9 @@ describe('tree-utils', () => {
     });
   });
 
-  describe('markTerminal', () => {
-    it('should mark node as terminal', () => {
-      const deposit = createMockDepositNote(0, '1000000000000000000');
+  describe("markTerminal", () => {
+    it("should mark node as terminal", () => {
+      const deposit = createMockDepositNote(0, "1000000000000000000");
       const tree = createNoteTree(deposit);
 
       expect(tree.root.isTerminal).toBe(false);
@@ -311,11 +318,11 @@ describe('tree-utils', () => {
     });
   });
 
-  describe('serialization', () => {
-    it('should serialize and deserialize tree', () => {
-      const deposit = createMockDepositNote(0, '1000000000000000000', { status: 'spent' });
-      const change = createMockChangeNote(0, 1, '500000000000000000');
-      const intent = createMockWithdrawalIntentNote(0, 0, '500000000000000000');
+  describe("serialization", () => {
+    it("should serialize and deserialize tree", () => {
+      const deposit = createMockDepositNote(0, "1000000000000000000", { status: "spent" });
+      const change = createMockChangeNote(0, 1, "500000000000000000");
+      const intent = createMockWithdrawalIntentNote(0, 0, "500000000000000000");
 
       const tree = createNoteTree(deposit);
       addChild(tree.root, change);
@@ -329,8 +336,8 @@ describe('tree-utils', () => {
       expect(deserialized.root.children[0].parent).toBe(deserialized.root);
     });
 
-    it('should preserve terminal flag through serialization', () => {
-      const ragequit = createMockRagequitNote(0, 0, '1000000000000000000');
+    it("should preserve terminal flag through serialization", () => {
+      const ragequit = createMockRagequitNote(0, 0, "1000000000000000000");
       const tree = createNoteTree(ragequit);
 
       const serialized = serializeTree(tree);
@@ -340,29 +347,29 @@ describe('tree-utils', () => {
     });
   });
 
-  describe('selectWinnerChain', () => {
-    it('should select chain with most recent timestamp as winner', () => {
+  describe("selectWinnerChain", () => {
+    it("should select chain with most recent timestamp as winner", () => {
       // Chain A: older timestamp
-      const depositA = createMockDepositNote(0, '1000000000000000000', {
-        status: 'spent',
-        originTimestamp: '1700000000',
+      const depositA = createMockDepositNote(0, "1000000000000000000", {
+        status: "spent",
+        originTimestamp: "1700000000",
       });
-      const changeA = createMockChangeNote(0, 1, '500000000000000000', {
-        status: 'unspent',
-        originTimestamp: '1700000000',
+      const changeA = createMockChangeNote(0, 1, "500000000000000000", {
+        status: "unspent",
+        originTimestamp: "1700000000",
       });
 
       const treeA = createNoteTree(depositA);
       addChild(treeA.root, changeA);
 
       // Chain B: more recent timestamp
-      const depositB = createMockDepositNote(1, '500000000000000000', {
-        status: 'spent',
-        originTimestamp: '1700001000',
+      const depositB = createMockDepositNote(1, "500000000000000000", {
+        status: "spent",
+        originTimestamp: "1700001000",
       });
-      const changeB = createMockChangeNote(1, 1, '300000000000000000', {
-        status: 'unspent',
-        originTimestamp: '1700001000',
+      const changeB = createMockChangeNote(1, 1, "300000000000000000", {
+        status: "unspent",
+        originTimestamp: "1700001000",
       });
 
       const treeB = createNoteTree(depositB);
@@ -375,16 +382,16 @@ describe('tree-utils', () => {
       expect(loser.root.note.depositIndex).toBe(0);
     });
 
-    it('should use depositIndex as tiebreaker when timestamps are equal', () => {
-      const timestamp = '1700000000';
+    it("should use depositIndex as tiebreaker when timestamps are equal", () => {
+      const timestamp = "1700000000";
 
       // Chain A: depositIndex = 0
-      const depositA = createMockDepositNote(0, '1000000000000000000', {
-        status: 'spent',
+      const depositA = createMockDepositNote(0, "1000000000000000000", {
+        status: "spent",
         timestamp,
       });
-      const changeA = createMockChangeNote(0, 1, '500000000000000000', {
-        status: 'unspent',
+      const changeA = createMockChangeNote(0, 1, "500000000000000000", {
+        status: "unspent",
         timestamp,
       });
 
@@ -392,12 +399,12 @@ describe('tree-utils', () => {
       addChild(treeA.root, changeA);
 
       // Chain B: depositIndex = 5 (larger)
-      const depositB = createMockDepositNote(5, '500000000000000000', {
-        status: 'spent',
+      const depositB = createMockDepositNote(5, "500000000000000000", {
+        status: "spent",
         timestamp,
       });
-      const changeB = createMockChangeNote(5, 1, '300000000000000000', {
-        status: 'unspent',
+      const changeB = createMockChangeNote(5, 1, "300000000000000000", {
+        status: "unspent",
         timestamp,
       });
 
@@ -411,35 +418,35 @@ describe('tree-utils', () => {
       expect(loser.root.note.depositIndex).toBe(0);
     });
 
-    it('should use originChainId as final tiebreaker', () => {
-      const timestamp = '1700000000';
+    it("should use originChainId as final tiebreaker", () => {
+      const timestamp = "1700000000";
       const depositIndex = 0;
 
       // Chain A: originChainId = "421614" (smaller lexicographically)
-      const depositA = createMockDepositNote(depositIndex, '1000000000000000000', {
-        status: 'spent',
+      const depositA = createMockDepositNote(depositIndex, "1000000000000000000", {
+        status: "spent",
         timestamp,
-        originChainId: '421614',
+        originChainId: "421614",
       });
-      const changeA = createMockChangeNote(depositIndex, 1, '500000000000000000', {
-        status: 'unspent',
+      const changeA = createMockChangeNote(depositIndex, 1, "500000000000000000", {
+        status: "unspent",
         timestamp,
-        originChainId: '421614',
+        originChainId: "421614",
       });
 
       const treeA = createNoteTree(depositA);
       addChild(treeA.root, changeA);
 
       // Chain B: originChainId = "84532" (larger lexicographically)
-      const depositB = createMockDepositNote(depositIndex, '500000000000000000', {
-        status: 'spent',
+      const depositB = createMockDepositNote(depositIndex, "500000000000000000", {
+        status: "spent",
         timestamp,
-        originChainId: '84532',
+        originChainId: "84532",
       });
-      const changeB = createMockChangeNote(depositIndex, 1, '300000000000000000', {
-        status: 'unspent',
+      const changeB = createMockChangeNote(depositIndex, 1, "300000000000000000", {
+        status: "unspent",
         timestamp,
-        originChainId: '84532',
+        originChainId: "84532",
       });
 
       const treeB = createNoteTree(depositB);
@@ -448,19 +455,19 @@ describe('tree-utils', () => {
       const { winner, loser } = selectWinnerChain(treeA, treeB);
 
       // B has larger originChainId, should be winner
-      expect(winner.root.note.originChainId).toBe('84532');
-      expect(loser.root.note.originChainId).toBe('421614');
+      expect(winner.root.note.originChainId).toBe("84532");
+      expect(loser.root.note.originChainId).toBe("421614");
     });
 
-    it('should throw when tree has no spendable leaves', () => {
-      const depositA = createMockDepositNote(0, '1000000000000000000', { status: 'spent' });
+    it("should throw when tree has no spendable leaves", () => {
+      const depositA = createMockDepositNote(0, "1000000000000000000", { status: "spent" });
       const treeA = createNoteTree(depositA);
 
-      const depositB = createMockDepositNote(1, '500000000000000000', { status: 'unspent' });
+      const depositB = createMockDepositNote(1, "500000000000000000", { status: "unspent" });
       const treeB = createNoteTree(depositB);
 
       expect(() => selectWinnerChain(treeA, treeB)).toThrow(
-        'Cannot select winner: one or both trees have no spendable leaves',
+        "Cannot select winner: one or both trees have no spendable leaves"
       );
     });
   });

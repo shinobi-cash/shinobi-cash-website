@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAccount, useWalletClient } from "wagmi";
 import { RagequitPreviewScreen } from "@/components/screens/RagequitPreviewScreen";
@@ -16,7 +16,6 @@ import {
   type NoteTree,
   type ChangeNote,
 } from "@shinobi-cash/core/discovery";
-import type { WalletClient, Account, Transport, Chain } from "viem";
 
 /** Check if a note tree has any merge history (received funds from another note) */
 function checkMergeHistory(noteTrees: NoteTree[], depositIndex: number): boolean {
@@ -25,7 +24,6 @@ function checkMergeHistory(noteTrees: NoteTree[], depositIndex: number): boolean
 
   let hasMerge = false;
   traverseTree(tree, (node) => {
-    // Check if this is a ChangeNote with merge history
     const item = node.note;
     if (isNote(item) && item.noteType === "change") {
       const changeNote = item as ChangeNote;
@@ -40,6 +38,14 @@ function checkMergeHistory(noteTrees: NoteTree[], depositIndex: number): boolean
 type RagequitScreen = "preview" | "timeline";
 
 export default function RagequitPage() {
+  return (
+    <Suspense>
+      <RagequitPageContent />
+    </Suspense>
+  );
+}
+
+function RagequitPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   useAccount();
@@ -76,7 +82,7 @@ export default function RagequitPage() {
 
     // Check controller state directly (not stale snapshot)
     if (RagequitController.state.state.status === "ready") {
-      await RagequitController.submit(walletClient as WalletClient<Transport, Chain, Account>);
+      await RagequitController.submit(walletClient);
     }
   };
 
@@ -98,8 +104,7 @@ export default function RagequitPage() {
       ? state.state.txHash
       : null;
 
-  const hasError = state.state.status === "error";
-  const error = hasError && state.state.status === "error" ? state.state.error : state.lastError;
+  const timelineError = state.state.status === "error" ? state.state.error : null;
 
   // Get selected note
   const selectedNote = RagequitSelectors.getSelectedNote();
@@ -111,7 +116,7 @@ export default function RagequitPage() {
         amount={selectedNote.amount}
         status={state.state.status}
         txHash={txHash}
-        error={error}
+        error={timelineError}
         onClose={handleTimelineClose}
       />
     );

@@ -3,12 +3,18 @@
  */
 
 import { poseidon2 } from "poseidon-lite/poseidon2";
-import { encodePacked, getAddress, keccak256 } from "viem/utils";
+import { AbiParameters, Address, Hash } from "ox";
 import { SNARK_SCALAR_FIELD } from "./constants.js";
-import { parseUserKey } from "../auth/index.js";
 
 const modF = (x: bigint) => ((x % SNARK_SCALAR_FIELD) + SNARK_SCALAR_FIELD) % SNARK_SCALAR_FIELD;
-const fieldFromKeccak = (bytes: `0x${string}`) => modF(BigInt(keccak256(bytes)));
+
+/** Parse and normalize a user key to a BN254 field element */
+export function parseUserKey(userKey: string | bigint): bigint {
+  if (typeof userKey === "bigint") return modF(userKey);
+  const s = userKey.trim();
+  return modF(BigInt(s));
+}
+const fieldFromKeccak = (bytes: `0x${string}`) => modF(BigInt(Hash.keccak256(bytes)));
 
 function contextField(
   poolAddress: string,
@@ -17,9 +23,9 @@ function contextField(
   changeIndex: number | bigint,
   tag: `0x${string}`
 ) {
-  const packed = encodePacked(
+  const packed = AbiParameters.encodePacked(
     ["address", "uint64", "uint64", "uint64", "bytes32"],
-    [getAddress(poolAddress), BigInt(chainId), BigInt(depositIndex), BigInt(changeIndex), tag]
+    [Address.checksum(poolAddress), BigInt(chainId), BigInt(depositIndex), BigInt(changeIndex), tag]
   );
   return fieldFromKeccak(packed);
 }
@@ -33,7 +39,7 @@ export function derivePrecommitment(nullifier: bigint, secret: bigint): bigint {
 
 /** Creates a derivation function for a specific domain */
 export function createDeriveFn(tagString: string) {
-  const tag = keccak256(encodePacked(["string"], [tagString]));
+  const tag = Hash.keccak256(AbiParameters.encodePacked(["string"], [tagString]));
   const dom = fieldFromKeccak(tag);
 
   return function derive(

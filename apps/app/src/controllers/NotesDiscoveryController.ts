@@ -6,12 +6,11 @@ import {
   getNoteTreeCounts,
 } from "@shinobi-cash/core/discovery";
 import { notesRepo } from "@/lib/storage/repositories/NotesRepository";
-import { fetchActivities } from "@/utils/indexer";
+import { getShinobiClient } from "@/runtime/ClientSingleton";
 import { createStateMachine } from "@/utils/stateMachine";
 import { SHINOBI_CASH_ETH_POOL } from "@shinobi-cash/constants";
 import { AuthController } from "@/controllers/AuthController";
 import { NotesError, NotesStatus } from "@/types/notes";
-import { NOTES_SYNC_INTERVAL_MS } from "@/constants/timings";
 
 /**
  * Discovery state machine
@@ -97,8 +96,8 @@ const { transition } = createStateMachine<DiscoveryState>({
   name: "NotesDiscoveryController",
   allowedTransitions: {
     idle: ["discovering", "ready"],
-    discovering: ["ready", "error"],
-    ready: ["discovering"],
+    discovering: ["ready", "error", "idle"],
+    ready: ["discovering", "idle"],
     error: ["idle", "discovering"],
   },
   getState: () => state.state,
@@ -214,8 +213,6 @@ export const NotesDiscoverySelectors = {
     };
   },
 };
-let syncIntervalId: ReturnType<typeof setInterval> | null = null;
-
 /**
  * Notes Discovery Controller - Main API
  */
@@ -228,8 +225,7 @@ export const NotesDiscoveryController = {
    * Loads cached notes from storage, then triggers initial discovery
    */
   async bootstrap(): Promise<void> {
-    const crypto = AuthController.state.crypto;
-    if (!crypto.publicKey) return;
+    if (!AuthController.isAuthenticated()) return;
 
     // Load cache first for immediate UI
     await NotesDiscoveryController._loadCache();
@@ -246,16 +242,13 @@ export const NotesDiscoveryController = {
 
   /**
    * Load cached notes from storage
-   * Internal method called by bootstrap
+   * Called by bootstrap() before discover()
    */
   async _loadCache(): Promise<void> {
-    const crypto = AuthController.state.crypto;
-    if (!crypto.publicKey) return;
-
     try {
       log.debug("Loading cached notes...");
       const cached = await notesRepo.getCachedNotes(
-        crypto.publicKey,
+        getShinobiClient().accountId,
         SHINOBI_CASH_ETH_POOL.address
       );
 
@@ -274,15 +267,11 @@ export const NotesDiscoveryController = {
 
   /**
    * Start discovery process
-   * Called by React adapter when crypto is ready
+   * Called by bootstrap() or refresh()
    */
   async discover(): Promise<void> {
-    // Read crypto from AuthController (single source of truth)
-    const crypto = AuthController.state.crypto;
-
-    // Preconditions
-    if (!crypto.cryptoReady || !crypto.publicKey || !crypto.accountKey) {
-      log.debug("Discovery blocked: crypto not ready");
+    if (!AuthController.isAuthenticated()) {
+      log.debug("Discovery blocked: not authenticated");
       return;
     }
 
@@ -301,33 +290,17 @@ export const NotesDiscoveryController = {
     }
     abortController = new AbortController();
 
-    // Load cache first (non-blocking)
-    const hasCache = state.noteTrees.length > 0;
-    if (!hasCache) {
-      await NotesDiscoveryController._loadCache();
-    }
-
-    // Transition to discovering state
     transition({ status: "discovering" });
 
     try {
-      const result = await notesRepo.discoverNotes(
-        crypto.publicKey,
-        SHINOBI_CASH_ETH_POOL.address,
-        crypto.accountKey,
-        async (poolAddress, limit, offset) => {
-          const result = await fetchActivities(poolAddress, limit, offset);
-          return { items: result.items, pageInfo: result.pageInfo };
+      const result = await getShinobiClient().sync({
+        signal: abortController.signal,
+        onProgress: (progress) => {
+          if (runId === discoveryId) {
+            state.progress = progress;
+          }
         },
-        {
-          signal: abortController.signal,
-          onProgress: (progress) => {
-            if (runId === discoveryId) {
-              state.progress = progress;
-            }
-          },
-        }
-      );
+      });
 
       // Only update if this is still the current run
       if (runId === discoveryId) {
@@ -395,29 +368,13 @@ export const NotesDiscoveryController = {
     }
 
     // Reset state
-    transition({ status: "idle" });
+    if (state.state.status !== "idle") {
+      transition({ status: "idle" });
+    }
     state.noteTrees = [];
     state.activities = [];
     state.progress = null;
     state.lastError = null;
     state.lastSyncedAt = null;
-  },
-
-  startBackgroundSync() {
-    if (syncIntervalId) return;
-
-    log.debug(`Starting background sync (interval: ${NOTES_SYNC_INTERVAL_MS}ms)`);
-
-    syncIntervalId = setInterval(() => {
-      NotesDiscoveryController.refresh();
-    }, NOTES_SYNC_INTERVAL_MS);
-  },
-
-  stopBackgroundSync() {
-    if (syncIntervalId) {
-      clearInterval(syncIntervalId);
-      syncIntervalId = null;
-      log.debug("Background sync stopped");
-    }
   },
 };

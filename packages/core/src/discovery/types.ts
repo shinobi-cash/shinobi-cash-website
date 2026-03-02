@@ -534,8 +534,8 @@ export interface DiscoveryState {
   nextDepositIndex: Map<string, number>;
   /** Raw activities keyed by txHash for display */
   activities: Map<string, ActivityItem>;
-  /** Minimum offset to fetch from (earliest unspent note's discovery offset) */
-  minOffset: number;
+  /** Last synced activity offset — resume point for next sync */
+  lastSyncedOffset: number;
   /** Count of new filled deposits found in this sync (spendable) */
   newFilledDepositsFound: number;
   /** Count of new pending deposits found in this sync (awaiting fill) */
@@ -551,7 +551,7 @@ export interface SerializableDiscoveryState {
   nextDepositIndex: Array<{ chainId: string; index: number }>;
   /** Raw activities for display (already string-based, no serialization needed) */
   activities: ActivityItem[];
-  minOffset: number;
+  lastSyncedOffset: number;
   newFilledDepositsFound: number;
   newPendingDepositsFound: number;
 }
@@ -568,7 +568,7 @@ export interface DiscoveryResult {
   /** Raw activities for display */
   activities: ActivityItem[];
   newNotesFound: number;
-  minOffset: number;
+  lastSyncedOffset: number;
 }
 
 export interface DiscoveryProgress {
@@ -619,10 +619,22 @@ export type ActivityFetcher = (
   orderDirection?: "asc" | "desc"
 ) => Promise<ActivityPage>;
 
-export interface PersistenceCallbacks {
-  loadState: (publicKey: string, poolAddress: string) => Promise<SerializableDiscoveryState | null>;
-  saveState: (
-    publicKey: string,
+export interface NoteDeriver {
+  derivePrecommitment(poolAddress: string, chainId: number, depositIndex: number): string;
+  deriveNullifierHash(
+    poolAddress: string,
+    chainId: number,
+    depositIndex: number,
+    changeIndex: number,
+    noteType?: string
+  ): string;
+  deriveNoteCommitment(note: SpendableNote): bigint;
+}
+
+export interface StorageLayer {
+  read: (accountId: string, poolAddress: string) => Promise<SerializableDiscoveryState | null>;
+  write: (
+    accountId: string,
     poolAddress: string,
     state: SerializableDiscoveryState
   ) => Promise<void>;

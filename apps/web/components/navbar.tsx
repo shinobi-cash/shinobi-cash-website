@@ -5,11 +5,7 @@ import { Menu, X, Github } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@workspace/ui/components/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@workspace/ui/components/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 type NavLink = {
   label: string;
@@ -66,22 +62,22 @@ export default function Navbar() {
 
   return (
     <nav
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+      className={`fixed left-0 right-0 top-0 z-50 transition-all duration-300 ${
         isScrolled
-          ? "bg-black/80 backdrop-blur-lg border-b border-white/10 shadow-sm"
+          ? "border-b border-white/10 bg-black/80 shadow-sm backdrop-blur-lg"
           : "bg-transparent"
       }`}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-20 md:h-24">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex h-20 items-center justify-between md:h-24">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 sm:gap-3 group">
+          <Link href="/" className="group flex items-center gap-2 sm:gap-3">
             <Image
               src="/Shinobi.Cash-icon.svg"
               alt="Shinobi Cash"
               width={40}
               height={40}
-              className="h-8 w-8 md:h-10 md:w-10 transition-transform group-hover:scale-105"
+              className="h-8 w-8 transition-transform group-hover:scale-105 md:h-10 md:w-10"
               priority
             />
             <div className="flex flex-col">
@@ -91,12 +87,12 @@ export default function Navbar() {
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-8">
+          <div className="hidden items-center space-x-8 md:flex">
             {NAV_LINKS.map((link) =>
               link.comingSoon ? (
                 <Tooltip key={link.label}>
                   <TooltipTrigger asChild>
-                    <span className="text-base font-medium text-neutral-600 cursor-not-allowed">
+                    <span className="cursor-not-allowed text-base font-medium text-neutral-600">
                       {link.label}
                     </span>
                   </TooltipTrigger>
@@ -106,7 +102,7 @@ export default function Navbar() {
                 <a
                   key={link.label}
                   href={link.href}
-                  className="text-base font-medium text-neutral-400 hover:text-white transition-colors"
+                  className="text-base font-medium text-neutral-400 transition-colors hover:text-white"
                 >
                   {link.label}
                 </a>
@@ -116,7 +112,7 @@ export default function Navbar() {
               href="https://github.com/shinobi-cash"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-neutral-400 hover:text-white transition-colors"
+              className="text-neutral-400 transition-colors hover:text-white"
               aria-label="GitHub"
             >
               <Github className="h-5 w-5" />
@@ -124,7 +120,7 @@ export default function Navbar() {
             <Button
               asChild
               size="lg"
-              className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white border-0 text-base px-6 py-5"
+              className="border-0 bg-gradient-to-r from-orange-500 to-red-500 px-6 py-5 text-base text-white hover:from-orange-600 hover:to-red-600"
             >
               <a href="https://testnet.shinobi.cash" target="_blank" rel="noopener noreferrer">
                 Launch App
@@ -133,17 +129,13 @@ export default function Navbar() {
           </div>
 
           {/* Mobile Menu Button */}
-          <div className="flex md:hidden items-center space-x-2">
+          <div className="flex items-center space-x-2 md:hidden">
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="p-2 rounded-lg hover:bg-accent transition-colors"
+              className="hover:bg-accent rounded-lg p-2 transition-colors"
               aria-label="Toggle menu"
             >
-              {isMenuOpen ? (
-                <X className="h-6 w-6" />
-              ) : (
-                <Menu className="h-6 w-6" />
-              )}
+              {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
             </button>
           </div>
         </div>
@@ -151,13 +143,13 @@ export default function Navbar() {
 
       {/* Mobile Menu */}
       {isMenuOpen && (
-        <div className="md:hidden fixed inset-0 top-20 bg-black/95 backdrop-blur-lg border-t border-white/10">
+        <div className="fixed inset-0 top-20 border-t border-white/10 bg-black/95 backdrop-blur-lg md:hidden">
           <div className="flex flex-col space-y-1 p-4">
             {NAV_LINKS.map((link) =>
               link.comingSoon ? (
                 <span
                   key={link.label}
-                  className="px-4 py-3 rounded-lg text-base font-medium text-neutral-600 cursor-not-allowed"
+                  className="cursor-not-allowed rounded-lg px-4 py-3 text-base font-medium text-neutral-600"
                 >
                   {link.label}
                   <span className="ml-1.5 text-[10px]">coming soon</span>
@@ -167,7 +159,7 @@ export default function Navbar() {
                   key={link.label}
                   href={link.href}
                   onClick={handleLinkClick}
-                  className="px-4 py-3 rounded-lg text-base font-medium text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors"
+                  className="rounded-lg px-4 py-3 text-base font-medium text-neutral-400 transition-colors hover:bg-white/[0.06] hover:text-white"
                 >
                   {link.label}
                 </a>
@@ -178,7 +170,7 @@ export default function Navbar() {
               target="_blank"
               rel="noopener noreferrer"
               onClick={handleLinkClick}
-              className="px-4 py-3 rounded-lg text-base font-medium text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors flex items-center gap-2"
+              className="flex items-center gap-2 rounded-lg px-4 py-3 text-base font-medium text-neutral-400 transition-colors hover:bg-white/[0.06] hover:text-white"
             >
               <Github className="h-5 w-5" />
               GitHub
@@ -186,9 +178,14 @@ export default function Navbar() {
             <div className="pt-4">
               <Button
                 asChild
-                className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white border-0"
+                className="w-full border-0 bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600"
               >
-                <a href="https://testnet.shinobi.cash" target="_blank" rel="noopener noreferrer" onClick={handleLinkClick}>
+                <a
+                  href="https://testnet.shinobi.cash"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={handleLinkClick}
+                >
                   Launch App
                 </a>
               </Button>

@@ -55,6 +55,9 @@ export interface CircuitFiles {
 
 export type CircuitFileLoader = () => Promise<CircuitFiles>;
 
+/** Generic file fetcher — takes a relative path, returns raw bytes */
+export type CircuitFetcher = (path: string) => Promise<Uint8Array>;
+
 export interface ProofGenerator {
   generateWithdrawalProof(witness: WithdrawalCircuitWitness): Promise<WithdrawalProofData>;
   generateCrosschainWithdrawalProof(

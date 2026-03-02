@@ -67,8 +67,7 @@ export default function WithdrawPage() {
   // Get transaction details
   const txHash = state.state.status === "confirmed" ? state.state.txHash : null;
 
-  const hasError = state.state.status === "error";
-  const error = hasError ? state.state.error : state.lastError;
+  const timelineError = state.state.status === "error" ? state.state.error : null;
 
   // Show withdrawal timeline screen
   if (screens.is("timeline")) {
@@ -77,7 +76,7 @@ export default function WithdrawPage() {
         amount={parseFloat(state.amount) || 0}
         status={state.state.status}
         txHash={txHash}
-        error={error}
+        error={timelineError}
         isCrossChain={WithdrawSelectors.isCrossChain()}
         onClose={handleTimelineClose}
       />
@@ -93,6 +92,7 @@ export default function WithdrawPage() {
         withdrawAmount={state.amount}
         executionFee={WithdrawSelectors.getExecutionFee()}
         solverFee={WithdrawSelectors.getSolverFee()}
+        solverFeeBPS={state.solverFeeBPS}
         youReceive={WithdrawSelectors.getYouReceive()}
         recipientAddress={state.recipientAddress}
         destinationChainId={state.destinationChainId}
@@ -120,8 +120,8 @@ export default function WithdrawPage() {
 
     return (
       <NoteSelectionScreen
-        availableNotes={[...state.notes.notes]}
-        selectedNotes={[...state.selectedNotes]}
+        availableNotes={state.notes.notes}
+        selectedNotes={state.selectedNotes}
         onToggleNote={handleToggleNote}
         onClearSelection={() => WithdrawController.clearNotes()}
         onBack={screens.close}
@@ -220,7 +220,7 @@ export default function WithdrawPage() {
                 </span>
               )}
               <NoteAvatarGroup
-                notes={[...state.selectedNotes]}
+                notes={state.selectedNotes}
                 maxNotes={2}
                 onClick={() => screens.navigate("noteSelection")}
                 disabled={isProcessing}

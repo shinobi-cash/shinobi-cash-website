@@ -2,32 +2,44 @@
   "name": "@shinobi-cash/core",
   "version": "0.0.0-canary-20251229091317",
   "description": "Core SDK for Shinobi Cash - note generation, discovery, and ZK proof operations",
+  "type": "module",
   "sideEffects": false,
   "exports": {
-    "./auth": {
-      "types": "./dist/auth.d.ts",
-      "import": "./dist/auth.mjs",
-      "require": "./dist/auth.js"
+    "./account": {
+      "types": "./dist/account.d.ts",
+      "import": "./dist/account.js"
     },
     "./deposit": {
       "types": "./dist/deposit.d.ts",
-      "import": "./dist/deposit.mjs",
-      "require": "./dist/deposit.js"
+      "import": "./dist/deposit.js"
     },
     "./withdrawal": {
       "types": "./dist/withdrawal.d.ts",
-      "import": "./dist/withdrawal.mjs",
-      "require": "./dist/withdrawal.js"
+      "import": "./dist/withdrawal.js"
     },
     "./discovery": {
       "types": "./dist/discovery.d.ts",
-      "import": "./dist/discovery.mjs",
-      "require": "./dist/discovery.js"
+      "import": "./dist/discovery.js"
     },
     "./proof": {
       "types": "./dist/proof.d.ts",
-      "import": "./dist/proof.mjs",
-      "require": "./dist/proof.js"
+      "import": "./dist/proof.js"
+    },
+    "./provider": {
+      "types": "./dist/provider.d.ts",
+      "import": "./dist/provider.js"
+    },
+    "./fees": {
+      "types": "./dist/fees.d.ts",
+      "import": "./dist/fees.js"
+    },
+    "./validation": {
+      "types": "./dist/validation.d.ts",
+      "import": "./dist/validation.js"
+    },
+    "./intent": {
+      "types": "./dist/intent.d.ts",
+      "import": "./dist/intent.js"
     }
   },
   "files": [
@@ -58,9 +70,9 @@
     "@shinobi-cash/constants": "workspace:*",
     "@shinobi-cash/data": "workspace:*",
     "@zk-kit/lean-imt": "^2.2.4",
+    "ox": "^0.13.0",
     "poseidon-lite": "^0.3.0",
-    "snarkjs": "^0.7.5",
-    "viem": "^2.21.54"
+    "snarkjs": "^0.7.5"
   },
   "devDependencies": {
     "@rollup/plugin-node-resolve": "^15.3.0",
@@ -74,7 +86,6 @@
     "rollup-plugin-visualizer": "^5.12.0",
     "tsup": "^8.3.5",
     "typescript": "^5.7.3",
-    "viem": "^2.28.1",
     "vitest": "^2.1.9"
   },
   "publishConfig": {

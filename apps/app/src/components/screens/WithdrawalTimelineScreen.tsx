@@ -86,13 +86,13 @@ export function WithdrawalTimelineScreen({
   // Step 1: Preparing (proof generation)
   const preparingStatus: StepStatus = isPreparationError
     ? "failed"
-    : isSubmitting || isComplete
+    : isSubmitting || isComplete || isTransactionError
       ? "completed"
       : isPreparing
         ? "active"
         : "pending";
 
-  // Step 2: Submitting (tx submission + wait for receipt)
+  // Step 2: Submitting (sent to relayer, waiting for on-chain confirmation)
   const submittingStatus: StepStatus = isTransactionError
     ? "failed"
     : isComplete
@@ -163,7 +163,7 @@ export function WithdrawalTimelineScreen({
     {
       label: "Submitting",
       status: submittingStatus,
-      description: "Waiting for on-chain confirmation.",
+      description: "Submitting withdrawal to relayer.",
       errorMessage: failedAtStep === "submitting" ? getErrorMessage() : undefined,
       link:
         explorerUrl && submittingStatus !== "pending"

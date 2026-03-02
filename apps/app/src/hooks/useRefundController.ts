@@ -5,9 +5,12 @@
 
 import { useSnapshot } from "valtio";
 import { RefundController, RefundSelectors } from "@/controllers/RefundController";
+import { useControllerCleanup } from "@/hooks/useControllerCleanup";
 
 export function useRefundController() {
   const snapshot = useSnapshot(RefundController.state);
+
+  useControllerCleanup(RefundController);
 
   return {
     ...snapshot,

@@ -48,12 +48,7 @@ export function DepositDetailsSection({
       />
       <Row
         label="Amount"
-        value={
-          <AmountValue
-            amount={createdNote?.amount ?? netAmount.toString()}
-            type="positive"
-          />
-        }
+        value={<AmountValue amount={createdNote?.amount ?? netAmount.toString()} type="positive" />}
       />
     </Section>
   );
@@ -93,9 +88,7 @@ export function WithdrawalInputSection({
                       onViewNoteChain={onViewNoteChain}
                     />
                   ) : (
-                    <span className="font-mono text-sm text-white">
-                      {input.serialNumber}
-                    </span>
+                    <span className="font-mono text-sm text-white">{input.serialNumber}</span>
                   )
                 }
               />
@@ -108,18 +101,10 @@ export function WithdrawalInputSection({
         })
       ) : (
         <>
-          <Row
-            label="Note 1"
-            value={<span className="text-neutral-400">Unknown</span>}
-          />
+          <Row label="Note 1" value={<span className="text-neutral-400">Unknown</span>} />
           <Row
             label="Note 1 Amount"
-            value={
-              <AmountValue
-                amount={fallbackAmount?.toString() ?? "0"}
-                type="negative"
-              />
-            }
+            value={<AmountValue amount={fallbackAmount?.toString() ?? "0"} type="negative" />}
           />
         </>
       )}
@@ -132,10 +117,7 @@ interface WithdrawalFeesSectionProps {
   solverFee: bigint;
 }
 
-export function WithdrawalFeesSection({
-  relayFee,
-  solverFee,
-}: WithdrawalFeesSectionProps) {
+export function WithdrawalFeesSection({ relayFee, solverFee }: WithdrawalFeesSectionProps) {
   const hasRelayFee = relayFee > BigInt(0);
   const hasSolverFee = solverFee > BigInt(0);
 
@@ -144,16 +126,10 @@ export function WithdrawalFeesSection({
   return (
     <Section title="Fees">
       {hasRelayFee && (
-        <Row
-          label="Relay Fee"
-          value={<AmountValue amount={relayFee} type="fee" />}
-        />
+        <Row label="Relay Fee" value={<AmountValue amount={relayFee} type="fee" />} />
       )}
       {hasSolverFee && (
-        <Row
-          label="Solver Fee"
-          value={<AmountValue amount={solverFee} type="fee" />}
-        />
+        <Row label="Solver Fee" value={<AmountValue amount={solverFee} type="fee" />} />
       )}
     </Section>
   );
@@ -209,9 +185,7 @@ export function WithdrawalOutputSection({
           />
         </>
       )}
-      {newCommitment && !changeNote && (
-        <Row label="Change Note" value="Created" />
-      )}
+      {newCommitment && !changeNote && <Row label="Change Note" value="Created" />}
     </Section>
   );
 }
@@ -226,11 +200,7 @@ interface TransactionSectionProps {
   timestamp: string;
 }
 
-export function TransactionSection({
-  chainId,
-  txHash,
-  timestamp,
-}: TransactionSectionProps) {
+export function TransactionSection({ chainId, txHash, timestamp }: TransactionSectionProps) {
   return (
     <Section title="Transaction">
       <Row label="Time" value={formatTimestamp(timestamp)} />
@@ -271,10 +241,7 @@ export function CrosschainSection({ orderId, timeline }: CrosschainSectionProps)
         <Row
           label="Order Filled"
           value={
-            <ExplorerLink
-              chainId={fillEvent.activity.chainId}
-              txHash={fillEvent.activity.txHash}
-            />
+            <ExplorerLink chainId={fillEvent.activity.chainId} txHash={fillEvent.activity.txHash} />
           }
         />
       ) : refundEvent ? (
@@ -288,10 +255,7 @@ export function CrosschainSection({ orderId, timeline }: CrosschainSectionProps)
           }
         />
       ) : (
-        <Row
-          label="Order Filled"
-          value={<span className="text-yellow-400">Pending</span>}
-        />
+        <Row label="Order Filled" value={<span className="text-yellow-400">Pending</span>} />
       )}
     </Section>
   );

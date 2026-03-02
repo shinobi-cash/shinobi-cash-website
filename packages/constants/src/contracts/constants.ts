@@ -13,8 +13,12 @@ import {
   InputSettlerRefundAbi,
   InputSettlerOrderStatusAbi,
 } from "../abi.js";
-import { arbitrumSepolia, baseSepolia, type Chain } from "viem/chains";
-import { SUPPORTED_CROSSCHAIN } from "../network";
+import {
+  POOL_CHAIN,
+  BASE_SEPOLIA,
+  SUPPORTED_CROSSCHAIN,
+  type ShinobiChain,
+} from "../network/index.js";
 
 // ============ WITHDRAWAL CONSTANTS ============
 
@@ -51,17 +55,6 @@ export const MIN_AMOUNT_CONFIG = {
 
   /** Minimum cross-chain deposit (0.001 ETH) */
   MIN_CROSSCHAIN_DEPOSIT: BigInt("1000000000000000"), // 0.001 ETH
-} as const;
-
-/**
- * @deprecated Use FEE_CONFIG and MIN_AMOUNT_CONFIG instead
- * Kept for backwards compatibility
- */
-export const WITHDRAWAL_CONFIG = {
-  MAX_RELAY_FEE_BPS: FEE_CONFIG.MAX_RELAY_FEE_BPS,
-  DEFAULT_SOLVER_FEE_BPS: FEE_CONFIG.DEFAULT_SOLVER_FEE_BPS,
-  MINIMUM_DEPOSIT_AMOUNT: MIN_AMOUNT_CONFIG.MIN_POOL_DEPOSIT,
-  VETTING_FEE_BPS: FEE_CONFIG.VETTING_FEE_BPS,
 } as const;
 
 /**
@@ -175,15 +168,6 @@ export const WITHDRAWAL_REFUND_GAS_LIMITS = {
 } as const;
 
 /**
- * @deprecated Use FEE_CONFIG instead
- * Kept for backwards compatibility
- */
-export const DEPOSIT_FEES = {
-  COMPLIANCE_FEE_BPS: FEE_CONFIG.VETTING_FEE_BPS,
-  DEFAULT_SOLVER_FEE_BPS: FEE_CONFIG.DEFAULT_SOLVER_FEE_BPS,
-} as const;
-
-/**
  * Cross-chain intent timing parameters
  * These values must match the contract configuration
  */
@@ -193,15 +177,6 @@ export const INTENT_TIMING = {
 
   /** User can claim refund after this time if not filled (24 hours) */
   EXPIRY_SECONDS: 86400,
-} as const;
-
-/**
- * @deprecated Use INTENT_TIMING instead
- * Kept for backwards compatibility
- */
-export const CROSSCHAIN_DEPOSIT_TIMING = {
-  FILL_DEADLINE_SECONDS: INTENT_TIMING.FILL_DEADLINE_SECONDS,
-  EXPIRY_SECONDS: INTENT_TIMING.EXPIRY_SECONDS,
 } as const;
 
 /**
@@ -215,17 +190,10 @@ export const CROSSCHAIN_DEPOSIT_FALLBACK = {
   MAX_SOLVER_FEE_BPS: 1000, // 10%
 } as const;
 
-// ============ INDEXER CONSTANTS ============
-
-/**
- * IPFS configuration
- */
-export const IPFS_GATEWAY_URL = "https://gateway.pinata.cloud/ipfs/";
-
 // ============ TYPE DEFINITIONS ============
 
 type ContractConfig = {
-  chain: Chain;
+  chain: ShinobiChain;
   address: `0x${string}`;
   blockNumber: number;
   abi: readonly unknown[];
@@ -246,7 +214,7 @@ type CrossChainContracts = {
  * for specific operations instead of a full ABI.
  */
 export const SHINOBI_CASH_ENTRYPOINT: ContractConfig = {
-  chain: arbitrumSepolia as Chain,
+  chain: POOL_CHAIN,
   address: "0xa6f7fdF6d62f3a56B4469046C7927f4cb0c67595",
   blockNumber: 243658592,
   abi: [...EntrypointRelayAbi, ...EntrypointDepositAbi],
@@ -257,7 +225,7 @@ export const SHINOBI_CASH_ENTRYPOINT: ContractConfig = {
  * Use PoolScopeAbi for reading the pool scope.
  */
 export const SHINOBI_CASH_ETH_POOL: ContractConfig = {
-  chain: arbitrumSepolia as Chain,
+  chain: POOL_CHAIN,
   address: "0xF400070885d773ef29C1e7c04eDffd637C22584B",
   blockNumber: 243659038,
   abi: PoolScopeAbi,
@@ -267,7 +235,7 @@ export const SHINOBI_CASH_ETH_POOL: ContractConfig = {
  * Withdrawal input settler for processing withdrawal intents
  */
 export const SHINOBI_CASH_WITHDRAWAL_INPUT_SETTLER: ContractConfig = {
-  chain: arbitrumSepolia as Chain,
+  chain: POOL_CHAIN,
   address: "0x4385eebaC4Eab0bc93E6D43270908da07e4b3178",
   blockNumber: 243659319,
   abi: [...InputSettlerRefundAbi, ...InputSettlerOrderStatusAbi],
@@ -277,7 +245,7 @@ export const SHINOBI_CASH_WITHDRAWAL_INPUT_SETTLER: ContractConfig = {
  * Deposit output settler for processing cross-chain deposit fills
  */
 export const SHINOBI_CASH_DEPOSIT_OUTPUT_SETTLER: ContractConfig = {
-  chain: arbitrumSepolia as Chain,
+  chain: POOL_CHAIN,
   address: "0x843B07421385282EEE4FE1135DD1A63c1184aD71",
   blockNumber: 243659325,
   abi: [],
@@ -287,7 +255,7 @@ export const SHINOBI_CASH_DEPOSIT_OUTPUT_SETTLER: ContractConfig = {
  * Paymaster for same-chain withdrawals (covers gas via pool funds)
  */
 export const SHINOBI_CASH_RELAY_WITHDRAWAL_PAYMASTER: ContractConfig = {
-  chain: arbitrumSepolia as Chain,
+  chain: POOL_CHAIN,
   address: "0x52Ac5611230658aAf42e183D28Fab191C0bdff98",
   blockNumber: 243659684,
   abi: [],
@@ -297,7 +265,7 @@ export const SHINOBI_CASH_RELAY_WITHDRAWAL_PAYMASTER: ContractConfig = {
  * Paymaster for cross-chain withdrawals (covers gas via pool funds)
  */
 export const SHINOBI_CASH_CROSSCHAIN_WITHDRAWAL_PAYMASTER: ContractConfig = {
-  chain: arbitrumSepolia as Chain,
+  chain: POOL_CHAIN,
   address: "0x522d4Bb38F89D793D2996096592c01CB053eD3a5",
   blockNumber: 243659706,
   abi: [],
@@ -307,7 +275,7 @@ export const SHINOBI_CASH_CROSSCHAIN_WITHDRAWAL_PAYMASTER: ContractConfig = {
  * Paymaster for same-chain withdrawals with withdraw2 circuit
  */
 export const SHINOBI_CASH_WITHDRAW2_PAYMASTER: ContractConfig = {
-  chain: arbitrumSepolia as Chain,
+  chain: POOL_CHAIN,
   address: "0x4E4a1E964baDCBB6Be5f14b324238C24E69dD56D",
   blockNumber: 243659727,
   abi: [],
@@ -317,7 +285,7 @@ export const SHINOBI_CASH_WITHDRAW2_PAYMASTER: ContractConfig = {
  * Paymaster for cross-chain withdrawals with withdraw2 circuit
  */
 export const SHINOBI_CASH_CROSSCHAIN_WITHDRAW2_PAYMASTER: ContractConfig = {
-  chain: arbitrumSepolia as Chain,
+  chain: POOL_CHAIN,
   address: "0x82eaeF17B861Bc7E3cBeC50Ce1fF39B58453ef27",
   blockNumber: 243659748,
   abi: [],
@@ -327,7 +295,7 @@ export const SHINOBI_CASH_CROSSCHAIN_WITHDRAW2_PAYMASTER: ContractConfig = {
  * Hyperlane Oracle for cross-chain intent proofs (Arbitrum Sepolia)
  */
 export const SHINOBI_CASH_HYPERLANE_ORACLE: ContractConfig = {
-  chain: arbitrumSepolia as Chain,
+  chain: POOL_CHAIN,
   address: "0x246e0E2e416a9B06Cd806292f6a4eCb269cfA7CA",
   blockNumber: 243659310,
   abi: [],
@@ -336,35 +304,35 @@ export const SHINOBI_CASH_HYPERLANE_ORACLE: ContractConfig = {
 // ============ VERIFIER CONTRACTS (Arbitrum Sepolia) ============
 
 export const WITHDRAWAL_VERIFIER: ContractConfig = {
-  chain: arbitrumSepolia as Chain,
+  chain: POOL_CHAIN,
   address: "0x1A6ffA02c307A1856D5ffA9432545012eb929aad",
   blockNumber: 0,
   abi: [],
 };
 
 export const COMMITMENT_VERIFIER: ContractConfig = {
-  chain: arbitrumSepolia as Chain,
+  chain: POOL_CHAIN,
   address: "0x020507eAb83152E19c5B8A3234385d4423Ed3185",
   blockNumber: 0,
   abi: [],
 };
 
 export const CROSSCHAIN_WITHDRAWAL_VERIFIER: ContractConfig = {
-  chain: arbitrumSepolia as Chain,
+  chain: POOL_CHAIN,
   address: "0x4551bb04e9218b38902E6a489906BAB4816e01b2",
   blockNumber: 243658276,
   abi: [],
 };
 
 export const WITHDRAW2_VERIFIER: ContractConfig = {
-  chain: arbitrumSepolia as Chain,
+  chain: POOL_CHAIN,
   address: "0x11Ce8937b38487CDeec8C5c4a08792b58dCd41d6",
   blockNumber: 0,
   abi: [],
 };
 
 export const CROSSCHAIN_WITHDRAW2_VERIFIER: ContractConfig = {
-  chain: arbitrumSepolia as Chain,
+  chain: POOL_CHAIN,
   address: "0xe88911836140a2Aa2eD2560cb845003487137cB7",
   blockNumber: 243658282,
   abi: [],
@@ -379,25 +347,25 @@ export const CROSSCHAIN_WITHDRAW2_VERIFIER: ContractConfig = {
 export const SHINOBI_CASH_CROSSCHAIN_CONTRACTS = {
   84532: {
     DEPOSIT_ENTRYPOINT: {
-      chain: baseSepolia as Chain,
+      chain: BASE_SEPOLIA,
       address: "0x655973cd82614e7e37188d1e5b893973339842f1",
       blockNumber: 37835985,
       abi: CrosschainDepositEntrypointAbi,
     },
     WITHDRAWAL_OUTPUT_SETTLER: {
-      chain: baseSepolia as Chain,
+      chain: BASE_SEPOLIA,
       address: "0x3c10FcD909B932AFb183b03377D1aFdc9F097931",
       blockNumber: 37835985,
       abi: [],
     },
     DEPOSIT_INPUT_SETTLER: {
-      chain: baseSepolia as Chain,
+      chain: BASE_SEPOLIA,
       address: "0xCd7722864E24bF241272dF1a7237F22bCb772db2",
       blockNumber: 37835985,
       abi: [...InputSettlerRefundAbi, ...InputSettlerOrderStatusAbi],
     },
     DEPOSIT_FILL_ORACLE: {
-      chain: baseSepolia as Chain,
+      chain: BASE_SEPOLIA,
       address: "0x9bd18887d5a37a5851aEB89E0e68E665D628Dd7B",
       blockNumber: 37835985,
       abi: [],

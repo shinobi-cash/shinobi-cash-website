@@ -7,12 +7,8 @@ import { ScreenLayout } from "@/components/layout/ScreenLayout";
 import { Section, Row } from "@/components/shared/Section";
 import { LabelWithHover } from "@/components/shared/LabelWithHover";
 import { usePriceData } from "@/hooks/usePriceData";
-import { formatUsdAmount, formatDisplayAmount } from "@/utils/formatters";
-import {
-  POOL_CHAIN,
-  SHINOBI_CASH_SUPPORTED_CHAINS,
-  FEE_CONFIG,
-} from "@shinobi-cash/constants";
+import { formatUsdAmount, formatDisplayAmount, formatHumanDuration } from "@/utils/formatters";
+import { POOL_CHAIN, SHINOBI_CASH_SUPPORTED_CHAINS } from "@shinobi-cash/constants";
 import { ShinobiCashNote, AssetChain } from "@/components/shared/AssetChain";
 
 interface DepositPreviewScreenProps {
@@ -22,6 +18,7 @@ interface DepositPreviewScreenProps {
   complianceFee: number;
   gasCostEth: string;
   solverFee: number;
+  solverFeeBPS: number;
   originChainId: number;
   destinationChainId: number;
   poolAddress: string;
@@ -39,6 +36,7 @@ export function DepositPreviewScreen({
   complianceFee,
   gasCostEth,
   solverFee,
+  solverFeeBPS,
   originChainId,
   isProcessing,
   isCrossChain,
@@ -54,7 +52,7 @@ export function DepositPreviewScreen({
   // 3. Gas is paid separately, NOT deducted from note amount
   const netAfterSolverFee = depositAmountNum - solverFee;
   const depositNoteAmount = netAfterSolverFee - complianceFee;
-  const solverFeePercent = FEE_CONFIG.DEFAULT_SOLVER_FEE_BPS / 100;
+  const solverFeePercent = solverFeeBPS / 100;
 
   // Vetting fee is calculated on net amount after solver fee, not original deposit
   const vettingFeePercent = netAfterSolverFee > 0 ? (complianceFee / netAfterSolverFee) * 100 : 0;
@@ -70,18 +68,8 @@ export function DepositPreviewScreen({
   const originChain =
     SHINOBI_CASH_SUPPORTED_CHAINS.find((c) => c.id === originChainId) ?? POOL_CHAIN;
 
-  // Format timing for display
-  const formatDuration = (seconds: number) => {
-    if (seconds >= 3600) {
-      const hours = Math.floor(seconds / 3600);
-      return `${hours} hour${hours > 1 ? "s" : ""}`;
-    }
-    const minutes = Math.floor(seconds / 60);
-    return `${minutes} minute${minutes > 1 ? "s" : ""}`;
-  };
-
-  const fillDeadline = formatDuration(fillDeadlineSeconds);
-  const expiry = formatDuration(expirySeconds);
+  const fillDeadline = formatHumanDuration(fillDeadlineSeconds);
+  const expiry = formatHumanDuration(expirySeconds);
 
   return (
     <ScreenLayout

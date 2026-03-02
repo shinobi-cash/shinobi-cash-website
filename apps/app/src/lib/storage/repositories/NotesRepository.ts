@@ -6,18 +6,17 @@ import {
   base64ToArrayBuffer,
 } from "../encryption";
 import {
-  NoteDiscovery,
   makeChainKey,
   serializeTree,
   deserializeTree,
-  type ActivityFetcher,
+  type StorageLayer,
   type SerializableDiscoveryState,
   type NoteTree,
   type SerializableNoteNode,
   type NullifierInfo,
   type ActivityItem,
 } from "@shinobi-cash/core/discovery";
-import type { DiscoveryResult, DiscoveryOptions } from "@shinobi-cash/core/discovery";
+import type { DiscoveryResult } from "@shinobi-cash/core/discovery";
 import {
   type IndexedDBStore,
   notesStorageAdapter,
@@ -34,21 +33,21 @@ export class NotesRepository {
   /**
    * Generate storage key
    */
-  private async getKey(publicKey: string, poolAddress: string): Promise<string> {
-    const publicKeyHash = await createHash(publicKey);
+  private async getKey(accountId: string, poolAddress: string): Promise<string> {
+    const accountIdHash = await createHash(accountId);
     const poolAddressHash = await createHash(poolAddress);
-    return `${publicKeyHash}_${poolAddressHash}`;
+    return `${accountIdHash}_${poolAddressHash}`;
   }
 
   /**
    * Get cached notes
    */
-  async getCachedNotes(publicKey: string, poolAddress: string): Promise<DiscoveryResult | null> {
+  async getCachedNotes(accountId: string, poolAddress: string): Promise<DiscoveryResult | null> {
     if (!this.encryptionService.isKeyAvailable()) {
       throw new Error("Session not initialized");
     }
 
-    const cached = await this.getCachedData(publicKey, poolAddress);
+    const cached = await this.getCachedData(accountId, poolAddress);
 
     if (cached) {
       // Deserialize trees
@@ -73,7 +72,7 @@ export class NotesRepository {
         lastUsedIndexByChain,
         activities,
         newNotesFound: 0,
-        minOffset: cached.minOffset ?? 0,
+        lastSyncedOffset: cached.lastSyncedOffset ?? 0,
       };
     }
 
@@ -84,37 +83,37 @@ export class NotesRepository {
    * Store discovered notes
    */
   async storeDiscoveredTrees(
-    publicKey: string,
+    accountId: string,
     poolAddress: string,
     trees: NoteTree[],
-    minOffset?: number
+    lastSyncedOffset?: number
   ): Promise<void> {
     if (!this.encryptionService.isKeyAvailable()) {
       throw new Error("Session not initialized");
     }
 
     const serializedTrees = trees.map(serializeTree);
-    await this.storeData(publicKey, poolAddress, serializedTrees, minOffset);
+    await this.storeData(accountId, poolAddress, serializedTrees, lastSyncedOffset);
   }
 
   /**
    * Store data internally
    */
   async storeData(
-    publicKey: string,
+    accountId: string,
     poolAddress: string,
     trees: SerializableNoteNode[],
-    minOffset?: number,
+    lastSyncedOffset?: number,
     nullifierMap?: Array<{ hash: string; info: NullifierInfo }>,
     nextDepositIndex?: Array<{ chainId: string; index: number }>,
     activities?: ActivityItem[]
   ): Promise<void> {
     const sensitiveData: CachedNoteData = {
       poolAddress,
-      publicKey,
+      accountId,
       trees,
       lastSyncTime: Date.now(),
-      minOffset,
+      lastSyncedOffset,
       nullifierMap,
       nextDepositIndex,
       activities,
@@ -123,11 +122,10 @@ export class NotesRepository {
     const encrypted = await this.encryptionService.encrypt(sensitiveData);
 
     const storageData: EncryptedNotesData = {
-      id: await this.getKey(publicKey, poolAddress),
+      id: await this.getKey(accountId, poolAddress),
       encryptedPayload: {
         iv: arrayBufferToBase64(encrypted.iv),
         data: arrayBufferToBase64(encrypted.data),
-        salt: arrayBufferToBase64(encrypted.salt),
       },
       lastSyncTime: sensitiveData.lastSyncTime,
     };
@@ -139,17 +137,16 @@ export class NotesRepository {
    * Get cached data internally
    */
   private async getCachedData(
-    publicKey: string,
+    accountId: string,
     poolAddress: string
   ): Promise<CachedNoteData | null> {
-    const key = await this.getKey(publicKey, poolAddress);
+    const key = await this.getKey(accountId, poolAddress);
     const result = (await this.storageAdapter.get(key)) as EncryptedNotesData | null;
 
     if (result) {
       const encryptedData: EncryptedData = {
         iv: base64ToArrayBuffer(result.encryptedPayload.iv),
         data: base64ToArrayBuffer(result.encryptedPayload.data),
-        salt: base64ToArrayBuffer(result.encryptedPayload.salt),
       };
 
       try {
@@ -165,35 +162,15 @@ export class NotesRepository {
   }
 
   /**
-   * Discover notes using NoteDiscovery
-   *
-   * Clean stateful architecture with pure state transitions.
-   * Engine handles orchestration, primitives handle logic.
-   *
-   * @param publicKey - User's public key/address
-   * @param poolAddress - Pool contract address
-   * @param accountKey - Account key for cryptographic derivation
-   * @param fetchActivities - Function to fetch activities from indexer
-   * @param options - Discovery options (progress callback, abort signal)
-   * @returns Discovery result with found notes
+   * Get persistence callbacks for SDK's createShinobiAccount.
+   * Same load/save logic as discoverNotes() but exposed for external use.
    */
-  async discoverNotes(
-    publicKey: string,
-    poolAddress: string,
-    accountKey: bigint,
-    fetchActivities: ActivityFetcher,
-    options?: DiscoveryOptions
-  ): Promise<DiscoveryResult> {
-    // Create sync engine with persistence callbacks
-    const engine = new NoteDiscovery(fetchActivities, {
-      loadState: async (
-        pubKey: string,
-        pool: string
-      ): Promise<SerializableDiscoveryState | null> => {
+  getStorageLayer(): StorageLayer {
+    return {
+      read: async (pubKey: string, pool: string): Promise<SerializableDiscoveryState | null> => {
         const cached = await this.getCachedData(pubKey, pool);
         if (!cached) return null;
 
-        // Convert stored trees to the expected format with ChainKey
         const trees = cached.trees.map((tree) => {
           const chainKey = makeChainKey(tree.note.originChainId, tree.note.depositIndex);
           return { chainKey, tree };
@@ -204,30 +181,26 @@ export class NotesRepository {
           nullifierMap: cached.nullifierMap ?? [],
           nextDepositIndex: cached.nextDepositIndex ?? [],
           activities: cached.activities ?? [],
-          minOffset: cached.minOffset ?? 0,
+          lastSyncedOffset: cached.lastSyncedOffset ?? 0,
           newFilledDepositsFound: 0,
           newPendingDepositsFound: 0,
         };
       },
 
-      saveState: async (pubKey: string, pool: string, state: SerializableDiscoveryState) => {
-        // Extract serialized trees from state
+      write: async (pubKey: string, pool: string, state: SerializableDiscoveryState) => {
         const trees = state.trees.map((t) => t.tree);
 
         await this.storeData(
           pubKey,
           pool,
           trees,
-          state.minOffset,
+          state.lastSyncedOffset,
           state.nullifierMap,
           state.nextDepositIndex,
           state.activities
         );
       },
-    });
-
-    // Run sync
-    return await engine.sync(publicKey, poolAddress, accountKey, options);
+    };
   }
 }
 

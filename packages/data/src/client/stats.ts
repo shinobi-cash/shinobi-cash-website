@@ -1,4 +1,4 @@
-import type { StatsResponse, StatsFilters } from "../types";
+import type { StatsResponse, StatsFilters } from "../types/index.js";
 
 interface StatsClientConfig {
   endpoint: string;

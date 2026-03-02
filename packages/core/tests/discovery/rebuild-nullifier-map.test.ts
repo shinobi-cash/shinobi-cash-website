@@ -5,25 +5,34 @@
  * is empty (migration for old cached data).
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
-import { rebuildNullifierMap } from '../../src/discovery/index.js';
-import { extendAllTrees } from '../../src/discovery/chain-extender.js';
-import { buildActivityIndex } from '../../src/discovery/activity-indexer.js';
-import { deriveAndHashNullifier } from '../../src/discovery/nullifier-utils.js';
-import type { DiscoveryState, NoteTree, NullifierInfo, ChainKey, ChangeNote } from '../../src/discovery/types.js';
-import { makeChainKey } from '../../src/discovery/types.js';
+import { describe, it, expect, beforeEach } from "vitest";
+import { rebuildNullifierMap } from "../../src/discovery/index.js";
+import { extendAllTrees } from "../../src/discovery/chain-extender.js";
+import { buildActivityIndex } from "../../src/discovery/activity-indexer.js";
+import { deriveAndHashNullifier } from "../../src/discovery/nullifier-utils.js";
+import type {
+  DiscoveryState,
+  NoteTree,
+  NullifierInfo,
+  ChainKey,
+  ChangeNote,
+} from "../../src/discovery/types.js";
+import { makeChainKey } from "../../src/discovery/types.js";
 import {
   createMockNoteTree,
   createMockTreeWithWithdrawal,
   createMockWithdraw2Activity,
+  createTestNoteDeriver,
   resetActivityCounter,
   TEST_POOL_ADDRESS,
   TEST_ACCOUNT_KEY,
   TEST_CHAIN_ID,
   toEther,
-} from './fixtures.js';
+} from "./fixtures.js";
 
-describe('rebuildNullifierMap', () => {
+const TEST_CRYPTO = createTestNoteDeriver();
+
+describe("rebuildNullifierMap", () => {
   beforeEach(() => {
     resetActivityCounter();
   });
@@ -40,8 +49,8 @@ describe('rebuildNullifierMap', () => {
     };
   }
 
-  describe('basic rebuilding', () => {
-    it('should rebuild nullifier for a single deposit tree', () => {
+  describe("basic rebuilding", () => {
+    it("should rebuild nullifier for a single deposit tree", () => {
       const state = createEmptyState();
       const tree = createMockNoteTree(0, toEther(1));
       const chainKey = makeChainKey(TEST_CHAIN_ID, 0);
@@ -51,7 +60,7 @@ describe('rebuildNullifierMap', () => {
       expect(state.nullifierMap.size).toBe(0);
 
       // Rebuild
-      rebuildNullifierMap(state, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS);
+      rebuildNullifierMap(state, TEST_CRYPTO, TEST_POOL_ADDRESS);
 
       // Should have one nullifier
       expect(state.nullifierMap.size).toBe(1);
@@ -62,7 +71,7 @@ describe('rebuildNullifierMap', () => {
         TEST_POOL_ADDRESS,
         TEST_CHAIN_ID,
         0, // depositIndex
-        0, // changeIndex
+        0 // changeIndex
       );
       expect(state.nullifierMap.has(expectedNullifier)).toBe(true);
       expect(state.nullifierMap.get(expectedNullifier)).toEqual({
@@ -72,7 +81,7 @@ describe('rebuildNullifierMap', () => {
       });
     });
 
-    it('should rebuild nullifiers for multiple trees', () => {
+    it("should rebuild nullifiers for multiple trees", () => {
       const state = createEmptyState();
 
       // Add two trees
@@ -81,32 +90,50 @@ describe('rebuildNullifierMap', () => {
       state.trees.set(makeChainKey(TEST_CHAIN_ID, 0), tree0);
       state.trees.set(makeChainKey(TEST_CHAIN_ID, 1), tree1);
 
-      rebuildNullifierMap(state, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS);
+      rebuildNullifierMap(state, TEST_CRYPTO, TEST_POOL_ADDRESS);
 
       // Should have two nullifiers
       expect(state.nullifierMap.size).toBe(2);
 
       // Verify both nullifiers
-      const nullifier0 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 0);
-      const nullifier1 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 1, 0);
+      const nullifier0 = deriveAndHashNullifier(
+        TEST_ACCOUNT_KEY,
+        TEST_POOL_ADDRESS,
+        TEST_CHAIN_ID,
+        0,
+        0
+      );
+      const nullifier1 = deriveAndHashNullifier(
+        TEST_ACCOUNT_KEY,
+        TEST_POOL_ADDRESS,
+        TEST_CHAIN_ID,
+        1,
+        0
+      );
       expect(state.nullifierMap.has(nullifier0)).toBe(true);
       expect(state.nullifierMap.has(nullifier1)).toBe(true);
     });
 
-    it('should rebuild nullifier for change note after withdrawal', () => {
+    it("should rebuild nullifier for change note after withdrawal", () => {
       const state = createEmptyState();
 
       // Tree with one withdrawal: deposit(1 ETH) -> change(0.5 ETH)
       const tree = createMockTreeWithWithdrawal(0, toEther(1), toEther(0.5));
       state.trees.set(makeChainKey(TEST_CHAIN_ID, 0), tree);
 
-      rebuildNullifierMap(state, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS);
+      rebuildNullifierMap(state, TEST_CRYPTO, TEST_POOL_ADDRESS);
 
       // Should have one nullifier for the change note (the spent deposit has no nullifier)
       expect(state.nullifierMap.size).toBe(1);
 
       // Verify it's for changeIndex 1 (not 0)
-      const changeNullifier = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, 0, 1);
+      const changeNullifier = deriveAndHashNullifier(
+        TEST_ACCOUNT_KEY,
+        TEST_POOL_ADDRESS,
+        TEST_CHAIN_ID,
+        0,
+        1
+      );
       expect(state.nullifierMap.has(changeNullifier)).toBe(true);
       expect(state.nullifierMap.get(changeNullifier)).toEqual({
         originChainId: TEST_CHAIN_ID,
@@ -115,29 +142,29 @@ describe('rebuildNullifierMap', () => {
       });
     });
 
-    it('should do nothing when trees is empty', () => {
+    it("should do nothing when trees is empty", () => {
       const state = createEmptyState();
 
-      rebuildNullifierMap(state, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS);
+      rebuildNullifierMap(state, TEST_CRYPTO, TEST_POOL_ADDRESS);
 
       expect(state.nullifierMap.size).toBe(0);
     });
 
-    it('should not add duplicates when called multiple times', () => {
+    it("should not add duplicates when called multiple times", () => {
       const state = createEmptyState();
       const tree = createMockNoteTree(0, toEther(1));
       state.trees.set(makeChainKey(TEST_CHAIN_ID, 0), tree);
 
-      rebuildNullifierMap(state, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS);
-      rebuildNullifierMap(state, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS);
+      rebuildNullifierMap(state, TEST_CRYPTO, TEST_POOL_ADDRESS);
+      rebuildNullifierMap(state, TEST_CRYPTO, TEST_POOL_ADDRESS);
 
       // Map naturally deduplicates
       expect(state.nullifierMap.size).toBe(1);
     });
   });
 
-  describe('Withdraw2 after rebuild', () => {
-    it('should enable Withdraw2 to work after nullifierMap is rebuilt', () => {
+  describe("Withdraw2 after rebuild", () => {
+    it("should enable Withdraw2 to work after nullifierMap is rebuilt", () => {
       // Setup: Two trees with empty nullifierMap (simulating old cached data)
       const state = createEmptyState();
       const tree0 = createMockNoteTree(0, toEther(1));
@@ -148,7 +175,7 @@ describe('rebuildNullifierMap', () => {
       state.trees.set(chainKey1, tree1);
 
       // Rebuild nullifiers (this is what the fix does)
-      rebuildNullifierMap(state, TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS);
+      rebuildNullifierMap(state, TEST_CRYPTO, TEST_POOL_ADDRESS);
 
       // Now create a Withdraw2 activity that merges both notes
       const withdraw2Activity = createMockWithdraw2Activity(0, 0, 1, 0, toEther(0.5));
@@ -159,28 +186,28 @@ describe('rebuildNullifierMap', () => {
         state.trees,
         state.nullifierMap,
         activityIndex,
-        TEST_ACCOUNT_KEY,
-        TEST_POOL_ADDRESS,
+        TEST_CRYPTO,
+        TEST_POOL_ADDRESS
       );
 
       // Primary tree (depositIndex 1) should have change note + withdrawal note
       const primaryTree = result.updatedTrees.get(chainKey1)!;
-      expect(primaryTree.root.note.status).toBe('spent');
+      expect(primaryTree.root.note.status).toBe("spent");
       expect(primaryTree.root.children).toHaveLength(2);
 
-      const changeNode = primaryTree.root.children.find((c) => c.note.noteType === 'change');
+      const changeNode = primaryTree.root.children.find((c) => c.note.noteType === "change");
       expect(changeNode).toBeDefined();
       expect((changeNode!.note as ChangeNote).amount).toBe(toEther(2.5).toString()); // 1 + 2 - 0.5
 
       // Secondary tree (depositIndex 0) should have merged note
       const secondaryTree = result.updatedTrees.get(chainKey0)!;
-      expect(secondaryTree.root.note.status).toBe('spent');
+      expect(secondaryTree.root.note.status).toBe("spent");
       expect(secondaryTree.root.children).toHaveLength(1);
-      expect(secondaryTree.root.children[0].note.noteType).toBe('merged');
+      expect(secondaryTree.root.children[0].note.noteType).toBe("merged");
       expect(secondaryTree.root.children[0].isTerminal).toBe(true);
     });
 
-    it('should fail Withdraw2 without rebuild (empty nullifierMap)', () => {
+    it("should fail Withdraw2 without rebuild (empty nullifierMap)", () => {
       // Setup: Two trees with empty nullifierMap
       const trees = new Map<ChainKey, NoteTree>();
       const tree0 = createMockNoteTree(0, toEther(1));
@@ -202,8 +229,8 @@ describe('rebuildNullifierMap', () => {
         trees,
         emptyNullifierMap,
         activityIndex,
-        TEST_ACCOUNT_KEY,
-        TEST_POOL_ADDRESS,
+        TEST_CRYPTO,
+        TEST_POOL_ADDRESS
       );
 
       // Trees should be unchanged (no extension applied)
@@ -212,8 +239,8 @@ describe('rebuildNullifierMap', () => {
 
       expect(tree0After.root.children).toHaveLength(0);
       expect(tree1After.root.children).toHaveLength(0);
-      expect(tree0After.root.note.status).toBe('unspent');
-      expect(tree1After.root.note.status).toBe('unspent');
+      expect(tree0After.root.note.status).toBe("unspent");
+      expect(tree1After.root.note.status).toBe("unspent");
     });
   });
 });

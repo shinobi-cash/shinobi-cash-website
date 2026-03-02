@@ -15,44 +15,40 @@ export default function Page() {
   return (
     <main>
       {/* Hero Section */}
-      <section className="relative flex items-center justify-center min-h-svh px-4 overflow-hidden bg-linear-to-br from-neutral-950 via-neutral-900 to-black">
+      <section className="bg-linear-to-br relative flex min-h-svh items-center justify-center overflow-hidden from-neutral-950 via-neutral-900 to-black px-4">
         {/* Subtle radial gradient background */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
           <div className="h-[600px] w-[600px] bg-[radial-gradient(circle,_rgba(249,115,22,0.10)_0%,_rgba(239,68,68,0.06)_40%,_transparent_70%)]" />
         </div>
 
-        <div className="relative z-10 flex flex-col items-center justify-center gap-6 sm:gap-8 text-center max-w-4xl mx-auto">
+        <div className="relative z-10 mx-auto flex max-w-4xl flex-col items-center justify-center gap-6 text-center sm:gap-8">
           <HeroTitle />
           <div className="space-y-3 px-4">
-            <p className="text-base sm:text-lg md:text-xl text-neutral-300 max-w-2xl">
+            <p className="max-w-2xl text-base text-neutral-300 sm:text-lg md:text-xl">
               Deposit from any chain. Withdraw to any chain.
             </p>
-            <p className="text-sm sm:text-base text-neutral-500 max-w-xl mx-auto">
+            <p className="mx-auto max-w-xl text-sm text-neutral-500 sm:text-base">
               Treat the Ethereum ecosystem as a single privacy domain.
             </p>
           </div>
 
           {/* CTA Buttons */}
-          <div className="flex flex-col items-center gap-4 mt-2">
-            <div className="flex flex-col sm:flex-row items-center gap-4">
+          <div className="mt-2 flex flex-col items-center gap-4">
+            <div className="flex flex-col items-center gap-4 sm:flex-row">
               <Button
                 asChild
                 size="lg"
-                className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white border-0 px-8 py-6 text-base font-medium"
+                className="border-0 bg-gradient-to-r from-orange-500 to-red-500 px-8 py-6 text-base font-medium text-white hover:from-orange-600 hover:to-red-600"
               >
-                <a
-                  href="https://testnet.shinobi.cash"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
+                <a href="https://testnet.shinobi.cash" target="_blank" rel="noopener noreferrer">
                   Launch App
-                  <ArrowRight className="w-4 h-4 ml-2" />
+                  <ArrowRight className="ml-2 h-4 w-4" />
                 </a>
               </Button>
               <Button
                 variant="outline"
                 size="lg"
-                className="border-white/10 hover:bg-white/5 px-8 py-6 text-base"
+                className="border-white/10 px-8 py-6 text-base hover:bg-white/5"
                 asChild
               >
                 <a href="https://docs.shinobi.cash" target="_blank" rel="noopener noreferrer">
@@ -63,17 +59,17 @@ export default function Page() {
             {/* Soft CTA */}
             <a
               href="#how-it-works"
-              className="text-sm text-neutral-500 hover:text-orange-400 transition-colors flex items-center gap-1"
+              className="flex items-center gap-1 text-sm text-neutral-500 transition-colors hover:text-orange-400"
             >
               Learn how it works
-              <ChevronDown className="w-4 h-4" />
+              <ChevronDown className="h-4 w-4" />
             </a>
           </div>
         </div>
 
         {/* Scroll Indicator */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-neutral-500">
-          <ChevronDown className="w-5 h-5 animate-bounce" />
+        <div className="absolute bottom-8 left-1/2 flex -translate-x-1/2 flex-col items-center gap-2 text-neutral-500">
+          <ChevronDown className="h-5 w-5 animate-bounce" />
         </div>
       </section>
 

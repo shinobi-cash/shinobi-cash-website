@@ -9,6 +9,7 @@ import { useSnapshot } from "valtio";
 import { useNotesDiscovery } from "@/hooks/useNotesDiscovery";
 import { WithdrawController } from "@/controllers/WithdrawController";
 import { NotesDiscoverySelectors } from "@/controllers/NotesDiscoveryController";
+import { useControllerCleanup } from "@/hooks/useControllerCleanup";
 
 /**
  * Read-only snapshot of WithdrawController state
@@ -25,6 +26,8 @@ import { NotesDiscoverySelectors } from "@/controllers/NotesDiscoveryController"
  */
 export function useWithdrawController() {
   const snapshot = useSnapshot(WithdrawController.state);
+
+  useControllerCleanup(WithdrawController, ["submitting"]);
 
   // Notes context (from NotesDiscoveryController - single source of truth)
   const discoveryState = useNotesDiscovery();

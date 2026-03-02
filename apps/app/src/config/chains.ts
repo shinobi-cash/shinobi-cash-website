@@ -1,11 +1,14 @@
 /**
  * Chain Configuration
  *
- * Unified chain configuration using viem for metadata and @shinobi-cash/constants for contracts.
- * App-specific features are inferred from contract presence.
+ * Re-exports viem Chain objects from constants and provides
+ * display-only helpers (chain name, explorer URL).
  */
 
 import { POOL_CHAIN, SHINOBI_CASH_SUPPORTED_CHAINS } from "@shinobi-cash/constants";
+import { getChain, SUPPORTED_CHAINS } from "@shinobi-cash/constants/chains";
+
+export { getChain, SUPPORTED_CHAINS };
 
 /**
  * Pool chain ID for easy reference
