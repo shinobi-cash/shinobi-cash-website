@@ -32,7 +32,7 @@ const FILTER_OPTIONS: { value: ActivityFilter; dotColor: string }[] = [
   { value: "all", dotColor: "bg-zinc-400" },
   { value: "deposit", dotColor: "bg-green-500" },
   { value: "withdrawal", dotColor: "bg-blue-500" },
-  // { value: "refund", dotColor: "bg-yellow-500" },
+  { value: "refund", dotColor: "bg-yellow-500" },
 ];
 
 export function ActivityFilterDropdown({

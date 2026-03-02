@@ -267,7 +267,7 @@ describe('note-factory', () => {
     it('should create a refund note from pending intent', () => {
       // Mock intent at changeIndex=0, refundChangeIndex=1 (sibling level)
       const pendingIntent = createMockWithdrawalIntentNote(0, 0, toEther(0.5));
-      const note = createWithdrawalRefundedNote(pendingIntent, 'test-label', 'approved');
+      const note = createWithdrawalRefundedNote(pendingIntent, 'test-label', 'approved', toEther(0.5).toString());
 
       expect(note.noteType).toBe('withdrawalRefunded');
       expect(note.depositIndex).toBe(0);
@@ -281,14 +281,14 @@ describe('note-factory', () => {
       const pendingIntent = createMockWithdrawalIntentNote(0, 0, toEther(0.5), {
         refundCommitment: '0xrefund-abc',
       });
-      const note = createWithdrawalRefundedNote(pendingIntent, 'test-label', 'approved');
+      const note = createWithdrawalRefundedNote(pendingIntent, 'test-label', 'approved', toEther(0.5).toString());
 
       expect(note.refundCommitment).toBe('0xrefund-abc');
     });
 
     it('should use provided label and aspStatus', () => {
       const pendingIntent = createMockWithdrawalIntentNote(0, 0, toEther(0.5));
-      const note = createWithdrawalRefundedNote(pendingIntent, 'my-label', 'pending');
+      const note = createWithdrawalRefundedNote(pendingIntent, 'my-label', 'pending', toEther(0.5).toString());
 
       expect(note.label).toBe('my-label');
       expect(note.aspStatus).toBe('pending');
@@ -296,7 +296,7 @@ describe('note-factory', () => {
 
     it('should be considered cross-chain note (refund from cross-chain withdrawal)', () => {
       const pendingIntent = createMockWithdrawalIntentNote(0, 0, toEther(0.5));
-      const note = createWithdrawalRefundedNote(pendingIntent, 'test-label', 'approved');
+      const note = createWithdrawalRefundedNote(pendingIntent, 'test-label', 'approved', toEther(0.5).toString());
 
       expect(note.noteType).toBe('withdrawalRefunded');
       // WithdrawalRefundedNote is considered cross-chain because it originated from a cross-chain withdrawal intent
@@ -307,7 +307,7 @@ describe('note-factory', () => {
       const pendingIntent = createMockWithdrawalIntentNote(0, 0, toEther(0.5), {
         originChainId: '421614', // Pool chain
       });
-      const note = createWithdrawalRefundedNote(pendingIntent, 'test-label', 'approved');
+      const note = createWithdrawalRefundedNote(pendingIntent, 'test-label', 'approved', toEther(0.5).toString());
 
       expect(note.originChainId).toBe('421614');
     });
@@ -316,7 +316,7 @@ describe('note-factory', () => {
       const pendingIntent = createMockWithdrawalIntentNote(0, 0, toEther(0.5), {
         activityData: { recipient: '0xrecipient123' },
       });
-      const note = createWithdrawalRefundedNote(pendingIntent, 'test-label', 'approved');
+      const note = createWithdrawalRefundedNote(pendingIntent, 'test-label', 'approved', toEther(0.5).toString());
 
       expect(note.activityData.recipient).toBe('0xrecipient123');
     });
@@ -325,7 +325,7 @@ describe('note-factory', () => {
       const pendingIntent = createMockWithdrawalIntentNote(0, 0, toEther(0.5), {
         originTransactionHash: '0xorigin',
       });
-      const note = createWithdrawalRefundedNote(pendingIntent, 'test-label', 'approved');
+      const note = createWithdrawalRefundedNote(pendingIntent, 'test-label', 'approved', toEther(0.5).toString());
 
       expect(note.originTransactionHash).toBe('0xorigin');
     });

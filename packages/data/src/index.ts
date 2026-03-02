@@ -49,6 +49,8 @@ export type {
   IntentPhase,
   Intent,
   IntentFilters,
+  RawShinobiIntent,
+  RawMandateOutput,
 
   // Pool types
   Pool,

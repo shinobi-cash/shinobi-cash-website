@@ -4,12 +4,7 @@
 
 import { encodeAbiParameters, encodeFunctionData, keccak256 } from "viem/utils";
 import { poseidon3 } from "poseidon-lite/poseidon3";
-import type {
-  SpendableNote,
-  DepositNote,
-  CrosschainDepositNote,
-  ChangeNote,
-} from "../discovery/types.js";
+import type { SpendableNote } from "../discovery/types.js";
 import { createDeriveFn, derivePrecommitment } from "../crypto/primitives.js";
 import { SNARK_SCALAR_FIELD } from "../crypto/constants.js";
 import { deriveDepositNullifier, deriveDepositSecret } from "../deposit/index.js";
@@ -352,6 +347,33 @@ export const deriveRefundSecret = createDeriveFn("shinobi.cash:RefundSecretV1");
 
 // ============ DERIVATION LOGIC ============
 
+/**
+ * Derive existing nullifier and secret for a spendable note.
+ * Handles all note types: deposit, crosschainDeposit, change, withdrawalRefunded.
+ */
+function deriveExistingNullifierAndSecret(
+  note: SpendableNote,
+  accountKey: bigint,
+  poolAddress: string
+): { nullifier: bigint; secret: bigint } {
+  if (note.noteType === "withdrawalRefunded") {
+    return {
+      nullifier: deriveRefundNullifier(accountKey, poolAddress, note.originChainId, note.depositIndex, note.changeIndex),
+      secret: deriveRefundSecret(accountKey, poolAddress, note.originChainId, note.depositIndex, note.changeIndex),
+    };
+  }
+  if (note.noteType === "deposit" || note.noteType === "crosschainDeposit") {
+    return {
+      nullifier: deriveDepositNullifier(accountKey, poolAddress, note.originChainId, note.depositIndex),
+      secret: deriveDepositSecret(accountKey, poolAddress, note.originChainId, note.depositIndex),
+    };
+  }
+  return {
+    nullifier: deriveChangeNullifier(accountKey, poolAddress, note.originChainId, note.depositIndex, note.changeIndex),
+    secret: deriveChangeSecret(accountKey, poolAddress, note.originChainId, note.depositIndex, note.changeIndex),
+  };
+}
+
 export function hashToBigInt(data: string): bigint {
   return BigInt(keccak256(data as `0x${string}`)) % SNARK_SCALAR_FIELD;
 }
@@ -368,38 +390,7 @@ export function calculateContextHash(
 }
 
 export function derivedNoteCommitment(accountKey: bigint, note: SpendableNote): bigint {
-  let nullifier: bigint;
-  let secret: bigint;
-
-  if (note.changeIndex === 0) {
-    nullifier = deriveDepositNullifier(
-      accountKey,
-      note.poolAddress,
-      note.originChainId,
-      note.depositIndex
-    );
-    secret = deriveDepositSecret(
-      accountKey,
-      note.poolAddress,
-      note.originChainId,
-      note.depositIndex
-    );
-  } else {
-    nullifier = deriveChangeNullifier(
-      accountKey,
-      note.poolAddress,
-      note.originChainId,
-      note.depositIndex,
-      note.changeIndex
-    );
-    secret = deriveChangeSecret(
-      accountKey,
-      note.poolAddress,
-      note.originChainId,
-      note.depositIndex,
-      note.changeIndex
-    );
-  }
+  const { nullifier, secret } = deriveExistingNullifierAndSecret(note, accountKey, note.poolAddress);
 
   return poseidon3([
     BigInt(note.amount),
@@ -417,86 +408,6 @@ export function deriveRefundCommitment(
   return poseidon3([amount, label, derivePrecommitment(refundNullifier, refundSecret)]).toString();
 }
 
-function deriveDepositWithdrawal(
-  note: DepositNote | CrosschainDepositNote,
-  accountKey: bigint,
-  poolAddress: string,
-  poolScope: bigint,
-  withdrawalData: readonly [string, string]
-): WithdrawalDerivation {
-  return {
-    contextHash: calculateContextHash(poolScope, withdrawalData),
-    existingNullifier: deriveDepositNullifier(
-      accountKey,
-      poolAddress,
-      note.originChainId,
-      note.depositIndex
-    ),
-    existingSecret: deriveDepositSecret(
-      accountKey,
-      poolAddress,
-      note.originChainId,
-      note.depositIndex
-    ),
-    newNullifier: deriveChangeNullifier(
-      accountKey,
-      poolAddress,
-      note.originChainId,
-      note.depositIndex,
-      1
-    ),
-    newSecret: deriveChangeSecret(
-      accountKey,
-      poolAddress,
-      note.originChainId,
-      note.depositIndex,
-      1
-    ),
-    existingCommitment: derivedNoteCommitment(accountKey, note).toString(),
-  };
-}
-
-function deriveChangeWithdrawal(
-  note: ChangeNote,
-  accountKey: bigint,
-  poolAddress: string,
-  poolScope: bigint,
-  withdrawalData: readonly [string, string]
-): WithdrawalDerivation {
-  return {
-    contextHash: calculateContextHash(poolScope, withdrawalData),
-    existingNullifier: deriveChangeNullifier(
-      accountKey,
-      poolAddress,
-      note.originChainId,
-      note.depositIndex,
-      note.changeIndex
-    ),
-    existingSecret: deriveChangeSecret(
-      accountKey,
-      poolAddress,
-      note.originChainId,
-      note.depositIndex,
-      note.changeIndex
-    ),
-    newNullifier: deriveChangeNullifier(
-      accountKey,
-      poolAddress,
-      note.originChainId,
-      note.depositIndex,
-      note.changeIndex + 1
-    ),
-    newSecret: deriveChangeSecret(
-      accountKey,
-      poolAddress,
-      note.originChainId,
-      note.depositIndex,
-      note.changeIndex + 1
-    ),
-    existingCommitment: derivedNoteCommitment(accountKey, note).toString(),
-  };
-}
-
 export function deriveWithdrawalInputs(
   note: SpendableNote,
   accountKey: bigint,
@@ -504,12 +415,30 @@ export function deriveWithdrawalInputs(
   poolScope: bigint,
   withdrawalData: readonly [string, string]
 ): WithdrawalDerivation {
-  if (note.noteType === "deposit" || note.noteType === "crosschainDeposit") {
-    return deriveDepositWithdrawal(note, accountKey, poolAddress, poolScope, withdrawalData);
-  } else if (note.noteType === "change") {
-    return deriveChangeWithdrawal(note, accountKey, poolAddress, poolScope, withdrawalData);
-  }
-  throw new Error("Cannot withdraw from refund note");
+  const { nullifier, secret } = deriveExistingNullifierAndSecret(note, accountKey, poolAddress);
+  const isDeposit = note.noteType === "deposit" || note.noteType === "crosschainDeposit";
+  const nextChangeIndex = isDeposit ? 1 : note.changeIndex + 1;
+
+  return {
+    contextHash: calculateContextHash(poolScope, withdrawalData),
+    existingNullifier: nullifier,
+    existingSecret: secret,
+    newNullifier: deriveChangeNullifier(
+      accountKey,
+      poolAddress,
+      note.originChainId,
+      note.depositIndex,
+      nextChangeIndex
+    ),
+    newSecret: deriveChangeSecret(
+      accountKey,
+      poolAddress,
+      note.originChainId,
+      note.depositIndex,
+      nextChangeIndex
+    ),
+    existingCommitment: derivedNoteCommitment(accountKey, note).toString(),
+  };
 }
 
 export function deriveCrosschainWithdrawalInputs(
@@ -562,28 +491,13 @@ function derivePrimaryInput(
   accountKey: bigint,
   poolAddress: string
 ): Withdraw2PrimaryDerivation {
+  const { nullifier, secret } = deriveExistingNullifierAndSecret(note, accountKey, poolAddress);
   const isDeposit = note.noteType === "deposit" || note.noteType === "crosschainDeposit";
   const nextChangeIndex = isDeposit ? 1 : note.changeIndex + 1;
 
   return {
-    existingNullifier: isDeposit
-      ? deriveDepositNullifier(accountKey, poolAddress, note.originChainId, note.depositIndex)
-      : deriveChangeNullifier(
-          accountKey,
-          poolAddress,
-          note.originChainId,
-          note.depositIndex,
-          note.changeIndex
-        ),
-    existingSecret: isDeposit
-      ? deriveDepositSecret(accountKey, poolAddress, note.originChainId, note.depositIndex)
-      : deriveChangeSecret(
-          accountKey,
-          poolAddress,
-          note.originChainId,
-          note.depositIndex,
-          note.changeIndex
-        ),
+    existingNullifier: nullifier,
+    existingSecret: secret,
     existingCommitment: derivedNoteCommitment(accountKey, note).toString(),
     newNullifier: deriveChangeNullifier(
       accountKey,
@@ -611,27 +525,11 @@ function deriveSecondaryInput(
   accountKey: bigint,
   poolAddress: string
 ): Withdraw2SecondaryDerivation {
-  const isDeposit = note.noteType === "deposit" || note.noteType === "crosschainDeposit";
+  const { nullifier, secret } = deriveExistingNullifierAndSecret(note, accountKey, poolAddress);
 
   return {
-    existingNullifier: isDeposit
-      ? deriveDepositNullifier(accountKey, poolAddress, note.originChainId, note.depositIndex)
-      : deriveChangeNullifier(
-          accountKey,
-          poolAddress,
-          note.originChainId,
-          note.depositIndex,
-          note.changeIndex
-        ),
-    existingSecret: isDeposit
-      ? deriveDepositSecret(accountKey, poolAddress, note.originChainId, note.depositIndex)
-      : deriveChangeSecret(
-          accountKey,
-          poolAddress,
-          note.originChainId,
-          note.depositIndex,
-          note.changeIndex
-        ),
+    existingNullifier: nullifier,
+    existingSecret: secret,
     existingCommitment: derivedNoteCommitment(accountKey, note).toString(),
   };
 }
@@ -797,31 +695,11 @@ export function deriveRagequitInputs(
   accountKey: bigint,
   poolAddress: string
 ): RagequitDerivation {
-  const isDeposit = note.noteType === "deposit" || note.noteType === "crosschainDeposit";
-
-  const existingNullifier = isDeposit
-    ? deriveDepositNullifier(accountKey, poolAddress, note.originChainId, note.depositIndex)
-    : deriveChangeNullifier(
-        accountKey,
-        poolAddress,
-        note.originChainId,
-        note.depositIndex,
-        note.changeIndex
-      );
-
-  const existingSecret = isDeposit
-    ? deriveDepositSecret(accountKey, poolAddress, note.originChainId, note.depositIndex)
-    : deriveChangeSecret(
-        accountKey,
-        poolAddress,
-        note.originChainId,
-        note.depositIndex,
-        note.changeIndex
-      );
+  const { nullifier, secret } = deriveExistingNullifierAndSecret(note, accountKey, poolAddress);
 
   return {
-    existingNullifier,
-    existingSecret,
+    existingNullifier: nullifier,
+    existingSecret: secret,
     existingCommitment: derivedNoteCommitment(accountKey, note).toString(),
     value: BigInt(note.amount),
     label: BigInt(note.label),

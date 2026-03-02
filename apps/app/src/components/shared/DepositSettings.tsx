@@ -34,9 +34,9 @@ export function DepositSettings() {
   };
 
   const handleExpiryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const hours = parseInt(e.target.value);
-    if (!isNaN(hours) && hours >= 1) {
-      DepositController.setExpirySeconds(hours * 3600);
+    const minutes = parseInt(e.target.value);
+    if (!isNaN(minutes) && minutes >= 1) {
+      DepositController.setExpirySeconds(minutes * 60);
     }
   };
 
@@ -131,11 +131,11 @@ export function DepositSettings() {
                           <Input
                             type="number"
                             min="1"
-                            value={Math.round(state.expirySeconds / 3600)}
+                            value={Math.round(state.expirySeconds / 60)}
                             onChange={handleExpiryChange}
                             className="h-6 w-14 border-white/10 bg-white/[0.04] text-right text-xs text-white [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                           />
-                          <span className="text-xs text-neutral-500">hrs</span>
+                          <span className="text-xs text-neutral-500">min</span>
                         </div>
                       </div>
 

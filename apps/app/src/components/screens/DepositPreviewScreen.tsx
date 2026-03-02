@@ -11,7 +11,6 @@ import { formatUsdAmount, formatDisplayAmount } from "@/utils/formatters";
 import {
   POOL_CHAIN,
   SHINOBI_CASH_SUPPORTED_CHAINS,
-  INTENT_TIMING,
   FEE_CONFIG,
 } from "@shinobi-cash/constants";
 import { ShinobiCashNote, AssetChain } from "@/components/shared/AssetChain";
@@ -29,6 +28,8 @@ interface DepositPreviewScreenProps {
   userAddress: string;
   isProcessing: boolean;
   isCrossChain: boolean;
+  fillDeadlineSeconds: number;
+  expirySeconds: number;
 }
 
 export function DepositPreviewScreen({
@@ -41,6 +42,8 @@ export function DepositPreviewScreen({
   originChainId,
   isProcessing,
   isCrossChain,
+  fillDeadlineSeconds,
+  expirySeconds,
 }: DepositPreviewScreenProps) {
   const depositAmountNum = Number.parseFloat(depositAmount) || 0;
   const gasCostNum = Number.parseFloat(gasCostEth) || 0;
@@ -77,9 +80,8 @@ export function DepositPreviewScreen({
     return `${minutes} minute${minutes > 1 ? "s" : ""}`;
   };
 
-  const fillDeadline = formatDuration(INTENT_TIMING.FILL_DEADLINE_SECONDS);
-  // TODO: Use once expiry is closer to fill deadline
-  // const refundWindow = formatDuration(INTENT_TIMING.EXPIRY_SECONDS);
+  const fillDeadline = formatDuration(fillDeadlineSeconds);
+  const expiry = formatDuration(expirySeconds);
 
   return (
     <ScreenLayout
@@ -187,15 +189,26 @@ export function DepositPreviewScreen({
         />
         <Row label="Network Gas" value={<FeeValue amount={gasCostNum} usdValue={gasFeeUsd} />} />
         {isCrossChain && (
-          <Row
-            label="Fill Deadline"
-            value={
-              <span className="flex items-center gap-1.5">
-                <Clock className="h-3.5 w-3.5 text-neutral-500" />
-                {fillDeadline}
-              </span>
-            }
-          />
+          <>
+            <Row
+              label="Fill Deadline"
+              value={
+                <span className="flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5 text-neutral-500" />
+                  {fillDeadline}
+                </span>
+              }
+            />
+            <Row
+              label="Expiry"
+              value={
+                <span className="flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5 text-neutral-500" />
+                  {expiry}
+                </span>
+              }
+            />
+          </>
         )}
       </Section>
     </ScreenLayout>

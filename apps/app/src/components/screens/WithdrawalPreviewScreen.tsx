@@ -13,7 +13,6 @@ import { formatUsdAmount, formatHash, formatDisplayAmount } from "@/utils/format
 import {
   POOL_CHAIN,
   SHINOBI_CASH_SUPPORTED_CHAINS,
-  INTENT_TIMING,
   FEE_CONFIG,
 } from "@shinobi-cash/constants";
 import { ShinobiCashNote, AssetChain } from "@/components/shared/AssetChain";
@@ -30,6 +29,8 @@ interface WithdrawalPreviewScreenProps {
   isCrossChain: boolean;
   isProcessing: boolean;
   selectedNotes: readonly Note[];
+  fillDeadlineSeconds: number;
+  expirySeconds: number;
 }
 
 export function WithdrawalPreviewScreen({
@@ -44,6 +45,8 @@ export function WithdrawalPreviewScreen({
   isCrossChain,
   isProcessing,
   selectedNotes,
+  fillDeadlineSeconds,
+  expirySeconds,
 }: WithdrawalPreviewScreenProps) {
   const withdrawAmountNum = Number.parseFloat(withdrawAmount) || 0;
 
@@ -67,7 +70,8 @@ export function WithdrawalPreviewScreen({
     return `${minutes} minute${minutes > 1 ? "s" : ""}`;
   };
 
-  const fillDeadline = formatDuration(INTENT_TIMING.FILL_DEADLINE_SECONDS);
+  const fillDeadline = formatDuration(fillDeadlineSeconds);
+  const expiry = formatDuration(expirySeconds);
   const solverFeePercent = FEE_CONFIG.DEFAULT_SOLVER_FEE_BPS / 100;
 
   return (
@@ -189,15 +193,26 @@ export function WithdrawalPreviewScreen({
           value={<FeeValue amount={executionFee} usdValue={executionFeeUsd} />}
         />
         {isCrossChain && (
-          <Row
-            label="Fill Deadline"
-            value={
-              <span className="flex items-center gap-1.5">
-                <Clock className="h-3.5 w-3.5 text-neutral-500" />
-                {fillDeadline}
-              </span>
-            }
-          />
+          <>
+            <Row
+              label="Fill Deadline"
+              value={
+                <span className="flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5 text-neutral-500" />
+                  {fillDeadline}
+                </span>
+              }
+            />
+            <Row
+              label="Expiry"
+              value={
+                <span className="flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5 text-neutral-500" />
+                  {expiry}
+                </span>
+              }
+            />
+          </>
         )}
       </Section>
     </ScreenLayout>

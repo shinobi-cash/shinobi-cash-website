@@ -18,6 +18,7 @@ import type {
   DiscoveryPolicy,
   NoteTree,
   Note,
+  SpendableNote,
   ActivityFetcher,
   PersistenceCallbacks,
   SerializableDiscoveryState,
@@ -404,13 +405,15 @@ export function rebuildNullifierMap(
     // getSpendableLeaves already filters for spendable notes with status === 'unspent'
     const spendableLeaves = getSpendableLeaves(tree);
     for (const leaf of spendableLeaves) {
-      const note = leaf.note;
+      // getSpendableLeaves guarantees spendable notes (filtered by isNote + isSpendableNote)
+      const note = leaf.note as SpendableNote;
       const nullifierHash = deriveAndHashNullifier(
         accountKey,
         poolAddress,
         note.originChainId,
         note.depositIndex,
-        note.changeIndex
+        note.changeIndex,
+        note.noteType
       );
       state.nullifierMap.set(nullifierHash, {
         originChainId: note.originChainId,

@@ -227,7 +227,7 @@ function reconcileIntentNotes(
         // Check for refund activity
         const refundActivity = activityIndex.withdrawalRefundsByOrderId.get(item.orderId);
         if (refundActivity) {
-          const wasReconciled = reconcileWithdrawalIntentWithRefund(item, node, childrenToAdd);
+          const wasReconciled = reconcileWithdrawalIntentWithRefund(item, refundActivity, node, childrenToAdd);
           if (wasReconciled && !addedActivityTxHashes.has(refundActivity.txHash)) {
             result.matchedActivities.push(refundActivity);
             addedActivityTxHashes.add(refundActivity.txHash);
@@ -334,6 +334,7 @@ function reconcileWithdrawalIntentWithFill(
  */
 function reconcileWithdrawalIntentWithRefund(
   withdrawalIntent: WithdrawalIntent,
+  refundActivity: ActivityItem,
   node: NoteNode,
   childrenToAdd: Array<{ parent: NoteNode; child: Note }>
 ): boolean {
@@ -341,14 +342,17 @@ function reconcileWithdrawalIntentWithRefund(
   if (node.children.length > 0) return false;
 
   // Get label and aspStatus from parent (the spendable note that was spent)
+  // Refund notes inherit the same label as the original deposit.
+  // The parent must have been "approved" for the withdrawal to have occurred,
+  // so the fallback is "approved" (not "pending").
   const parentItem = node.parent?.note;
-  const label =
-    parentItem && isNote(parentItem) && isSpendableNote(parentItem) ? parentItem.label : "";
-  const aspStatus =
-    parentItem && isNote(parentItem) && isSpendableNote(parentItem)
-      ? parentItem.aspStatus
-      : "pending";
-  const refundNote = createWithdrawalRefundedNote(withdrawalIntent, label, aspStatus);
+  const parentIsSpendable = parentItem && isNote(parentItem) && isSpendableNote(parentItem);
+  const label = parentIsSpendable ? parentItem.label : "";
+  const aspStatus = parentIsSpendable ? parentItem.aspStatus : "approved";
+  // Use the refund activity's amount (netRefundAmount from contract) instead of
+  // the withdrawal intent's amount (escrowAmount - solverFee), since the actual
+  // pool deposit is escrowAmount - refundFee.
+  const refundNote = createWithdrawalRefundedNote(withdrawalIntent, label, aspStatus, refundActivity.amount);
   childrenToAdd.push({ parent: node, child: refundNote });
 
   return true;

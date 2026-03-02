@@ -99,6 +99,8 @@ export default function WithdrawPage() {
         isCrossChain={WithdrawSelectors.isCrossChain()}
         isProcessing={state.state.status === "submitting"}
         selectedNotes={state.selectedNotes}
+        fillDeadlineSeconds={state.fillDeadlineSeconds}
+        expirySeconds={state.expirySeconds}
       />
     );
   }
