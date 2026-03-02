@@ -1,8 +1,8 @@
 /**
- * Bundler relayer — ERC-4337 implementation using Pimlico.
+ * Bundler relayer — ERC-4337 implementation.
  *
  * Wraps smart accounts, UserOps, and paymasters behind
- * the ShinobiRelayer interface.
+ * the ShinobiRelayer interface. Works with any bundler URL.
  */
 
 import {
@@ -23,14 +23,17 @@ import {
 import type { GasLimits } from "@shinobi-cash/core/fees";
 import { calculateTotalGas, calculateRelayFeeBPS } from "@shinobi-cash/core/fees";
 import type { Call } from "@shinobi-cash/core/account";
-import { createSmartAccountClient, type SmartAccountClient } from "permissionless";
-import { createPimlicoClient, type PimlicoClient } from "permissionless/clients/pimlico";
 import { toSimpleSmartAccount } from "permissionless/accounts";
-import { http, createPublicClient } from "viem";
-import { entryPoint07Address, type UserOperation } from "viem/account-abstraction";
+import { http, createPublicClient, type PublicClient } from "viem";
+import {
+  createBundlerClient,
+  type BundlerClient,
+  entryPoint07Address,
+  type UserOperation,
+} from "viem/account-abstraction";
 import { privateKeyToAccount } from "viem/accounts";
 import type { TransactionReceipt } from "viem";
-import { getViemChain } from "../chains.js";
+import { getChain } from "@shinobi-cash/constants/chains";
 import type { ShinobiRelayer, RelayOperationType } from "../types.js";
 
 // ============================================================================
@@ -59,16 +62,11 @@ const GAS_LIMITS_MAP: Record<RelayOperationType, GasLimits> = {
 
 async function createSmartAccountForWithdrawal(
   bundlerUrl: string,
-  pimlico: PimlicoClient,
+  publicClient: PublicClient,
   paymasterAddress: `0x${string}`,
   gasLimits: GasLimits,
-): Promise<SmartAccountClient> {
+): Promise<BundlerClient> {
   const account = privateKeyToAccount(WITHDRAWAL_ACCOUNT_PRIVATE_KEY);
-
-  const publicClient = createPublicClient({
-    chain: getViemChain(POOL_CHAIN.id),
-    transport: http(),
-  });
 
   const simpleAccount = await toSimpleSmartAccount({
     owner: account,
@@ -76,10 +74,10 @@ async function createSmartAccountForWithdrawal(
     entryPoint: { address: entryPoint07Address, version: "0.7" },
   });
 
-  return createSmartAccountClient({
+  return createBundlerClient({
     client: publicClient,
     account: simpleAccount,
-    bundlerTransport: http(bundlerUrl),
+    transport: http(bundlerUrl),
     paymaster: {
       async getPaymasterStubData() {
         return {
@@ -100,38 +98,38 @@ async function createSmartAccountForWithdrawal(
     },
     userOperation: {
       estimateFeesPerGas: async () => {
-        const gasPrices = await pimlico.getUserOperationGasPrice();
-        return gasPrices.fast;
+        return await publicClient.estimateFeesPerGas();
       },
     },
   });
 }
 
 async function prepareUserOp(
-  smartAccountClient: SmartAccountClient,
-  pimlicoClient: PimlicoClient,
+  bundlerClient: BundlerClient,
+  publicClient: PublicClient,
   call: Call,
   gasLimits: GasLimits,
 ): Promise<UserOperation<"0.7">> {
-  if (!smartAccountClient.account) {
+  if (!bundlerClient.account) {
     throw new Error("Smart account not initialized");
   }
 
   const target = call.to || (SHINOBI_CASH_ENTRYPOINT.address as `0x${string}`);
-  const gasPrices = await pimlicoClient.getUserOperationGasPrice();
+  const gasPrices = await publicClient.estimateFeesPerGas();
 
-  return smartAccountClient.prepareUserOperation({
-    account: smartAccountClient.account,
+  return bundlerClient.prepareUserOperation({
+    account: bundlerClient.account,
     calls: [{ to: target, data: call.data, value: BigInt(0) }],
     callGasLimit: gasLimits.CALL_GAS_LIMIT,
     verificationGasLimit: gasLimits.VERIFICATION_GAS_LIMIT,
     preVerificationGas: gasLimits.PRE_VERIFICATION_GAS,
-    ...gasPrices.fast,
+    maxFeePerGas: gasPrices.maxFeePerGas,
+    maxPriorityFeePerGas: gasPrices.maxPriorityFeePerGas,
   });
 }
 
 async function executeUserOp(
-  smartAccountClient: SmartAccountClient,
+  bundlerClient: BundlerClient,
   userOp: UserOperation<"0.7">,
   gasLimits: GasLimits,
 ): Promise<{ userOpHash: string; receipt: TransactionReceipt }> {
@@ -141,14 +139,14 @@ async function executeUserOp(
   userOp.paymasterVerificationGasLimit = gasLimits.PAYMASTER_VERIFICATION_GAS_LIMIT;
   userOp.paymasterPostOpGasLimit = gasLimits.POST_OP_GAS_LIMIT;
 
-  const signature = await smartAccountClient.account?.signUserOperation(userOp);
-  const userOpHash = await smartAccountClient.sendUserOperation({
+  const signature = await bundlerClient.account?.signUserOperation(userOp);
+  const userOpHash = await bundlerClient.sendUserOperation({
     entryPointAddress: entryPoint07Address,
     ...userOp,
     signature,
   });
 
-  const result = await smartAccountClient.waitForUserOperationReceipt({ hash: userOpHash });
+  const result = await bundlerClient.waitForUserOperationReceipt({ hash: userOpHash });
 
   if (!result.success) {
     throw new Error(`UserOperation failed: ${result.reason || "unknown reason"}`);
@@ -163,13 +161,14 @@ async function executeUserOp(
 
 export function createBundlerRelayer(config: { url: string }): ShinobiRelayer {
   const { url } = config;
-  const pimlico = createPimlicoClient({
-    transport: http(url),
-    entryPoint: { address: entryPoint07Address, version: "0.7" },
+
+  const publicClient = createPublicClient({
+    chain: getChain(POOL_CHAIN.id),
+    transport: http(),
   });
 
-  // Track smart account clients for waitForReceipt
-  const pendingOps = new Map<string, SmartAccountClient>();
+  // Track bundler clients for waitForReceipt
+  const pendingOps = new Map<string, BundlerClient>();
 
   return {
     getRelayAddress(type: RelayOperationType): `0x${string}` {
@@ -178,8 +177,8 @@ export function createBundlerRelayer(config: { url: string }): ShinobiRelayer {
 
     async quoteRelayFee(params: { type: RelayOperationType; amountWei: bigint }): Promise<{ relayFeeBPS: number }> {
       const gasLimits = GAS_LIMITS_MAP[params.type];
-      const gasPrices = await pimlico.getUserOperationGasPrice();
-      const gasPriceWei = gasPrices.fast.maxFeePerGas;
+      const gasPrices = await publicClient.estimateFeesPerGas();
+      const gasPriceWei = gasPrices.maxFeePerGas;
       const totalGas = calculateTotalGas(gasLimits);
       const gasCostWei = totalGas * gasPriceWei;
       const relayFeeBPS = calculateRelayFeeBPS(params.amountWei, gasCostWei, FEE_CONFIG.MAX_RELAY_FEE_BPS);
@@ -190,8 +189,8 @@ export function createBundlerRelayer(config: { url: string }): ShinobiRelayer {
       const paymasterAddress = PAYMASTER_MAP[params.type];
       const gasLimits = GAS_LIMITS_MAP[params.type];
 
-      const smartAccountClient = await createSmartAccountForWithdrawal(url, pimlico, paymasterAddress, gasLimits);
-      const userOp = await prepareUserOp(smartAccountClient, pimlico, params.call, gasLimits);
+      const bundlerClient = await createSmartAccountForWithdrawal(url, publicClient, paymasterAddress, gasLimits);
+      const userOp = await prepareUserOp(bundlerClient, publicClient, params.call, gasLimits);
 
       userOp.callGasLimit = gasLimits.CALL_GAS_LIMIT;
       userOp.verificationGasLimit = gasLimits.VERIFICATION_GAS_LIMIT;
@@ -199,25 +198,25 @@ export function createBundlerRelayer(config: { url: string }): ShinobiRelayer {
       userOp.paymasterVerificationGasLimit = gasLimits.PAYMASTER_VERIFICATION_GAS_LIMIT;
       userOp.paymasterPostOpGasLimit = gasLimits.POST_OP_GAS_LIMIT;
 
-      const signature = await smartAccountClient.account?.signUserOperation(userOp);
-      const userOpHash = await smartAccountClient.sendUserOperation({
+      const signature = await bundlerClient.account?.signUserOperation(userOp);
+      const userOpHash = await bundlerClient.sendUserOperation({
         entryPointAddress: entryPoint07Address,
         ...userOp,
         signature,
       });
 
-      pendingOps.set(userOpHash, smartAccountClient);
+      pendingOps.set(userOpHash, bundlerClient);
       return userOpHash;
     },
 
     async waitForReceipt(txId: string): Promise<TransactionReceipt> {
-      const smartAccountClient = pendingOps.get(txId);
-      if (!smartAccountClient) {
+      const bundlerClient = pendingOps.get(txId);
+      if (!bundlerClient) {
         throw new Error(`No pending operation found for txId: ${txId}`);
       }
 
       try {
-        const result = await smartAccountClient.waitForUserOperationReceipt({ hash: txId as `0x${string}` });
+        const result = await bundlerClient.waitForUserOperationReceipt({ hash: txId as `0x${string}` });
         if (!result.success) {
           throw new Error(`UserOperation failed: ${result.reason || "unknown reason"}`);
         }

@@ -2,40 +2,33 @@
   "name": "@shinobi-cash/client",
   "version": "0.0.1",
   "description": "Chain interaction client for Shinobi Cash — bundler, solver, and contract operations",
+  "type": "module",
   "sideEffects": false,
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
   "types": "src/index.ts",
   "exports": {
     ".": {
       "types": "./src/index.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+      "import": "./dist/index.js"
     },
     "./relayer": {
       "types": "./src/relayer/index.ts",
-      "import": "./dist/relayer/index.mjs",
-      "require": "./dist/relayer/index.js"
+      "import": "./dist/relayer/index.js"
     },
     "./deposit": {
       "types": "./src/actions/deposit.ts",
-      "import": "./dist/actions/deposit.mjs",
-      "require": "./dist/actions/deposit.js"
+      "import": "./dist/actions/deposit.js"
     },
     "./crosschain-deposit": {
       "types": "./src/actions/crosschain-deposit.ts",
-      "import": "./dist/actions/crosschain-deposit.mjs",
-      "require": "./dist/actions/crosschain-deposit.js"
+      "import": "./dist/actions/crosschain-deposit.js"
     },
     "./withdrawal": {
       "types": "./src/actions/withdrawal.ts",
-      "import": "./dist/actions/withdrawal.mjs",
-      "require": "./dist/actions/withdrawal.js"
+      "import": "./dist/actions/withdrawal.js"
     },
     "./crosschain-withdrawal": {
       "types": "./src/actions/crosschain-withdrawal.ts",
-      "import": "./dist/actions/crosschain-withdrawal.mjs",
-      "require": "./dist/actions/crosschain-withdrawal.js"
+      "import": "./dist/actions/crosschain-withdrawal.js"
     }
   },
   "files": [

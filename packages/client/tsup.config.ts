@@ -9,7 +9,7 @@ export default defineConfig({
     'src/actions/withdrawal.ts',
     'src/actions/crosschain-withdrawal.ts',
   ],
-  format: ['cjs', 'esm'],
+  format: ['esm'],
   dts: false,
   splitting: false,
   sourcemap: true,
