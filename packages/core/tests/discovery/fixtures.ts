@@ -15,22 +15,36 @@ import type {
   CrosschainWithdrawalFillActivity,
   CrosschainWithdrawalRefundActivity,
   RagequitActivity,
-} from '@shinobi-cash/data';
-import type { Note, DepositNote, ChangeNote, DepositIntent, WithdrawalIntent, WithdrawalRefundedNote, RagequitNote, MergedNote, NoteTree, NoteDeriver } from '../../src/discovery/types.js';
-import { generateSerialNumber } from '../../src/discovery/types.js';
-import { deriveDepositPrecommitment, deriveAndHashNullifier } from '../../src/discovery/nullifier-utils.js';
-import { derivedNoteCommitment } from '../../src/withdrawal/index.js';
-import { createNoteTree, addChild } from '../../src/discovery/tree-utils.js';
+} from "@shinobi-cash/data";
+import type {
+  Note,
+  DepositNote,
+  ChangeNote,
+  DepositIntent,
+  WithdrawalIntent,
+  WithdrawalRefundedNote,
+  RagequitNote,
+  MergedNote,
+  NoteTree,
+  NoteDeriver,
+} from "../../src/discovery/types.js";
+import { generateSerialNumber } from "../../src/discovery/types.js";
+import {
+  deriveDepositPrecommitment,
+  deriveAndHashNullifier,
+} from "../../src/discovery/nullifier-utils.js";
+import { derivedNoteCommitment } from "../../src/withdrawal/index.js";
+import { createNoteTree, addChild } from "../../src/discovery/tree-utils.js";
 
 // ============================================================================
 // Test Constants
 // ============================================================================
 
-export const TEST_POOL_ADDRESS = '0x1234567890123456789012345678901234567890';
+export const TEST_POOL_ADDRESS = "0x1234567890123456789012345678901234567890";
 export const TEST_ACCOUNT_KEY = 12345678901234567890n;
-export const TEST_USER_ADDRESS = '0xuser1234567890123456789012345678901234567';
-export const TEST_RECIPIENT_ADDRESS = '0xrecipient12345678901234567890123456789';
-export const TEST_CHAIN_ID = '421614';
+export const TEST_USER_ADDRESS = "0xuser1234567890123456789012345678901234567";
+export const TEST_RECIPIENT_ADDRESS = "0xrecipient12345678901234567890123456789";
+export const TEST_CHAIN_ID = "421614";
 
 /**
  * Create an NoteDeriver provider for testing
@@ -41,8 +55,7 @@ export function createTestNoteDeriver(accountKey: bigint = TEST_ACCOUNT_KEY): No
       deriveDepositPrecommitment(accountKey, pool, chainId, idx),
     deriveNullifierHash: (pool, chainId, depIdx, chgIdx, noteType?) =>
       deriveAndHashNullifier(accountKey, pool, chainId, depIdx, chgIdx, noteType),
-    deriveNoteCommitment: (note) =>
-      derivedNoteCommitment(accountKey, note),
+    deriveNoteCommitment: (note) => derivedNoteCommitment(accountKey, note),
   };
 }
 
@@ -58,24 +71,29 @@ let activityCounter = 0;
 export function createMockDepositActivity(
   depositIndex: number,
   amount: string | bigint,
-  overrides: Partial<DepositActivity> = {},
+  overrides: Partial<DepositActivity> = {}
 ): DepositActivity {
-  const precommitment = deriveDepositPrecommitment(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, depositIndex);
+  const precommitment = deriveDepositPrecommitment(
+    TEST_ACCOUNT_KEY,
+    TEST_POOL_ADDRESS,
+    TEST_CHAIN_ID,
+    depositIndex
+  );
 
   return {
-    type: 'DEPOSIT',
+    type: "DEPOSIT",
     txHash: `0xtx-deposit-${depositIndex}-${++activityCounter}`,
     chainId: TEST_CHAIN_ID,
     timestamp: Date.now().toString(),
     user: TEST_USER_ADDRESS,
     pool: TEST_POOL_ADDRESS,
     amount: amount.toString(),
-    aspStatus: 'approved',
+    aspStatus: "approved",
     commitment: `0xcommitment-${depositIndex}`,
     label: (depositIndex + 1000).toString(),
     precommitment,
     originalAmount: amount.toString(),
-    vettingFeeAmount: '0',
+    vettingFeeAmount: "0",
     vettingFeeRecipient: TEST_USER_ADDRESS,
     ...overrides,
   };
@@ -87,27 +105,32 @@ export function createMockDepositActivity(
 export function createMockCrossChainDepositActivity(
   depositIndex: number,
   amount: string | bigint,
-  overrides: Partial<CrosschainDepositFillActivity> = {},
+  overrides: Partial<CrosschainDepositFillActivity> = {}
 ): CrosschainDepositFillActivity {
-  const precommitment = deriveDepositPrecommitment(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, depositIndex);
+  const precommitment = deriveDepositPrecommitment(
+    TEST_ACCOUNT_KEY,
+    TEST_POOL_ADDRESS,
+    TEST_CHAIN_ID,
+    depositIndex
+  );
 
   return {
-    type: 'CROSSCHAIN_DEPOSIT_FILL',
+    type: "CROSSCHAIN_DEPOSIT_FILL",
     txHash: `0xtx-fill-${depositIndex}-${++activityCounter}`,
-    chainId: '421614', // Pool chain (destination)
+    chainId: "421614", // Pool chain (destination)
     timestamp: Date.now().toString(),
     user: TEST_USER_ADDRESS,
     pool: TEST_POOL_ADDRESS,
     amount: amount.toString(),
     orderId: `order-${depositIndex}`,
-    aspStatus: 'approved',
+    aspStatus: "approved",
     commitment: `0xcommitment-${depositIndex}`,
     label: (depositIndex + 1000).toString(),
     precommitment,
     originalAmount: amount.toString(),
-    vettingFeeAmount: '0',
+    vettingFeeAmount: "0",
     vettingFeeRecipient: TEST_USER_ADDRESS,
-    solver: '0xsolver',
+    solver: "0xsolver",
     ...overrides,
   };
 }
@@ -118,26 +141,31 @@ export function createMockCrossChainDepositActivity(
 export function createMockPendingCrossChainDepositActivity(
   depositIndex: number,
   amount: string | bigint,
-  overrides: Partial<CrosschainDepositIntentActivity> = {},
+  overrides: Partial<CrosschainDepositIntentActivity> = {}
 ): CrosschainDepositIntentActivity {
-  const precommitment = deriveDepositPrecommitment(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, depositIndex);
+  const precommitment = deriveDepositPrecommitment(
+    TEST_ACCOUNT_KEY,
+    TEST_POOL_ADDRESS,
+    TEST_CHAIN_ID,
+    depositIndex
+  );
 
   return {
-    type: 'CROSSCHAIN_DEPOSIT_INTENT',
+    type: "CROSSCHAIN_DEPOSIT_INTENT",
     txHash: `0xtx-deposit-intent-${depositIndex}-${++activityCounter}`,
-    chainId: '84532', // Origin chain
+    chainId: "84532", // Origin chain
     timestamp: Date.now().toString(),
     user: TEST_USER_ADDRESS,
     pool: TEST_POOL_ADDRESS,
     amount: amount.toString(),
     orderId: `order-pending-${depositIndex}`,
     precommitment,
-    destinationChainId: '421614', // Pool chain
+    destinationChainId: "421614", // Pool chain
     destinationPool: TEST_POOL_ADDRESS,
     totalPaid: amount.toString(),
     netDepositAmount: amount.toString(),
-    asset: '0x0000000000000000000000000000000000000000',
-    solverFee: '0',
+    asset: "0x0000000000000000000000000000000000000000",
+    solverFee: "0",
     ...overrides,
   };
 }
@@ -149,25 +177,31 @@ export function createMock1x1WithdrawalActivity(
   depositIndex: number,
   changeIndex: number,
   withdrawnAmount: string | bigint,
-  overrides: Partial<WithdrawActivity> = {},
+  overrides: Partial<WithdrawActivity> = {}
 ): WithdrawActivity {
-  const spentNullifier = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, depositIndex, changeIndex);
+  const spentNullifier = deriveAndHashNullifier(
+    TEST_ACCOUNT_KEY,
+    TEST_POOL_ADDRESS,
+    TEST_CHAIN_ID,
+    depositIndex,
+    changeIndex
+  );
 
   return {
-    type: 'WITHDRAW',
+    type: "WITHDRAW",
     txHash: `0xtx-withdrawal-${depositIndex}-${changeIndex}-${++activityCounter}`,
     chainId: TEST_CHAIN_ID,
     timestamp: Date.now().toString(),
     user: TEST_USER_ADDRESS,
     pool: TEST_POOL_ADDRESS,
     amount: withdrawnAmount.toString(),
-    asset: '0x0000000000000000000000000000000000000000',
+    asset: "0x0000000000000000000000000000000000000000",
     nullifierCount: 1,
     newCommitment: `0xcommitment-${depositIndex}-${changeIndex + 1}`,
     withdrawnValue: withdrawnAmount.toString(),
     relayer: TEST_USER_ADDRESS,
     recipient: TEST_RECIPIENT_ADDRESS,
-    relayFee: '0',
+    relayFee: "0",
     spentNullifiers: [spentNullifier],
     ...overrides,
   };
@@ -180,12 +214,18 @@ export function createMockCrossChainWithdrawalActivity(
   depositIndex: number,
   changeIndex: number,
   withdrawnAmount: string | bigint,
-  overrides: Partial<CrosschainWithdrawIntentActivity> = {},
+  overrides: Partial<CrosschainWithdrawIntentActivity> = {}
 ): CrosschainWithdrawIntentActivity {
-  const spentNullifier = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, depositIndex, changeIndex);
+  const spentNullifier = deriveAndHashNullifier(
+    TEST_ACCOUNT_KEY,
+    TEST_POOL_ADDRESS,
+    TEST_CHAIN_ID,
+    depositIndex,
+    changeIndex
+  );
 
   return {
-    type: 'CROSSCHAIN_WITHDRAW_INTENT',
+    type: "CROSSCHAIN_WITHDRAW_INTENT",
     txHash: `0xtx-crosschain-${depositIndex}-${changeIndex}-${++activityCounter}`,
     chainId: TEST_CHAIN_ID,
     timestamp: Date.now().toString(),
@@ -193,15 +233,15 @@ export function createMockCrossChainWithdrawalActivity(
     pool: TEST_POOL_ADDRESS,
     amount: withdrawnAmount.toString(),
     orderId: `order-withdraw-${depositIndex}-${changeIndex}`,
-    asset: '0x0000000000000000000000000000000000000000',
+    asset: "0x0000000000000000000000000000000000000000",
     nullifierCount: 1,
     newCommitment: `0xcommitment-${depositIndex}-${changeIndex + 1}`,
     withdrawnValue: withdrawnAmount.toString(),
     relayer: TEST_USER_ADDRESS,
     recipient: TEST_RECIPIENT_ADDRESS,
-    relayFee: '0',
+    relayFee: "0",
     refundCommitment: `0xrefund-${depositIndex}-${changeIndex}`,
-    solverFee: '0',
+    solverFee: "0",
     spentNullifiers: [spentNullifier],
     ...overrides,
   };
@@ -216,26 +256,38 @@ export function createMockWithdraw2Activity(
   depositIndex1: number,
   changeIndex1: number,
   withdrawnAmount: string | bigint,
-  overrides: Partial<Withdraw2Activity> = {},
+  overrides: Partial<Withdraw2Activity> = {}
 ): Withdraw2Activity {
-  const spentNullifier0 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, depositIndex0, changeIndex0);
-  const spentNullifier1 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, depositIndex1, changeIndex1);
+  const spentNullifier0 = deriveAndHashNullifier(
+    TEST_ACCOUNT_KEY,
+    TEST_POOL_ADDRESS,
+    TEST_CHAIN_ID,
+    depositIndex0,
+    changeIndex0
+  );
+  const spentNullifier1 = deriveAndHashNullifier(
+    TEST_ACCOUNT_KEY,
+    TEST_POOL_ADDRESS,
+    TEST_CHAIN_ID,
+    depositIndex1,
+    changeIndex1
+  );
 
   return {
-    type: 'WITHDRAW_2',
+    type: "WITHDRAW_2",
     txHash: `0xtx-withdraw2-${depositIndex0}-${depositIndex1}-${++activityCounter}`,
     chainId: TEST_CHAIN_ID,
     timestamp: Date.now().toString(),
     user: TEST_USER_ADDRESS,
     pool: TEST_POOL_ADDRESS,
     amount: withdrawnAmount.toString(),
-    asset: '0x0000000000000000000000000000000000000000',
+    asset: "0x0000000000000000000000000000000000000000",
     nullifierCount: 2,
     newCommitment: `0xcommitment-${depositIndex0}-merged`,
     withdrawnValue: withdrawnAmount.toString(),
     relayer: TEST_USER_ADDRESS,
     recipient: TEST_RECIPIENT_ADDRESS,
-    relayFee: '0',
+    relayFee: "0",
     spentNullifiers: [spentNullifier0, spentNullifier1],
     ...overrides,
   };
@@ -250,13 +302,25 @@ export function createMockCrossChainWithdraw2Activity(
   depositIndex1: number,
   changeIndex1: number,
   withdrawnAmount: string | bigint,
-  overrides: Partial<CrosschainWithdraw2IntentActivity> = {},
+  overrides: Partial<CrosschainWithdraw2IntentActivity> = {}
 ): CrosschainWithdraw2IntentActivity {
-  const spentNullifier0 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, depositIndex0, changeIndex0);
-  const spentNullifier1 = deriveAndHashNullifier(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, depositIndex1, changeIndex1);
+  const spentNullifier0 = deriveAndHashNullifier(
+    TEST_ACCOUNT_KEY,
+    TEST_POOL_ADDRESS,
+    TEST_CHAIN_ID,
+    depositIndex0,
+    changeIndex0
+  );
+  const spentNullifier1 = deriveAndHashNullifier(
+    TEST_ACCOUNT_KEY,
+    TEST_POOL_ADDRESS,
+    TEST_CHAIN_ID,
+    depositIndex1,
+    changeIndex1
+  );
 
   return {
-    type: 'CROSSCHAIN_WITHDRAW_2_INTENT',
+    type: "CROSSCHAIN_WITHDRAW_2_INTENT",
     txHash: `0xtx-crosschain-withdraw2-${depositIndex0}-${depositIndex1}-${++activityCounter}`,
     chainId: TEST_CHAIN_ID,
     timestamp: Date.now().toString(),
@@ -264,15 +328,15 @@ export function createMockCrossChainWithdraw2Activity(
     pool: TEST_POOL_ADDRESS,
     amount: withdrawnAmount.toString(),
     orderId: `order-withdraw2-${depositIndex0}-${depositIndex1}`,
-    asset: '0x0000000000000000000000000000000000000000',
+    asset: "0x0000000000000000000000000000000000000000",
     nullifierCount: 2,
     newCommitment: `0xcommitment-${depositIndex0}-merged`,
     withdrawnValue: withdrawnAmount.toString(),
     relayer: TEST_USER_ADDRESS,
     recipient: TEST_RECIPIENT_ADDRESS,
-    relayFee: '0',
+    relayFee: "0",
     refundCommitment: `0xrefund-${depositIndex0}-${depositIndex1}`,
-    solverFee: '0',
+    solverFee: "0",
     spentNullifiers: [spentNullifier0, spentNullifier1],
     ...overrides,
   };
@@ -285,18 +349,18 @@ export function createMockCrossChainWithdrawalFillActivity(
   depositIndex: number,
   changeIndex: number,
   withdrawnAmount: string | bigint,
-  overrides: Partial<CrosschainWithdrawalFillActivity> = {},
+  overrides: Partial<CrosschainWithdrawalFillActivity> = {}
 ): CrosschainWithdrawalFillActivity {
   return {
-    type: 'CROSSCHAIN_WITHDRAWAL_FILL',
+    type: "CROSSCHAIN_WITHDRAWAL_FILL",
     txHash: `0xtx-fill-${depositIndex}-${changeIndex}-${++activityCounter}`,
-    chainId: '84532', // Destination chain
+    chainId: "84532", // Destination chain
     timestamp: Date.now().toString(),
     user: TEST_USER_ADDRESS,
     pool: TEST_POOL_ADDRESS,
     amount: withdrawnAmount.toString(),
     orderId: `order-withdraw-${depositIndex}-${changeIndex}`,
-    solver: '0xsolver',
+    solver: "0xsolver",
     recipient: TEST_RECIPIENT_ADDRESS,
     ...overrides,
   };
@@ -309,10 +373,10 @@ export function createMockCrossChainWithdrawalRefundActivity(
   depositIndex: number,
   changeIndex: number,
   refundAmount: string | bigint,
-  overrides: Partial<CrosschainWithdrawalRefundActivity> = {},
+  overrides: Partial<CrosschainWithdrawalRefundActivity> = {}
 ): CrosschainWithdrawalRefundActivity {
   return {
-    type: 'CROSSCHAIN_WITHDRAWAL_REFUND',
+    type: "CROSSCHAIN_WITHDRAWAL_REFUND",
     txHash: `0xtx-refund-${depositIndex}-${changeIndex}-${++activityCounter}`,
     chainId: TEST_CHAIN_ID, // Pool chain (origin of withdrawal)
     timestamp: Date.now().toString(),
@@ -322,7 +386,7 @@ export function createMockCrossChainWithdrawalRefundActivity(
     orderId: `order-withdraw-${depositIndex}-${changeIndex}`,
     refundCommitment: `0xrefund-${depositIndex}-${changeIndex}`,
     netRefundAmount: refundAmount.toString(),
-    refundFee: '0',
+    refundFee: "0",
     refundFeeRecipient: TEST_USER_ADDRESS,
     ...overrides,
   };
@@ -333,16 +397,16 @@ export function createMockCrossChainWithdrawalRefundActivity(
  */
 export function createMockCrossChainDepositRefundActivity(
   depositIndex: number,
-  overrides: Partial<CrosschainDepositRefundActivity> = {},
+  overrides: Partial<CrosschainDepositRefundActivity> = {}
 ): CrosschainDepositRefundActivity {
   return {
-    type: 'CROSSCHAIN_DEPOSIT_REFUND',
+    type: "CROSSCHAIN_DEPOSIT_REFUND",
     txHash: `0xtx-deposit-refund-${depositIndex}-${++activityCounter}`,
-    chainId: '84532', // Origin chain
+    chainId: "84532", // Origin chain
     timestamp: Date.now().toString(),
     user: TEST_USER_ADDRESS,
     pool: TEST_POOL_ADDRESS,
-    amount: '0',
+    amount: "0",
     orderId: `order-pending-${depositIndex}`,
     ...overrides,
   };
@@ -355,16 +419,16 @@ export function createMockRagequitActivity(
   depositIndex: number,
   changeIndex: number,
   commitment: string,
-  overrides: Partial<RagequitActivity> = {},
+  overrides: Partial<RagequitActivity> = {}
 ): RagequitActivity {
   return {
-    type: 'RAGEQUIT',
+    type: "RAGEQUIT",
     txHash: `0xtx-ragequit-${depositIndex}-${changeIndex}-${++activityCounter}`,
     chainId: TEST_CHAIN_ID,
     timestamp: Date.now().toString(),
     user: TEST_USER_ADDRESS,
     pool: TEST_POOL_ADDRESS,
-    amount: '0',
+    amount: "0",
     commitment,
     label: (depositIndex + 1000).toString(),
     ...overrides,
@@ -378,23 +442,28 @@ export function createMockRagequitActivity(
 export function createMockDepositNote(
   depositIndex: number,
   amount: string | bigint,
-  overrides: Partial<DepositNote> = {},
+  overrides: Partial<DepositNote> = {}
 ): DepositNote {
-  const precommitmentHash = deriveDepositPrecommitment(TEST_ACCOUNT_KEY, TEST_POOL_ADDRESS, TEST_CHAIN_ID, depositIndex);
+  const precommitmentHash = deriveDepositPrecommitment(
+    TEST_ACCOUNT_KEY,
+    TEST_POOL_ADDRESS,
+    TEST_CHAIN_ID,
+    depositIndex
+  );
 
   return {
-    noteType: 'deposit',
+    noteType: "deposit",
     serialNumber: generateSerialNumber(TEST_CHAIN_ID, depositIndex, 0),
     poolAddress: TEST_POOL_ADDRESS,
     depositIndex,
     changeIndex: 0,
     amount: amount.toString(),
     label: (depositIndex + 1000).toString(),
-    status: 'unspent',
+    status: "unspent",
     originTimestamp: Date.now().toString(),
     originChainId: TEST_CHAIN_ID,
     originTransactionHash: `0xtx-deposit-${depositIndex}`,
-    aspStatus: 'approved',
+    aspStatus: "approved",
     precommitmentHash,
     activityData: {},
     ...overrides,
@@ -405,21 +474,21 @@ export function createMockChangeNote(
   depositIndex: number,
   changeIndex: number,
   amount: string | bigint,
-  overrides: Partial<ChangeNote> = {},
+  overrides: Partial<ChangeNote> = {}
 ): ChangeNote {
   return {
-    noteType: 'change',
+    noteType: "change",
     serialNumber: generateSerialNumber(TEST_CHAIN_ID, depositIndex, changeIndex),
     poolAddress: TEST_POOL_ADDRESS,
     depositIndex,
     changeIndex,
     amount: amount.toString(),
     label: (depositIndex + 1000).toString(),
-    status: 'unspent',
+    status: "unspent",
     originTimestamp: Date.now().toString(),
     originChainId: TEST_CHAIN_ID,
     originTransactionHash: `0xtx-withdrawal-${depositIndex}-${changeIndex}`,
-    aspStatus: 'approved',
+    aspStatus: "approved",
     mergedFrom: {},
     activityData: {},
     ...overrides,
@@ -430,10 +499,10 @@ export function createMockWithdrawalIntent(
   depositIndex: number,
   changeIndex: number,
   amount: string | bigint,
-  overrides: Partial<WithdrawalIntent> = {},
+  overrides: Partial<WithdrawalIntent> = {}
 ): WithdrawalIntent {
   return {
-    intentType: 'withdrawalIntent',
+    intentType: "withdrawalIntent",
     poolAddress: TEST_POOL_ADDRESS,
     depositIndex,
     changeIndex,
@@ -441,7 +510,7 @@ export function createMockWithdrawalIntent(
     originTimestamp: Date.now().toString(),
     originChainId: TEST_CHAIN_ID,
     originTransactionHash: `0xtx-crosschain-${depositIndex}-${changeIndex}`,
-    destinationChainId: '84532',
+    destinationChainId: "84532",
     orderId: `order-${depositIndex}-${changeIndex}`,
     fillDeadline: (Math.floor(Date.now() / 1000) + 3600).toString(),
     expires: (Math.floor(Date.now() / 1000) + 86400).toString(),
@@ -458,11 +527,11 @@ export const createMockWithdrawalIntentNote = createMockWithdrawalIntent;
 export function createMockDepositIntent(
   depositIndex: number,
   amount: string | bigint,
-  overrides: Partial<DepositIntent> = {},
+  overrides: Partial<DepositIntent> = {}
 ): DepositIntent {
-  const chainId = '84532'; // Base Sepolia (origin)
+  const chainId = "84532"; // Base Sepolia (origin)
   return {
-    intentType: 'depositIntent',
+    intentType: "depositIntent",
     poolAddress: TEST_POOL_ADDRESS,
     depositIndex,
     changeIndex: 0,
@@ -470,7 +539,7 @@ export function createMockDepositIntent(
     originTimestamp: Date.now().toString(),
     originChainId: chainId,
     originTransactionHash: `0xtx-deposit-intent-${depositIndex}`,
-    destinationChainId: '421614', // Arbitrum Sepolia (pool chain)
+    destinationChainId: "421614", // Arbitrum Sepolia (pool chain)
     orderId: `order-deposit-${depositIndex}`,
     fillDeadline: (Math.floor(Date.now() / 1000) + 3600).toString(),
     expires: (Math.floor(Date.now() / 1000) + 86400).toString(),
@@ -486,21 +555,21 @@ export function createMockWithdrawalRefundedNote(
   depositIndex: number,
   changeIndex: number,
   amount: string | bigint,
-  overrides: Partial<WithdrawalRefundedNote> = {},
+  overrides: Partial<WithdrawalRefundedNote> = {}
 ): WithdrawalRefundedNote {
   return {
-    noteType: 'withdrawalRefunded',
+    noteType: "withdrawalRefunded",
     serialNumber: generateSerialNumber(TEST_CHAIN_ID, depositIndex, changeIndex, 0), // refundIndex=0
     poolAddress: TEST_POOL_ADDRESS,
     depositIndex,
     changeIndex,
     amount: amount.toString(),
     label: (depositIndex + 1000).toString(),
-    status: 'unspent',
+    status: "unspent",
     originTimestamp: Date.now().toString(),
     originChainId: TEST_CHAIN_ID,
     originTransactionHash: `0xtx-refund-${depositIndex}-${changeIndex}`,
-    aspStatus: 'approved',
+    aspStatus: "approved",
     refundCommitment: `0xrefund-${depositIndex}-${changeIndex}`,
     activityData: {},
     ...overrides,
@@ -511,15 +580,15 @@ export function createMockRagequitNote(
   depositIndex: number,
   changeIndex: number,
   amount: string | bigint,
-  overrides: Partial<RagequitNote> = {},
+  overrides: Partial<RagequitNote> = {}
 ): RagequitNote {
   return {
-    noteType: 'ragequit',
+    noteType: "ragequit",
     serialNumber: generateSerialNumber(TEST_CHAIN_ID, depositIndex, changeIndex, false),
     poolAddress: TEST_POOL_ADDRESS,
     depositIndex,
     changeIndex,
-    amount: '0', // Terminal note has no remaining balance
+    amount: "0", // Terminal note has no remaining balance
     ragequitAmount: amount.toString(),
     originTimestamp: Date.now().toString(),
     originChainId: TEST_CHAIN_ID,
@@ -535,15 +604,15 @@ export function createMockMergedNote(
   changeIndex: number,
   amount: string | bigint,
   mergedIntoSerialNumber: string,
-  overrides: Partial<MergedNote> = {},
+  overrides: Partial<MergedNote> = {}
 ): MergedNote {
   return {
-    noteType: 'merged',
+    noteType: "merged",
     serialNumber: generateSerialNumber(TEST_CHAIN_ID, depositIndex, changeIndex, false),
     poolAddress: TEST_POOL_ADDRESS,
     depositIndex,
     changeIndex,
-    amount: '0', // Terminal note has no remaining balance
+    amount: "0", // Terminal note has no remaining balance
     contributedAmount: amount.toString(),
     originTimestamp: Date.now().toString(),
     originChainId: TEST_CHAIN_ID,
@@ -561,10 +630,7 @@ export function createMockMergedNote(
 /**
  * Create a NoteTree with just a deposit note at the root
  */
-export function createMockNoteTree(
-  depositIndex: number,
-  depositAmount: string | bigint,
-): NoteTree {
+export function createMockNoteTree(depositIndex: number, depositAmount: string | bigint): NoteTree {
   const depositNote = createMockDepositNote(depositIndex, depositAmount);
   return createNoteTree(depositNote);
 }
@@ -575,10 +641,10 @@ export function createMockNoteTree(
 export function createMockTreeWithWithdrawal(
   depositIndex: number,
   depositAmount: string | bigint,
-  withdrawnAmount: string | bigint,
+  withdrawnAmount: string | bigint
 ): NoteTree {
   const remaining = BigInt(depositAmount) - BigInt(withdrawnAmount);
-  const depositNote = createMockDepositNote(depositIndex, depositAmount, { status: 'spent' });
+  const depositNote = createMockDepositNote(depositIndex, depositAmount, { status: "spent" });
   const changeNote = createMockChangeNote(depositIndex, 1, remaining);
 
   const tree = createNoteTree(depositNote);
@@ -602,7 +668,7 @@ export function resetActivityCounter(): void {
 export function toEther(amount: number): bigint {
   // Convert to string to handle decimals properly
   const str = amount.toString();
-  const [whole, decimal = ''] = str.split('.');
-  const paddedDecimal = decimal.padEnd(18, '0').slice(0, 18);
+  const [whole, decimal = ""] = str.split(".");
+  const paddedDecimal = decimal.padEnd(18, "0").slice(0, 18);
   return BigInt(whole + paddedDecimal);
 }

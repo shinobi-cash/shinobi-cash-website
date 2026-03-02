@@ -346,19 +346,48 @@ function deriveExistingNullifierAndSecret(
 ): { nullifier: bigint; secret: bigint } {
   if (note.noteType === "withdrawalRefunded") {
     return {
-      nullifier: deriveRefundNullifier(accountKey, poolAddress, note.originChainId, note.depositIndex, note.changeIndex),
-      secret: deriveRefundSecret(accountKey, poolAddress, note.originChainId, note.depositIndex, note.changeIndex),
+      nullifier: deriveRefundNullifier(
+        accountKey,
+        poolAddress,
+        note.originChainId,
+        note.depositIndex,
+        note.changeIndex
+      ),
+      secret: deriveRefundSecret(
+        accountKey,
+        poolAddress,
+        note.originChainId,
+        note.depositIndex,
+        note.changeIndex
+      ),
     };
   }
   if (note.noteType === "deposit" || note.noteType === "crosschainDeposit") {
     return {
-      nullifier: deriveDepositNullifier(accountKey, poolAddress, note.originChainId, note.depositIndex),
+      nullifier: deriveDepositNullifier(
+        accountKey,
+        poolAddress,
+        note.originChainId,
+        note.depositIndex
+      ),
       secret: deriveDepositSecret(accountKey, poolAddress, note.originChainId, note.depositIndex),
     };
   }
   return {
-    nullifier: deriveChangeNullifier(accountKey, poolAddress, note.originChainId, note.depositIndex, note.changeIndex),
-    secret: deriveChangeSecret(accountKey, poolAddress, note.originChainId, note.depositIndex, note.changeIndex),
+    nullifier: deriveChangeNullifier(
+      accountKey,
+      poolAddress,
+      note.originChainId,
+      note.depositIndex,
+      note.changeIndex
+    ),
+    secret: deriveChangeSecret(
+      accountKey,
+      poolAddress,
+      note.originChainId,
+      note.depositIndex,
+      note.changeIndex
+    ),
   };
 }
 
@@ -378,7 +407,11 @@ export function calculateContextHash(
 }
 
 export function derivedNoteCommitment(accountKey: bigint, note: SpendableNote): bigint {
-  const { nullifier, secret } = deriveExistingNullifierAndSecret(note, accountKey, note.poolAddress);
+  const { nullifier, secret } = deriveExistingNullifierAndSecret(
+    note,
+    accountKey,
+    note.poolAddress
+  );
 
   return poseidon3([
     BigInt(note.amount),
@@ -668,7 +701,9 @@ export function formatRagequitProofForContract(
  */
 export function encodeRagequitCallData(proof: ContractRagequitProof): `0x${string}` {
   const fn = AbiFunction.fromAbi(PoolRagequitAbi, "ragequit");
-  return AbiFunction.encodeData(fn, [{ pA: proof.pA, pB: proof.pB, pC: proof.pC, pubSignals: proof.pubSignals }]);
+  return AbiFunction.encodeData(fn, [
+    { pA: proof.pA, pB: proof.pB, pC: proof.pC, pubSignals: proof.pubSignals },
+  ]);
 }
 
 /**

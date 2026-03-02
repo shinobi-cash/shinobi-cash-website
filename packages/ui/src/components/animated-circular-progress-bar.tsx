@@ -1,13 +1,13 @@
-import type React from "react"
-import { cn } from "@workspace/ui/lib/utils"
+import type React from "react";
+import { cn } from "@workspace/ui/lib/utils";
 
 interface AnimatedCircularProgressBarProps {
-  max?: number
-  min?: number
-  value: number
-  gaugePrimaryColor: string
-  gaugeSecondaryColor: string
-  className?: string
+  max?: number;
+  min?: number;
+  value: number;
+  gaugePrimaryColor: string;
+  gaugeSecondaryColor: string;
+  className?: string;
 }
 
 export function AnimatedCircularProgressBar({
@@ -19,9 +19,9 @@ export function AnimatedCircularProgressBar({
   className,
   children, // added children prop to allow custom content inside the progress bar
 }: AnimatedCircularProgressBarProps & { children?: React.ReactNode }) {
-  const circumference = 2 * Math.PI * 45
-  const percentPx = circumference / 100
-  const currentPercent = Math.round(((value - min) / (max - min)) * 100)
+  const circumference = 2 * Math.PI * 45;
+  const percentPx = circumference / 100;
+  const currentPercent = Math.round(((value - min) / (max - min)) * 100);
 
   return (
     <div
@@ -57,7 +57,8 @@ export function AnimatedCircularProgressBar({
                 stroke: gaugeSecondaryColor,
                 "--stroke-percent": 90 - currentPercent,
                 "--offset-factor-secondary": "calc(1 - var(--offset-factor))",
-                strokeDasharray: "calc(var(--stroke-percent) * var(--percent-to-px)) var(--circumference)",
+                strokeDasharray:
+                  "calc(var(--stroke-percent) * var(--percent-to-px)) var(--circumference)",
                 transform:
                   "rotate(calc(1turn - 90deg - (var(--gap-percent) * var(--percent-to-deg) * var(--offset-factor-secondary)))) scaleY(-1)",
                 transition: "all var(--transition-length) ease var(--delay)",
@@ -79,11 +80,13 @@ export function AnimatedCircularProgressBar({
             {
               stroke: gaugePrimaryColor,
               "--stroke-percent": currentPercent,
-              strokeDasharray: "calc(var(--stroke-percent) * var(--percent-to-px)) var(--circumference)",
+              strokeDasharray:
+                "calc(var(--stroke-percent) * var(--percent-to-px)) var(--circumference)",
               transition:
                 "var(--transition-length) ease var(--delay),stroke var(--transition-length) ease var(--delay)",
               transitionProperty: "stroke-dasharray,transform",
-              transform: "rotate(calc(-90deg + var(--gap-percent) * var(--offset-factor) * var(--percent-to-deg)))",
+              transform:
+                "rotate(calc(-90deg + var(--gap-percent) * var(--offset-factor) * var(--percent-to-deg)))",
               transformOrigin: "50px 50px", // fixed transform origin for better centering
             } as React.CSSProperties
           }
@@ -93,12 +96,12 @@ export function AnimatedCircularProgressBar({
         {children || (
           <span
             data-current-value={currentPercent}
-            className="animate-in fade-in size-fit delay-(--delay) duration-(--transition-length) ease-linear"
+            className="animate-in fade-in delay-(--delay) duration-(--transition-length) size-fit ease-linear"
           >
             {currentPercent}
           </span>
         )}
       </div>
     </div>
-  )
+  );
 }

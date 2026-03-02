@@ -335,7 +335,12 @@ function plan1x1Withdrawal(
 
   const newNullifierHash =
     remaining > 0n
-      ? deriver.deriveNullifierHash(poolAddress, Number(originChainId), depositIndex, newChangeIndex)
+      ? deriver.deriveNullifierHash(
+          poolAddress,
+          Number(originChainId),
+          depositIndex,
+          newChangeIndex
+        )
       : null;
 
   return {

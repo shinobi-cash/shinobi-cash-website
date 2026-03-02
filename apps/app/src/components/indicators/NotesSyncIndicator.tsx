@@ -37,9 +37,7 @@ export function NotesSyncIndicator() {
           ) : (
             <RotateCw className="h-3.5 w-3.5 text-neutral-400" />
           )}
-          <span className="text-neutral-400">
-            {isSyncing ? "Syncing..." : "Sync"}
-          </span>
+          <span className="text-neutral-400">{isSyncing ? "Syncing..." : "Sync"}</span>
         </button>
       </TooltipTrigger>
       <TooltipContent>

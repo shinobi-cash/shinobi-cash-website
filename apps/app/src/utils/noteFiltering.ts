@@ -6,12 +6,7 @@
 
 import type { NoteOrIntent } from "@shinobi-cash/core/discovery";
 import type { ActivityItem } from "@shinobi-cash/data";
-import {
-  isIntent,
-  isNote,
-  isTerminalNote,
-  isSpendableNote,
-} from "@shinobi-cash/core/discovery";
+import { isIntent, isNote, isTerminalNote, isSpendableNote } from "@shinobi-cash/core/discovery";
 
 /**
  * Get Tailwind background color class for note status dot.

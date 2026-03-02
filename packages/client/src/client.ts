@@ -5,11 +5,7 @@
  * Extend with action extensions for deposits, withdrawals, etc.
  */
 
-import {
-  POOL_CHAIN,
-  SHINOBI_CASH_ETH_POOL,
-  PoolScopeAbi,
-} from "@shinobi-cash/constants";
+import { POOL_CHAIN, SHINOBI_CASH_ETH_POOL, PoolScopeAbi } from "@shinobi-cash/constants";
 import {
   NoteDiscovery,
   getSpendableNotes as coreGetSpendableNotes,
@@ -21,11 +17,7 @@ import {
 } from "@shinobi-cash/core/discovery";
 import { isSpendableNote } from "@shinobi-cash/core/discovery";
 import type { PublicClient } from "viem";
-import type {
-  ShinobiCashClientConfig,
-  BaseShinobiCashClient,
-  ClientContext,
-} from "./types.js";
+import type { ShinobiCashClientConfig, BaseShinobiCashClient, ClientContext } from "./types.js";
 import { createDefaultPublicClients } from "./defaults.js";
 
 import type { StorageLayer } from "@shinobi-cash/core/discovery";
@@ -48,7 +40,10 @@ export function createShinobiCashClient(config: ShinobiCashClientConfig): BaseSh
   const { account, indexer, publicClients: publicClientOverrides, ipfsGateways } = config;
   const storage = resolveStorage(config);
   const poolAddress = SHINOBI_CASH_ETH_POOL.address as `0x${string}`;
-  const publicClients = { ...createDefaultPublicClients(), ...publicClientOverrides } as Record<number, PublicClient>;
+  const publicClients = { ...createDefaultPublicClients(), ...publicClientOverrides } as Record<
+    number,
+    PublicClient
+  >;
 
   function requirePublicClient(chainId: number): PublicClient {
     const publicClient = publicClients[chainId];
@@ -67,7 +62,11 @@ export function createShinobiCashClient(config: ShinobiCashClientConfig): BaseSh
 
   async function fetchContext() {
     const [poolScope, stateTree, aspRootInfo] = await Promise.all([
-      requirePublicClient(POOL_CHAIN.id).readContract({ address: poolAddress, abi: PoolScopeAbi, functionName: "SCOPE" }) as Promise<bigint>,
+      requirePublicClient(POOL_CHAIN.id).readContract({
+        address: poolAddress,
+        abi: PoolScopeAbi,
+        functionName: "SCOPE",
+      }) as Promise<bigint>,
       indexer.getStateTree(poolAddress),
       indexer.getASPRootInfo(),
     ]);
@@ -126,7 +125,10 @@ export function createShinobiCashClient(config: ShinobiCashClientConfig): BaseSh
     },
 
     // Chain utilities
-    async estimateGas(params: { to: `0x${string}`; data: `0x${string}`; value: bigint; account?: `0x${string}` }, chainId: number): Promise<bigint> {
+    async estimateGas(
+      params: { to: `0x${string}`; data: `0x${string}`; value: bigint; account?: `0x${string}` },
+      chainId: number
+    ): Promise<bigint> {
       const publicClient = requirePublicClient(chainId);
       return publicClient.estimateGas(params);
     },
@@ -136,7 +138,10 @@ export function createShinobiCashClient(config: ShinobiCashClientConfig): BaseSh
       return publicClient.getGasPrice();
     },
 
-    async waitForTransaction(txHash: `0x${string}`, chainId: number): Promise<{ status: "success" | "reverted" }> {
+    async waitForTransaction(
+      txHash: `0x${string}`,
+      chainId: number
+    ): Promise<{ status: "success" | "reverted" }> {
       const publicClient = requirePublicClient(chainId);
       return publicClient.waitForTransactionReceipt({ hash: txHash });
     },

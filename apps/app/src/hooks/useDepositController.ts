@@ -43,13 +43,7 @@ export function useDepositController() {
       balance: balance?.value ? formatEther(balance.value) : "0",
       walletClient: walletClient,
     });
-  }, [
-    isConnected,
-    address,
-    chainId,
-    balance?.value,
-    walletClient,
-  ]);
+  }, [isConnected, address, chainId, balance?.value, walletClient]);
 
   return snapshot;
 }

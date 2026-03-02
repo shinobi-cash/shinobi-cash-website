@@ -77,7 +77,9 @@ export function NoteRow({ note, onClick }: NoteRowProps) {
             <div className="flex items-center gap-2">
               <span className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ${dotColor}`} />
               <span className="truncate font-mono text-sm font-medium text-white">
-                {isIntentNote ? `Order ${note.orderId.slice(0, 6)}...${note.orderId.slice(-4)}` : note.serialNumber}
+                {isIntentNote
+                  ? `Order ${note.orderId.slice(0, 6)}...${note.orderId.slice(-4)}`
+                  : note.serialNumber}
               </span>
             </div>
             <div className="mt-0.5 pl-[18px] text-xs text-neutral-400">

@@ -24,11 +24,21 @@ export function withDeposit() {
 
     prepareDeposit(params: ClientDepositParams): Call {
       const depositIndex = ctx.getNextDepositIndex(POOL_CHAIN.id);
-      return ctx.account.encodeDeposit({ poolAddress: ctx.poolAddress, amountWei: params.amountWei, depositIndex });
+      return ctx.account.encodeDeposit({
+        poolAddress: ctx.poolAddress,
+        amountWei: params.amountWei,
+        depositIndex,
+      });
     },
 
     async deposit(call: Call, walletClient: WalletClient): Promise<`0x${string}`> {
-      return walletClient.sendTransaction({ account: walletClient.account!, chain: walletClient.chain, to: call.to, data: call.data, value: call.value });
+      return walletClient.sendTransaction({
+        account: walletClient.account!,
+        chain: walletClient.chain,
+        to: call.to,
+        data: call.data,
+        value: call.value,
+      });
     },
 
     async prepareRagequit(params: ClientRagequitParams): Promise<Call> {
@@ -36,7 +46,13 @@ export function withDeposit() {
     },
 
     async ragequit(call: Call, walletClient: WalletClient): Promise<`0x${string}`> {
-      return walletClient.sendTransaction({ account: walletClient.account!, chain: walletClient.chain, to: call.to, data: call.data, value: call.value });
+      return walletClient.sendTransaction({
+        account: walletClient.account!,
+        chain: walletClient.chain,
+        to: call.to,
+        data: call.data,
+        value: call.value,
+      });
     },
   });
 }

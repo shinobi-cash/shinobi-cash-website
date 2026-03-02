@@ -12,6 +12,6 @@ export function createDefaultPublicClients(): Record<number, PublicClient> {
     SHINOBI_CASH_SUPPORTED_CHAINS.map((c) => [
       c.id,
       createPublicClient({ chain: getChain(c.id), transport: http() }),
-    ]),
+    ])
   );
 }

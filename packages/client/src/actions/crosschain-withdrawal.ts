@@ -32,7 +32,7 @@ export function withCrosschainWithdrawal(relayer: ShinobiRelayer, solver: Shinob
       type: RelayOperationType,
       amountWei: bigint,
       recipient: `0x${string}`,
-      destinationChainId: number,
+      destinationChainId: number
     ) {
       const [chainCtx, { relayFeeBPS }] = await Promise.all([
         ctx.fetchContext(),
@@ -41,28 +41,50 @@ export function withCrosschainWithdrawal(relayer: ShinobiRelayer, solver: Shinob
 
       const relayAddress = relayer.getRelayAddress(type);
       const feeQuote = buildFeeQuote(amountWei, relayFeeBPS, solverFeeBPS);
-      const withdrawalData = createCrossChainWithdrawalData(recipient, destinationChainId, relayAddress, BigInt(feeQuote.solverFeeBPS));
+      const withdrawalData = createCrossChainWithdrawalData(
+        recipient,
+        destinationChainId,
+        relayAddress,
+        BigInt(feeQuote.solverFeeBPS)
+      );
 
       return { ...chainCtx, relayAddress, feeQuote, withdrawalData };
     }
 
     return {
-      async quoteCrosschainWithdrawal(params: { amountWei: bigint; destinationChainId: number }): Promise<WithdrawalFeeQuote> {
+      async quoteCrosschainWithdrawal(params: {
+        amountWei: bigint;
+        destinationChainId: number;
+      }): Promise<WithdrawalFeeQuote> {
         const type: RelayOperationType = "withdraw-crosschain";
         const { relayFeeBPS } = await relayer.quoteRelayFee({ type, amountWei: params.amountWei });
         return buildFeeQuote(params.amountWei, relayFeeBPS, solverFeeBPS);
       },
 
-      async quoteCrosschainWithdraw2(params: { amountWei: bigint; destinationChainId: number }): Promise<WithdrawalFeeQuote> {
+      async quoteCrosschainWithdraw2(params: {
+        amountWei: bigint;
+        destinationChainId: number;
+      }): Promise<WithdrawalFeeQuote> {
         const type: RelayOperationType = "withdraw2-crosschain";
         const { relayFeeBPS } = await relayer.quoteRelayFee({ type, amountWei: params.amountWei });
         return buildFeeQuote(params.amountWei, relayFeeBPS, solverFeeBPS);
       },
 
-      async prepareCrosschainWithdrawal(params: ClientCrosschainWithdrawParams): Promise<PreparedWithdrawalOp> {
+      async prepareCrosschainWithdrawal(
+        params: ClientCrosschainWithdrawParams
+      ): Promise<PreparedWithdrawalOp> {
         const type: RelayOperationType = "withdraw-crosschain";
-        const wctx = await resolveWithdrawalContext(type, params.amountWei, params.recipient, params.destinationChainId);
-        const aspProof = await resolveASPProof(wctx.aspRootCid, BigInt(params.note.label), ctx.ipfsGateways);
+        const wctx = await resolveWithdrawalContext(
+          type,
+          params.amountWei,
+          params.recipient,
+          params.destinationChainId
+        );
+        const aspProof = await resolveASPProof(
+          wctx.aspRootCid,
+          BigInt(params.note.label),
+          ctx.ipfsGateways
+        );
 
         const call = await ctx.account.encodeWithdrawal({
           note: params.note,
@@ -80,16 +102,23 @@ export function withCrosschainWithdrawal(relayer: ShinobiRelayer, solver: Shinob
         return { kind: "withdrawal", feeQuote: wctx.feeQuote, call, type };
       },
 
-      async prepareCrosschainWithdraw2(params: ClientCrosschainWithdraw2Params): Promise<PreparedWithdrawalOp> {
+      async prepareCrosschainWithdraw2(
+        params: ClientCrosschainWithdraw2Params
+      ): Promise<PreparedWithdrawalOp> {
         const type: RelayOperationType = "withdraw2-crosschain";
-        const wctx = await resolveWithdrawalContext(type, params.amountWei, params.recipient, params.destinationChainId);
+        const wctx = await resolveWithdrawalContext(
+          type,
+          params.amountWei,
+          params.recipient,
+          params.destinationChainId
+        );
 
         const { primary: primaryASPProof, secondary: secondaryASPProof } =
           await resolveASPProofsForWithdraw2(
             wctx.aspRootCid,
             BigInt(params.primaryNote.label),
             BigInt(params.secondaryNote.label),
-            ctx.ipfsGateways,
+            ctx.ipfsGateways
           );
 
         const call = await ctx.account.encodeWithdraw2({

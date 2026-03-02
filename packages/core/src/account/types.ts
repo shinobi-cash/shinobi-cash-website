@@ -104,7 +104,13 @@ export interface ShinobiAccount {
 
   // Crypto derivations (accountSecret stays in closure)
   derivePrecommitment(poolAddress: string, chainId: number, depositIndex: number): string;
-  deriveNullifierHash(poolAddress: string, chainId: number, depositIndex: number, changeIndex: number, noteType?: string): string;
+  deriveNullifierHash(
+    poolAddress: string,
+    chainId: number,
+    depositIndex: number,
+    changeIndex: number,
+    noteType?: string
+  ): string;
   deriveNoteCommitment(note: SpendableNote): bigint;
 
   // Encode protocol actions → Call

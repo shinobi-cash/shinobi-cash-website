@@ -154,11 +154,7 @@ export function createWithdrawalNote(
 
   return {
     noteType: "withdrawal",
-    serialNumber: generateSerialNumber(
-      originChainId,
-      parentNote.depositIndex,
-      parentChangeIndex
-    ),
+    serialNumber: generateSerialNumber(originChainId, parentNote.depositIndex, parentChangeIndex),
     poolAddress: parentNote.poolAddress,
     depositIndex: parentNote.depositIndex,
     changeIndex: parentChangeIndex,
@@ -228,11 +224,7 @@ export function createChangeNote(
 
   return {
     noteType: "change",
-    serialNumber: generateSerialNumber(
-      originChainId,
-      parentNote.depositIndex,
-      newChangeIndex
-    ),
+    serialNumber: generateSerialNumber(originChainId, parentNote.depositIndex, newChangeIndex),
     poolAddress: parentNote.poolAddress,
     depositIndex: parentNote.depositIndex,
     changeIndex: newChangeIndex,
@@ -265,11 +257,7 @@ export function createWithdraw2ChangeNote(
 
   return {
     noteType: "change",
-    serialNumber: generateSerialNumber(
-      originChainId,
-      winnerNote.depositIndex,
-      newChangeIndex
-    ),
+    serialNumber: generateSerialNumber(originChainId, winnerNote.depositIndex, newChangeIndex),
     poolAddress: winnerNote.poolAddress,
     depositIndex: winnerNote.depositIndex,
     changeIndex: newChangeIndex,

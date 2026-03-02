@@ -41,19 +41,19 @@ import type { ShinobiRelayer, RelayOperationType } from "../types.js";
 // ============================================================================
 
 const PAYMASTER_MAP: Record<RelayOperationType, `0x${string}`> = {
-  "withdraw": SHINOBI_CASH_RELAY_WITHDRAWAL_PAYMASTER.address as `0x${string}`,
+  withdraw: SHINOBI_CASH_RELAY_WITHDRAWAL_PAYMASTER.address as `0x${string}`,
   "withdraw-crosschain": SHINOBI_CASH_CROSSCHAIN_WITHDRAWAL_PAYMASTER.address as `0x${string}`,
-  "withdraw2": SHINOBI_CASH_WITHDRAW2_PAYMASTER.address as `0x${string}`,
+  withdraw2: SHINOBI_CASH_WITHDRAW2_PAYMASTER.address as `0x${string}`,
   "withdraw2-crosschain": SHINOBI_CASH_CROSSCHAIN_WITHDRAW2_PAYMASTER.address as `0x${string}`,
-  "refund": SHINOBI_CASH_CROSSCHAIN_WITHDRAWAL_PAYMASTER.address as `0x${string}`,
+  refund: SHINOBI_CASH_CROSSCHAIN_WITHDRAWAL_PAYMASTER.address as `0x${string}`,
 };
 
 const GAS_LIMITS_MAP: Record<RelayOperationType, GasLimits> = {
-  "withdraw": SAME_CHAIN_GAS_LIMITS,
+  withdraw: SAME_CHAIN_GAS_LIMITS,
   "withdraw-crosschain": CROSS_CHAIN_GAS_LIMITS,
-  "withdraw2": WITHDRAW2_SAME_CHAIN_GAS_LIMITS,
+  withdraw2: WITHDRAW2_SAME_CHAIN_GAS_LIMITS,
   "withdraw2-crosschain": WITHDRAW2_CROSS_CHAIN_GAS_LIMITS,
-  "refund": WITHDRAWAL_REFUND_GAS_LIMITS,
+  refund: WITHDRAWAL_REFUND_GAS_LIMITS,
 };
 
 // ============================================================================
@@ -64,7 +64,7 @@ async function createSmartAccountForWithdrawal(
   bundlerUrl: string,
   publicClient: PublicClient,
   paymasterAddress: `0x${string}`,
-  gasLimits: GasLimits,
+  gasLimits: GasLimits
 ): Promise<BundlerClient> {
   const account = privateKeyToAccount(WITHDRAWAL_ACCOUNT_PRIVATE_KEY);
 
@@ -108,7 +108,7 @@ async function prepareUserOp(
   bundlerClient: BundlerClient,
   publicClient: PublicClient,
   call: Call,
-  gasLimits: GasLimits,
+  gasLimits: GasLimits
 ): Promise<UserOperation<"0.7">> {
   if (!bundlerClient.account) {
     throw new Error("Smart account not initialized");
@@ -131,7 +131,7 @@ async function prepareUserOp(
 async function executeUserOp(
   bundlerClient: BundlerClient,
   userOp: UserOperation<"0.7">,
-  gasLimits: GasLimits,
+  gasLimits: GasLimits
 ): Promise<{ userOpHash: string; receipt: TransactionReceipt }> {
   userOp.callGasLimit = gasLimits.CALL_GAS_LIMIT;
   userOp.verificationGasLimit = gasLimits.VERIFICATION_GAS_LIMIT;
@@ -175,13 +175,20 @@ export function createBundlerRelayer(config: { url: string }): ShinobiRelayer {
       return PAYMASTER_MAP[type];
     },
 
-    async quoteRelayFee(params: { type: RelayOperationType; amountWei: bigint }): Promise<{ relayFeeBPS: number }> {
+    async quoteRelayFee(params: {
+      type: RelayOperationType;
+      amountWei: bigint;
+    }): Promise<{ relayFeeBPS: number }> {
       const gasLimits = GAS_LIMITS_MAP[params.type];
       const gasPrices = await publicClient.estimateFeesPerGas();
       const gasPriceWei = gasPrices.maxFeePerGas;
       const totalGas = calculateTotalGas(gasLimits);
       const gasCostWei = totalGas * gasPriceWei;
-      const relayFeeBPS = calculateRelayFeeBPS(params.amountWei, gasCostWei, FEE_CONFIG.MAX_RELAY_FEE_BPS);
+      const relayFeeBPS = calculateRelayFeeBPS(
+        params.amountWei,
+        gasCostWei,
+        FEE_CONFIG.MAX_RELAY_FEE_BPS
+      );
       return { relayFeeBPS };
     },
 
@@ -189,7 +196,12 @@ export function createBundlerRelayer(config: { url: string }): ShinobiRelayer {
       const paymasterAddress = PAYMASTER_MAP[params.type];
       const gasLimits = GAS_LIMITS_MAP[params.type];
 
-      const bundlerClient = await createSmartAccountForWithdrawal(url, publicClient, paymasterAddress, gasLimits);
+      const bundlerClient = await createSmartAccountForWithdrawal(
+        url,
+        publicClient,
+        paymasterAddress,
+        gasLimits
+      );
       const userOp = await prepareUserOp(bundlerClient, publicClient, params.call, gasLimits);
 
       userOp.callGasLimit = gasLimits.CALL_GAS_LIMIT;
@@ -216,7 +228,9 @@ export function createBundlerRelayer(config: { url: string }): ShinobiRelayer {
       }
 
       try {
-        const result = await bundlerClient.waitForUserOperationReceipt({ hash: txId as `0x${string}` });
+        const result = await bundlerClient.waitForUserOperationReceipt({
+          hash: txId as `0x${string}`,
+        });
         if (!result.success) {
           throw new Error(`UserOperation failed: ${result.reason || "unknown reason"}`);
         }

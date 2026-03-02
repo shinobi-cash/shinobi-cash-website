@@ -74,7 +74,10 @@ export class AccountRepository {
    * @param masterKey - Master Key (for deriving publicKey/address)
    * @returns Full account data with secrets and derived fields
    */
-  async getAccountMetadata(accountId: WalletAccountId, masterKey: string): Promise<AccountData | null> {
+  async getAccountMetadata(
+    accountId: WalletAccountId,
+    masterKey: string
+  ): Promise<AccountData | null> {
     const record = await this.getStoredAccountRecord(accountId);
     if (!record) return null;
 
@@ -93,7 +96,6 @@ export class AccountRepository {
   async accountExists(accountId: WalletAccountId): Promise<boolean> {
     return (await this.getStoredAccountRecord(accountId)) !== null;
   }
-
 }
 
 export const accountRepo = new AccountRepository(accountStorageAdapter);

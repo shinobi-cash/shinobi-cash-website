@@ -53,21 +53,33 @@ describe("regression: crypto/primitives", () => {
     expect(result).toBeTypeOf("bigint");
     expect(result).toBeGreaterThan(0n);
     // Snapshot the value — must remain stable after ox migration
-    expect(result.toString()).toMatchInlineSnapshot(`"6417162653045390202264337890678750733401491468966345146663814828579530092824"`);
+    expect(result.toString()).toMatchInlineSnapshot(
+      `"6417162653045390202264337890678750733401491468966345146663814828579530092824"`
+    );
   });
 
   it("createDeriveFn produces deterministic output for DepositSecretV1", () => {
     const derive = createDeriveFn("shinobi.cash:DepositSecretV1");
     const result = derive(TEST_ACCOUNT_KEY, TEST_POOL, TEST_CHAIN_ID, TEST_DEPOSIT_INDEX);
     expect(result).toBeTypeOf("bigint");
-    expect(result.toString()).toMatchInlineSnapshot(`"6492575679609266804640809611436911549149417603152092425881983136455889890841"`);
+    expect(result.toString()).toMatchInlineSnapshot(
+      `"6492575679609266804640809611436911549149417603152092425881983136455889890841"`
+    );
   });
 
   it("createDeriveFn with changeIndex produces deterministic output", () => {
     const derive = createDeriveFn("shinobi.cash:ChangeNullifierV1");
-    const result = derive(TEST_ACCOUNT_KEY, TEST_POOL, TEST_CHAIN_ID, TEST_DEPOSIT_INDEX, TEST_CHANGE_INDEX);
+    const result = derive(
+      TEST_ACCOUNT_KEY,
+      TEST_POOL,
+      TEST_CHAIN_ID,
+      TEST_DEPOSIT_INDEX,
+      TEST_CHANGE_INDEX
+    );
     expect(result).toBeTypeOf("bigint");
-    expect(result.toString()).toMatchInlineSnapshot(`"16101572740084665092460373882605629258890114746155324389139296675213269780524"`);
+    expect(result.toString()).toMatchInlineSnapshot(
+      `"16101572740084665092460373882605629258890114746155324389139296675213269780524"`
+    );
   });
 
   it("derivePrecommitment is deterministic", () => {
@@ -75,7 +87,9 @@ describe("regression: crypto/primitives", () => {
     const secret = 987654321n;
     const result = derivePrecommitment(nullifier, secret);
     expect(result).toBeTypeOf("bigint");
-    expect(result.toString()).toMatchInlineSnapshot(`"16832421271961222550979173996485995711342823810308835997146707681980704453417"`);
+    expect(result.toString()).toMatchInlineSnapshot(
+      `"16832421271961222550979173996485995711342823810308835997146707681980704453417"`
+    );
   });
 });
 
@@ -83,13 +97,27 @@ describe("regression: crypto/primitives", () => {
 
 describe("regression: deposit derivation", () => {
   it("deriveDepositNullifier is deterministic", () => {
-    const result = deriveDepositNullifier(TEST_ACCOUNT_KEY, TEST_POOL, TEST_CHAIN_ID, TEST_DEPOSIT_INDEX);
-    expect(result.toString()).toMatchInlineSnapshot(`"6417162653045390202264337890678750733401491468966345146663814828579530092824"`);
+    const result = deriveDepositNullifier(
+      TEST_ACCOUNT_KEY,
+      TEST_POOL,
+      TEST_CHAIN_ID,
+      TEST_DEPOSIT_INDEX
+    );
+    expect(result.toString()).toMatchInlineSnapshot(
+      `"6417162653045390202264337890678750733401491468966345146663814828579530092824"`
+    );
   });
 
   it("deriveDepositSecret is deterministic", () => {
-    const result = deriveDepositSecret(TEST_ACCOUNT_KEY, TEST_POOL, TEST_CHAIN_ID, TEST_DEPOSIT_INDEX);
-    expect(result.toString()).toMatchInlineSnapshot(`"6492575679609266804640809611436911549149417603152092425881983136455889890841"`);
+    const result = deriveDepositSecret(
+      TEST_ACCOUNT_KEY,
+      TEST_POOL,
+      TEST_CHAIN_ID,
+      TEST_DEPOSIT_INDEX
+    );
+    expect(result.toString()).toMatchInlineSnapshot(
+      `"6492575679609266804640809611436911549149417603152092425881983136455889890841"`
+    );
   });
 });
 
@@ -114,7 +142,9 @@ describe("regression: withdrawal encoding", () => {
     const [processooor, data] = createWithdrawalData(TEST_RECIPIENT, TEST_FEE_RECIPIENT, 500n);
     expect(processooor).toMatch(/^0x/);
     expect(data).toMatch(/^0x/);
-    expect(data).toMatchInlineSnapshot(`"0x000000000000000000000000aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa000000000000000000000000bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb00000000000000000000000000000000000000000000000000000000000001f4"`);
+    expect(data).toMatchInlineSnapshot(
+      `"0x000000000000000000000000aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa000000000000000000000000bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb00000000000000000000000000000000000000000000000000000000000001f4"`
+    );
   });
 
   it("createCrossChainWithdrawalData encodes correctly", () => {
@@ -126,20 +156,27 @@ describe("regression: withdrawal encoding", () => {
     );
     expect(processooor).toMatch(/^0x/);
     expect(data).toMatch(/^0x/);
-    expect(data).toMatchInlineSnapshot(`"0x000000000000000000000000bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb000000000000000000000000000000000000000000000000000000000000012c00014a340000000000000000aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"`);
+    expect(data).toMatchInlineSnapshot(
+      `"0x000000000000000000000000bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb000000000000000000000000000000000000000000000000000000000000012c00014a340000000000000000aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"`
+    );
   });
 
   it("calculateContextHash is deterministic", () => {
     const [processooor, data] = createWithdrawalData(TEST_RECIPIENT, TEST_FEE_RECIPIENT, 500n);
     const hash = calculateContextHash(1n, [processooor, data]);
     expect(hash).toBeDefined();
-    expect(hash).toMatchInlineSnapshot(`"18107120547601484244946207560178878039461005703381100006614469800586155513091"`);
+    expect(hash).toMatchInlineSnapshot(
+      `"18107120547601484244946207560178878039461005703381100006614469800586155513091"`
+    );
   });
 
   it("formatProofForContract structures correctly", () => {
     const result = formatProofForContract(MOCK_SNARKJS_PROOF, MOCK_PUBLIC_SIGNALS_8);
     expect(result.pA).toEqual([1n, 2n]);
-    expect(result.pB).toEqual([[5n, 4n], [7n, 6n]]);
+    expect(result.pB).toEqual([
+      [5n, 4n],
+      [7n, 6n],
+    ]);
     expect(result.pC).toEqual([10n, 11n]);
     expect(result.pubSignals).toEqual([100n, 200n, 300n, 400n, 500n, 600n, 700n, 800n]);
   });
@@ -156,7 +193,10 @@ describe("regression: withdrawal encoding", () => {
   it("encodeRagequitCallData produces valid calldata", () => {
     const ragequitProof = {
       pA: [1n, 2n] as [bigint, bigint],
-      pB: [[5n, 4n], [7n, 6n]] as [[bigint, bigint], [bigint, bigint]],
+      pB: [
+        [5n, 4n],
+        [7n, 6n],
+      ] as [[bigint, bigint], [bigint, bigint]],
       pC: [10n, 11n] as [bigint, bigint],
       pubSignals: [100n, 200n, 300n, 400n] as [bigint, bigint, bigint, bigint],
     };
@@ -170,22 +210,54 @@ describe("regression: withdrawal encoding", () => {
 
 describe("regression: change/refund derivation", () => {
   it("deriveChangeNullifier is deterministic", () => {
-    const result = deriveChangeNullifier(TEST_ACCOUNT_KEY, TEST_POOL, TEST_CHAIN_ID, TEST_DEPOSIT_INDEX, TEST_CHANGE_INDEX);
-    expect(result.toString()).toMatchInlineSnapshot(`"16101572740084665092460373882605629258890114746155324389139296675213269780524"`);
+    const result = deriveChangeNullifier(
+      TEST_ACCOUNT_KEY,
+      TEST_POOL,
+      TEST_CHAIN_ID,
+      TEST_DEPOSIT_INDEX,
+      TEST_CHANGE_INDEX
+    );
+    expect(result.toString()).toMatchInlineSnapshot(
+      `"16101572740084665092460373882605629258890114746155324389139296675213269780524"`
+    );
   });
 
   it("deriveChangeSecret is deterministic", () => {
-    const result = deriveChangeSecret(TEST_ACCOUNT_KEY, TEST_POOL, TEST_CHAIN_ID, TEST_DEPOSIT_INDEX, TEST_CHANGE_INDEX);
-    expect(result.toString()).toMatchInlineSnapshot(`"6600103167520686444030277653132369994500086733044625944139908015648868836088"`);
+    const result = deriveChangeSecret(
+      TEST_ACCOUNT_KEY,
+      TEST_POOL,
+      TEST_CHAIN_ID,
+      TEST_DEPOSIT_INDEX,
+      TEST_CHANGE_INDEX
+    );
+    expect(result.toString()).toMatchInlineSnapshot(
+      `"6600103167520686444030277653132369994500086733044625944139908015648868836088"`
+    );
   });
 
   it("deriveRefundNullifier is deterministic", () => {
-    const result = deriveRefundNullifier(TEST_ACCOUNT_KEY, TEST_POOL, TEST_CHAIN_ID, TEST_DEPOSIT_INDEX, TEST_CHANGE_INDEX);
-    expect(result.toString()).toMatchInlineSnapshot(`"13043934301692330466553467277792063010833088036364823908157725870578209402874"`);
+    const result = deriveRefundNullifier(
+      TEST_ACCOUNT_KEY,
+      TEST_POOL,
+      TEST_CHAIN_ID,
+      TEST_DEPOSIT_INDEX,
+      TEST_CHANGE_INDEX
+    );
+    expect(result.toString()).toMatchInlineSnapshot(
+      `"13043934301692330466553467277792063010833088036364823908157725870578209402874"`
+    );
   });
 
   it("deriveRefundSecret is deterministic", () => {
-    const result = deriveRefundSecret(TEST_ACCOUNT_KEY, TEST_POOL, TEST_CHAIN_ID, TEST_DEPOSIT_INDEX, TEST_CHANGE_INDEX);
-    expect(result.toString()).toMatchInlineSnapshot(`"16318662437564850295066054947169458947026524483225157789878861615488826799158"`);
+    const result = deriveRefundSecret(
+      TEST_ACCOUNT_KEY,
+      TEST_POOL,
+      TEST_CHAIN_ID,
+      TEST_DEPOSIT_INDEX,
+      TEST_CHANGE_INDEX
+    );
+    expect(result.toString()).toMatchInlineSnapshot(
+      `"16318662437564850295066054947169458947026524483225157789878861615488826799158"`
+    );
   });
 });

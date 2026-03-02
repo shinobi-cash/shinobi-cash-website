@@ -154,27 +154,21 @@ export const WithdrawSelectors = {
 
   getNetAmount: () => {
     const feeQuote =
-      state.state.status === "ready"
-        ? state.state.prepared.feeQuote
-        : state.previewFeeQuote;
+      state.state.status === "ready" ? state.state.prepared.feeQuote : state.previewFeeQuote;
     if (!feeQuote) return 0;
     return parseFloat(formatEther(feeQuote.netAmountWei));
   },
 
   getExecutionFee: () => {
     const feeQuote =
-      state.state.status === "ready"
-        ? state.state.prepared.feeQuote
-        : state.previewFeeQuote;
+      state.state.status === "ready" ? state.state.prepared.feeQuote : state.previewFeeQuote;
     if (!feeQuote) return 0;
     return parseFloat(formatEther(feeQuote.executionFeeWei));
   },
 
   getSolverFee: () => {
     const feeQuote =
-      state.state.status === "ready"
-        ? state.state.prepared.feeQuote
-        : state.previewFeeQuote;
+      state.state.status === "ready" ? state.state.prepared.feeQuote : state.previewFeeQuote;
     if (!feeQuote) return 0;
     return parseFloat(formatEther(feeQuote.solverFeeWei));
   },
@@ -336,8 +330,14 @@ export const WithdrawController = {
 
       if (isCrossChain) {
         sdkQuote = this._isWithdraw2()
-          ? await client.quoteCrosschainWithdraw2({ amountWei, destinationChainId: state.destinationChainId })
-          : await client.quoteCrosschainWithdrawal({ amountWei, destinationChainId: state.destinationChainId });
+          ? await client.quoteCrosschainWithdraw2({
+              amountWei,
+              destinationChainId: state.destinationChainId,
+            })
+          : await client.quoteCrosschainWithdrawal({
+              amountWei,
+              destinationChainId: state.destinationChainId,
+            });
       } else {
         sdkQuote = this._isWithdraw2()
           ? await client.quoteWithdraw2({ amountWei })
@@ -384,7 +384,10 @@ export const WithdrawController = {
           labelSelector: selection.labelSelector,
         };
         prepared = isCrossChain
-          ? await client.prepareCrosschainWithdraw2({ ...w2Params, destinationChainId: state.destinationChainId })
+          ? await client.prepareCrosschainWithdraw2({
+              ...w2Params,
+              destinationChainId: state.destinationChainId,
+            })
           : await client.prepareWithdraw2(w2Params);
       } else {
         const selection = state.selection!;
@@ -395,7 +398,10 @@ export const WithdrawController = {
           recipient,
         };
         prepared = isCrossChain
-          ? await client.prepareCrosschainWithdrawal({ ...wParams, destinationChainId: state.destinationChainId })
+          ? await client.prepareCrosschainWithdrawal({
+              ...wParams,
+              destinationChainId: state.destinationChainId,
+            })
           : await client.prepareWithdrawal(wParams);
       }
 

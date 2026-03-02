@@ -77,6 +77,7 @@ AuthController (root - no dependencies)
 **Purpose**: Authentication and session management.
 
 **State Shape**:
+
 ```typescript
 interface AuthControllerState {
   state: AuthState;
@@ -96,6 +97,7 @@ type AuthSession = {
 ```
 
 **State Transitions**:
+
 ```
 booting → unauthenticated (no session)
 booting → authenticated (passkey auto-login)
@@ -124,6 +126,7 @@ authenticated → unauthenticated (logout)
 **Purpose**: Privacy note discovery and caching.
 
 **State Shape**:
+
 ```typescript
 interface NotesDiscoveryControllerState {
   state: DiscoveryState;
@@ -142,6 +145,7 @@ type DiscoveryState =
 ```
 
 **State Transitions**:
+
 ```
 idle → discovering (bootstrap/discover called)
 idle → ready (cache loaded)
@@ -160,6 +164,7 @@ error → discovering (retry)
 | `reset()` | Clear all state |
 
 **Sync triggers** (no background polling):
+
 1. On authentication (`bootstrap()` via AppRuntime)
 2. After transactions (controllers call `refresh()`)
 3. Manual user trigger (NotesSyncIndicator button)
@@ -185,6 +190,7 @@ error → discovering (retry)
 **Purpose**: Deposit flow orchestration.
 
 **State Shape**:
+
 ```typescript
 interface DepositControllerState {
   state: DepositState;
@@ -200,7 +206,12 @@ interface DepositControllerState {
 type DepositState =
   | { status: "idle" }
   | { status: "preparing"; step: "commitment" | "gas" }
-  | { status: "ready"; amounts: DepositAmounts; gasEstimate: GasEstimate; txRequest: TransactionRequest }
+  | {
+      status: "ready";
+      amounts: DepositAmounts;
+      gasEstimate: GasEstimate;
+      txRequest: TransactionRequest;
+    }
   | { status: "submitting" }
   | { status: "confirming"; txHash: `0x${string}` }
   | { status: "confirmed"; txHash: `0x${string}` }
@@ -235,6 +246,7 @@ type DepositState =
 **Purpose**: Withdrawal with ZK proofs. Supports both 1:1 withdrawals and 2:1 Withdraw2 merges.
 
 **State Shape**:
+
 ```typescript
 interface WithdrawControllerState {
   state: WithdrawState;
@@ -287,6 +299,7 @@ type WithdrawState =
 | `getWithdrawalMode()` | `"standard"` or `"withdraw2"` |
 
 **Note Selection & Routing**:
+
 - `selectNotesForWithdrawal()` from `@shinobi-cash/core/withdrawal` determines routing
 - 1 note → standard withdrawal via `client.prepareWithdrawal()`
 - 2 notes → Withdraw2 merge via `client.prepareWithdraw2()`
@@ -301,6 +314,7 @@ type WithdrawState =
 **Purpose**: Monitor transaction lifecycle from submission to indexer confirmation.
 
 **State Shape**:
+
 ```typescript
 interface TransactionTrackingState {
   status: "idle" | "pending" | "waiting" | "synced" | "failed";
@@ -309,6 +323,7 @@ interface TransactionTrackingState {
 ```
 
 **Flow**:
+
 ```
 trackTransaction(txHash) → pending → waiting (receipt confirmed) → synced (indexed)
                                    ↓
@@ -327,14 +342,17 @@ trackTransaction(txHash) → pending → waiting (receipt confirmed) → synced 
 ### 6. Screen Controllers (UI State Only)
 
 **NotesScreenController** (`src/controllers/NotesScreenController.ts`):
+
 - `activeFilter`: "available" | "pending" | "spent"
 - `selectedNoteChain`: NoteChain | null
 
 **ActivityScreenController** (`src/controllers/ActivityScreenController.ts`):
+
 - `activeFilter`: "all" | "deposit" | "withdrawal" | "refund"
 - `selectedActivityId`: string | null
 
 **ActivityDiscoveryController** (`src/controllers/ActivityDiscoveryController.ts`):
+
 - Derives activities from note chains (passive, no fetching)
 
 ---
@@ -358,17 +376,19 @@ ShinobiCashClient (@shinobi-cash/client)
 ### Singletons
 
 **AccountSingleton** (`src/runtime/AccountSingleton.ts`):
+
 ```typescript
-createAccount(privateKey)  // Called in AppRuntime.onAuthenticated()
-getShinobiAccount()        // Used by DepositController, RagequitController
-destroyAccount()           // Called in _teardown()
+createAccount(privateKey); // Called in AppRuntime.onAuthenticated()
+getShinobiAccount(); // Used by DepositController, RagequitController
+destroyAccount(); // Called in _teardown()
 ```
 
 **ClientSingleton** (`src/runtime/ClientSingleton.ts`):
+
 ```typescript
-createClient(account)      // Called in AppRuntime.onAuthenticated()
-getShinobiClient()         // Used by WithdrawController, NotesDiscoveryController
-destroyClient()            // Called in _teardown()
+createClient(account); // Called in AppRuntime.onAuthenticated()
+getShinobiClient(); // Used by WithdrawController, NotesDiscoveryController
+destroyClient(); // Called in _teardown()
 ```
 
 ---
@@ -439,6 +459,7 @@ Tier 3: IndexedDB Database
 ### Encryption Architecture
 
 **Envelope Encryption Pattern**:
+
 ```
 Wallet Signature → HKDF → KEK (Key Encryption Key)
                             ↓
@@ -450,18 +471,19 @@ Master Key (MK) → HKDF → DEK (Data Encryption Key)
 ```
 
 **Key Properties**:
+
 - DEK and KEK are non-extractable (stay in browser crypto context)
 - Multiple auth methods (wallet + passkey) each have their own KEK
 - Both KEKs encrypt the same Master Key
 
 ### Storage Key Patterns
 
-| Store | Key Pattern | Value |
-|-------|-------------|-------|
-| `encrypted-notes` | `SHA256(publicKey + poolAddress)` | Encrypted note cache |
-| `account-metadata` | `{accountId}` | AccountMetadata (plaintext) |
-| `wrapped-master-key` | `{accountId}:mk:wallet\|passkey` | Encrypted Master Key |
-| SessionStorage | `shinobi_session` | SessionInfo |
+| Store                | Key Pattern                       | Value                       |
+| -------------------- | --------------------------------- | --------------------------- |
+| `encrypted-notes`    | `SHA256(publicKey + poolAddress)` | Encrypted note cache        |
+| `account-metadata`   | `{accountId}`                     | AccountMetadata (plaintext) |
+| `wrapped-master-key` | `{accountId}:mk:wallet\|passkey`  | Encrypted Master Key        |
+| SessionStorage       | `shinobi_session`                 | SessionInfo                 |
 
 ---
 
@@ -472,6 +494,7 @@ Master Key (MK) → HKDF → DEK (Data Encryption Key)
 **File**: `src/runtime/AppRuntime.ts`
 
 **Two Phases**:
+
 ```
 Phase 1: AppRuntime.start()
   └── AuthController.bootstrap() → Restore session (passkey or wallet)
@@ -654,6 +677,7 @@ Store notes in encrypted IndexedDB (via persistence callbacks)
 ```
 
 **No background polling** — syncs are explicit:
+
 1. On authentication (`bootstrap()`)
 2. After transactions (controllers call `refresh()`)
 3. Manual user trigger (NotesSyncIndicator button)
@@ -664,18 +688,18 @@ Store notes in encrypted IndexedDB (via persistence callbacks)
 
 ### Deposit Fees
 
-| Fee | Amount | When |
-|-----|--------|------|
-| Compliance Fee | 1% | Always |
-| Solver Fee | 5% | Cross-chain only |
-| Gas | Variable | Paid separately |
+| Fee            | Amount   | When             |
+| -------------- | -------- | ---------------- |
+| Compliance Fee | 1%       | Always           |
+| Solver Fee     | 5%       | Cross-chain only |
+| Gas            | Variable | Paid separately  |
 
 ### Withdrawal Fees
 
-| Fee | Amount | When |
-|-----|--------|------|
-| Relay Fee | Up to 15% (dynamic) | Covers gas |
-| Solver Fee | 5% | Cross-chain only |
+| Fee        | Amount              | When             |
+| ---------- | ------------------- | ---------------- |
+| Relay Fee  | Up to 15% (dynamic) | Covers gas       |
+| Solver Fee | 5%                  | Cross-chain only |
 
 **Note**: Withdrawals use Account Abstraction (ERC-4337) - users don't need ETH for gas.
 
@@ -704,6 +728,7 @@ Store notes in encrypted IndexedDB (via persistence callbacks)
 ### Overview
 
 Withdraw2 enables merging two notes into a single withdrawal + change output. This is useful for:
+
 - **Note Consolidation**: Combine fragmented small notes
 - **Privacy Enhancement**: Single output instead of multiple withdrawals
 - **Gas Efficiency**: One transaction instead of two
@@ -713,10 +738,11 @@ Withdraw2 enables merging two notes into a single withdrawal + change output. Th
 **File**: `src/app/(authenticated)/withdraw/page.tsx`
 
 The withdrawal page supports selecting up to 2 notes:
+
 ```typescript
 // Toggle note selection
 const toggleNote = (note: Note) => {
-  WithdrawController.selectNote(note);  // Adds/removes from selectedNotes[]
+  WithdrawController.selectNote(note); // Adds/removes from selectedNotes[]
 };
 
 // Display mode changes based on selection count
@@ -726,6 +752,7 @@ const isWithdraw2 = selectedNotes.length === 2;
 ### SDK Routing
 
 The WithdrawController routes to the correct SDK method:
+
 ```typescript
 // In prepare()
 const prepared = isWithdraw2
@@ -735,12 +762,13 @@ const prepared = isWithdraw2
 
 ### Proof Structures
 
-| Circuit | Signals | Description |
-|---------|---------|-------------|
-| withdraw2 | 9 | Same-chain 2:1 merge |
-| crosschain_withdraw2 | 10 | Cross-chain 2:1 merge (includes refundCommitment) |
+| Circuit              | Signals | Description                                       |
+| -------------------- | ------- | ------------------------------------------------- |
+| withdraw2            | 9       | Same-chain 2:1 merge                              |
+| crosschain_withdraw2 | 10      | Cross-chain 2:1 merge (includes refundCommitment) |
 
 **Signal Layout (Withdraw2 - 9 signals)**:
+
 ```
 [0] newCommitmentHash   - Change note commitment
 [1] nullifierHash0      - First note nullifier
@@ -754,6 +782,7 @@ const prepared = isWithdraw2
 ```
 
 **Signal Layout (CrosschainWithdraw2 - 10 signals)**:
+
 ```
 [0-8] Same as Withdraw2
 [9] refundCommitment    - For failed cross-chain refund
@@ -775,14 +804,14 @@ type Note = DepositNote | ChangeNote | RefundNote;
 interface DepositNote {
   type: "deposit";
   depositIndex: number;
-  changeIndex: 0;  // Always 0
+  changeIndex: 0; // Always 0
   // ...
 }
 
 interface ChangeNote {
   type: "change";
   depositIndex: number;
-  changeIndex: number;  // > 0
+  changeIndex: number; // > 0
   // ...
 }
 
@@ -791,18 +820,18 @@ interface RefundNote {
   // For failed cross-chain
 }
 
-type NoteChain = Note[];  // Full deposit history
+type NoteChain = Note[]; // Full deposit history
 ```
 
 ### Note States
 
-| State | Condition | Can Withdraw |
-|-------|-----------|--------------|
-| Available | unspent + activated + ASP approved | Yes |
+| State                 | Condition                           | Can Withdraw            |
+| --------------------- | ----------------------------------- | ----------------------- |
+| Available             | unspent + activated + ASP approved  | Yes                     |
 | Pending (Cross-chain) | unspent + !activated + isCrossChain | No (waiting for solver) |
-| Pending (ASP) | unspent + activated + ASP pending | No |
-| Rejected | unspent + activated + ASP rejected | Only ragequit |
-| Spent | spent | No |
+| Pending (ASP)         | unspent + activated + ASP pending   | No                      |
+| Rejected              | unspent + activated + ASP rejected  | Only ragequit           |
+| Spent                 | spent                               | No                      |
 
 ---
 
@@ -821,17 +850,19 @@ type NoteChain = Note[];  // Full deposit history
 | `WITHDRAWAL` | Withdrawal errors |
 
 **Usage**:
+
 ```typescript
-Errors.auth.failed("Custom message", cause)
-Errors.blockchain.userRejected(cause)
-Errors.withdrawal.proofFailed(cause)
+Errors.auth.failed("Custom message", cause);
+Errors.blockchain.userRejected(cause);
+Errors.withdrawal.proofFailed(cause);
 ```
 
 **Utilities**:
+
 ```typescript
-isUserCancellation(error)  // Don't show toast
-getUserMessage(error)      // User-friendly message
-logError(error)            // Deduplicated logging
+isUserCancellation(error); // Don't show toast
+getUserMessage(error); // User-friendly message
+logError(error); // Deduplicated logging
 ```
 
 ---
@@ -892,37 +923,37 @@ src/components/
 
 Full-screen components used for multi-step flows. Each screen manages its own state presentation.
 
-| Component | Purpose |
-|-----------|---------|
-| `DepositTimelineScreen` | Deposit transaction progress (3-step timeline) |
+| Component                  | Purpose                                           |
+| -------------------------- | ------------------------------------------------- |
+| `DepositTimelineScreen`    | Deposit transaction progress (3-step timeline)    |
 | `WithdrawalTimelineScreen` | Withdrawal transaction progress (3-step timeline) |
-| `DepositPreviewScreen` | Review deposit details before confirmation |
-| `WithdrawalPreviewScreen` | Review withdrawal details before confirmation |
-| `NoteSelectionScreen` | Select note for withdrawal |
-| `AssetChainSelectorScreen` | Select destination chain |
-| `NoteChainScreen` | View note history chain |
-| `ActivityDetailsScreen` | View activity details |
-| `AuthScreen` | Authentication flow |
+| `DepositPreviewScreen`     | Review deposit details before confirmation        |
+| `WithdrawalPreviewScreen`  | Review withdrawal details before confirmation     |
+| `NoteSelectionScreen`      | Select note for withdrawal                        |
+| `AssetChainSelectorScreen` | Select destination chain                          |
+| `NoteChainScreen`          | View note history chain                           |
+| `ActivityDetailsScreen`    | View activity details                             |
+| `AuthScreen`               | Authentication flow                               |
 
 ### Shared Components (`components/shared/`)
 
 Atomic, reusable UI components for forms and displays.
 
-| Component | Purpose |
-|-----------|---------|
-| `Timeline` | Shared timeline types, icons, and `TimelineSteps` component |
-| `ScreenHeader` | Consistent header with back button and title |
-| `CardContainer` | Styled card wrapper |
-| `AmountInput` | Numeric input for amounts |
-| `AmountDisplay` | Formatted amount display |
-| `AmountUsd` | USD value display |
-| `AssetPill` | Asset + chain badge |
-| `AssetChain` | Chain icon and name |
-| `PriceDisplay` | Current price display |
-| `FeeBreakdown` | Fee breakdown table |
-| `QuickAmountButtons` | 25%, 50%, Max buttons |
-| `SectionDivider` | Visual divider between sections |
-| `LabelWithHover` | Label with tooltip |
+| Component            | Purpose                                                     |
+| -------------------- | ----------------------------------------------------------- |
+| `Timeline`           | Shared timeline types, icons, and `TimelineSteps` component |
+| `ScreenHeader`       | Consistent header with back button and title                |
+| `CardContainer`      | Styled card wrapper                                         |
+| `AmountInput`        | Numeric input for amounts                                   |
+| `AmountDisplay`      | Formatted amount display                                    |
+| `AmountUsd`          | USD value display                                           |
+| `AssetPill`          | Asset + chain badge                                         |
+| `AssetChain`         | Chain icon and name                                         |
+| `PriceDisplay`       | Current price display                                       |
+| `FeeBreakdown`       | Fee breakdown table                                         |
+| `QuickAmountButtons` | 25%, 50%, Max buttons                                       |
+| `SectionDivider`     | Visual divider between sections                             |
+| `LabelWithHover`     | Label with tooltip                                          |
 
 ### Timeline Components
 
@@ -949,12 +980,12 @@ interface StepTiming {
 }
 
 // Components
-StepIcon        // Individual step status icon
-StatusIcon      // Hero status icon (complete/error/pending)
-TimelineSteps   // Full timeline rendering
+StepIcon; // Individual step status icon
+StatusIcon; // Hero status icon (complete/error/pending)
+TimelineSteps; // Full timeline rendering
 
 // Utilities
-formatDuration(startTime, endTime)  // "5s", "2m 30s"
+formatDuration(startTime, endTime); // "5s", "2m 30s"
 ```
 
 ### Timeline Screen Pattern
@@ -968,6 +999,7 @@ Both deposit and withdrawal timelines follow the same 3-step pattern:
 ```
 
 Each step tracks:
+
 - `timestamp`: When step started (formatted via `formatDateTime`)
 - `duration`: Time taken to complete (formatted via `formatDuration`)
 - `errorMessage`: Failure reason if step failed
@@ -975,8 +1007,8 @@ Each step tracks:
 
 ### Layout Components (`components/layout/`)
 
-| Component | Purpose |
-|-----------|---------|
+| Component      | Purpose                                          |
+| -------------- | ------------------------------------------------ |
 | `ScreenLayout` | Standard screen wrapper with header/footer slots |
 
 ```typescript
@@ -994,13 +1026,13 @@ Each step tracks:
 
 ## Monorepo Packages
 
-| Package | Purpose |
-|---------|---------|
-| `@shinobi-cash/core` | Crypto primitives, note discovery, proof generation, ShinobiAccount |
-| `@shinobi-cash/client` | Chain interaction layer (ShinobiCashClient, bundler, solver) |
-| `@shinobi-cash/constants` | Chain configs, addresses, ABIs, fee constants |
-| `@shinobi-cash/data` | IndexerClient with fluent query builder |
-| `@workspace/ui` | Shared shadcn/ui components |
+| Package                   | Purpose                                                             |
+| ------------------------- | ------------------------------------------------------------------- |
+| `@shinobi-cash/core`      | Crypto primitives, note discovery, proof generation, ShinobiAccount |
+| `@shinobi-cash/client`    | Chain interaction layer (ShinobiCashClient, bundler, solver)        |
+| `@shinobi-cash/constants` | Chain configs, addresses, ABIs, fee constants                       |
+| `@shinobi-cash/data`      | IndexerClient with fluent query builder                             |
+| `@workspace/ui`           | Shared shadcn/ui components                                         |
 
 ### SDK Highlights
 
@@ -1036,16 +1068,19 @@ NEXT_PUBLIC_RP_ID=            # WebAuthn relying party (optional)
 ## Common Debugging
 
 ### Auth Issues
+
 - **"No valid session"**: Check SessionStorage (tab-scoped, cleared on close)
 - **Passkey fails**: Check device PRF support, credentialId matches
 - **"Master Key unwrap failed"**: Check correct KEK being used
 
 ### Notes Issues
+
 - **Notes not appearing**: Check discovery status, filter settings, try manual sync
 - **Note stuck in pending**: Check isActivated, aspStatus, cross-chain solver
 - **Cannot withdraw**: Check `canWithdraw(note)` conditions
 
 ### Transaction Issues
+
 - **Stuck in pending**: Check network, transaction on explorer
 - **Not indexed**: Check indexer health, poll interval
 - **Proof generation slow**: Normal (5-15s), keep tab active
@@ -1054,23 +1089,23 @@ NEXT_PUBLIC_RP_ID=            # WebAuthn relying party (optional)
 
 ## Key Files Reference
 
-| File | Purpose |
-|------|---------|
-| `src/controllers/AuthController.ts` | Auth state machine |
-| `src/controllers/DepositController.ts` | Deposit state machine |
-| `src/controllers/WithdrawController.ts` | Withdrawal state machine |
-| `src/controllers/NotesDiscoveryController.ts` | Notes discovery |
-| `src/controllers/RagequitController.ts` | Emergency exit (public withdrawal) |
-| `src/runtime/AppRuntime.ts` | Lifecycle orchestration |
-| `src/runtime/AccountSingleton.ts` | ShinobiAccount singleton |
-| `src/runtime/ClientSingleton.ts` | ShinobiCashClient singleton |
-| `src/context/RuntimeBootstrap.tsx` | React-AppRuntime bridge |
-| `src/services/AccountService.ts` | Account lifecycle (KEK, MK, DEK) |
-| `src/services/KeyDerivationService.ts` | Key derivation (HKDF, WebAuthn PRF) |
-| `src/services/RefundEngine.ts` | Cross-chain withdrawal refund |
-| `src/lib/storage/repositories/` | Storage repositories |
-| `src/lib/storage/encryption.ts` | AES-GCM encryption for IndexedDB |
-| `src/lib/errors/errors.ts` | Error handling |
-| `src/components/shared/Timeline.tsx` | Shared timeline components |
-| `src/components/indicators/NotesSyncIndicator.tsx` | Manual sync button |
-| `src/utils/stateMachine.ts` | FSM with strict transition validation |
+| File                                               | Purpose                               |
+| -------------------------------------------------- | ------------------------------------- |
+| `src/controllers/AuthController.ts`                | Auth state machine                    |
+| `src/controllers/DepositController.ts`             | Deposit state machine                 |
+| `src/controllers/WithdrawController.ts`            | Withdrawal state machine              |
+| `src/controllers/NotesDiscoveryController.ts`      | Notes discovery                       |
+| `src/controllers/RagequitController.ts`            | Emergency exit (public withdrawal)    |
+| `src/runtime/AppRuntime.ts`                        | Lifecycle orchestration               |
+| `src/runtime/AccountSingleton.ts`                  | ShinobiAccount singleton              |
+| `src/runtime/ClientSingleton.ts`                   | ShinobiCashClient singleton           |
+| `src/context/RuntimeBootstrap.tsx`                 | React-AppRuntime bridge               |
+| `src/services/AccountService.ts`                   | Account lifecycle (KEK, MK, DEK)      |
+| `src/services/KeyDerivationService.ts`             | Key derivation (HKDF, WebAuthn PRF)   |
+| `src/services/RefundEngine.ts`                     | Cross-chain withdrawal refund         |
+| `src/lib/storage/repositories/`                    | Storage repositories                  |
+| `src/lib/storage/encryption.ts`                    | AES-GCM encryption for IndexedDB      |
+| `src/lib/errors/errors.ts`                         | Error handling                        |
+| `src/components/shared/Timeline.tsx`               | Shared timeline components            |
+| `src/components/indicators/NotesSyncIndicator.tsx` | Manual sync button                    |
+| `src/utils/stateMachine.ts`                        | FSM with strict transition validation |

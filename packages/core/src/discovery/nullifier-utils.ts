@@ -53,7 +53,14 @@ export function deriveAndHashNullifier(
   changeIndex: number,
   noteType?: string
 ): string {
-  const nullifier = deriveNullifier(accountKey, poolAddress, chainId, depositIndex, changeIndex, noteType);
+  const nullifier = deriveNullifier(
+    accountKey,
+    poolAddress,
+    chainId,
+    depositIndex,
+    changeIndex,
+    noteType
+  );
   return hashNullifier(nullifier);
 }
 

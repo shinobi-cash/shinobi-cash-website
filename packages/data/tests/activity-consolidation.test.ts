@@ -19,7 +19,9 @@ const BASE = {
   nullifierHash: "123",
 };
 
-function makeActivity(overrides: Partial<ActivityItem> & { type: ActivityItem["type"] }): ActivityItem {
+function makeActivity(
+  overrides: Partial<ActivityItem> & { type: ActivityItem["type"] }
+): ActivityItem {
   return { ...BASE, ...overrides } as ActivityItem;
 }
 

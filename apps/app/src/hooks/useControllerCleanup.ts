@@ -11,7 +11,7 @@ interface CleanupTarget {
  */
 export function useControllerCleanup(
   controller: CleanupTarget,
-  skipStatuses: string[] = ["submitting", "confirming"],
+  skipStatuses: string[] = ["submitting", "confirming"]
 ) {
   useEffect(() => {
     return () => {

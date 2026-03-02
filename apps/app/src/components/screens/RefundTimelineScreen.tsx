@@ -133,9 +133,7 @@ export function RefundTimelineScreen({
     {
       label: "Submitting",
       status: submittingStatus,
-      description: isDeposit
-        ? "Submitting refund transaction."
-        : "Submitting refund via bundler.",
+      description: isDeposit ? "Submitting refund transaction." : "Submitting refund via bundler.",
       errorMessage: isTransactionError ? getUserMessage(error) : undefined,
       link:
         explorerUrl && submittingStatus !== "pending"

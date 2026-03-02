@@ -8,10 +8,7 @@ import { Section, Row } from "@/components/shared/Section";
 import { LabelWithHover } from "@/components/shared/LabelWithHover";
 import { usePriceData } from "@/hooks/usePriceData";
 import { formatUsdAmount, formatDisplayAmount, formatHumanDuration } from "@/utils/formatters";
-import {
-  POOL_CHAIN,
-  SHINOBI_CASH_SUPPORTED_CHAINS,
-} from "@shinobi-cash/constants";
+import { POOL_CHAIN, SHINOBI_CASH_SUPPORTED_CHAINS } from "@shinobi-cash/constants";
 import { ShinobiCashNote, AssetChain } from "@/components/shared/AssetChain";
 
 interface DepositPreviewScreenProps {

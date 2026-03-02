@@ -171,11 +171,7 @@ export class AccountService {
 
     try {
       await masterKeyStore.initializeSession(passkeyKEK);
-      await masterKeyRepo.storeWrappedKey(
-        accountData.accountId,
-        "passkey",
-        accountData.privateKey
-      );
+      await masterKeyRepo.storeWrappedKey(accountData.accountId, "passkey", accountData.privateKey);
       const updatedMetadata: AccountMetadata = {
         accountId: accountData.accountId,
         credentialId,

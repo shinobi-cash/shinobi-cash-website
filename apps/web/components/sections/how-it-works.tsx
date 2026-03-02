@@ -17,7 +17,7 @@ function Step({ number, title, description, subtext, icon, emphasized }: StepPro
     <div className="relative flex flex-col items-center text-center">
       {/* Icon */}
       <div
-        className={`w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-orange-500/20 to-red-500/20 flex items-center justify-center mb-6 ${
+        className={`mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500/20 to-red-500/20 sm:h-20 sm:w-20 ${
           emphasized
             ? "border-2 border-orange-500/50 shadow-[0_0_30px_rgba(249,115,22,0.15)]"
             : "border border-orange-500/30"
@@ -27,26 +27,18 @@ function Step({ number, title, description, subtext, icon, emphasized }: StepPro
       </div>
 
       {/* Step Number */}
-      <div className="text-xs font-medium text-orange-400 mb-2">
-        Step {number}
-      </div>
+      <div className="mb-2 text-xs font-medium text-orange-400">Step {number}</div>
 
       {/* Title */}
-      <h3 className="text-lg sm:text-xl font-semibold text-white mb-3">
-        {title}
-      </h3>
+      <h3 className="mb-3 text-lg font-semibold text-white sm:text-xl">{title}</h3>
 
       {/* Description */}
-      <p className="text-neutral-400 text-sm sm:text-base leading-relaxed max-w-xs">
+      <p className="max-w-xs text-sm leading-relaxed text-neutral-400 sm:text-base">
         {description}
       </p>
 
       {/* Subtext */}
-      {subtext && (
-        <p className="text-neutral-500 text-xs sm:text-sm mt-2 max-w-xs">
-          {subtext}
-        </p>
-      )}
+      {subtext && <p className="mt-2 max-w-xs text-xs text-neutral-500 sm:text-sm">{subtext}</p>}
     </div>
   );
 }
@@ -57,22 +49,21 @@ const STEPS = [
     description:
       "Deposit ETH from any supported chain. Your funds enter a single unified privacy pool.",
     subtext: "No manual bridging required.",
-    icon: <ArrowDownToLine className="w-7 h-7 sm:w-8 sm:h-8 text-orange-400" />,
+    icon: <ArrowDownToLine className="h-7 w-7 text-orange-400 sm:h-8 sm:w-8" />,
     emphasized: false,
   },
   {
     title: "Blend",
-    description:
-      "Your deposit blends into a growing pool of users across chains.",
+    description: "Your deposit blends into a growing pool of users across chains.",
     subtext: "You stay in control — no one can move your funds except you.",
-    icon: <Users className="w-7 h-7 sm:w-8 sm:h-8 text-orange-400" />,
+    icon: <Users className="h-7 w-7 text-orange-400 sm:h-8 sm:w-8" />,
     emphasized: true,
   },
   {
     title: "Withdraw",
     description:
       "Withdraw to any chain using a zero-knowledge proof. No one can link your withdrawal to your deposit.",
-    icon: <ArrowUpFromLine className="w-7 h-7 sm:w-8 sm:h-8 text-orange-400" />,
+    icon: <ArrowUpFromLine className="h-7 w-7 text-orange-400 sm:h-8 sm:w-8" />,
     emphasized: false,
   },
 ];
@@ -89,7 +80,7 @@ export function HowItWorksSection() {
         </div>
       </div>
 
-      <div className="grid sm:grid-cols-3 gap-8 sm:gap-6 md:gap-12">
+      <div className="grid gap-8 sm:grid-cols-3 sm:gap-6 md:gap-12">
         {STEPS.map((step, index) => (
           <Step
             key={step.title}

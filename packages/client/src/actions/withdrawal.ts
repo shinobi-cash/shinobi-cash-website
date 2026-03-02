@@ -23,7 +23,7 @@ export function withWithdrawal(relayer: ShinobiRelayer) {
     async function resolveWithdrawalContext(
       type: RelayOperationType,
       amountWei: bigint,
-      recipient: `0x${string}`,
+      recipient: `0x${string}`
     ) {
       const [chainCtx, { relayFeeBPS }] = await Promise.all([
         ctx.fetchContext(),
@@ -32,7 +32,11 @@ export function withWithdrawal(relayer: ShinobiRelayer) {
 
       const relayAddress = relayer.getRelayAddress(type);
       const feeQuote = buildFeeQuote(amountWei, relayFeeBPS, 0);
-      const withdrawalData = createWithdrawalData(recipient, relayAddress, BigInt(feeQuote.relayFeeBPS));
+      const withdrawalData = createWithdrawalData(
+        recipient,
+        relayAddress,
+        BigInt(feeQuote.relayFeeBPS)
+      );
 
       return { ...chainCtx, feeQuote, withdrawalData };
     }
@@ -53,7 +57,11 @@ export function withWithdrawal(relayer: ShinobiRelayer) {
       async prepareWithdrawal(params: ClientWithdrawParams): Promise<PreparedWithdrawalOp> {
         const type: RelayOperationType = "withdraw";
         const wctx = await resolveWithdrawalContext(type, params.amountWei, params.recipient);
-        const aspProof = await resolveASPProof(wctx.aspRootCid, BigInt(params.note.label), ctx.ipfsGateways);
+        const aspProof = await resolveASPProof(
+          wctx.aspRootCid,
+          BigInt(params.note.label),
+          ctx.ipfsGateways
+        );
 
         const call = await ctx.account.encodeWithdrawal({
           note: params.note,
@@ -78,7 +86,7 @@ export function withWithdrawal(relayer: ShinobiRelayer) {
             wctx.aspRootCid,
             BigInt(params.primaryNote.label),
             BigInt(params.secondaryNote.label),
-            ctx.ipfsGateways,
+            ctx.ipfsGateways
           );
 
         const call = await ctx.account.encodeWithdraw2({

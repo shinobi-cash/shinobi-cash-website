@@ -109,9 +109,7 @@ function getTimelineLabel(activity: ActivityItem): string {
  * Cross-chain activities are grouped by orderId — only the final state is shown,
  * with a timeline of all related events.
  */
-export function consolidateActivities(
-  activities: ActivityItem[]
-): ConsolidatedActivity[] {
+export function consolidateActivities(activities: ActivityItem[]): ConsolidatedActivity[] {
   const orderGroups = new Map<string, ActivityItem[]>();
   const standaloneActivities: ActivityItem[] = [];
 
@@ -129,9 +127,7 @@ export function consolidateActivities(
   const entries: ConsolidatedActivity[] = [];
 
   for (const [, group] of orderGroups) {
-    const sorted = [...group].sort(
-      (a, b) => getActivityPriority(b) - getActivityPriority(a)
-    );
+    const sorted = [...group].sort((a, b) => getActivityPriority(b) - getActivityPriority(a));
     const finalActivity = sorted[0]!;
 
     const timeline: ActivityTimelineEvent[] = [...group]
@@ -162,9 +158,7 @@ export function consolidateActivities(
     });
   }
 
-  entries.sort(
-    (a, b) => Number(b.displayTimestamp) - Number(a.displayTimestamp)
-  );
+  entries.sort((a, b) => Number(b.displayTimestamp) - Number(a.displayTimestamp));
 
   return entries;
 }

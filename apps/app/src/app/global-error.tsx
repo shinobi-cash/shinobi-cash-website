@@ -35,7 +35,7 @@ export default function GlobalError({
             <div className="space-y-2">
               <button
                 onClick={() => reset()}
-                className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-white text-black font-medium"
+                className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-white font-medium text-black"
               >
                 <RefreshCw className="h-4 w-4" />
                 Try Again

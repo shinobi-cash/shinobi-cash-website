@@ -91,7 +91,11 @@ function getSubtreeIndex(label: string, numSubtrees: number): number {
   return Number(BigInt(label) % BigInt(numSubtrees));
 }
 
-function computeGlobalIndex(subtrees: SubtreeInfoV21[], subtreeIndex: number, localIndex: number): number {
+function computeGlobalIndex(
+  subtrees: SubtreeInfoV21[],
+  subtreeIndex: number,
+  localIndex: number
+): number {
   let globalIndex = 0;
   for (let i = 0; i < subtreeIndex; i++) {
     globalIndex += subtrees[i]!.labelCount;
@@ -105,7 +109,7 @@ function computeGlobalIndex(subtrees: SubtreeInfoV21[], subtreeIndex: number, lo
 async function resolveFromMainFile(
   mainFile: ASPApprovalListV21,
   label: bigint,
-  gateways: string[],
+  gateways: string[]
 ): Promise<PrecomputedASPProof> {
   const labelStr = label.toString();
 
@@ -133,8 +137,9 @@ async function resolveFromMainFile(
 
   // Use the stored global index from the proof file (the position in the globally sorted tree)
   // Falls back to computeGlobalIndex for older proof files without indices
-  const globalIndex = proofFile.indices?.[localIndex]
-    ?? computeGlobalIndex(mainFile.subtrees, subtreeIndex, localIndex);
+  const globalIndex =
+    proofFile.indices?.[localIndex] ??
+    computeGlobalIndex(mainFile.subtrees, subtreeIndex, localIndex);
 
   return {
     aspRoot: mainFile.root,
@@ -150,7 +155,7 @@ async function resolveFromMainFile(
 export async function resolveASPProof(
   ipfsCid: string,
   label: bigint,
-  gateways: string[] = DEFAULT_IPFS_GATEWAYS,
+  gateways: string[] = DEFAULT_IPFS_GATEWAYS
 ): Promise<PrecomputedASPProof> {
   const mainFile = await fetchFromIPFS<ASPApprovalListV21>(ipfsCid, gateways);
 
@@ -169,7 +174,7 @@ export async function resolveASPProofsForWithdraw2(
   ipfsCid: string,
   primaryLabel: bigint,
   secondaryLabel: bigint,
-  gateways: string[] = DEFAULT_IPFS_GATEWAYS,
+  gateways: string[] = DEFAULT_IPFS_GATEWAYS
 ): Promise<{ primary: PrecomputedASPProof; secondary: PrecomputedASPProof }> {
   const mainFile = await fetchFromIPFS<ASPApprovalListV21>(ipfsCid, gateways);
 

@@ -377,5 +377,4 @@ export const NotesDiscoveryController = {
     state.lastError = null;
     state.lastSyncedAt = null;
   },
-
 };

@@ -621,7 +621,13 @@ export type ActivityFetcher = (
 
 export interface NoteDeriver {
   derivePrecommitment(poolAddress: string, chainId: number, depositIndex: number): string;
-  deriveNullifierHash(poolAddress: string, chainId: number, depositIndex: number, changeIndex: number, noteType?: string): string;
+  deriveNullifierHash(
+    poolAddress: string,
+    chainId: number,
+    depositIndex: number,
+    changeIndex: number,
+    noteType?: string
+  ): string;
   deriveNoteCommitment(note: SpendableNote): bigint;
 }
 

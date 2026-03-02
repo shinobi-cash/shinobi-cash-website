@@ -60,10 +60,7 @@ function findNodeInTree(tree: NoteTree, serialNumber: string): NoteNode | null {
  * Used to link deposit activities to their resulting notes.
  * Label is unique per deposit and present in both activity and spendable notes.
  */
-export function findNoteByLabel(
-  label: string,
-  allTrees: NoteTree[]
-): NoteSearchResult | null {
+export function findNoteByLabel(label: string, allTrees: NoteTree[]): NoteSearchResult | null {
   for (const tree of allTrees) {
     const result = findNodeByLabel(tree, label);
     if (result) {
@@ -120,10 +117,11 @@ function findNodeBySpentNullifier(tree: NoteTree, nullifier: string): NoteNode |
     const item = node.note;
     // Check if this note was spent with the given nullifier
     // For Withdraw2, also check spentNullifier1
-    if (isNote(item) && (
-      item.activityData?.spentNullifier === nullifier ||
-      item.activityData?.spentNullifier1 === nullifier
-    )) {
+    if (
+      isNote(item) &&
+      (item.activityData?.spentNullifier === nullifier ||
+        item.activityData?.spentNullifier1 === nullifier)
+    ) {
       found = node;
     }
   });
@@ -228,7 +226,12 @@ function findIntentNodeByTxHash(tree: NoteTree, txHash: string): NoteNode | null
   traverseTree(tree, (node) => {
     const item = node.note;
     // Check if this is a withdrawal intent created by the given transaction
-    if (!isNote(item) && "intentType" in item && item.intentType === "withdrawalIntent" && item.originTransactionHash === txHash) {
+    if (
+      !isNote(item) &&
+      "intentType" in item &&
+      item.intentType === "withdrawalIntent" &&
+      item.originTransactionHash === txHash
+    ) {
       found = node;
     }
   });
@@ -281,7 +284,17 @@ export function sortNotesByTimestamp(
     const tsB = BigInt(b.node.note.originTimestamp);
     const diff = tsA - tsB;
     const zero = BigInt(0);
-    return direction === "desc" ? (diff > zero ? -1 : diff < zero ? 1 : 0) : diff > zero ? 1 : diff < zero ? -1 : 0;
+    return direction === "desc"
+      ? diff > zero
+        ? -1
+        : diff < zero
+          ? 1
+          : 0
+      : diff > zero
+        ? 1
+        : diff < zero
+          ? -1
+          : 0;
   });
 }
 

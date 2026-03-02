@@ -38,13 +38,7 @@ function getWithdrawalRefundClient() {
   return getShinobiClient().extend(withCrosschainWithdrawal(relayer, solver));
 }
 
-type RefundPhase =
-  | "idle"
-  | "fetching"
-  | "ready"
-  | "submitting"
-  | "confirming"
-  | "complete";
+type RefundPhase = "idle" | "fetching" | "ready" | "submitting" | "confirming" | "complete";
 
 export interface RefundRequest {
   orderId: string;
@@ -71,7 +65,10 @@ function getSettlerAddress(refundType: RefundType, originChainId: number): `0x${
   if (refundType === "withdrawal") {
     return SHINOBI_CASH_WITHDRAWAL_INPUT_SETTLER.address as `0x${string}`;
   }
-  const chainContracts = SHINOBI_CASH_CROSSCHAIN_CONTRACTS[originChainId as keyof typeof SHINOBI_CASH_CROSSCHAIN_CONTRACTS];
+  const chainContracts =
+    SHINOBI_CASH_CROSSCHAIN_CONTRACTS[
+      originChainId as keyof typeof SHINOBI_CASH_CROSSCHAIN_CONTRACTS
+    ];
   if (!chainContracts) {
     throw Errors.blockchain.contractError(`No deposit settler found for chain ${originChainId}`);
   }
@@ -203,7 +200,10 @@ export class RefundEngine {
     }
   }
 
-  private assertPrepared(expectedType: RefundType): { intent: Intent; rawIntent: RawShinobiIntent } {
+  private assertPrepared(expectedType: RefundType): {
+    intent: Intent;
+    rawIntent: RawShinobiIntent;
+  } {
     const { intent, rawIntent, refundType } = this.state;
     if (!intent || !rawIntent || refundType !== expectedType) {
       throw Errors.blockchain.contractError(

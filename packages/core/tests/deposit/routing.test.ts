@@ -27,9 +27,7 @@ describe("resolveDepositRoute", () => {
   });
 
   it("throws for unsupported chain", () => {
-    expect(() => resolveDepositRoute(UNSUPPORTED_CHAIN)).toThrow(
-      "Unsupported deposit chain"
-    );
+    expect(() => resolveDepositRoute(UNSUPPORTED_CHAIN)).toThrow("Unsupported deposit chain");
   });
 });
 

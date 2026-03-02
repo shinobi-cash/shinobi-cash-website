@@ -40,7 +40,10 @@ import type { ProofGenerator } from "../proof/types.js";
 
 import { poseidon1 } from "poseidon-lite/poseidon1";
 import { parseUserKey } from "../crypto/primitives.js";
-import { deriveAndHashNullifier, deriveDepositPrecommitment } from "../discovery/nullifier-utils.js";
+import {
+  deriveAndHashNullifier,
+  deriveDepositPrecommitment,
+} from "../discovery/nullifier-utils.js";
 import type { SpendableNote } from "../discovery/types.js";
 import { isSpendableNote } from "../discovery/types.js";
 
@@ -91,7 +94,9 @@ export function createShinobiAccount(config: ShinobiAccountConfig): ShinobiAccou
   async function getProofGenerator() {
     if (!_proofGenerator) {
       const { createDefaultProofGenerator, httpCircuitFetcher } = await loadProofModule();
-      _proofGenerator = createDefaultProofGenerator(getCircuits ?? httpCircuitFetcher("/circuits/"));
+      _proofGenerator = createDefaultProofGenerator(
+        getCircuits ?? httpCircuitFetcher("/circuits/")
+      );
     }
     return _proofGenerator;
   }
@@ -106,8 +111,21 @@ export function createShinobiAccount(config: ShinobiAccountConfig): ShinobiAccou
     return deriveDepositPrecommitment(accountSecret, pool, chainId, depositIndex);
   }
 
-  function _deriveNullifierHash(pool: string, chainId: number, depositIndex: number, changeIndex: number, noteType?: string): string {
-    return deriveAndHashNullifier(accountSecret, pool, chainId, depositIndex, changeIndex, noteType);
+  function _deriveNullifierHash(
+    pool: string,
+    chainId: number,
+    depositIndex: number,
+    changeIndex: number,
+    noteType?: string
+  ): string {
+    return deriveAndHashNullifier(
+      accountSecret,
+      pool,
+      chainId,
+      depositIndex,
+      changeIndex,
+      noteType
+    );
   }
 
   function _deriveNoteCommitment(note: SpendableNote): bigint {
@@ -116,7 +134,11 @@ export function createShinobiAccount(config: ShinobiAccountConfig): ShinobiAccou
 
   // ========== Deposit ==========
 
-  function _deriveDepositPrecommitment(poolAddress: string, chainId: number, depositIndex: number): bigint {
+  function _deriveDepositPrecommitment(
+    poolAddress: string,
+    chainId: number,
+    depositIndex: number
+  ): bigint {
     const nullifier = deriveDepositNullifier(accountSecret, poolAddress, chainId, depositIndex);
     const secret = deriveDepositSecret(accountSecret, poolAddress, chainId, depositIndex);
     return derivePrecommitment(nullifier, secret);
@@ -138,7 +160,12 @@ export function createShinobiAccount(config: ShinobiAccountConfig): ShinobiAccou
 
     const precommitment = _deriveDepositPrecommitment(poolAddress, chainId, depositIndex);
     const route = resolveDepositRoute(chainId);
-    const callParams = buildDepositCallParams(route, precommitment, settings ?? DEFAULT_DEPOSIT_SETTINGS, useDefaults);
+    const callParams = buildDepositCallParams(
+      route,
+      precommitment,
+      settings ?? DEFAULT_DEPOSIT_SETTINGS,
+      useDefaults
+    );
     const data = encodeDepositCallData(callParams);
 
     return { to: callParams.address, data, value: amountWei };
@@ -147,28 +174,70 @@ export function createShinobiAccount(config: ShinobiAccountConfig): ShinobiAccou
   // ========== Withdrawal ==========
 
   async function encodeWithdrawal(params: EncodeWithdrawalParams): Promise<Call> {
-    const { note, poolAddress, poolScope, stateCommitments, aspProof, withdrawalData, amountWei, isCrossChain, relayFeeBPS, refundFeeBPS } = params;
+    const {
+      note,
+      poolAddress,
+      poolScope,
+      stateCommitments,
+      aspProof,
+      withdrawalData,
+      amountWei,
+      isCrossChain,
+      relayFeeBPS,
+      refundFeeBPS,
+    } = params;
     const [processooor, data] = withdrawalData;
     const wd = { processooor, data };
-    const baseIntent = { withdrawAmount: amountWei, noteAmount: BigInt(note.amount), label: BigInt(note.label) };
+    const baseIntent = {
+      withdrawAmount: amountWei,
+      noteAmount: BigInt(note.amount),
+      label: BigInt(note.label),
+    };
 
     const proof = await loadProofModule();
     const pg = await getProofGenerator();
 
     let callData: `0x${string}`;
     if (isCrossChain) {
-      const derivation = deriveCrosschainWithdrawalInputs(note, accountSecret, poolAddress, poolScope, withdrawalData);
+      const derivation = deriveCrosschainWithdrawalInputs(
+        note,
+        accountSecret,
+        poolAddress,
+        poolScope,
+        withdrawalData
+      );
       const witness = proof.buildCrosschainWithdrawalCircuitWitnessWithProof(
-        derivation, stateCommitments, aspProof,
-        { ...baseIntent, relayFeeBPS: relayFeeBPS!, refundFeeBPS: refundFeeBPS! },
+        derivation,
+        stateCommitments,
+        aspProof,
+        { ...baseIntent, relayFeeBPS: relayFeeBPS!, refundFeeBPS: refundFeeBPS! }
       );
       const proofData = await pg.generateCrosschainWithdrawalProof(witness);
-      callData = encodeCrossChainWithdrawalCallData(wd, formatCrossChainProofForContract(proofData.proof, proofData.publicSignals), poolScope);
+      callData = encodeCrossChainWithdrawalCallData(
+        wd,
+        formatCrossChainProofForContract(proofData.proof, proofData.publicSignals),
+        poolScope
+      );
     } else {
-      const derivation = deriveWithdrawalInputs(note, accountSecret, poolAddress, poolScope, withdrawalData);
-      const witness = proof.buildWithdrawalCircuitWitnessWithProof(derivation, stateCommitments, aspProof, baseIntent);
+      const derivation = deriveWithdrawalInputs(
+        note,
+        accountSecret,
+        poolAddress,
+        poolScope,
+        withdrawalData
+      );
+      const witness = proof.buildWithdrawalCircuitWitnessWithProof(
+        derivation,
+        stateCommitments,
+        aspProof,
+        baseIntent
+      );
       const proofData = await pg.generateWithdrawalProof(witness);
-      callData = encodeRelayCallData(wd, formatProofForContract(proofData.proof, proofData.publicSignals), poolScope);
+      callData = encodeRelayCallData(
+        wd,
+        formatProofForContract(proofData.proof, proofData.publicSignals),
+        poolScope
+      );
     }
 
     return { to: SHINOBI_CASH_ENTRYPOINT.address as `0x${string}`, value: 0n, data: callData };
@@ -177,7 +246,21 @@ export function createShinobiAccount(config: ShinobiAccountConfig): ShinobiAccou
   // ========== Withdraw2 ==========
 
   async function encodeWithdraw2(params: EncodeWithdraw2Params): Promise<Call> {
-    const { primaryNote, secondaryNote, poolAddress, poolScope, stateCommitments, primaryASPProof, secondaryASPProof, withdrawalData, amountWei, labelSelector = 0, isCrossChain, relayFeeBPS, refundFeeBPS } = params;
+    const {
+      primaryNote,
+      secondaryNote,
+      poolAddress,
+      poolScope,
+      stateCommitments,
+      primaryASPProof,
+      secondaryASPProof,
+      withdrawalData,
+      amountWei,
+      labelSelector = 0,
+      isCrossChain,
+      relayFeeBPS,
+      refundFeeBPS,
+    } = params;
     const [processooor, data] = withdrawalData;
     const wd = { processooor, data };
     const baseIntent = {
@@ -193,18 +276,51 @@ export function createShinobiAccount(config: ShinobiAccountConfig): ShinobiAccou
 
     let callData: `0x${string}`;
     if (isCrossChain) {
-      const derivation = deriveCrosschainWithdraw2Inputs(primaryNote, secondaryNote, accountSecret, poolAddress, poolScope, withdrawalData, labelSelector);
+      const derivation = deriveCrosschainWithdraw2Inputs(
+        primaryNote,
+        secondaryNote,
+        accountSecret,
+        poolAddress,
+        poolScope,
+        withdrawalData,
+        labelSelector
+      );
       const witness = proof.buildCrosschainWithdraw2CircuitWitnessWithProof(
-        derivation, stateCommitments, primaryASPProof, secondaryASPProof,
-        { ...baseIntent, relayFeeBPS: relayFeeBPS!, refundFeeBPS: refundFeeBPS! },
+        derivation,
+        stateCommitments,
+        primaryASPProof,
+        secondaryASPProof,
+        { ...baseIntent, relayFeeBPS: relayFeeBPS!, refundFeeBPS: refundFeeBPS! }
       );
       const proofData = await pg.generateCrosschainWithdraw2Proof(witness);
-      callData = encodeCrossChainWithdraw2CallData(wd, formatWithdraw2CrossChainProofForContract(proofData.proof, proofData.publicSignals), poolScope);
+      callData = encodeCrossChainWithdraw2CallData(
+        wd,
+        formatWithdraw2CrossChainProofForContract(proofData.proof, proofData.publicSignals),
+        poolScope
+      );
     } else {
-      const derivation = deriveWithdraw2Inputs(primaryNote, secondaryNote, accountSecret, poolAddress, poolScope, withdrawalData, labelSelector);
-      const witness = proof.buildWithdraw2CircuitWitnessWithProof(derivation, stateCommitments, primaryASPProof, secondaryASPProof, baseIntent);
+      const derivation = deriveWithdraw2Inputs(
+        primaryNote,
+        secondaryNote,
+        accountSecret,
+        poolAddress,
+        poolScope,
+        withdrawalData,
+        labelSelector
+      );
+      const witness = proof.buildWithdraw2CircuitWitnessWithProof(
+        derivation,
+        stateCommitments,
+        primaryASPProof,
+        secondaryASPProof,
+        baseIntent
+      );
       const proofData = await pg.generateWithdraw2Proof(witness);
-      callData = encodeWithdraw2RelayCallData(wd, formatWithdraw2SameChainProofForContract(proofData.proof, proofData.publicSignals), poolScope);
+      callData = encodeWithdraw2RelayCallData(
+        wd,
+        formatWithdraw2SameChainProofForContract(proofData.proof, proofData.publicSignals),
+        poolScope
+      );
     }
 
     return { to: SHINOBI_CASH_ENTRYPOINT.address as `0x${string}`, value: 0n, data: callData };

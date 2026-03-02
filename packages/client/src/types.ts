@@ -62,10 +62,7 @@ export interface ShinobiRelayer {
     amountWei: bigint;
   }): Promise<{ relayFeeBPS: number }>;
 
-  sendTransaction(params: {
-    call: Call;
-    type: RelayOperationType;
-  }): Promise<string>;
+  sendTransaction(params: { call: Call; type: RelayOperationType }): Promise<string>;
 
   waitForReceipt(txId: string): Promise<TransactionReceipt>;
 }
@@ -213,9 +210,15 @@ export interface BaseShinobiCashClient {
   getActivities(): ActivityItem[];
 
   // Chain utilities
-  estimateGas(params: { to: `0x${string}`; data: `0x${string}`; value: bigint; account?: `0x${string}` }, chainId: number): Promise<bigint>;
+  estimateGas(
+    params: { to: `0x${string}`; data: `0x${string}`; value: bigint; account?: `0x${string}` },
+    chainId: number
+  ): Promise<bigint>;
   getGasPrice(chainId: number): Promise<bigint>;
-  waitForTransaction(txHash: `0x${string}`, chainId: number): Promise<{ status: "success" | "reverted" }>;
+  waitForTransaction(
+    txHash: `0x${string}`,
+    chainId: number
+  ): Promise<{ status: "success" | "reverted" }>;
 
   // Extend client with additional capabilities
   extend<T extends object>(fn: (ctx: ClientContext) => T): this & T;
@@ -254,10 +257,20 @@ export interface WithdrawalActions {
 
 /** Methods added by withCrosschainWithdrawal(relayer, solver) — crosschain withdrawal + refund + solver quote */
 export interface CrosschainWithdrawalActions {
-  quoteCrosschainWithdrawal(params: { amountWei: bigint; destinationChainId: number }): Promise<WithdrawalFeeQuote>;
-  quoteCrosschainWithdraw2(params: { amountWei: bigint; destinationChainId: number }): Promise<WithdrawalFeeQuote>;
-  prepareCrosschainWithdrawal(params: ClientCrosschainWithdrawParams): Promise<PreparedWithdrawalOp>;
-  prepareCrosschainWithdraw2(params: ClientCrosschainWithdraw2Params): Promise<PreparedWithdrawalOp>;
+  quoteCrosschainWithdrawal(params: {
+    amountWei: bigint;
+    destinationChainId: number;
+  }): Promise<WithdrawalFeeQuote>;
+  quoteCrosschainWithdraw2(params: {
+    amountWei: bigint;
+    destinationChainId: number;
+  }): Promise<WithdrawalFeeQuote>;
+  prepareCrosschainWithdrawal(
+    params: ClientCrosschainWithdrawParams
+  ): Promise<PreparedWithdrawalOp>;
+  prepareCrosschainWithdraw2(
+    params: ClientCrosschainWithdraw2Params
+  ): Promise<PreparedWithdrawalOp>;
   submitWithdrawal(prepared: PreparedWithdrawalOp): Promise<`0x${string}`>;
   prepareWithdrawalRefund(params: ClientWithdrawalRefundParams): Call;
   submitWithdrawalRefund(call: Call): Promise<`0x${string}`>;
@@ -268,8 +281,8 @@ export interface CrosschainWithdrawalActions {
 // Full Client (convenience alias — base + all extensions)
 // ============================================================================
 
-export type ShinobiCashClient = BaseShinobiCashClient
-  & DepositActions
-  & CrosschainDepositActions
-  & WithdrawalActions
-  & CrosschainWithdrawalActions;
+export type ShinobiCashClient = BaseShinobiCashClient &
+  DepositActions &
+  CrosschainDepositActions &
+  WithdrawalActions &
+  CrosschainWithdrawalActions;

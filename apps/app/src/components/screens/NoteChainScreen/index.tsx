@@ -5,7 +5,13 @@
 
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import type { NoteOrIntent, NoteNode, NoteTree, DepositIntent, WithdrawalIntent } from "@shinobi-cash/core/discovery";
+import type {
+  NoteOrIntent,
+  NoteNode,
+  NoteTree,
+  DepositIntent,
+  WithdrawalIntent,
+} from "@shinobi-cash/core/discovery";
 import {
   isSpendableNote,
   canWithdraw,
@@ -64,7 +70,10 @@ function formatRefundCountdown(expiresTimestamp: string): { text: string; isAvai
 /**
  * Check if note is a pending intent (no children yet)
  */
-function isPendingIntent(item: NoteOrIntent, node: NoteNode): item is DepositIntent | WithdrawalIntent {
+function isPendingIntent(
+  item: NoteOrIntent,
+  node: NoteNode
+): item is DepositIntent | WithdrawalIntent {
   return (isDepositIntent(item) || isWithdrawalIntent(item)) && node.children.length === 0;
 }
 
@@ -107,8 +116,10 @@ export function NoteChainScreen({ note, noteNode, allTrees, onBack }: NoteChainS
   }, [navigationStack, onBack]);
 
   // Check if current note can be withdrawn/ragequit (only notes, not intents)
-  const canWithdrawPrivately = isNote(currentNote) && isSpendableNote(currentNote) && canWithdraw(currentNote);
-  const canWithdrawPublicly = isNote(currentNote) && isSpendableNote(currentNote) && canRagequit(currentNote);
+  const canWithdrawPrivately =
+    isNote(currentNote) && isSpendableNote(currentNote) && canWithdraw(currentNote);
+  const canWithdrawPublicly =
+    isNote(currentNote) && isSpendableNote(currentNote) && canRagequit(currentNote);
 
   // Check if current note is a pending intent (can show refund option)
   const pendingIntent = isPendingIntent(currentNote, currentNode);
@@ -139,20 +150,12 @@ export function NoteChainScreen({ note, noteNode, allTrees, onBack }: NoteChainS
 
   // Build subtitle showing navigation depth
   const subtitle =
-    navigationStack.length > 0
-      ? `${navigationStack.length + 1} notes deep`
-      : "Note details";
+    navigationStack.length > 0 ? `${navigationStack.length + 1} notes deep` : "Note details";
 
   return (
     <ScreenLayout
       containerClassName="flex-1 sm:flex-none sm:h-[600px]"
-      header={
-        <ScreenHeader
-          title="Note Details"
-          subtitle={subtitle}
-          onBack={handleBack}
-        />
-      }
+      header={<ScreenHeader title="Note Details" subtitle={subtitle} onBack={handleBack} />}
       footer={
         hasActions ? (
           <div className="flex flex-row gap-3">
@@ -194,7 +197,7 @@ export function NoteChainScreen({ note, noteNode, allTrees, onBack }: NoteChainS
                 ) : (
                   <Clock className="mr-2 h-4 w-4" />
                 )}
-                {isLoadingIntent ? "Loading..." : refundInfo?.text ?? "Refund"}
+                {isLoadingIntent ? "Loading..." : (refundInfo?.text ?? "Refund")}
               </Button>
             )}
           </div>
@@ -202,11 +205,7 @@ export function NoteChainScreen({ note, noteNode, allTrees, onBack }: NoteChainS
       }
     >
       {/* UTXO View - INPUTS → THIS NOTE → OUTPUTS */}
-      <NoteUtxoView
-        note={currentNote}
-        node={currentNode}
-        onNavigate={handleNavigate}
-      />
+      <NoteUtxoView note={currentNote} node={currentNode} onNavigate={handleNavigate} />
     </ScreenLayout>
   );
 }

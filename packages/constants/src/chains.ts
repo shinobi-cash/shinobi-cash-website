@@ -14,7 +14,7 @@ const VIEM_CHAINS: Record<number, Chain> = Object.fromEntries(
         ? { default: { name: c.name, url: c.blockExplorers.default.url } }
         : undefined,
     }),
-  ]),
+  ])
 );
 
 export function getChain(chainId: number): Chain {
@@ -25,7 +25,5 @@ export function getChain(chainId: number): Chain {
 
 export const SUPPORTED_CHAINS: [Chain, ...Chain[]] = [
   getChain(POOL_CHAIN.id),
-  ...SHINOBI_CASH_SUPPORTED_CHAINS
-    .filter((c) => c.id !== POOL_CHAIN.id)
-    .map((c) => getChain(c.id)),
+  ...SHINOBI_CASH_SUPPORTED_CHAINS.filter((c) => c.id !== POOL_CHAIN.id).map((c) => getChain(c.id)),
 ];

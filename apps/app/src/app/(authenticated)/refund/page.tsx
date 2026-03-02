@@ -65,9 +65,8 @@ function RefundPageContent() {
     // Capture data for timeline before status transitions away from "ready"
     setTimelineData({
       refundType: currentRefundType,
-      chainId: currentRefundType === "deposit"
-        ? Number(currentIntent.originChainId)
-        : POOL_CHAIN_ID,
+      chainId:
+        currentRefundType === "deposit" ? Number(currentIntent.originChainId) : POOL_CHAIN_ID,
       amount: currentIntent.inputAmount,
     });
 
@@ -148,10 +147,7 @@ function RefundPageContent() {
       <div className="flex h-full items-center justify-center p-8 text-center">
         <div className="space-y-4">
           <p className="text-neutral-400">{formError?.message ?? "Failed to load intent"}</p>
-          <button
-            onClick={() => router.back()}
-            className="text-blue-400 hover:text-blue-300"
-          >
+          <button onClick={() => router.back()} className="text-blue-400 hover:text-blue-300">
             Go back
           </button>
         </div>

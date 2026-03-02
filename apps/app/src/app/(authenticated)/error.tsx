@@ -22,9 +22,7 @@ export default function AuthenticatedError({
         </div>
         <div className="space-y-2">
           <h2 className="text-xl font-bold text-white">Something went wrong</h2>
-          <p className="text-sm text-neutral-400">
-            An error occurred while loading this page.
-          </p>
+          <p className="text-sm text-neutral-400">An error occurred while loading this page.</p>
         </div>
         {error.message && (
           <div className="rounded-lg border border-red-700 bg-red-900/20 p-2">

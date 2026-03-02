@@ -76,9 +76,7 @@ function flattenNotesToViews(trees: NoteTree[]): NoteView[] {
       }
 
       // Key must be unique - combine serialNumber/orderId with noteType
-      const key = isNote(item)
-        ? `${item.serialNumber}-${item.noteType}`
-        : `intent-${item.orderId}`;
+      const key = isNote(item) ? `${item.serialNumber}-${item.noteType}` : `intent-${item.orderId}`;
       views.push({
         note: item,
         node,

@@ -12,27 +12,21 @@ interface PillarCardProps {
 
 function PillarCard({ title, description, subtext, icon }: PillarCardProps) {
   return (
-    <div className="group p-6 sm:p-8 rounded-2xl bg-white/[0.02] border border-white/[0.05] hover:border-orange-500/30 transition-colors duration-300">
+    <div className="group rounded-2xl border border-white/[0.05] bg-white/[0.02] p-6 transition-colors duration-300 hover:border-orange-500/30 sm:p-8">
       {/* Icon */}
-      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500/20 to-red-500/20 flex items-center justify-center mb-5 group-hover:from-orange-500/30 group-hover:to-red-500/30 transition-colors duration-300">
+      <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500/20 to-red-500/20 transition-colors duration-300 group-hover:from-orange-500/30 group-hover:to-red-500/30">
         {icon}
       </div>
 
       {/* Title */}
-      <h3 className="text-lg sm:text-xl font-semibold text-white mb-3">
-        {title}
-      </h3>
+      <h3 className="mb-3 text-lg font-semibold text-white sm:text-xl">{title}</h3>
 
       {/* Description */}
-      <p className="text-neutral-400 text-sm sm:text-base leading-relaxed">
-        {description}
-      </p>
+      <p className="text-sm leading-relaxed text-neutral-400 sm:text-base">{description}</p>
 
       {/* Subtext */}
       {subtext && (
-        <p className="text-neutral-500 text-xs sm:text-sm mt-3 leading-relaxed">
-          {subtext}
-        </p>
+        <p className="mt-3 text-xs leading-relaxed text-neutral-500 sm:text-sm">{subtext}</p>
       )}
     </div>
   );
@@ -43,20 +37,20 @@ const PILLARS = [
     title: "Simple",
     description:
       "No complex bridging. No gas token juggling. Deposit and withdraw without multi-step flows.",
-    icon: <MousePointerClick className="w-6 h-6 text-orange-400" />,
+    icon: <MousePointerClick className="h-6 w-6 text-orange-400" />,
   },
   {
     title: "Borderless",
     description:
       "One pool. Every chain. Your anonymity set includes everyone — not just users on a single network.",
-    icon: <Globe className="w-6 h-6 text-orange-400" />,
+    icon: <Globe className="h-6 w-6 text-orange-400" />,
   },
   {
     title: "Compliant",
     description:
       "Private, not shady. Prove your funds came from a compliant source, without revealing which deposit is yours.",
     subtext: "Compliance without surveillance.",
-    icon: <ShieldCheck className="w-6 h-6 text-orange-400" />,
+    icon: <ShieldCheck className="h-6 w-6 text-orange-400" />,
   },
 ];
 
@@ -68,7 +62,7 @@ export function PillarsSection() {
         subtitle="Privacy that works for everyone — without compromises."
       />
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {PILLARS.map((pillar) => (
           <PillarCard
             key={pillar.title}

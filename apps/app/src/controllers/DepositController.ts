@@ -1,7 +1,11 @@
 import { proxy } from "valtio";
 import { isDepositSupported } from "@shinobi-cash/core/deposit";
 import { createStateMachine } from "@/utils/stateMachine";
-import { POOL_CHAIN, MIN_AMOUNT_CONFIG, CROSSCHAIN_DEPOSIT_FALLBACK } from "@shinobi-cash/constants";
+import {
+  POOL_CHAIN,
+  MIN_AMOUNT_CONFIG,
+  CROSSCHAIN_DEPOSIT_FALLBACK,
+} from "@shinobi-cash/constants";
 import { parseEther, formatEther } from "viem";
 import type { WalletClient } from "viem";
 import { AuthController } from "@/controllers/AuthController";
@@ -18,9 +22,7 @@ import { createShinobiSolver } from "@/utils/solver";
 const solver = createShinobiSolver();
 
 function getDepositClient() {
-  return getShinobiClient()
-    .extend(withDeposit())
-    .extend(withCrosschainDeposit(solver));
+  return getShinobiClient().extend(withDeposit()).extend(withCrosschainDeposit(solver));
 }
 
 export interface DepositAmounts {
@@ -228,7 +230,10 @@ export const DepositController = {
         : client.prepareDeposit({ amountWei });
 
       const [gasEstimateRaw, gasPrice] = await Promise.all([
-        client.estimateGas({ to: call.to, data: call.data, value: call.value, account: depositorAddress }, wallet.chainId),
+        client.estimateGas(
+          { to: call.to, data: call.data, value: call.value, account: depositorAddress },
+          wallet.chainId
+        ),
         client.getGasPrice(wallet.chainId),
       ]);
 

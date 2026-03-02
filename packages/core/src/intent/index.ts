@@ -1,9 +1,6 @@
 import { AbiFunction, AbiParameters } from "ox";
 import type { Intent, RawShinobiIntent } from "@shinobi-cash/data";
-import {
-  InputSettlerRefundAbi,
-  ShinobiIntentComponents,
-} from "@shinobi-cash/constants";
+import { InputSettlerRefundAbi, ShinobiIntentComponents } from "@shinobi-cash/constants";
 
 export type RefundType = "deposit" | "withdrawal";
 
@@ -44,10 +41,7 @@ export function getRefundType(intent: Intent): RefundType {
  * - Deposit refund: origin chain (where funds are escrowed)
  * - Withdrawal refund: pool chain (where funds are escrowed)
  */
-export function getRefundChainId(
-  intent: Intent,
-  poolChainId: number
-): number {
+export function getRefundChainId(intent: Intent, poolChainId: number): number {
   if (intent.intentType === "DEPOSIT") {
     return Number(intent.originChainId);
   }
@@ -67,18 +61,14 @@ export function getTimeUntilRefundable(intent: Intent): number {
  * Extract the refund fee BPS from a withdrawal intent's refundCalldata.
  * Returns null for deposit intents (no refund fee) or if decoding fails.
  */
-export function getRefundFeeBps(
-  rawIntent: RawShinobiIntent | undefined
-): number | null {
-  if (!rawIntent?.refundCalldata || rawIntent.refundCalldata === "0x")
-    return null;
+export function getRefundFeeBps(rawIntent: RawShinobiIntent | undefined): number | null {
+  if (!rawIntent?.refundCalldata || rawIntent.refundCalldata === "0x") return null;
 
   try {
     const fn = AbiFunction.fromAbi(HANDLE_REFUND_ABI, "handleRefund");
-    const decoded = AbiFunction.decodeData(
-      fn,
-      rawIntent.refundCalldata as `0x${string}`
-    ) as { args: readonly [bigint, `0x${string}`, bigint, bigint] };
+    const decoded = AbiFunction.decodeData(fn, rawIntent.refundCalldata as `0x${string}`) as {
+      args: readonly [bigint, `0x${string}`, bigint, bigint];
+    };
     if (!decoded.args) return null;
     return Number(decoded.args[2]);
   } catch {
@@ -98,8 +88,7 @@ export function toContractIntentStruct(raw: RawShinobiIntent) {
     fillDeadline: Number(raw.fillDeadline),
     fillOracle: raw.fillOracle as `0x${string}`,
     inputs: raw.inputs.map(
-      ([tokenId, amount]) =>
-        [BigInt(tokenId), BigInt(amount)] as [bigint, bigint]
+      ([tokenId, amount]) => [BigInt(tokenId), BigInt(amount)] as [bigint, bigint]
     ),
     outputs: raw.outputs.map((o) => ({
       oracle: o.oracle as `0x${string}`,
@@ -128,9 +117,7 @@ export function encodeRefundCallData(raw: RawShinobiIntent): `0x${string}` {
 /**
  * Decode raw ABI-encoded ShinobiIntent (from Open event log.data) into RawShinobiIntent.
  */
-export function decodeRawIntentData(
-  rawIntentData: string
-): RawShinobiIntent {
+export function decodeRawIntentData(rawIntentData: string): RawShinobiIntent {
   const [decoded] = AbiParameters.decode(
     [
       {

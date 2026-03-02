@@ -67,9 +67,7 @@ function computeLeanIMTRoot(leaf: bigint, siblings: bigint[], leafIndex: number)
     const sibling = siblings[i];
     if (sibling === 0n) continue; // empty sibling → propagate
     const bit = (leafIndex >> i) & 1;
-    current = bit === 0
-      ? poseidon2([current, sibling])
-      : poseidon2([sibling, current]);
+    current = bit === 0 ? poseidon2([current, sibling]) : poseidon2([sibling, current]);
   }
   return current;
 }
@@ -114,7 +112,7 @@ export function buildWithdrawalCircuitWitnessWithProof(
   if (computedASPRoot !== claimedASPRoot) {
     throw new Error(
       `ASP Merkle proof invalid: computed root ${computedASPRoot} does not match claimed root ${claimedASPRoot}. ` +
-      `Label: ${intent.label}, index: ${aspProof.index}, depth: ${aspProof.treeDepth}`
+        `Label: ${intent.label}, index: ${aspProof.index}, depth: ${aspProof.treeDepth}`
     );
   }
 
@@ -122,7 +120,7 @@ export function buildWithdrawalCircuitWitnessWithProof(
   const computedStateRoot = computeLeanIMTRoot(
     existingCommitmentBigInt,
     stateProof.siblings,
-    stateProof.index,
+    stateProof.index
   );
   if (computedStateRoot !== stateProof.root) {
     throw new Error(
@@ -465,21 +463,46 @@ export function createProofGenerator(config: ProofGeneratorConfig): ProofGenerat
 // ============ DEFAULT CIRCUIT FETCHER ============
 
 const CIRCUIT_PATHS = {
-  withdrawal: { wasm: "build/withdraw/withdraw.wasm", zkey: "keys/withdraw.zkey", vkey: "keys/withdraw.vkey" },
-  crosschainWithdrawal: { wasm: "build/crosschain_withdraw/crosschain_withdrawal.wasm", zkey: "keys/crosschain_withdrawal.zkey", vkey: "keys/crosschain_withdrawal.vkey" },
-  withdraw2: { wasm: "build/withdraw2/withdraw2.wasm", zkey: "keys/withdraw2.zkey", vkey: "keys/withdraw2.vkey" },
-  crosschainWithdraw2: { wasm: "build/crosschain_withdraw2/crosschain_withdraw2.wasm", zkey: "keys/crosschain_withdraw2.zkey", vkey: "keys/crosschain_withdraw2.vkey" },
-  ragequit: { wasm: "build/commitment/commitment.wasm", zkey: "keys/commitment.zkey", vkey: "keys/commitment.vkey" },
+  withdrawal: {
+    wasm: "build/withdraw/withdraw.wasm",
+    zkey: "keys/withdraw.zkey",
+    vkey: "keys/withdraw.vkey",
+  },
+  crosschainWithdrawal: {
+    wasm: "build/crosschain_withdraw/crosschain_withdrawal.wasm",
+    zkey: "keys/crosschain_withdrawal.zkey",
+    vkey: "keys/crosschain_withdrawal.vkey",
+  },
+  withdraw2: {
+    wasm: "build/withdraw2/withdraw2.wasm",
+    zkey: "keys/withdraw2.zkey",
+    vkey: "keys/withdraw2.vkey",
+  },
+  crosschainWithdraw2: {
+    wasm: "build/crosschain_withdraw2/crosschain_withdraw2.wasm",
+    zkey: "keys/crosschain_withdraw2.zkey",
+    vkey: "keys/crosschain_withdraw2.vkey",
+  },
+  ragequit: {
+    wasm: "build/commitment/commitment.wasm",
+    zkey: "keys/commitment.zkey",
+    vkey: "keys/commitment.vkey",
+  },
 } as const;
 
 /** Create an HTTP circuit fetcher from a base URL (like Kohaku's rgHttpFetcher) */
-export const httpCircuitFetcher = (baseUrl: string): CircuitFetcher => async (path: string) => {
-  const response = await fetch(baseUrl + path);
-  if (!response.ok) throw new Error(`Failed to fetch circuit file: ${baseUrl + path}`);
-  return new Uint8Array(await response.arrayBuffer());
-};
+export const httpCircuitFetcher =
+  (baseUrl: string): CircuitFetcher =>
+  async (path: string) => {
+    const response = await fetch(baseUrl + path);
+    if (!response.ok) throw new Error(`Failed to fetch circuit file: ${baseUrl + path}`);
+    return new Uint8Array(await response.arrayBuffer());
+  };
 
-async function loadCircuit(fetcher: CircuitFetcher, paths: { wasm: string; zkey: string; vkey: string }): Promise<CircuitFiles> {
+async function loadCircuit(
+  fetcher: CircuitFetcher,
+  paths: { wasm: string; zkey: string; vkey: string }
+): Promise<CircuitFiles> {
   const [wasmFile, zkeyFile, vkeyRaw] = await Promise.all([
     fetcher(paths.wasm),
     fetcher(paths.zkey),

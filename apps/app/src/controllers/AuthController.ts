@@ -92,7 +92,11 @@ export const AuthController = {
     signature: `0x${string}`;
   }) {
     // SDK: derive account identity + private key
-    const { accountId, privateKey } = await deriveWalletCredentials(signature, chainId, walletAddress);
+    const { accountId, privateKey } = await deriveWalletCredentials(
+      signature,
+      chainId,
+      walletAddress
+    );
 
     // App: derive storage encryption key (KEK)
     const kek = await keyDerivationService.deriveKEKFromWallet(signature, chainId, walletAddress);

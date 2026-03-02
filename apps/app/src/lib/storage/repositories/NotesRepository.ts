@@ -167,10 +167,7 @@ export class NotesRepository {
    */
   getStorageLayer(): StorageLayer {
     return {
-      read: async (
-        pubKey: string,
-        pool: string
-      ): Promise<SerializableDiscoveryState | null> => {
+      read: async (pubKey: string, pool: string): Promise<SerializableDiscoveryState | null> => {
         const cached = await this.getCachedData(pubKey, pool);
         if (!cached) return null;
 
@@ -205,7 +202,6 @@ export class NotesRepository {
       },
     };
   }
-
 }
 
 export const notesRepo = new NotesRepository(notesStorageAdapter, sharedEncryptionService);

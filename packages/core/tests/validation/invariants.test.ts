@@ -221,12 +221,8 @@ describe("validateWithdraw2Request", () => {
   });
 
   it("accepts label selector 0 or 1", () => {
-    expect(() =>
-      validateWithdraw2Request({ ...validRequest, labelSelector: 0 })
-    ).not.toThrow();
-    expect(() =>
-      validateWithdraw2Request({ ...validRequest, labelSelector: 1 })
-    ).not.toThrow();
+    expect(() => validateWithdraw2Request({ ...validRequest, labelSelector: 0 })).not.toThrow();
+    expect(() => validateWithdraw2Request({ ...validRequest, labelSelector: 1 })).not.toThrow();
   });
 });
 

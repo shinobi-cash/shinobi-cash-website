@@ -76,9 +76,7 @@ describe("calculateTotalGas", () => {
 
   it("sums all gas components for withdraw2 cross-chain limits", () => {
     const total = calculateTotalGas(WITHDRAW2_CROSS_CHAIN_GAS_LIMITS);
-    expect(total).toBeGreaterThan(
-      calculateTotalGas(WITHDRAW2_SAME_CHAIN_GAS_LIMITS)
-    );
+    expect(total).toBeGreaterThan(calculateTotalGas(WITHDRAW2_SAME_CHAIN_GAS_LIMITS));
   });
 });
 
@@ -113,9 +111,7 @@ describe("calculateSolverFeeBPS", () => {
   });
 
   it("returns default solver fee for cross-chain", () => {
-    expect(calculateSolverFeeBPS("cross-chain")).toBe(
-      FEE_CONFIG.DEFAULT_SOLVER_FEE_BPS
-    );
+    expect(calculateSolverFeeBPS("cross-chain")).toBe(FEE_CONFIG.DEFAULT_SOLVER_FEE_BPS);
   });
 
   it("accepts custom cross-chain solver fee", () => {

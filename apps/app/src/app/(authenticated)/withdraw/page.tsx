@@ -65,10 +65,7 @@ export default function WithdrawPage() {
   };
 
   // Get transaction details
-  const txHash =
-    state.state.status === "confirmed"
-      ? state.state.txHash
-      : null;
+  const txHash = state.state.status === "confirmed" ? state.state.txHash : null;
 
   const timelineError = state.state.status === "error" ? state.state.error : null;
 

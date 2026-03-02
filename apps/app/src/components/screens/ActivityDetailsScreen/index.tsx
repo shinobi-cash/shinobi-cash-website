@@ -94,10 +94,7 @@ export function ActivityDetailsScreen({
   return (
     <ScreenLayout
       header={
-        <ScreenHeader
-          title={getActivityTitle(activity, isMergedWithdrawal)}
-          onBack={onBack}
-        />
+        <ScreenHeader title={getActivityTitle(activity, isMergedWithdrawal)} onBack={onBack} />
       }
       containerClassName="flex-1 sm:flex-none sm:h-[600px] w-full"
       contentClassName="px-4 py-4 overflow-y-auto"
@@ -147,9 +144,7 @@ export function ActivityDetailsScreen({
         )}
 
         {/* Withdrawal - Fees */}
-        {isWithdrawal && (
-          <WithdrawalFeesSection relayFee={relayFee} solverFee={solverFee} />
-        )}
+        {isWithdrawal && <WithdrawalFeesSection relayFee={relayFee} solverFee={solverFee} />}
 
         {/* Withdrawal - Output */}
         {isWithdrawal && (
@@ -172,9 +167,7 @@ export function ActivityDetailsScreen({
         )}
 
         {/* Crosschain Details */}
-        {isCrossChain && orderId && (
-          <CrosschainSection orderId={orderId} timeline={timeline} />
-        )}
+        {isCrossChain && orderId && <CrosschainSection orderId={orderId} timeline={timeline} />}
 
         {/* Cryptographic Details */}
         <CryptographicSection

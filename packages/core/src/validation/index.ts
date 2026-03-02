@@ -46,15 +46,11 @@ interface ValidatableWithdraw2Request {
   labelSelector?: number;
 }
 
-export function validateWithdrawalRequest(
-  request: ValidatableWithdrawalRequest
-): void {
+export function validateWithdrawalRequest(request: ValidatableWithdrawalRequest): void {
   if (request.withdrawAmountWei <= BigInt(0)) {
-    throw new WithdrawalValidationError(
-      "Withdrawal amount must be positive",
-      "INVALID_AMOUNT",
-      { amount: request.withdrawAmountWei.toString() }
-    );
+    throw new WithdrawalValidationError("Withdrawal amount must be positive", "INVALID_AMOUNT", {
+      amount: request.withdrawAmountWei.toString(),
+    });
   }
 
   const noteAmount = BigInt(request.note.amount);
@@ -70,43 +66,30 @@ export function validateWithdrawalRequest(
   }
 
   if (!request.recipient || request.recipient.length !== 42) {
-    throw new WithdrawalValidationError(
-      "Invalid recipient address",
-      "INVALID_RECIPIENT",
-      { recipient: request.recipient }
-    );
+    throw new WithdrawalValidationError("Invalid recipient address", "INVALID_RECIPIENT", {
+      recipient: request.recipient,
+    });
   }
 
-  if (
-    request.destinationChainId !== undefined &&
-    request.destinationChainId <= 0
-  ) {
-    throw new WithdrawalValidationError(
-      "Invalid destination chain ID",
-      "INVALID_CHAIN_ID",
-      { chainId: request.destinationChainId }
-    );
+  if (request.destinationChainId !== undefined && request.destinationChainId <= 0) {
+    throw new WithdrawalValidationError("Invalid destination chain ID", "INVALID_CHAIN_ID", {
+      chainId: request.destinationChainId,
+    });
   }
 }
 
 export function validateFeeQuote(feeQuote: ValidatableFeeQuote): void {
   if (feeQuote.relayFeeBPS > FEE_CONFIG.MAX_RELAY_FEE_BPS) {
-    throw new WithdrawalValidationError(
-      "Relay fee exceeds maximum allowed",
-      "FEE_TOO_HIGH",
-      {
-        relayFeeBPS: feeQuote.relayFeeBPS,
-        maxBPS: FEE_CONFIG.MAX_RELAY_FEE_BPS,
-      }
-    );
+    throw new WithdrawalValidationError("Relay fee exceeds maximum allowed", "FEE_TOO_HIGH", {
+      relayFeeBPS: feeQuote.relayFeeBPS,
+      maxBPS: FEE_CONFIG.MAX_RELAY_FEE_BPS,
+    });
   }
 
   if (feeQuote.relayFeeBPS <= 0) {
-    throw new WithdrawalValidationError(
-      "Relay fee must be positive",
-      "ZERO_FEE_NOT_ALLOWED",
-      { relayFeeBPS: feeQuote.relayFeeBPS }
-    );
+    throw new WithdrawalValidationError("Relay fee must be positive", "ZERO_FEE_NOT_ALLOWED", {
+      relayFeeBPS: feeQuote.relayFeeBPS,
+    });
   }
 
   if (feeQuote.netAmountWei <= BigInt(0)) {
@@ -121,15 +104,11 @@ export function validateFeeQuote(feeQuote: ValidatableFeeQuote): void {
   }
 }
 
-export function validateWithdrawalContext(
-  context: ValidatablePipelineContext
-): void {
+export function validateWithdrawalContext(context: ValidatablePipelineContext): void {
   if (context.poolScope <= BigInt(0)) {
-    throw new WithdrawalValidationError(
-      "Invalid pool scope",
-      "INVALID_POOL_SCOPE",
-      { poolScope: context.poolScope.toString() }
-    );
+    throw new WithdrawalValidationError("Invalid pool scope", "INVALID_POOL_SCOPE", {
+      poolScope: context.poolScope.toString(),
+    });
   }
 
   if (!context.withdrawalData || context.withdrawalData.length !== 2) {
@@ -141,15 +120,11 @@ export function validateWithdrawalContext(
   }
 }
 
-export function validateWithdraw2Request(
-  request: ValidatableWithdraw2Request
-): void {
+export function validateWithdraw2Request(request: ValidatableWithdraw2Request): void {
   if (request.withdrawAmountWei <= BigInt(0)) {
-    throw new WithdrawalValidationError(
-      "Withdrawal amount must be positive",
-      "INVALID_AMOUNT",
-      { amount: request.withdrawAmountWei.toString() }
-    );
+    throw new WithdrawalValidationError("Withdrawal amount must be positive", "INVALID_AMOUNT", {
+      amount: request.withdrawAmountWei.toString(),
+    });
   }
 
   const primaryAmount = BigInt(request.primaryNote.amount);
@@ -170,27 +145,18 @@ export function validateWithdraw2Request(
   }
 
   if (!request.recipient || request.recipient.length !== 42) {
-    throw new WithdrawalValidationError(
-      "Invalid recipient address",
-      "INVALID_RECIPIENT",
-      { recipient: request.recipient }
-    );
+    throw new WithdrawalValidationError("Invalid recipient address", "INVALID_RECIPIENT", {
+      recipient: request.recipient,
+    });
   }
 
-  if (
-    request.destinationChainId !== undefined &&
-    request.destinationChainId <= 0
-  ) {
-    throw new WithdrawalValidationError(
-      "Invalid destination chain ID",
-      "INVALID_CHAIN_ID",
-      { chainId: request.destinationChainId }
-    );
+  if (request.destinationChainId !== undefined && request.destinationChainId <= 0) {
+    throw new WithdrawalValidationError("Invalid destination chain ID", "INVALID_CHAIN_ID", {
+      chainId: request.destinationChainId,
+    });
   }
 
-  if (
-    request.primaryNote.depositIndex <= request.secondaryNote.depositIndex
-  ) {
+  if (request.primaryNote.depositIndex <= request.secondaryNote.depositIndex) {
     throw new WithdrawalValidationError(
       "Primary note must have larger depositIndex than secondary note",
       "INVALID_NOTE_ORDER",
@@ -202,14 +168,10 @@ export function validateWithdraw2Request(
   }
 
   if (request.primaryNote.poolAddress !== request.secondaryNote.poolAddress) {
-    throw new WithdrawalValidationError(
-      "Both notes must be from the same pool",
-      "POOL_MISMATCH",
-      {
-        primaryPool: request.primaryNote.poolAddress,
-        secondaryPool: request.secondaryNote.poolAddress,
-      }
-    );
+    throw new WithdrawalValidationError("Both notes must be from the same pool", "POOL_MISMATCH", {
+      primaryPool: request.primaryNote.poolAddress,
+      secondaryPool: request.secondaryNote.poolAddress,
+    });
   }
 
   if (
@@ -217,23 +179,17 @@ export function validateWithdraw2Request(
     request.labelSelector !== 0 &&
     request.labelSelector !== 1
   ) {
-    throw new WithdrawalValidationError(
-      "Label selector must be 0 or 1",
-      "INVALID_LABEL_SELECTOR",
-      { labelSelector: request.labelSelector }
-    );
+    throw new WithdrawalValidationError("Label selector must be 0 or 1", "INVALID_LABEL_SELECTOR", {
+      labelSelector: request.labelSelector,
+    });
   }
 }
 
-export function validateWithdraw2Context(
-  context: ValidatablePipelineContext
-): void {
+export function validateWithdraw2Context(context: ValidatablePipelineContext): void {
   if (context.poolScope <= BigInt(0)) {
-    throw new WithdrawalValidationError(
-      "Invalid pool scope",
-      "INVALID_POOL_SCOPE",
-      { poolScope: context.poolScope.toString() }
-    );
+    throw new WithdrawalValidationError("Invalid pool scope", "INVALID_POOL_SCOPE", {
+      poolScope: context.poolScope.toString(),
+    });
   }
 
   if (!context.withdrawalData || context.withdrawalData.length !== 2) {

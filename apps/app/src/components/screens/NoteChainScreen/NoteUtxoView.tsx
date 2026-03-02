@@ -56,7 +56,6 @@ function NoteLink({
   );
 }
 
-
 /**
  * Helper to get serial number from a NoteOrIntent (only notes have serials)
  */
@@ -81,17 +80,11 @@ function InputsSection({
     const userAddress = note.activityData.user;
     return (
       <Section title="Inputs">
+        <Row label="Source" value={userAddress ? <CopyableText text={userAddress} /> : "Wallet"} />
         <Row
-          label="Source"
-          value={
-            userAddress ? (
-              <CopyableText text={userAddress} />
-            ) : (
-              "Wallet"
-            )
-          }
+          label="Chain"
+          value={<ExplorerLink chainId={note.originChainId} txHash={note.originTransactionHash} />}
         />
-        <Row label="Chain" value={<ExplorerLink chainId={note.originChainId} txHash={note.originTransactionHash} />} />
       </Section>
     );
   }
@@ -101,18 +94,20 @@ function InputsSection({
     const userAddress = note.activityData.user;
     return (
       <Section title="Inputs">
+        <Row label="Source" value={userAddress ? <CopyableText text={userAddress} /> : "Wallet"} />
         <Row
-          label="Source"
+          label="Escrowed"
+          value={<ExplorerLink chainId={note.originChainId} txHash={note.originTransactionHash} />}
+        />
+        <Row
+          label="Filled"
           value={
-            userAddress ? (
-              <CopyableText text={userAddress} />
-            ) : (
-              "Wallet"
-            )
+            <ExplorerLink
+              chainId={note.destinationChainId}
+              txHash={note.destinationTransactionHash}
+            />
           }
         />
-        <Row label="Escrowed" value={<ExplorerLink chainId={note.originChainId} txHash={note.originTransactionHash} />} />
-        <Row label="Filled" value={<ExplorerLink chainId={note.destinationChainId} txHash={note.destinationTransactionHash} />} />
       </Section>
     );
   }
@@ -121,19 +116,31 @@ function InputsSection({
   if (isNote(note) && isChangeNote(note)) {
     const parentNote = node.parent?.note;
     const parentSerial = parentNote && isNote(parentNote) ? parentNote.serialNumber : undefined;
-    const parentAmount = parentNote && isNote(parentNote) && isSpendableNote(parentNote) ? parentNote.amount : undefined;
+    const parentAmount =
+      parentNote && isNote(parentNote) && isSpendableNote(parentNote)
+        ? parentNote.amount
+        : undefined;
     const mergedEntries = Object.entries(note.mergedFrom);
 
     return (
       <Section title="Inputs">
-        <Row label="Source" value={mergedEntries.length > 0 ? "Created from Withdraw2 merge" : "Created from withdrawal"} />
+        <Row
+          label="Source"
+          value={
+            mergedEntries.length > 0 ? "Created from Withdraw2 merge" : "Created from withdrawal"
+          }
+        />
         {parentSerial && (
           <Row
             label="From"
             value={
               <NoteLink
                 serialNumber={parentSerial}
-                label={parentAmount ? `${parentSerial} (${formatEthAmount(parentAmount, { maxDecimals: 6 })} ETH)` : parentSerial}
+                label={
+                  parentAmount
+                    ? `${parentSerial} (${formatEthAmount(parentAmount, { maxDecimals: 6 })} ETH)`
+                    : parentSerial
+                }
                 onClick={() => onNavigate(parentSerial)}
               />
             }
@@ -160,14 +167,23 @@ function InputsSection({
   if (isNote(note) && isWithdrawalRefundedNote(note)) {
     // Parent is WithdrawalIntent which doesn't have serialNumber - show orderId instead
     const parentItem = node.parent?.note;
-    const parentLabel = parentItem && isWithdrawalIntent(parentItem) ? `Order ${parentItem.orderId.slice(0, 6)}...${parentItem.orderId.slice(-4)}` : undefined;
+    const parentLabel =
+      parentItem && isWithdrawalIntent(parentItem)
+        ? `Order ${parentItem.orderId.slice(0, 6)}...${parentItem.orderId.slice(-4)}`
+        : undefined;
     return (
       <Section title="Inputs">
         <Row label="Source" value="Refund from failed cross-chain withdrawal" />
         {parentLabel && (
-          <Row label="Intent" value={<span className="font-mono text-xs text-neutral-400">{parentLabel}</span>} />
+          <Row
+            label="Intent"
+            value={<span className="font-mono text-xs text-neutral-400">{parentLabel}</span>}
+          />
         )}
-        <Row label="Refunded" value={<ExplorerLink chainId={note.originChainId} txHash={note.originTransactionHash} />} />
+        <Row
+          label="Refunded"
+          value={<ExplorerLink chainId={note.originChainId} txHash={note.originTransactionHash} />}
+        />
       </Section>
     );
   }
@@ -177,17 +193,11 @@ function InputsSection({
     const userAddress = note.activityData.user;
     return (
       <Section title="Inputs">
+        <Row label="Source" value={userAddress ? <CopyableText text={userAddress} /> : "Wallet"} />
         <Row
-          label="Source"
-          value={
-            userAddress ? (
-              <CopyableText text={userAddress} />
-            ) : (
-              "Wallet"
-            )
-          }
+          label="Escrowed"
+          value={<ExplorerLink chainId={note.originChainId} txHash={note.originTransactionHash} />}
         />
-        <Row label="Escrowed" value={<ExplorerLink chainId={note.originChainId} txHash={note.originTransactionHash} />} />
       </Section>
     );
   }
@@ -201,10 +211,15 @@ function InputsSection({
         {parentSerial && (
           <Row
             label="From"
-            value={<NoteLink serialNumber={parentSerial} onClick={() => onNavigate(parentSerial)} />}
+            value={
+              <NoteLink serialNumber={parentSerial} onClick={() => onNavigate(parentSerial)} />
+            }
           />
         )}
-        <Row label="Escrowed" value={<ExplorerLink chainId={note.originChainId} txHash={note.originTransactionHash} />} />
+        <Row
+          label="Escrowed"
+          value={<ExplorerLink chainId={note.originChainId} txHash={note.originTransactionHash} />}
+        />
       </Section>
     );
   }
@@ -218,7 +233,9 @@ function InputsSection({
         {parentSerial && (
           <Row
             label="From"
-            value={<NoteLink serialNumber={parentSerial} onClick={() => onNavigate(parentSerial)} />}
+            value={
+              <NoteLink serialNumber={parentSerial} onClick={() => onNavigate(parentSerial)} />
+            }
           />
         )}
       </Section>
@@ -234,7 +251,9 @@ function InputsSection({
         {parentSerial && (
           <Row
             label="From"
-            value={<NoteLink serialNumber={parentSerial} onClick={() => onNavigate(parentSerial)} />}
+            value={
+              <NoteLink serialNumber={parentSerial} onClick={() => onNavigate(parentSerial)} />
+            }
           />
         )}
       </Section>
@@ -245,12 +264,18 @@ function InputsSection({
   if (isNote(note) && isDepositRefundedNote(note)) {
     // Parent is DepositIntent which doesn't have serialNumber - show orderId instead
     const parentItem = node.parent?.note;
-    const parentLabel = parentItem && isDepositIntent(parentItem) ? `Order ${parentItem.orderId.slice(0, 6)}...${parentItem.orderId.slice(-4)}` : undefined;
+    const parentLabel =
+      parentItem && isDepositIntent(parentItem)
+        ? `Order ${parentItem.orderId.slice(0, 6)}...${parentItem.orderId.slice(-4)}`
+        : undefined;
     return (
       <Section title="Inputs">
         <Row label="Source" value="Refund from expired deposit" />
         {parentLabel && (
-          <Row label="Intent" value={<span className="font-mono text-xs text-neutral-400">{parentLabel}</span>} />
+          <Row
+            label="Intent"
+            value={<span className="font-mono text-xs text-neutral-400">{parentLabel}</span>}
+          />
         )}
       </Section>
     );
@@ -265,7 +290,9 @@ function InputsSection({
         {parentSerial && (
           <Row
             label="From"
-            value={<NoteLink serialNumber={parentSerial} onClick={() => onNavigate(parentSerial)} />}
+            value={
+              <NoteLink serialNumber={parentSerial} onClick={() => onNavigate(parentSerial)} />
+            }
           />
         )}
       </Section>
@@ -284,7 +311,8 @@ function ThisNoteSection({ note, node }: { note: NoteOrIntent; node: NoteNode })
     // Determine combined status text
     const getStatusText = () => {
       if (note.status === "spent") return { text: "Spent", color: "text-neutral-400" };
-      if (note.aspStatus === "pending") return { text: "Awaiting ASP approval", color: "text-amber-400 italic" };
+      if (note.aspStatus === "pending")
+        return { text: "Awaiting ASP approval", color: "text-amber-400 italic" };
       return { text: "Approved", color: "text-emerald-400" };
     };
     const status = getStatusText();
@@ -317,12 +345,26 @@ function ThisNoteSection({ note, node }: { note: NoteOrIntent; node: NoteNode })
     const hasChildren = node.children.length > 0;
     return (
       <Section title="This Intent">
-        <Row label="Order" value={<CopyableText text={note.orderId} displayText={`${note.orderId.slice(0, 6)}...${note.orderId.slice(-4)}`} className="text-xs" />} />
-        <Row label="Escrowed Amount" value={<AmountDisplay amount={note.amount} layout="inline" ethOptions={{ maxDecimals: 6 }} />} />
+        <Row
+          label="Order"
+          value={
+            <CopyableText
+              text={note.orderId}
+              displayText={`${note.orderId.slice(0, 6)}...${note.orderId.slice(-4)}`}
+              className="text-xs"
+            />
+          }
+        />
+        <Row
+          label="Escrowed Amount"
+          value={
+            <AmountDisplay amount={note.amount} layout="inline" ethOptions={{ maxDecimals: 6 }} />
+          }
+        />
         <Row
           label="Status"
           value={
-            <span className={hasChildren ? "text-neutral-400" : "text-amber-400 italic"}>
+            <span className={hasChildren ? "text-neutral-400" : "italic text-amber-400"}>
               {hasChildren ? "Resolved" : "Awaiting solver fill"}
             </span>
           }
@@ -337,12 +379,21 @@ function ThisNoteSection({ note, node }: { note: NoteOrIntent; node: NoteNode })
     const hasChildren = node.children.length > 0;
     return (
       <Section title="This Intent">
-        <Row label="Order" value={<CopyableText text={note.orderId} displayText={`${note.orderId.slice(0, 6)}...${note.orderId.slice(-4)}`} className="text-xs" />} />
+        <Row
+          label="Order"
+          value={
+            <CopyableText
+              text={note.orderId}
+              displayText={`${note.orderId.slice(0, 6)}...${note.orderId.slice(-4)}`}
+              className="text-xs"
+            />
+          }
+        />
         <Row label="Amount" value={`${formatEthAmount(note.amount, { maxDecimals: 6 })} ETH`} />
         <Row
           label="Status"
           value={
-            <span className={hasChildren ? "text-neutral-400" : "text-amber-400 italic"}>
+            <span className={hasChildren ? "text-neutral-400" : "italic text-amber-400"}>
               {hasChildren ? "Resolved" : "Awaiting solver fill"}
             </span>
           }
@@ -357,7 +408,10 @@ function ThisNoteSection({ note, node }: { note: NoteOrIntent; node: NoteNode })
     return (
       <Section title="This Note">
         <Row label="Serial" value={<span className="font-mono">{note.serialNumber}</span>} />
-        <Row label="Contributed" value={`${formatEthAmount(note.contributedAmount, { maxDecimals: 6 })} ETH`} />
+        <Row
+          label="Contributed"
+          value={`${formatEthAmount(note.contributedAmount, { maxDecimals: 6 })} ETH`}
+        />
         <Row label="Status" value={<span className="text-violet-400">Merged (terminal)</span>} />
       </Section>
     );
@@ -368,7 +422,10 @@ function ThisNoteSection({ note, node }: { note: NoteOrIntent; node: NoteNode })
     return (
       <Section title="This Note">
         <Row label="Serial" value={<span className="font-mono">{note.serialNumber}</span>} />
-        <Row label="Withdrawn" value={`${formatEthAmount(note.ragequitAmount, { maxDecimals: 6 })} ETH`} />
+        <Row
+          label="Withdrawn"
+          value={`${formatEthAmount(note.ragequitAmount, { maxDecimals: 6 })} ETH`}
+        />
         <Row label="To" value={<CopyableText text={note.recipient} className="text-xs" />} />
         <Row label="Status" value={<span className="text-orange-400">Ragequit (terminal)</span>} />
       </Section>
@@ -380,7 +437,10 @@ function ThisNoteSection({ note, node }: { note: NoteOrIntent; node: NoteNode })
     return (
       <Section title="This Note">
         <Row label="Serial" value={<span className="font-mono">{note.serialNumber}</span>} />
-        <Row label="Refunded" value={`${formatEthAmount(note.refundedAmount, { maxDecimals: 6 })} ETH`} />
+        <Row
+          label="Refunded"
+          value={`${formatEthAmount(note.refundedAmount, { maxDecimals: 6 })} ETH`}
+        />
         <Row label="Status" value={<span className="text-orange-400">Refunded (terminal)</span>} />
       </Section>
     );
@@ -391,7 +451,10 @@ function ThisNoteSection({ note, node }: { note: NoteOrIntent; node: NoteNode })
     return (
       <Section title="This Note">
         <Row label="Serial" value={<span className="font-mono">{note.serialNumber}</span>} />
-        <Row label="Withdrawn" value={`${formatEthAmount(note.withdrawnAmount, { maxDecimals: 6 })} ETH`} />
+        <Row
+          label="Withdrawn"
+          value={`${formatEthAmount(note.withdrawnAmount, { maxDecimals: 6 })} ETH`}
+        />
         <Row label="To" value={<CopyableText text={note.recipient} className="text-xs" />} />
         <Row label="Status" value={<span className="text-neutral-400">Withdrawal record</span>} />
       </Section>
@@ -403,9 +466,20 @@ function ThisNoteSection({ note, node }: { note: NoteOrIntent; node: NoteNode })
     return (
       <Section title="This Note">
         <Row label="Serial" value={<span className="font-mono">{note.serialNumber}</span>} />
-        <Row label="Withdrawn" value={`${formatEthAmount(note.withdrawnAmount, { maxDecimals: 6 })} ETH`} />
+        <Row
+          label="Withdrawn"
+          value={`${formatEthAmount(note.withdrawnAmount, { maxDecimals: 6 })} ETH`}
+        />
         <Row label="To" value={<CopyableText text={note.recipient} className="text-xs" />} />
-        <Row label="Delivered" value={<ExplorerLink chainId={note.destinationChainId} txHash={note.destinationTransactionHash} />} />
+        <Row
+          label="Delivered"
+          value={
+            <ExplorerLink
+              chainId={note.destinationChainId}
+              txHash={note.destinationTransactionHash}
+            />
+          }
+        />
         <Row label="Status" value={<span className="text-neutral-400">Withdrawal record</span>} />
       </Section>
     );
@@ -442,12 +516,16 @@ function OutputsSection({
     const ragequitChild = node.children.find((c) => isNote(c.note) && isRagequitNote(c.note));
 
     // Extract narrowed note types for JSX
-    const withdrawalNote = withdrawalChild && isNote(withdrawalChild.note) &&
+    const withdrawalNote =
+      withdrawalChild &&
+      isNote(withdrawalChild.note) &&
       (isWithdrawalNote(withdrawalChild.note) || isCrosschainWithdrawalNote(withdrawalChild.note))
-      ? withdrawalChild.note : null;
+        ? withdrawalChild.note
+        : null;
     const changeNote = changeChild && isNote(changeChild.note) ? changeChild.note : null;
     const ragequitNote = ragequitChild && isNote(ragequitChild.note) ? ragequitChild.note : null;
-    const intentNote = intentChild && isWithdrawalIntent(intentChild.note) ? intentChild.note : null;
+    const intentNote =
+      intentChild && isWithdrawalIntent(intentChild.note) ? intentChild.note : null;
 
     return (
       <Section title="Outputs">
@@ -462,7 +540,8 @@ function OutputsSection({
             label="Order"
             value={
               <span className="font-mono text-xs text-amber-400">
-                {intentNote.orderId.slice(0, 6)}...{intentNote.orderId.slice(-4)} ({formatEthAmount(intentNote.amount, { maxDecimals: 6 })} ETH)
+                {intentNote.orderId.slice(0, 6)}...{intentNote.orderId.slice(-4)} (
+                {formatEthAmount(intentNote.amount, { maxDecimals: 6 })} ETH)
               </span>
             }
           />
@@ -499,10 +578,16 @@ function OutputsSection({
 
   // DepositIntent - show outcome
   if (isDepositIntent(note)) {
-    const filledChildNode = node.children.find((c) => isNote(c.note) && isCrosschainDepositNote(c.note));
-    const refundedChildNode = node.children.find((c) => isNote(c.note) && isDepositRefundedNote(c.note));
-    const filledNote = filledChildNode && isNote(filledChildNode.note) ? filledChildNode.note : null;
-    const refundedNote = refundedChildNode && isNote(refundedChildNode.note) ? refundedChildNode.note : null;
+    const filledChildNode = node.children.find(
+      (c) => isNote(c.note) && isCrosschainDepositNote(c.note)
+    );
+    const refundedChildNode = node.children.find(
+      (c) => isNote(c.note) && isDepositRefundedNote(c.note)
+    );
+    const filledNote =
+      filledChildNode && isNote(filledChildNode.note) ? filledChildNode.note : null;
+    const refundedNote =
+      refundedChildNode && isNote(refundedChildNode.note) ? refundedChildNode.note : null;
 
     if (filledNote) {
       return (
@@ -542,25 +627,40 @@ function OutputsSection({
 
   // WithdrawalIntent - show outcome
   if (isWithdrawalIntent(note)) {
-    const filledChildNode = node.children.find((c) => isNote(c.note) && isCrosschainWithdrawalNote(c.note));
-    const refundedChildNode = node.children.find((c) => isNote(c.note) && isWithdrawalRefundedNote(c.note));
+    const filledChildNode = node.children.find(
+      (c) => isNote(c.note) && isCrosschainWithdrawalNote(c.note)
+    );
+    const refundedChildNode = node.children.find(
+      (c) => isNote(c.note) && isWithdrawalRefundedNote(c.note)
+    );
     // Change note is sibling, not child
     const changeSiblingNode = node.parent?.children.find(
       (c) => c !== node && isNote(c.note) && isChangeNote(c.note)
     );
 
     // Extract narrowed types
-    const filledNote = filledChildNode && isNote(filledChildNode.note) && isCrosschainWithdrawalNote(filledChildNode.note)
-      ? filledChildNode.note : null;
-    const changeNote = changeSiblingNode && isNote(changeSiblingNode.note) ? changeSiblingNode.note : null;
-    const refundedNote = refundedChildNode && isNote(refundedChildNode.note) ? refundedChildNode.note : null;
+    const filledNote =
+      filledChildNode &&
+      isNote(filledChildNode.note) &&
+      isCrosschainWithdrawalNote(filledChildNode.note)
+        ? filledChildNode.note
+        : null;
+    const changeNote =
+      changeSiblingNode && isNote(changeSiblingNode.note) ? changeSiblingNode.note : null;
+    const refundedNote =
+      refundedChildNode && isNote(refundedChildNode.note) ? refundedChildNode.note : null;
 
     if (filledNote) {
       return (
         <Section title="Outcome">
           <Row
             label="Delivered"
-            value={<ExplorerLink chainId={filledNote.destinationChainId} txHash={filledNote.destinationTransactionHash} />}
+            value={
+              <ExplorerLink
+                chainId={filledNote.destinationChainId}
+                txHash={filledNote.destinationTransactionHash}
+              />
+            }
           />
           {changeNote && (
             <Row
@@ -618,7 +718,10 @@ function OutputsSection({
   if (isNote(note) && (isRagequitNote(note) || isDepositRefundedNote(note))) {
     return (
       <Section title="Outputs">
-        <Row label="Status" value={<span className="text-neutral-400">Terminal (no further outputs)</span>} />
+        <Row
+          label="Status"
+          value={<span className="text-neutral-400">Terminal (no further outputs)</span>}
+        />
       </Section>
     );
   }

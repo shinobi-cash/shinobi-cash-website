@@ -30,9 +30,7 @@ export function classifyWithdrawal(
   destinationChainId: number | undefined,
   poolChainId: number
 ): WithdrawalKind {
-  return destinationChainId && destinationChainId !== poolChainId
-    ? "cross-chain"
-    : "same-chain";
+  return destinationChainId && destinationChainId !== poolChainId ? "cross-chain" : "same-chain";
 }
 
 /**
@@ -43,10 +41,8 @@ export function calculateFeesFromBPS(
   relayFeeBPS: number,
   solverFeeBPS: number
 ): FeeBreakdown {
-  const executionFeeWei =
-    (withdrawAmountWei * BigInt(relayFeeBPS)) / BigInt(10000);
-  const solverFeeWei =
-    (withdrawAmountWei * BigInt(solverFeeBPS)) / BigInt(10000);
+  const executionFeeWei = (withdrawAmountWei * BigInt(relayFeeBPS)) / BigInt(10000);
+  const solverFeeWei = (withdrawAmountWei * BigInt(solverFeeBPS)) / BigInt(10000);
   const totalFeeWei = executionFeeWei + solverFeeWei;
 
   return { executionFeeWei, solverFeeWei, totalFeeWei };
@@ -80,9 +76,7 @@ export function calculateRelayFeeBPS(
   estimatedGasCostWei: bigint,
   maxBPS: number
 ): number {
-  const calculatedBPS = Number(
-    (estimatedGasCostWei * BigInt(10000)) / withdrawAmountWei
-  );
+  const calculatedBPS = Number((estimatedGasCostWei * BigInt(10000)) / withdrawAmountWei);
   const bufferedBPS = Math.ceil(calculatedBPS * GAS_PRICE_BUFFER);
   return Math.min(Math.max(bufferedBPS, 1), maxBPS);
 }
@@ -116,7 +110,10 @@ export interface FeeQuoteParams {
   gasPriceWei: bigint;
 }
 
-function computeFeeQuote(params: FeeQuoteParams, gasLimitsConfig: { sameChain: GasLimits; crossChain: GasLimits }): WithdrawalFeeQuote {
+function computeFeeQuote(
+  params: FeeQuoteParams,
+  gasLimitsConfig: { sameChain: GasLimits; crossChain: GasLimits }
+): WithdrawalFeeQuote {
   const { amountWei, destinationChainId, gasPriceWei } = params;
   const kind = classifyWithdrawal(destinationChainId, POOL_CHAIN.id);
 
@@ -124,9 +121,17 @@ function computeFeeQuote(params: FeeQuoteParams, gasLimitsConfig: { sameChain: G
   const totalGas = calculateTotalGas(gasLimits);
   const estimatedGasCostWei = totalGas * gasPriceWei;
 
-  const relayFeeBPS = calculateRelayFeeBPS(amountWei, estimatedGasCostWei, FEE_CONFIG.MAX_RELAY_FEE_BPS);
+  const relayFeeBPS = calculateRelayFeeBPS(
+    amountWei,
+    estimatedGasCostWei,
+    FEE_CONFIG.MAX_RELAY_FEE_BPS
+  );
   const solverFeeBPS = calculateSolverFeeBPS(kind);
-  const { executionFeeWei, solverFeeWei, totalFeeWei } = calculateFeesFromBPS(amountWei, relayFeeBPS, solverFeeBPS);
+  const { executionFeeWei, solverFeeWei, totalFeeWei } = calculateFeesFromBPS(
+    amountWei,
+    relayFeeBPS,
+    solverFeeBPS
+  );
   const netAmountWei = amountWei > totalFeeWei ? amountWei - totalFeeWei : 0n;
 
   return { relayFeeBPS, solverFeeBPS, executionFeeWei, solverFeeWei, totalFeeWei, netAmountWei };
@@ -176,7 +181,9 @@ export function quoteDepositFees(params: {
 }): DepositFeeQuote {
   const { amountWei, isCrossChain } = params;
   const complianceFeeBPS = FEE_CONFIG.VETTING_FEE_BPS;
-  const solverFeeBPS = isCrossChain ? (params.solverFeeBPS ?? FEE_CONFIG.DEFAULT_SOLVER_FEE_BPS) : 0;
+  const solverFeeBPS = isCrossChain
+    ? (params.solverFeeBPS ?? FEE_CONFIG.DEFAULT_SOLVER_FEE_BPS)
+    : 0;
 
   const solverFeeWei = (amountWei * BigInt(solverFeeBPS)) / 10000n;
   const afterSolver = amountWei - solverFeeWei;
@@ -184,5 +191,12 @@ export function quoteDepositFees(params: {
   const totalFeeWei = solverFeeWei + complianceFeeWei;
   const noteAmountWei = amountWei - totalFeeWei;
 
-  return { complianceFeeBPS, solverFeeBPS, complianceFeeWei, solverFeeWei, totalFeeWei, noteAmountWei };
+  return {
+    complianceFeeBPS,
+    solverFeeBPS,
+    complianceFeeWei,
+    solverFeeWei,
+    totalFeeWei,
+    noteAmountWei,
+  };
 }
