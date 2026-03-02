@@ -5,7 +5,6 @@
  * display-only helpers (chain name, explorer URL).
  */
 
-import type { Chain } from "viem";
 import { POOL_CHAIN, SHINOBI_CASH_SUPPORTED_CHAINS } from "@shinobi-cash/constants";
 import { getChain, SUPPORTED_CHAINS } from "@shinobi-cash/constants/chains";
 

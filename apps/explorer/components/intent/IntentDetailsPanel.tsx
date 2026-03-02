@@ -6,6 +6,7 @@ import {
   IntentExplorerController,
   IntentExplorerSelectors,
 } from "@/controllers/IntentExplorerController";
+import type { Intent } from "@shinobi-cash/data";
 import { IntentDetailsContent } from "./IntentDetailsContent";
 
 export function IntentDetailsPanel() {
@@ -43,7 +44,7 @@ export function IntentDetailsPanel() {
 
         <div className="min-h-0 flex-1 overflow-y-auto">
           <IntentDetailsContent
-            intent={state.selectedIntent}
+            intent={state.selectedIntent as Intent}
             timeline={timeline}
             isLoadingTimeline={state.isLoadingTimeline}
             timelineError={state.timelineError}

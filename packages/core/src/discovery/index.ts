@@ -452,7 +452,7 @@ function deserializeDiscoveryState(serialized: SerializableDiscoveryState): Disc
     nullifierMap: new Map(serialized.nullifierMap.map((n) => [n.hash, n.info])),
     nextDepositIndex: new Map(serialized.nextDepositIndex.map((n) => [n.chainId, n.index])),
     activities,
-    lastSyncedOffset: serialized.lastSyncedOffset ?? (serialized as any).minOffset ?? 0,
+    lastSyncedOffset: serialized.lastSyncedOffset ?? 0,
     newFilledDepositsFound: serialized.newFilledDepositsFound ?? 0,
     newPendingDepositsFound: serialized.newPendingDepositsFound ?? 0,
   };

@@ -72,7 +72,7 @@ export class NotesRepository {
         lastUsedIndexByChain,
         activities,
         newNotesFound: 0,
-        lastSyncedOffset: cached.lastSyncedOffset ?? (cached as any).minOffset ?? 0,
+        lastSyncedOffset: cached.lastSyncedOffset ?? 0,
       };
     }
 
@@ -181,7 +181,7 @@ export class NotesRepository {
           nullifierMap: cached.nullifierMap ?? [],
           nextDepositIndex: cached.nextDepositIndex ?? [],
           activities: cached.activities ?? [],
-          lastSyncedOffset: cached.lastSyncedOffset ?? (cached as any).minOffset ?? 0,
+          lastSyncedOffset: cached.lastSyncedOffset ?? 0,
           newFilledDepositsFound: 0,
           newPendingDepositsFound: 0,
         };
