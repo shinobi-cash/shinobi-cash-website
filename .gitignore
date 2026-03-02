@@ -24,6 +24,7 @@ coverage
 # Build Outputs
 .next/
 out/
+*.tsbuildinfo
 !apps/app/public/circuits/build
 build
 dist
